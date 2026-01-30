@@ -752,7 +752,9 @@ function renderGrid(dataList, table) {
 			if (CURRENT_TABLE_KEY === "booking_details" || CURRENT_TABLE_KEY === "operator_entries") rowId = row[1]; // Details lấy cột 1 (BK_ID)
 		}
 		
-		tr.onclick = () => {
+		tr.onclick = (e) => {
+			const isCtrl = e.ctrlKey || e.metaKey;
+			if(!isCtrl) return; // Phải có Ctrl mới mở chi tiết
 			if(typeof onGridRowClick === 'function') onGridRowClick(rowId);
 		};
 		
@@ -1096,7 +1098,11 @@ function renderDashTable1() {
 				<td class="small text-center">${row[COL_INDEX.M_STAFF]}</td>
 			`;
 			tr.style.cursor = 'pointer';
-			tr.onclick = () => handleDashClick(row[COL_INDEX.M_ID], false);
+			tr.onclick = (e) => {
+				const isCtrl = e.ctrlKey || e.metaKey;
+				if(!isCtrl) return;
+				handleDashClick(row[COL_INDEX.M_ID], false);
+			} 
 			tbody.appendChild(tr);
 		}
 	});
@@ -1134,7 +1140,12 @@ function renderDashTable2() {
 			<td class="text-center">${formatDateVN(r[COL_INDEX.D_IN])}</td>
 		`;
 		tr.style.cursor = 'pointer';
-		tr.onclick = () => handleDashClick(r[COL_INDEX.D_SID], true);
+		tr.onclick = (e) => {
+			const isCtrl = e.ctrlKey || e.metaKey;
+			if(!isCtrl) return;
+			handleDashClick(r[COL_INDEX.D_SID], true);
+		} 
+
 		tbody.appendChild(tr);
 	});
 	setVal('badge-missing-code', list.length);
@@ -1167,7 +1178,11 @@ function renderDashTable3() {
 				<td class="small text-center">${row[COL_INDEX.M_STAFF]}</td>
 			`;
 			tr.style.cursor = 'pointer';
-			tr.onclick = () => handleDashClick(row[COL_INDEX.M_ID], false);
+			tr.onclick = (e) => {
+				const isCtrl = e.ctrlKey || e.metaKey;
+				if(!isCtrl) return;
+				handleDashClick(row[COL_INDEX.M_ID], false);
+			} 
 			tbody.appendChild(tr);
 		}
 	});
@@ -1223,7 +1238,9 @@ function renderAggTable(tblId, dataObj, sumId) {
 		`;
 		// Gán sự kiện click lọc theo nhân viên (Batch Edit)
 		tr.style.cursor = 'pointer';
-		tr.onclick = () => {
+		tr.onclick = (e) => {
+			const isCtrl = e.ctrlKey || e.metaKey;
+			if(!isCtrl) return;
 			if(typeof handleAggClick === 'function') handleAggClick(k, 'staff');
 		};
 		tbody.appendChild(tr);
@@ -1369,7 +1386,11 @@ function renderDashTable1_Op() {
 				<td class="text-end">${formatMoney(row.total_amount - row.deposit_amount)}</td>
 			`;
 			tr.style.cursor = 'pointer';
-			tr.onclick = () => handleDashClick(row.id, false);
+			tr.onclick = (e) => {
+				const isCtrl = e.ctrlKey || e.metaKey;
+				if(!isCtrl) return;
+				handleDashClick(row.id, false);
+			};
 			tbody.appendChild(tr);
 		}
 	});
@@ -1408,7 +1429,11 @@ function renderDashTable2_Op() {
 			`;
 			tr.style.cursor = 'pointer';
 			// True nghĩa là click vào Service ID -> Cần tìm Booking ID
-			tr.onclick = () => handleDashClick(row.id, true); 
+			tr.onclick = (e) => {
+				const isCtrl = e.ctrlKey || e.metaKey;
+				if(!isCtrl) return;
+				handleDashClick(row.id, true);
+			};
 			tbody.appendChild(tr);
 		}
 	});
