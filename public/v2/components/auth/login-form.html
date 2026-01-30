@@ -1,0 +1,35 @@
+<div class="row g-3 justify-content-center p-3">
+    <div class="col-12 text-center mb-3">
+        <img src="./images/logo-9trip.png" class="img-fluid"
+            style="max-height:50px;">
+        <h5 class="m-2 text-secondary">Đăng nhập hệ thống</h5>
+    </div>
+
+    <div class="col-md-10">
+        <div class="form-floating mb-3">
+            <input type="email" class="form-control" id="login-email" placeholder="name@example.com">
+            <label for="login-email">Email</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="password" class="form-control" id="login-pass" placeholder="Password">
+            <label for="login-pass">Mật khẩu</label>
+        </div>
+        <button class="btn btn-primary w-100 py-2 mb-3 fw-bold" onclick="AUTH_MANAGER.handleEmailLogin()">
+            <i class="fas fa-sign-in-alt me-2"></i> Đăng nhập
+        </button>
+
+        <div class="position-relative my-4">
+            <hr class="text-secondary">
+            <span class="position-absolute top-50 start-50 translate-middle px-2 bg-white text-muted small">HOẶC</span>
+        </div>
+
+        <div class="d-grid gap-2">
+            <button class="btn btn-outline-danger" onclick="AUTH_MANAGER.handleSocialLogin('google')">
+                <i class="fab fa-google me-2"></i> Tiếp tục với Google
+            </button>
+            <button class="btn btn-outline-primary" onclick="AUTH_MANAGER.handleSocialLogin('facebook')">
+                <i class="fab fa-facebook-f me-2"></i> Tiếp tục với Facebook
+            </button>
+        </div>
+    </div>
+</div>

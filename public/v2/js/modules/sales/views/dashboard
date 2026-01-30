@@ -1,0 +1,81 @@
+
+<div class="container-fluid p-0">
+    <div class="bg-white p-2 mb-2 rounded d-flex align-items-center justify-content-between">
+        <h6 class="m-0 text-uppercase fw-bold text-primary"><i class="fa-solid fa-gauge me-2"></i>Trung Tâm Điều Hành</h6>
+        <div class="d-flex align-items-center gap-2">
+            <span class="small text-muted">Giai đoạn:</span>
+            <select id="dash-month-select" class="form-select form-select-sm fw-bold text-primary" style="width: 110px;">
+                <option value="" disabled>Tháng...</option>
+            </select>
+            <input type="date" id="dash-filter-from" class="form-control form-control-sm" style="width: 135px;">
+            <input type="date" id="dash-filter-to" class="form-control form-control-sm" style="width: 135px;">
+            <button id="btn-dash-update" class="btn btn-primary btn-sm"><i class="fa-solid fa-rotate"></i> Cập nhật</button>
+        </div>
+    </div>
+    <div class="row g-2 mb-2">
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100 border-0">
+                <div class="card-header bg-primary bg-gradient bg-opacity-75 text-white py-1 d-flex justify-content-between align-items-center">
+                    <small class="fw-bold">BOOKING MỚI (14 ngày qua)</small>
+                    <span class="badge bg-white text-primary" id="badge-new-bk">0</span>
+                </div>
+                <div class="card-body p-0 border-bottom" style="height: 38vh; overflow-y: auto;">
+                    <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-new-bk">
+                        <thead class="table-light sticky-top text-center" style="z-index: 10;"><tr><th>ID</th><th>Khách Hàng</th><th>Ngày Đi</th><th>Tổng BK</th><th>Đã Cọc</th><th>Trạng Thái</th><th>Sale</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100 border-0">
+                <div class="card-header bg-danger bg-gradient bg-opacity-75 text-white py-1 d-flex justify-content-between align-items-center">
+                    <small class="fw-bold">Booking Chờ Xác Nhận (Khách sạn)</small>
+                    <span class="badge bg-white text-danger" id="badge-missing-code">0</span>
+                </div>
+                <div class="card-body p-0 border-bottom" style="height: 38vh; overflow-y: auto;">
+                    <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-missing">
+                        <thead class="table-light sticky-top" style="z-index: 10;"><tr><th>SID</th><th>Khách Hàng</th><th>Loại DV</th><th>Dịch Vụ</th><th>Check-In</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row g-2">
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100 border-0">
+                <div class="card-header bg-primary  bg-gradient bg-opacity-75 text-white fw-bold py-1 d-flex justify-content-between align-items-center">
+                <small class="border-start border-4 border-info ps-2">Booking Sắp Đến (30 Ngày) </small>
+                <span class="badge bg-white text-primary" id="badge-arrival-bk">0</span>
+                </div>
+                <div class="card-body p-0 border-bottom" style="height: 38vh; overflow-y: auto;">
+                    <table class="table table-sm table-hover table-bordered small mb-0 text-center" id="tbl-dash-arrival-bk">
+                        <thead class="table-light sticky-top" style="z-index: 10;"><tr class="text-center"><th>ID</th><th>Khách Hàng</th><th>Ngày Đi</th><th>Tổng BK</th><th>Đặt Cọc</th><th>Còn lại</th><th>Sale</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>            
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100 border-0">
+                <div class="card-header bg-secondary  bg-gradient bg-opacity-75 py-1 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="fw-bold text-dark border-start border-4 border-warning ps-2">Thống Kê BK Theo NV</small>
+                        <div class="small fw-bold text-danger">Còn lại: <span id="sum-staff-bal">0</span></div>
+                    </div>
+                </div>
+                <div class="card-body p-0 border-bottom" style="height: 38vh; overflow-y: auto;">
+                    <table class="table table-sm table-hover table-striped small mb-0" id="tbl-dash-staff">
+                        <thead class="table-light sticky-top" style="z-index: 5;">
+                            <tr><th>Nhân Viên (staff)</th><th class="text-end">Tổng BK</th><th class="text-end">Đã Cọc</th><th class="text-end">Còn Lại</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+  

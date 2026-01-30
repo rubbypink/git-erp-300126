@@ -1,0 +1,663 @@
+/* --- 1. GLOBAL RESET & BOX MODEL --- */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    /* Đảm bảo padding/margin không làm vỡ kích thước 100% */
+}
+
+:root {
+    /* Colors - Base */
+    --app-bg: #f8f9fa;
+    --header-bg: #3f80fa;
+    --footer-bg: #ac9f9f;
+    --text-color: #141414;
+    --border-color: #dee2e6;
+
+    /* Table Colors */
+    --tbl-head-bg: #e9ecef;
+    --tbl-head-text: #495057;
+    --tbl-row-hover: rgba(0, 0, 0, 0.05);
+
+    /* TAB NAVIGATION COLORS (NEW) */
+    --tab-active-bg: #ffffff;
+    --tab-active-text: #0d6efd;
+    --tab-inactive-bg: rgba(209, 205, 205, 0.973);
+    --tab-inactive-text: #1d1d1d;
+
+    /* SAFETY & GLASS LAYER (NEW) */
+    /* Dùng cho các nút/khung cần nổi bật trên nền theme */
+    --glass-bg: #ffffff;
+    --glass-text: #333333;
+
+    /* Button Colors */
+    --btn-primary: #0d6efd;
+    --btn-secondary: #6c757d;
+    --btn-success: #198754;
+    --btn-danger: #dc3545;
+    --btn-info: #0dcaf0;
+    --btn-warning: #ffc107;
+
+    /* Typography & Spacing */
+    --font-family: 'Segoe UI', sans-serif;
+    --font-size: 13px;
+    --spacing-scale: 1;
+    --radius: 0.25rem;
+
+}
+
+/* --- APPLY VARIABLES --- */
+body {
+    background-color: var(--app-bg) !important;
+    color: var(--text-color) !important;
+    font-family: var(--font-family) !important;
+    font-size: var(--font-size) !important;
+}
+
+/* Fix Header/Footer Contrast */
+.app-header {
+    background: var(--header-bg) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-color) !important;
+}
+
+.footer-bar {
+    background: var(--footer-bg) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-color) !important;
+}
+
+/* --- ADVANCED TAB STYLING (THEME SYNC) --- */
+.nav-tabs {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.nav-tabs .nav-link {
+    background-color: var(--tab-inactive-bg) !important;
+    color: var(--tab-inactive-text) !important;
+    border: 1px solid transparent;
+    margin-right: 2px;
+    border-radius: var(--radius) var(--radius) 0 0 !important;
+    transition: all 0.2s;
+}
+
+.nav-tabs .nav-link:hover {
+    opacity: 0.9;
+    filter: brightness(0.95);
+}
+
+.nav-tabs .nav-link.active {
+    background-color: var(--tab-active-bg) !important;
+    color: var(--tab-active-text) !important;
+    border-color: var(--border-color) var(--border-color) transparent !important;
+    font-weight: bold;
+}
+
+/* --- SAFETY LAYER FOR BUTTONS/INPUTS --- */
+/* Áp dụng cho nút Light, Link hoặc các thẻ input để không bị chìm nền */
+.btn-light,
+.bg-white,
+.card,
+.dropdown-menu,
+btn-outline-* {
+    background-color: var(--glass-bg) !important;
+    color: var(--glass-text) !important;
+    border-color: var(--border-color);
+}
+
+/* Input form cũng cần đồng bộ nền để dễ đọc */
+.form-control,
+.form-select {
+    background-color: var(--glass-bg) !important;
+    color: var(--glass-text) !important;
+    border-color: var(--border-color);
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--glass-bg);
+    color: var(--glass-text);
+}
+
+/* Cách nhận biết Dark Mode qua biến CSS: Kiểm tra màu chữ chính */
+@media (prefers-color-scheme: dark) {
+    /* Fallback cho trình duyệt */
+}
+
+/* Hack CSS: Sử dụng Javascript class hoặc check biến màu nền */
+/* Ở đây ta dùng thủ thuật: Nếu --app-bg là màu tối (Modern Theme) */
+
+/* Cụ thể cho Modern Theme (bạn đã set --app-bg: #212529) */
+body[style*="--app-bg: #212529"] .btn-outline-dark,
+body[style*="--app-bg: #212529"] .btn-outline-secondary {
+    color: #d0d2d4 !important;
+    border-color: #737374 !important;
+}
+
+body[style*="--app-bg: #212529"] .btn-outline-dark:hover,
+body[style*="--app-bg: #212529"] .btn-outline-secondary:hover {
+    background-color: #f8f9fa !important;
+    color: #212529 !important;
+}
+
+html,
+body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    /* Cấm cuộn ở body, chỉ cuộn ở vùng content */
+}
+
+/* --- 2. LAYOUT KHUNG SƯỜN (SKELETON) --- */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    /* Chiều cao bằng 100% màn hình thiết bị */
+    width: 100vw;
+    margin: 0;
+    padding: 0;
+}
+
+/* HEADER: Cố định 6% */
+.app-header {
+    max-height: 7vh;
+    /* Yêu cầu: 6% chiều cao */
+    min-height: 20px;
+    /* An toàn: Không nhỏ hơn 45px trên mobile */
+    flex: 0 0 auto;
+    /* KHÔNG co giãn */
+    width: 100%;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    /* Căn giữa nội dung theo chiều dọc */
+}
+
+/* CONTENT: Chiếm phần còn lại */
+.app-content {
+    flex: 1 1 auto;
+    /* Tự động lấp đầy khoảng trống còn lại */
+    overflow: hidden;
+    /* Ẩn thanh cuộn tổng, scroll sẽ nằm trong từng tab con */
+    position: relative;
+    height: 100%;
+    /* Quan trọng để con bên trong nhận height */
+}
+
+/* FOOTER: Cố định 8% */
+.footer-bar {
+    max-height: 10vh;
+    /* Yêu cầu: 8% chiều cao */
+    min-height: 30px;
+    /* An toàn */
+    flex: 0 0 auto;
+    /* KHÔNG co giãn */
+    border-top: 1px solid #ccc;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    z-index: 100;
+    padding: 15px;
+    /* Padding nội bộ 0 10px*/
+}
+
+.nav-tabs {
+    display: flex;
+    margin-bottom: 0;
+    position: absolute;
+    top: 0;
+}
+
+.nav-tabs .nav-link {
+    padding: 0.4rem 0.8rem;
+    /* Tab gọn hơn */
+    border-radius: 0;
+    color: #555;
+}
+
+.nav-tabs .nav-link.active {
+    font-weight: bold;
+    border-top: 2px solid #0d6efd;
+    border-bottom-color: transparent;
+    color: #0d6efd;
+    background-color: #f4f6f8;
+    /* Đồng bộ nền với content */
+}
+
+/* Form Elements siêu nhỏ */
+.form-control,
+.form-control-sm,
+.form-select-sm,
+.btn-sm,
+.input-group-sm {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.4rem !important;
+    /* Ép padding nhỏ nhất có thể */
+    min-height: 24px;
+}
+
+.form-floating {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.4rem !important;
+    /* Ép padding nhỏ nhất có thể */
+}
+
+/* Form Labels */
+.form-label {
+    margin-bottom: 0 !important;
+    font-size: 0.7rem !important;
+    color: #666;
+    font-weight: 600;
+}
+
+/* --- 3. TAB SYSTEM & SCROLLING --- */
+.tab-content {
+    flex: 1 1 auto;
+    padding: 0px 4px 4px 4px;
+    /* Padding nhỏ cho nội dung cách lề */
+    height: 100%;
+    /* Quan trọng để con bên trong nhận height */
+}
+
+.tab-pane {
+    height: 100%;
+    display: flex;
+    /* Biến Tab thành Flex container để xử lý con bên trong */
+    flex-direction: column;
+}
+
+.card-header {
+    max-height: 7vh;
+    /* Yêu cầu: 6% chiều cao */
+    min-height: 20px;
+    /* An toàn: Không nhỏ hơn 45px trên mobile */
+    flex: 0 0 auto;
+    /* KHÔNG co giãn */
+    width: 100%;
+    background-color: #f8f9fa;
+    margin-bottom: 1rem;
+    padding: 0 0.4rem 0 0.4rem;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: bold;
+    min-height: 2rem;
+    align-items: center;
+    justify-content: start;
+}
+
+/* --- 4. TAB LIST (DANH SÁCH DỮ LIỆU & PAGINATION) --- */
+/* Đây là phần xử lý yêu cầu Pagination cố định đáy Content */
+
+/* Card bao ngoài chiếm hết chiều cao tab */
+
+
+#tab-list {
+    height: 100%;
+    flex: 1 1 auto;
+    /* Header lọc dữ liệu cố định */
+}
+
+#tab-list .card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #e0e0e0;
+}
+
+/* Container bao gồm Bảng + Pagination */
+#tbl-container-tab2 {
+    flex: 1 1 auto;
+    /* Chiếm hết phần còn lại của card */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    /* Ngăn tràn ra ngoài */
+    height: 100% !important;
+    /* Override style cũ */
+}
+
+/* Vùng chứa bảng (Scrollable Area) */
+#tbl-container-tab2 .flex-grow-1 {
+    flex: 1 1 auto;
+    overflow: auto;
+    /* Chỉ cuộn ở vùng này */
+}
+
+/* Vùng Pagination (Footer của Card) */
+#tbl-container-tab2 .card-footer {
+    flex: 0 0 auto;
+    /* Cố định chiều cao */
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+
+/* --- 5. TAB FORM (NHẬP LIỆU) --- */
+/* Form cần cuộn độc lập */
+#tab-form {
+    overflow-y: auto;
+    height: 100%;
+    padding-bottom: 10px;
+    /* Tránh bị sát đáy */
+}
+
+/* --- 6. CÁC THÀNH PHẦN KHÁC (TABLE, BUTTON...) --- */
+/* Table Sticky Header */
+.table-data th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+    /* Bóng nhẹ ngăn cách header */
+}
+
+.table-data td {
+    vertical-align: middle;
+    padding: 0.2rem;
+    font-size: 0.75rem;
+}
+
+#tab-log {
+    height: 100%;
+    /* position: fixed; */
+    bottom: 0;
+}
+
+#log-list {
+    height: calc(100% - 40px);
+    /* Trừ đi header log */
+    overflow-y: auto;
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Courier New', Courier, monospace;
+    padding: 10px;
+    border: 0.5px solid #4e3c3c;
+}
+
+.flex-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+}
+
+.flex-inline-center {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--font-size);
+}
+
+.flex-inline-center>* {
+    display: inline-flex;
+}
+
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    /* Number of lines to show */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Custom Class để Modal tự co giãn theo nội dung */
+.modal-fit-content .modal-dialog {
+    max-width: 100%;
+    /* Gỡ bỏ giới hạn độ rộng mặc định (500px/800px...) */
+    margin-top: 7vh;
+    margin-bottom: 10vh;
+    width: fit-content;
+    height: fit-content;
+    /* QUAN TRỌNG: Bắt modal ôm sát nội dung */
+    min-width: 400px;
+    /* Đặt tối thiểu để không bị quá bé nếu nội dung ít */
+}
+
+/* Đảm bảo modal không bị tràn màn hình nếu nội dung quá dài */
+@media (min-width: 576px) {
+    .modal-fit-content .modal-dialog {
+        max-width: 95vw;
+        /* Giới hạn tối đa 95% chiều rộng màn hình */
+    }
+}
+
+/* Hiệu ứng flash khi đảo dòng */
+@keyframes flash-bg {
+    0% {
+        background-color: #e8f5e9;
+    }
+
+    100% {
+        background-color: transparent;
+    }
+}
+
+.flash-effect tr {
+    animation: flash-bg 0.5s ease-out;
+}
+
+/* Animation */
+@keyframes bounceIn {
+
+    0%,
+    20%,
+    40%,
+    60%,
+    80%,
+    100% {
+        animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+    }
+
+    0% {
+        opacity: 0;
+        transform: scale3d(.3, .3, .3);
+    }
+
+    20% {
+        transform: scale3d(1.1, 1.1, 1.1);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale3d(1, 1, 1);
+    }
+}
+
+.animate__bounceIn {
+    animation-name: bounceIn;
+    animation-duration: 1s;
+}
+
+/* CSS Riêng cho Admin Dashboard */
+/* Reset CSS cho vùng chứa này để tránh xung đột với style chung */
+#tab-admin-dashboard {
+    width: 100%;
+    height: 100%;
+    /* position: relative; */
+}
+
+/* Wrapper chính: Căn giữa tuyệt đối & Full màn hình */
+.admin-wrapper {
+    /* Chiều cao tối thiểu trừ đi Header (ước lượng 60px) */
+    min-height: calc(100vh - 60px);
+    width: 100%;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* Căn giữa dọc */
+    align-items: center;
+    /* Căn giữa ngang */
+
+    background-color: #f4f6f8;
+    padding: 20px;
+}
+
+.admin-header-text {
+    text-align: center;
+    margin-bottom: 40px;
+    color: #2c3e50;
+    width: 100%;
+    /* Đảm bảo text không bị co cụm */
+}
+
+/* Thiết kế Card */
+.module-card {
+    border: none;
+    border-radius: 16px;
+    background: white;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    cursor: pointer;
+
+    /* Fix layout card */
+    height: 100%;
+    min-height: 250px;
+    /* Chiều cao tối thiểu cho card đẹp hơn */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.module-card:hover {
+    /* transform: translateY(-8px); */
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+    z-index: 2;
+    /* Nổi lên khi hover */
+}
+
+/* Màu sắc định danh */
+.card-sales {
+    border-bottom: 5px solid #0d6efd;
+}
+
+.card-op {
+    border-bottom: 5px solid #198754;
+}
+
+.card-acc {
+    border-bottom: 5px solid #ffc107;
+}
+
+.module-icon {
+    font-size: 3.5rem;
+    margin-bottom: 20px;
+    opacity: 0.9;
+}
+
+.module-title {
+    font-weight: 700;
+    font-size: 1.25rem;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
+/* -----------------------------------------------------------
+    QUY TẮC: "CHỈ ẨN KHI..." (Negative Logic)
+    Cấu trúc: body:not(Quyền_Sở_Hữu):not(Quyền_Cấp_Cao_Hơn) .element { ẩn }
+  ----------------------------------------------------------- */
+
+/* 1. ADMIN ONLY: Chỉ Admin mới thấy (Level cao nhất) */
+body:not(.is-admin) .admin-only {
+    display: none !important;
+}
+
+/* 2. MANAGER ONLY: Manager thấy + Admin cũng thấy */
+body:not(.is-manager):not(.is-admin) .manager-only {
+    display: none !important;
+}
+
+/* 3. SUP ONLY: Sup thấy + Manager thấy + Admin thấy */
+body:not(.is-sup):not(.is-manager):not(.is-admin) .sup-only {
+    display: none !important;
+}
+
+/* 4. SALES ONLY: Sales thấy + Manager thấy + Admin thấy (Ví dụ thế) */
+body:not(.is-sales):not(.is-manager):not(.is-admin) .sales-only {
+    display: none !important;
+}
+
+/* 5. OP ONLY: Tương tự... */
+body:not(.is-op):not(.is-manager):not(.is-admin) .op-only {
+    display: none !important;
+}
+
+/* 6. ACCOUNTANT ONLY: Chỉ Kế toán + Admin thấy (Manager sale ko đc xem tiền) */
+body:not(.is-acc):not(.is-admin) .acc-only {
+    display: none !important;
+}
+
+/* =========================================
+    RESPONSIVE MOBILE FIX (SAFE MODE)
+    Chỉ áp dụng cho màn hình nhỏ hơn 768px
+    ========================================= */
+@media screen and (max-width: 768px) {
+
+    /* 1. Reset khổ rộng cho container chính */
+    body,
+    .container,
+    .main-form {
+        width: 100% !important;
+        min-width: 100% !important;
+        padding: 10px !important;
+        box-sizing: border-box !important;
+        flex-direction: column !important;
+        overflow-x: auto;
+        /* Chặn cuộn ngang */
+    }
+
+    /* 2. Chuyển các hàng ngang thành cột dọc 
+        (Giả sử bạn dùng div row/col hoặc table để chia cột) */
+    .row,
+    .form-group,
+    table,
+    tbody,
+    tr,
+    td {
+        display: block !important;
+        width: 100% !important;
+    }
+
+    /* 3. Tăng kích thước ô nhập liệu cho dễ bấm */
+    input,
+    select,
+    textarea {
+        min-width: 50px;
+        /* Đảm bảo không quá nhỏ */
+        margin-bottom: 10px !important;
+        /* Tạo khoảng cách giữa các ô */
+        height: 45px !important;
+        /* Cao hơn để dễ chạm ngón tay */
+        font-size: 14px !important;
+        /* Chữ to rõ, tránh việc iPhone tự zoom */
+        box-sizing: border-box !important;
+    }
+
+    /* 4. Xử lý Label (Nhãn) */
+    label {
+        display: block !important;
+        margin-bottom: 5px !important;
+        font-weight: bold;
+        margin-top: 10px;
+    }
+
+    /* 5. Nút bấm to rõ */
+    button,
+    .btn,
+    .btn-sm {
+        width: 50px !important;
+        height: 50px !important;
+        margin-top: 15px !important;
+        font-size: 14px !important;
+    }
+
+    /* 6. Ẩn các thành phần trang trí không cần thiết trên mobile (nếu có) */
+    .desktop-only {
+        display: none !important;
+    }
+}
