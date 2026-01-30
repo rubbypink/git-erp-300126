@@ -1475,7 +1475,13 @@ function renderAggTable_Op(tableId, dataObj, sumId) {
 			const filterType = tableId === 'tbl-dash-supplier' ? 'supplier' : 'type';
 			
 			// Gán sự kiện
-			tr.onclick = () => handleAggClick(key, filterType);
+			tr.onclick = (e) => {
+				const isCtrl = e.ctrlKey || e.metaKey;
+				if(!isCtrl) return;
+				if(typeof handleAggClick === 'function') {
+					handleAggClick(key, filterType);
+				}
+			};
 		}
 
 		tbody.appendChild(tr);
