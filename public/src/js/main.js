@@ -74,7 +74,7 @@
       if (!menu) return;
 
       // A. Sự kiện Click chuột phải (Mở Menu)
-      onEvent(elementOrId,'contextmenu', function(e) {
+      onEvent('#detail-tbody','contextmenu', function(e) {
           // Tìm dòng tr gần nhất
           const isCtrl = e.ctrlKey || e.metaKey;
           if(isCtrl) return; // Bỏ qua nếu có Ctrl (dành cho multi-select sau này)

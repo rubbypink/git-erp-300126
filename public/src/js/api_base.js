@@ -10,6 +10,7 @@ function reloadSystemMode(modeCode) {
         maskedRole: modeCode
     };
     localStorage.setItem('erp-mock-role', JSON.stringify(roleData));
+    log('🎭 Chuyển chế độ thành công sang: ' + Object.values(roleData).join(' -> ') + '. Đang tải lại trang...');
     window.location.reload();
 }
 

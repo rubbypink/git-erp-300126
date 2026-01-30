@@ -295,12 +295,13 @@
     // Bạn cần Deploy file .gs thành Web App và dán URL vào đây
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycby_54qWXvDLG3Jm6s-jAH75S6dO1L6X1rmHrnqJ5I2CQBw4QQa1t3u4QKcEA98kI8qV/exec"; 
     var CURRENT_USER = {
-      role: '',
+      role: 'sale',
       email: '',
       level: 1,
       maskedRole: '',
       profile: {}
     };
+    var ADMIN_EMAILS = ['tranthuaanh90@gmail.com', '9tripphuquoc@gmail.com'];
     var JS_MANIFEST = {
       sale: ['logic_sales.js', 'api_sales.js'],
       op: ['logic_operator.js', 'api_operator.js']

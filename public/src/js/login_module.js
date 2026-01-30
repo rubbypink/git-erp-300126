@@ -66,7 +66,6 @@
                 // ✅ FIRESTORE: Dùng .collection().doc().get()
                 const docRef = db.collection('users').doc(firebaseUser.uid);
                 const docSnap = await docRef.get();
-
                 if (!docSnap.exists) {
                     alert("Tài khoản chưa có dữ liệu trên ERP. Vui lòng liên hệ Admin.");
                     auth.signOut();
@@ -74,21 +73,18 @@
                     return;
                 }
                 
-
                 // ✅ FIRESTORE: Dùng .data()
                 const userProfile = docSnap.data();
-
                 // Merge data
                 CURRENT_USER.uid = firebaseUser.uid;
-                CURRENT_USER.email = firebaseUser.email;
-                
+                CURRENT_USER.email = firebaseUser.email;   
                 CURRENT_USER.level = userProfile.level;
                 CURRENT_USER.profile = userProfile;
-
                 const masker = localStorage.getItem('erp-mock-role');
-                if (masker) {
+                
+                if (masker) {                  
                     const realRole = JSON.parse(masker).realRole;
-                    if (realRole === 'admin' || realRole === 'manager') {
+                    if (realRole === 'admin' || realRole === 'manager' || CURRENT_USER.level >= 50) {
                         CURRENT_USER.role = JSON.parse(masker).maskedRole;
                         CURRENT_USER.realRole = realRole;
                         localStorage.removeItem('erp-mock-role');
@@ -423,7 +419,7 @@
 
     const SECURITY_MANAGER = {
         // Cấu hình danh sách Admin cứng
-        ADMIN_EMAILS: ['tranthuaanh90@gmail.com', '9tripphuquoc@gmail.com'],
+        
 
         /**
          * HÀM CHÍNH: ÁP DỤNG PHÂN QUYỀN
@@ -453,7 +449,7 @@
             let permissionClass = '';
             let maskedClass ='';
             let maskedRole = userProfile.realRole ? userProfile.role : null;
-            const isHardAdmin = this.ADMIN_EMAILS.includes(email);           
+            const isHardAdmin = ADMIN_EMAILS.includes(email);           
 
             if (isHardAdmin || level >= 50) {
                 permissionClass = 'is-admin';

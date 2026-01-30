@@ -549,6 +549,19 @@ PartnerMailModule.open();
 | [api_base.js](public/src/js/api_base.js) | Server API wrapper | `requestAPI()`, `handleSearchClick()` |
 | [shortkey.js](public/src/js/shortkey.js) | Keyboard shortcuts | `initShortcuts()`, `recordingKey()` |
 
+### ⭐ NEW: Service Layer (Phase 2+)
+
+| File | Purpose | Key Functions |
+|------|---------|---|
+| `services/StoreService.js` | Centralized state (Pub/Sub) | `subscribe()`, `setState()`, `getState()` |
+| `services/MatrixAdapter.js` | Complex matrix data | `getRoomTypes()`, `buildLocationOptions()`, `validateMatrix()` |
+| `services/AuditService.js` | Logging & audit trail | `logDataChange()`, `queryAuditLog()`, `exportAuditLog()` |
+| `services/CalculationService.js` | Business logic formulas | `calculateNights()`, `calculateRowCost()`, `calculateProfit()` |
+| `services/DataService.js` | Data operations | `findBookingById()`, `getOperatorEntries()`, `saveBooking()` |
+| `services/FormService.js` | Form operations | `extractFormData()`, `populateForm()`, `validateForm()` |
+| `controllers/BookingController.js` | Booking logic | `loadBooking()`, `saveBooking()`, `addDetailRow()` |
+| `controllers/MobileNavController.js` | Mobile navigation | `toggleDrawer()`, `switchTab()`, `nextStep()` |
+
 ### Role-Specific Modules
 
 **Operator Role** (public/src/js/):
@@ -661,7 +674,7 @@ npx eslint "public/src/js/**/*.js"
 - Google Sheets: Sales sheet, Operator sheet (in app-config.js)
 
 **Important IDs**:
-- Main form: `#tab-form` → `#detail-tbody` (operator entries table)
+- Main form: `#tab-form` → `#detail-tbody` (booking table include details/operator entries )
 - Booking header: `BK_ID`, `BK_Total`, `BK_Status`, etc.
 - Search: `#global-search` input
 - Dashboard: `#dash-table-1`, `#dash-table-2`, `#dash-table-3`
