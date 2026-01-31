@@ -255,6 +255,12 @@ class ModalFull extends HTMLElement {
             handler.call(this);
         });
     }
+    setFooter(isVisible) {
+        const footer = this.querySelector('.modal-footer');
+        if (!footer) return;
+
+        footer.style.display = isVisible ? '' : 'none';
+    }
 }
 
 customElements.define('at-modal-full', ModalFull);

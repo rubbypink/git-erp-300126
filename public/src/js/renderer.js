@@ -1326,9 +1326,6 @@ window.renderDashboard_Op = function() {
 			aggType[type].list.push(sid);
 		}
 	});
-	log("Aggregated Supplier Data:", aggSupplier);
-	log("Aggregated Type Data:", aggType);
-
 	renderAggTable_Op('tbl-dash-supplier', aggSupplier, 'sum-supplier-bal');
 	renderAggTable_Op('tbl-dash-type', aggType, 'sum-type-bal');
 

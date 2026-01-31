@@ -367,8 +367,8 @@ export class PriceController {
                     <div class="d-flex gap-2 align-items-center flex-wrap mb-3">
                         <h5 class="m-0 me-auto text-primary"><i class="bi bi-grid-3x3"></i> Thiết lập Bảng giá</h5>
                         <select id="pc-status" class="form-select form-select-sm fw-bold" style="width:150px">
-                            <option value="pending" class="text-warning">Pending</option>
                             <option value="actived" class="text-success">Actived</option>
+                            <option value="pending" class="text-warning">Pending</option>
                             <option value="stopped" class="text-secondary">Stopped</option>
                             <option value="canceled" class="text-danger">Canceled</option>
                         </select>
@@ -595,7 +595,7 @@ export class PriceController {
             if (savedData && savedData.info && savedData.info.status) {
                 this.selStatus.value = savedData.info.status;
             } else {
-                this.selStatus.value = 'pending'; 
+                this.selStatus.value = 'actived'; 
             }
 
             // 4. Get active IDs from Checkboxes (Lấy giá trị thực tế trên UI hiện tại)
@@ -712,3 +712,5 @@ export class PriceController {
         else this.loadingOverlay.classList.add('d-none');
     }
 }
+
+window.PriceController = PriceController;

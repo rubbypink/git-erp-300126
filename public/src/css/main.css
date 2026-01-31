@@ -204,9 +204,19 @@
     /* Form Elements siêu nhỏ */
     .form-control, .form-control-sm, .form-select-sm, .btn-sm, .input-group-sm {
       font-size: 0.75rem;
-      padding: 0.15rem 0.4rem !important; /* Ép padding nhỏ nhất có thể */
+      padding: 0.15rem 0.4rem; /* Ép padding nhỏ nhất có thể */
       min-height: 24px;
     }
+    td {
+      padding: 0.2rem 0.1rem;
+    }
+
+    td select.form-select-sm, td input.form-control-sm {
+      margin: 0;
+      padding: 0 !important;
+      border: none;
+    }
+
     .form-floating {
       font-size: 0.75rem;
       padding: 0.15rem 0.4rem !important; /* Ép padding nhỏ nhất có thể */      
@@ -238,7 +248,6 @@
       flex: 0 0 auto;       /* KHÔNG co giãn */
       width: 100%;      
       background-color: #f8f9fa;
-      margin-bottom: 1rem;
       padding: 0 0.4rem 0 0.4rem;
       border-bottom: 1px solid #dee2e6;
       font-weight: bold;

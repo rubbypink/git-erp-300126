@@ -314,6 +314,25 @@ function onTypeChange(idx, resetChildren = true) {
   }
 }
 
+async function onSupplierChange(idx) {
+  const tr = getE(`row-${idx}`);
+  const useDate = tr.querySelector('.d-in').value;
+  const supplier = tr.querySelector('.d-supplier').value;
+  const service = tr.querySelector('.d-name').value;
+  const type = tr.querySelector('.d-type').value;
+  if(service && useDate && type) {
+    if (type === 'Phòng') {
+      const hotel = tr.querySelector('.d-loc').value;
+      const checkOut = tr.querySelector('.d-out').value;
+      const prices = await PriceManager.getHotelPrice(hotel, useDate, checkOut, service);
+      setVal('.d-costA', prices.price || 0, tr);
+    } else {
+      const prices = await PriceManager.getServicePrice(service, useDate, supplier);
+      setVal('.d-costA', prices.adl || 0, tr);
+      setVal('.d-costC', prices.chd || 0, tr);
+    }
+  }
+}
 // B. Khi đổi Location -> Nếu Type=Phòng -> Cập nhật Hạng Phòng
 function onLocationChange(idx, resetName = true) {
   const tr = getE(`row-${idx}`);
@@ -462,21 +481,21 @@ function calcRow(idx) {
   tr.querySelector('.d-night').value = night;
 
   // Get quantities and prices
-  const qtyA = getRawVal(tr.querySelector('.d-qty').value);
-  const qtyC = getRawVal(tr.querySelector('.d-qtyC').value);
-  const sur = getRawVal(tr.querySelector('.d-sur').value);
-  const disc = getRawVal(tr.querySelector('.d-disc').value);
+  const qtyA = getVal('.d-qty', tr);
+  const qtyC = getVal('.d-qtyC', tr);
+  const sur = getVal('.d-sur', tr);
+  const disc = getVal('.d-disc', tr);
   
   // Calculate total cost
-  const costA = getRawVal(tr.querySelector('.d-costA').value);
-  const costC = getRawVal(tr.querySelector('.d-costC').value);
+  const costA = getVal('.d-costA', tr);
+  const costC = getVal('.d-costC', tr);
   const multiplier = (type === 'Phòng') ? Math.max(1, night) : 1;
   
   const totalCost = ((qtyA * costA) + (qtyC * costC) + sur - disc) * multiplier;
   setVal('.d-totalCost', totalCost, tr);
   
   // Calculate remaining debt
-  const paid = getRawVal(tr.querySelector('.d-paid').value);
+  const paid = getVal('.d-paid', tr);
   const remain = totalCost - paid;
   setVal('.d-remain', remain, tr);
   if (remain === 0) {

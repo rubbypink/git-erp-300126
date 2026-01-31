@@ -1,7 +1,11 @@
 
 
+import './common/components/modal_full.js';
 import {PriceController} from './modules/M_HotelPrice.js';
-import {SalesPricing} from './modules/M_SalesPricing.js';
+import {PriceManager} from './modules/M_PriceManager.js';
+import {ServicePriceController} from './modules/M_ServicePrice.js';
+
+
 
 // --- 3. MAIN CONTROLLER ---
 async function initApp() {
@@ -24,45 +28,12 @@ async function initApp() {
     }
 }
 
-function test() {
-  const val = getVal('test-input');
-  
-  if (!val) {
-    logA('Vui lòng nhập mã lệnh hoặc tên hàm', 'warning');
-    return;
-  }
-  
-  try {
-    // Cách 1: Thử chạy val như một function call/expression (ví dụ: myFunc(arg1, arg2))
-    const fn1 = new Function(`return (${val.trim()})`);
-    fn1();
-  } catch (e1) {
-    try {
-      // Cách 2: Nếu cách 1 thất bại, thử tạo function mới với nội dung là val
-      const fn2 = new Function(val.trim());
-      fn2();
-    } catch (e2) {
-      logA(`Lỗi khi thực thi: ${e2.message}`, 'danger');
-    }
-  }
-}
-
 // 2. Lắng nghe sự kiện DOM Ready
 //   document.addEventListener('DOMContentLoaded', initApp);
-
-
 window.addEventListener('load', async function() {
     try {
           UI_RENDERER.renderTemplate('body', 'tpl_all.html', false, '.app-container');
           await initApp();
-          onEvent('btn-admin-test', 'click', (e) => {test()});
-           // Xoá modal full cũ nếu có
-           if (CURRENT_USER.role === 'op') {
-            const modal = document.querySelector('at-modal-full');
-            const pc = new PriceController('dynamic-modal-full-body');
-            modal.show();
-           }
-
           
     } catch (e) {
         console.error("Critical Error:", e);

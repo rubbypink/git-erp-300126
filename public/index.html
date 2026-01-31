@@ -203,6 +203,14 @@
               onclick="PartnerMailModule.open()">
         <i class="fa-solid fa-palette"></i> Gửi Yêu Cầu Báo Giá
         </button>
+        <button id="btn-hotel-rate-plans" 
+              class="btn btn-primary" >
+        <i class="fa-solid fa-triangle-exclamation"></i> Quản lý Giá Hotel
+        </button>   
+        <button id="btn-service-rate-plans" 
+              class="btn btn-primary" >
+        <i class="fa-solid fa-plus-circle"></i> Quản lý Giá Dịch Vụ
+        </button>                
       </div>      
       <div id="btn-group-bk" class="btn-group gap-2">
         <button id="btn-create-contract" data-ontabs="2 4" class="btn btn-warning line-clamp-2 sales-only" onclick="createContract()"><i class="fa-solid fa-print"></i> Tạo Hợp Đồng</button>
@@ -211,10 +219,10 @@
         <button class="btn btn-danger sales-only" onclick="logA('CẢNH BÁO: Hủy Booking?', 'danger', deleteForm)" data-ontabs="2"><i class="fa-solid fa-trash"></i> Hủy Booking</button>
         <button id="btn-reset-form" class="btn btn-danger" data-ontabs="2" onclick="logA('Xóa hết dữ liệu vừa nhập ?', 'warning', refreshForm)"><i class="fa-solid fa-rotate"></i> Xóa Form</button>
       </div>
-      <div class="input-group w-auto d-inline-flex admin-only">
-        <textarea type="text" class="form-control-sm text-wrap" id="test-input"></textarea>
+      <div class="input-group d-inline-flex admin-only" style="width: 500px;">
+        <textarea type="text" class="form-control-sm text-wrap w-100" id="test-input"></textarea>
         <div class="input-group-append">
-          <button id="btn-admin-test" class="btn btn-success admin-only"><i class="fa-solid fa-circle-info"></i> TEST</button>
+          <button id="btn-admin-test" class="btn btn-success admin-only"><i class="fa-solid fa-circle-info" onclick="test()"></i> TEST</button>
         </div> 
       </div>      
     </div>

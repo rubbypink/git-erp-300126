@@ -63,6 +63,29 @@ const FIELD_MAP = {
         [COL_INDEX.U_UID]: 'uid', [COL_INDEX.U_ACCOUNT]: 'account', [COL_INDEX.U_NAME]: 'user_name',
         [COL_INDEX.U_PHONE]: 'user_phone', [COL_INDEX.U_EMAIL]: 'email', [COL_INDEX.U_ROLE]: 'role',
         [COL_INDEX.U_LEVEL]: 'level', [COL_INDEX.U_GROUP]: 'group', [COL_INDEX.U_CREATED]: 'created_at'
+    },
+    hotels: {
+        0: 'id',
+        1: 'name',
+        2: 'address',
+        3: 'phone',
+        4: 'email',
+        5: 'website',
+        6: 'star',
+        7: 'pictures',
+        8: 'rooms'
+    },
+    suppliers: {
+        0: 'id',
+        1: 'name',
+        2: 'phone',
+        3: 'email',
+        4: 'address',
+        5: 'VAT_code',
+        6: 'bank_account',
+        7: 'bank_name',
+        8: 'contact_person',
+        9: 'dept_balance'
     }
 };
 

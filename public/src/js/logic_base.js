@@ -1,5 +1,28 @@
 
 
+function test() {
+  const val = getVal('test-input');
+  
+  if (!val) {
+    logA('Vui lòng nhập mã lệnh hoặc tên hàm', 'warning');
+    return;
+  }
+  
+  try {
+    // Cách 1: Thử chạy val như một function call/expression (ví dụ: myFunc(arg1, arg2))
+    const fn1 = new Function(`return (${val.trim()})`);
+    fn1();
+  } catch (e1) {
+    try {
+      // Cách 2: Nếu cách 1 thất bại, thử tạo function mới với nội dung là val
+      const fn2 = new Function(val.trim());
+      fn2();
+    } catch (e2) {
+      logA(`Lỗi khi thực thi: ${e2.message}`, 'danger');
+    }
+  }
+}
+
 /**
  * Extract row data from HTML form using data-field attributes
  * Supports both object and array formats dynamically
@@ -1396,11 +1419,18 @@ function handleDashClick(idVal, isServiceId) {
     // Nếu click vào bảng dịch vụ (SID), cần tìm Booking ID cha của nó
     if (isServiceId) {
         log(`🔍 Đang tìm Booking chứa SID: ${idVal}`);
+        let row; 
         // Tìm trong booking_details cột 0 là SID, cột 1 là BK_ID (Theo COL_INDEX)
-        const row = APP_DATA.activeDetails.find(r => String(r[COL_INDEX.D_SID]) === String(idVal));
+        const dataName = CURRENT_USER.role === 'op' ? 'operator_entries_obj' : 'booking_details_obj';
+        const data = APP_DATA[dataName];
+        if (data && typeof data === 'object') {
+            row = data.filter(o => String(o.id) === String(idVal));
+        } else {
+            row = data.find(r => String(r[0]) === String(idVal));
+        }  
         if (row) {
-            bkId = row[COL_INDEX.D_BKID];
-            log(`✅ Map thành công: SID ${idVal} -> BK ${bkId}`);
+            bkId = row.booking_id || row[1];
+            log(`✅ Map thành công: SID ${idVal} -> BK ${row.booking_id} hoặc ${row[1]}`);
             
         } else {
             logA("Không tìm thấy Booking chứa dịch vụ này!", "error");

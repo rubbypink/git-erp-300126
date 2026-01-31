@@ -550,7 +550,7 @@
     <div id="tbl-container-tab2">
       <div class="flex-grow-1 mb-0">
         <table class="table table-responsive table-bordered table-hover table-sm table-data" id="grid-table">
-          <thead>
+          <thead class="table-secondary text-center">
             <tr id="grid-header"></tr>
           </thead>
           <tbody id="grid-body"></tbody>
@@ -567,16 +567,17 @@
 </template>
 
 <template id="tmpl-log">
-  <div class="flex-center">
-    <div class="alert alert-info small me-auto flex-grow-1">
+  <div class="flex-center flex-shrink-0">
+    <div class="alert alert-info text-center small me-auto flex-grow-1">
       Nhật ký xử lý hệ thống sẽ hiển thị tại đây...
     </div>
     <button id="btn-clear-log" class="btn btn-sm btn-outline-danger me-2" onclick="clearLog()">
       <i class="fa-solid fa-trash-can me-1"></i>Xóa Nhật Ký
     </button>
   </div>
-
-  <ul id="log-list" data-ontabs="5" class="list-group list-group-flush font-monospace small overflow-auto"></ul>
+  <div class="border-top my-2 flex-grow-1">
+    <ul id="log-list" data-ontabs="5" class="list-group list-group-flush font-monospace small overflow-auto"></ul>
+  </div> 
 </template>
 <template id="tmpl-admin-dashboard">
 

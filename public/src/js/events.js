@@ -5,107 +5,126 @@
  */
 var isEventsInitialized = false;
 async function setupStaticEvents() {
-  // 1. Gắn sự kiện cho nhiều nút cùng lúc (Class) -> onEvent tự lo việc lặp
-  if (isEventsInitialized) return;
+    // 1. Gắn sự kiện cho nhiều nút cùng lúc (Class) -> onEvent tự lo việc lặp
+    if (isEventsInitialized) return;
+    const btnHotelPriceTbl = document.getElementById('btn-hotel-rate-plans');
+    // Xoá modal full cũ nếu có
+    if (CURRENT_USER.role === 'op' || btnHotelPriceTbl) {       
+        btnHotelPriceTbl.addEventListener('click', (e) => {
+            const modal = document.querySelector('at-modal-full');
+            const pc = new PriceController('dynamic-modal-full-body');
+            modal.setFooter(false);
+            modal.show();
+        });
+    }
+    const btnSvcPriceTbl = document.getElementById('btn-service-rate-plans');
+    // Xoá modal full cũ nếu có
+    if (CURRENT_USER.role === 'op' || btnSvcPriceTbl) {       
+        btnSvcPriceTbl.addEventListener('click', (e) => {
+            const modal = document.querySelector('at-modal-full');
+            new ServicePriceController('dynamic-modal-full-body');
+            modal.setFooter(false);
+            modal.show();
+        });
+    }    
 
-  // 1. CÁC NÚT SERVER ACTION (Giữ nguyên - Đã dùng Delegation = true)
-  onEvent('.btn-server-action', 'click', function(e, target) {
-      handleServerAction(e, target);
-  }, true);
+    // 1. CÁC NÚT SERVER ACTION (Giữ nguyên - Đã dùng Delegation = true)
+    onEvent('.btn-server-action', 'click', function(e, target) {
+        handleServerAction(e, target);
+    }, true);
 
-  // 2. CÁC SỰ KIỆN TRONG TAB LIST (Phải dùng Delegation vì tab này render sau)
-  // Tham số cuối cùng là TRUE để bật chế độ Delegation
-  
-  // Nút Lọc & Ô nhập Filter
-  onEvent('#btn-data-filter', 'click', function() { 
-      if(typeof applyGridFilter === 'function') applyGridFilter(); 
-  }, true); // <--- True: Chờ element xuất hiện mới bắt
-  
-  onEvent('#filter-val', 'change', function() { 
-      if(typeof applyGridFilter === 'function') applyGridFilter(); 
-  }, true);
+    // 2. CÁC SỰ KIỆN TRONG TAB LIST (Phải dùng Delegation vì tab này render sau)
+    // Tham số cuối cùng là TRUE để bật chế độ Delegation
+    
+    // Nút Lọc & Ô nhập Filter
+    onEvent('#btn-data-filter', 'click', function() { 
+        if(typeof applyGridFilter === 'function') applyGridFilter(); 
+    }, true); // <--- True: Chờ element xuất hiện mới bắt
+    
+    onEvent('#filter-val', 'change', function() { 
+        if(typeof applyGridFilter === 'function') applyGridFilter(); 
+    }, true);
 
-  // Nút Sắp xếp
-  onEvent('#btn-data-sort', 'click', function() {
-      if(typeof applyGridSorter === 'function') applyGridSorter();
-  }, true);
+    // Nút Sắp xếp
+    onEvent('#btn-data-sort', 'click', function() {
+        if(typeof applyGridSorter === 'function') applyGridSorter();
+    }, true);
 
-  // 3. CÁC SỰ KIỆN TRONG HEADER (Header có sẵn nên ko cần Delegation cũng được, nhưng dùng luôn cho đồng bộ)
-  onEvent('#global-search', 'keyup', function(e) { 
-      if(e.key === 'Enter') handleSearchClick(); 
-  }, true);
+    // 3. CÁC SỰ KIỆN TRONG HEADER (Header có sẵn nên ko cần Delegation cũng được, nhưng dùng luôn cho đồng bộ)
+    onEvent('#global-search', 'keyup', function(e) { 
+        if(e.key === 'Enter') handleSearchClick(); 
+    }, true);
 
-  // 4. CÁC SỰ KIỆN TRONG FORM BOOKING (Cũng render sau -> Cần Delegation)
-  // Ví dụ: Khi thay đổi ngày đi -> Tự tính ngày về/hạn thanh toán
-  onEvent('#BK_Start', 'change', function(e, target) {
-      if(typeof autoSetOrCalcDate === 'function') autoSetOrCalcDate(target.value, 'BK_PayDue');
-      const startDate = new Date(target.value);
-      const endDate = new Date(getVal('BK_End'));
-      if (startDate && endDate && endDate < startDate) {
-          // Nếu ngày kết thúc nhỏ hơn ngày bắt đầu, tự động đặt lại ngày kết thúc
-          setVal('BK_End', formatDateForInput(target.value));
-      }
-  }, true);
-  
-  onEvent('#BK_Deposit', 'change', function(e) {
-      const el = e.target;
-      setTimeout(() => {
-          const grandTotal = getNum('BK_Total');
-          const deposit = getNum('BK_Deposit');
-          const balance = grandTotal - deposit;
-          setNum('BK_Balance', balance);
-      }, 1250);
-  }, true);
+    // 4. CÁC SỰ KIỆN TRONG FORM BOOKING (Cũng render sau -> Cần Delegation)
+    // Ví dụ: Khi thay đổi ngày đi -> Tự tính ngày về/hạn thanh toán
+    onEvent('#BK_Start', 'change', function(e, target) {
+        if(typeof autoSetOrCalcDate === 'function') autoSetOrCalcDate(target.value, 'BK_PayDue');
+        const startDate = new Date(target.value);
+        const endDate = new Date(getVal('BK_End'));
+        if (startDate && endDate && endDate < startDate) {
+            // Nếu ngày kết thúc nhỏ hơn ngày bắt đầu, tự động đặt lại ngày kết thúc
+            setVal('BK_End', formatDateForInput(target.value));
+        }
+    }, true);
+    
+    onEvent('#BK_Deposit', 'change', function(e) {
+        const el = e.target;
+        setTimeout(() => {
+            const grandTotal = getNum('BK_Total');
+            const deposit = getNum('BK_Deposit');
+            const balance = grandTotal - deposit;
+            setNum('BK_Balance', balance);
+        }, 1250);
+    }, true);
 
-  // 3. Các hàm logic khác
-  // Gọi hàm setup sau khi DOM đã render
+    // 3. Các hàm logic khác
+    // Gọi hàm setup sau khi DOM đã render
 
-  setupTableKeyboardNav();
-  
-  // Selector gộp: Chọn input type number HOẶC class chứa 'number' HOẶC class chứa 'number-only'
-  const numberInputSelector = 'input:not([type="hidden"]):not([disabled]), input.number, input.number-only';
+    setupTableKeyboardNav();
+    
+    // Selector gộp: Chọn input type number HOẶC class chứa 'number' HOẶC class chứa 'number-only'
+    const numberInputSelector = 'input:not([type="hidden"]):not([disabled]), input.number, input.number-only';
 
-  onEvent(numberInputSelector, 'input', function(e, target) {
-      
-      // 1. XÓA TIMER CŨ (Nếu người dùng gõ tiếp trong vòng 1s thì hủy lệnh trước đó)
-      if (target._debounceTimer) {
-          clearTimeout(target._debounceTimer);
-      }
+    onEvent(numberInputSelector, 'input', function(e, target) {
+        
+        // 1. XÓA TIMER CŨ (Nếu người dùng gõ tiếp trong vòng 1s thì hủy lệnh trước đó)
+        if (target._debounceTimer) {
+            clearTimeout(target._debounceTimer);
+        }
 
-      // 2. THIẾT LẬP TIMER MỚI (Đợi 1000ms = 1s)
-      target._debounceTimer = setTimeout(function() {
-          // A. LÀM SẠCH DỮ LIỆU (CLEAN DATA)
-          let rawValue = target.value;
-          // Chỉ giữ lại số, dấu chấm (.), và dấu trừ (-)
-          // Nếu bạn muốn chỉ số nguyên thì dùng /[^0-9-]/g
-          let cleanValue = rawValue.replace(/[^0-9-]/g, '');
+        // 2. THIẾT LẬP TIMER MỚI (Đợi 1000ms = 1s)
+        target._debounceTimer = setTimeout(function() {
+            // A. LÀM SẠCH DỮ LIỆU (CLEAN DATA)
+            let rawValue = target.value;
+            // Chỉ giữ lại số, dấu chấm (.), và dấu trừ (-)
+            // Nếu bạn muốn chỉ số nguyên thì dùng /[^0-9-]/g
+            let cleanValue = rawValue.replace(/[^0-9-]/g, '');
 
-          // B. CẬP NHẬT DATASET
-          // Luôn lưu giá trị chuẩn (số thực) vào dataset để tính toán sau này
-          // Sử dụng parseFloat để đảm bảo là số, nếu rỗng thì là 0
-          let numericVal = parseFloat(cleanValue);
-          target.dataset.val = isNaN(numericVal) ? 0 : numericVal;
-          
-          const tr = target.closest('tr');
-          if (tr && tr.id && typeof calcRow === 'function') {
-              const rowId = tr.id.replace('row-', '');
-              calcRow(rowId);
-          }
+            // B. CẬP NHẬT DATASET
+            // Luôn lưu giá trị chuẩn (số thực) vào dataset để tính toán sau này
+            // Sử dụng parseFloat để đảm bảo là số, nếu rỗng thì là 0
+            let numericVal = parseFloat(cleanValue);
+            target.dataset.val = isNaN(numericVal) ? 0 : numericVal;
+            
+            const tr = target.closest('tr');
+            if (tr && tr.id && typeof calcRow === 'function') {
+                const rowId = tr.id.replace('row-', '');
+                calcRow(rowId);
+            }
 
-          // Xóa timer referrence sau khi chạy xong
-          delete target._debounceTimer;
+            // Xóa timer referrence sau khi chạy xong
+            delete target._debounceTimer;
 
-      }, 1000); // Thời gian delay: 1000ms = 1s
-  }, true);
+        }, 1000); // Thời gian delay: 1000ms = 1s
+    }, true);
 
-  onEvent('input.number, input.number-only', 'click', function(e) {
-    const el = e.target;
-    log(`[AUTO-PROCESS] Đang xử lý input mousedown: ${el.id || 'no-id'}`);
-    if (getVal(el) > 0) return;
-    e.preventDefault();
-    el.select();
-  }, true);
-
+    onEvent('input.number, input.number-only', 'click', function(e) {
+        const el = e.target;
+        log(`[AUTO-PROCESS] Đang xử lý input mousedown: ${el.id || 'no-id'}`);
+        if (getVal(el) > 0) return;
+        e.preventDefault();
+        el.select();
+    }, true);
 }
   
 
