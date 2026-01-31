@@ -1403,8 +1403,8 @@ function renderDashTable2_Op() {
 	if(!tbody) {log("No tbody found for missing supplier table"); return;}
 	tbody.innerHTML = '';
 	
-	const details = APP_DATA.operator_entries_obj.filter(r => !r.supplier || String(r.supplier).trim() === '');
-	details = details.reverse(); // Mới nhất lên đầu
+	let details = APP_DATA.operator_entries_obj.filter(r => !r.supplier || String(r.supplier).trim() === '').sort((a, b) => new Date(a.check_in) - new Date(b.check_in));
+
 	let count = 0;
 	let total = 0;
 
