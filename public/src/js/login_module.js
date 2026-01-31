@@ -112,7 +112,6 @@
                 } else CURRENT_USER.role = userProfile.role || 'sale';
                 CR_COLLECTION = ROLE_DATA[CURRENT_USER.role] || '';
                 await SECURITY_MANAGER.applySecurity(CURRENT_USER);
-                await initApp();
                 this.updateUserMenu();
                 log('✅ Chào mừng: ' + (userProfile.user_name || firebaseUser.email), 'success');
                 

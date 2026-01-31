@@ -6,22 +6,28 @@
 
     :root {
       /* Colors - Base */
-      --app-bg: #f8f9fa;
-      --header-bg: #3f80fa;
-      --footer-bg: #ac9f9f;
+      --primary-color: #fffb04c2;
+      --secondary-color: #be0000c0;
+      --app-bg: #d0d1d1;
+      --header-bg: #558ffc;
+      --footer-bg: #afad46;
       --text-color: #141414;
-      --border-color: #dee2e6;
+      --border-color: #696c6e;
       
       /* Table Colors */
-      --tbl-head-bg: #e9ecef;
-      --tbl-head-text: #495057;
+      --tbl-head-bg: rgb(140, 147, 156);
+      --tbl-head-text: #050505;
+      --tbl-head-bg2:rgb(46, 45, 105);
+      --tbl-head-text2: #ffffff;
       --tbl-row-hover: rgba(0,0,0,0.05);
 
       /* TAB NAVIGATION COLORS (NEW) */
       --tab-active-bg: #ffffff;
       --tab-active-text: #0d6efd;
-      --tab-inactive-bg: rgba(209, 205, 205, 0.973);
+      --tab-inactive-bg: rgba(201, 198, 198, 0.973);
       --tab-inactive-text: #1d1d1d;
+      --tab-inactive-bg2: rgba(82, 82, 82, 0.973);
+      --tab-inactive-text2: #ffffff;      
 
       /* SAFETY & GLASS LAYER (NEW) */
       /* Dùng cho các nút/khung cần nổi bật trên nền theme */
@@ -29,16 +35,16 @@
       --glass-text: #333333;
 
       /* Button Colors */
-      --btn-primary: #0d6efd;
+      --btn-primary: #1c75fc;
       --btn-secondary: #6c757d;
-      --btn-success: #198754;
-      --btn-danger: #dc3545;
+      --btn-success: #2cc07b;
+      --btn-danger: #831520;
       --btn-info: #0dcaf0;
       --btn-warning: #ffc107;
 
       /* Typography & Spacing */
       --font-family: 'Segoe UI', sans-serif;
-      --font-size: 13px;
+      --font-size: 14px;
       --spacing-scale: 1; 
       --radius: 0.25rem;
       
@@ -227,7 +233,7 @@
       flex-direction: column;
     }
     .card-header {
-      max-height: 7vh;          /* Yêu cầu: 6% chiều cao */
+      max-height: 10%;          /* Yêu cầu: 6% chiều cao */
       min-height: 20px;     /* An toàn: Không nhỏ hơn 45px trên mobile */
       flex: 0 0 auto;       /* KHÔNG co giãn */
       width: 100%;      
@@ -332,6 +338,7 @@
 
     .line-clamp-2 {
       display: -webkit-box;
+      line-clamp: 2;
       -webkit-line-clamp: 2; /* Number of lines to show */
       -webkit-box-orient: vertical;
       overflow: hidden;
@@ -435,41 +442,40 @@
     .module-icon { font-size: 3.5rem; margin-bottom: 20px; opacity: 0.9; }
     .module-title { font-weight: 700; font-size: 1.25rem; text-transform: uppercase; margin-bottom: 5px; }
 
-    /* --- 1. MẶC ĐỊNH: ẨN HẾT CÁC PHẦN TỬ NHẠY CẢM --- */
-    .admin-only, .manager-only, .sup-only, 
-    .acc-only, .sales-only, .op-only {
-        display: none !important;
+    /* -----------------------------------------------------------
+    QUY TẮC: "CHỈ ẨN KHI..." (Negative Logic)
+    Cấu trúc: body:not(Quyền_Sở_Hữu):not(Quyền_Cấp_Cao_Hơn) .element { ẩn }
+  ----------------------------------------------------------- */
+
+    /* 1. ADMIN ONLY: Chỉ Admin mới thấy (Level cao nhất) */
+    body:not(.is-admin) .admin-only {
+      display: none !important;
     }
 
-    /* --- 2. HIỂN THỊ DỰA TRÊN BODY CLASS --- */
+    /* 2. MANAGER ONLY: Manager thấy + Admin cũng thấy */
+    body:not(.is-manager):not(.is-admin) .manager-only {
+      display: none !important;
+    }
 
-    /* Level 99: Admin thấy hết */
-    body.is-admin .admin-only,
-    body.is-admin .manager-only,
-    body.is-admin .sup-only,
-    body.is-admin .acc-only,
-    body.is-admin .sales-only,
-    body.is-admin .op-only { display: inherit !important; } 
+    /* 3. SUP ONLY: Sup thấy + Manager thấy + Admin thấy */
+    body:not(.is-sup):not(.is-manager):not(.is-admin) .sup-only {
+      display: none !important;
+    }
 
-    /* Level 10: Manager (Thấy Manager, Sup, và các role con) */
-    body.is-manager .manager-only,
-    body.is-manager .sup-only,
-    body.is-manager .acc-only,
-    body.is-manager .sales-only,
-    body.is-manager .op-only { display: inherit !important; }
+    /* 4. SALES ONLY: Sales thấy + Manager thấy + Admin thấy (Ví dụ thế) */
+    body:not(.is-sales):not(.is-manager):not(.is-admin) .sales-only {
+      display: none !important;
+    }
 
-    /* Level 5: Supervisor */
-    body.is-sup .sup-only,
-    body.is-sup .sales-only,
-    body.is-sup .op-only { display: inherit !important; }
+    /* 5. OP ONLY: Tương tự... */
+    body:not(.is-op):not(.is-manager):not(.is-admin) .op-only {
+      display: none !important;
+    }
 
-    /* Role Cụ thể (Level < 5) */
-    body.is-acc .acc-only,
-    body.is-acc .op-only { display: inherit !important; } /* Kế toán xem được vận hành để check bill */
-
-    body.is-sale .sales-only { display: inherit !important; }
-
-    body.is-op .op-only { display: inherit !important; }
+    /* 6. ACCOUNTANT ONLY: Chỉ Kế toán + Admin thấy (Manager sale ko đc xem tiền) */
+    body:not(.is-acc):not(.is-admin) .acc-only {
+      display: none !important;
+    }
 
     /* =========================================
     RESPONSIVE MOBILE FIX (SAFE MODE)

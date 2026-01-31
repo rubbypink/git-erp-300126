@@ -1,7 +1,114 @@
 
-  /**
-   * Handler xử lý logic chính (Phiên bản tối ưu với requestAPI)
-   */
+/**
+ * Hàm tập trung tất cả các sự kiện tĩnh của trang
+ * Giúp dễ quản lý, debug và bảo trì sau này
+ */
+var isEventsInitialized = false;
+async function setupStaticEvents() {
+  // 1. Gắn sự kiện cho nhiều nút cùng lúc (Class) -> onEvent tự lo việc lặp
+  if (isEventsInitialized) return;
+
+  // 1. CÁC NÚT SERVER ACTION (Giữ nguyên - Đã dùng Delegation = true)
+  onEvent('.btn-server-action', 'click', function(e, target) {
+      handleServerAction(e, target);
+  }, true);
+
+  // 2. CÁC SỰ KIỆN TRONG TAB LIST (Phải dùng Delegation vì tab này render sau)
+  // Tham số cuối cùng là TRUE để bật chế độ Delegation
+  
+  // Nút Lọc & Ô nhập Filter
+  onEvent('#btn-data-filter', 'click', function() { 
+      if(typeof applyGridFilter === 'function') applyGridFilter(); 
+  }, true); // <--- True: Chờ element xuất hiện mới bắt
+  
+  onEvent('#filter-val', 'change', function() { 
+      if(typeof applyGridFilter === 'function') applyGridFilter(); 
+  }, true);
+
+  // Nút Sắp xếp
+  onEvent('#btn-data-sort', 'click', function() {
+      if(typeof applyGridSorter === 'function') applyGridSorter();
+  }, true);
+
+  // 3. CÁC SỰ KIỆN TRONG HEADER (Header có sẵn nên ko cần Delegation cũng được, nhưng dùng luôn cho đồng bộ)
+  onEvent('#global-search', 'keyup', function(e) { 
+      if(e.key === 'Enter') handleSearchClick(); 
+  }, true);
+
+  // 4. CÁC SỰ KIỆN TRONG FORM BOOKING (Cũng render sau -> Cần Delegation)
+  // Ví dụ: Khi thay đổi ngày đi -> Tự tính ngày về/hạn thanh toán
+  onEvent('#BK_Start', 'change', function(e, target) {
+      if(typeof autoSetOrCalcDate === 'function') autoSetOrCalcDate(target.value, 'BK_PayDue');
+      const startDate = new Date(target.value);
+      const endDate = new Date(getVal('BK_End'));
+      if (startDate && endDate && endDate < startDate) {
+          // Nếu ngày kết thúc nhỏ hơn ngày bắt đầu, tự động đặt lại ngày kết thúc
+          setVal('BK_End', formatDateForInput(target.value));
+      }
+  }, true);
+  
+  onEvent('#BK_Deposit', 'change', function(e) {
+      const el = e.target;
+      setTimeout(() => {
+          const grandTotal = getNum('BK_Total');
+          const deposit = getNum('BK_Deposit');
+          const balance = grandTotal - deposit;
+          setNum('BK_Balance', balance);
+      }, 1250);
+  }, true);
+
+  // 3. Các hàm logic khác
+  // Gọi hàm setup sau khi DOM đã render
+
+  setupTableKeyboardNav();
+  
+  // Selector gộp: Chọn input type number HOẶC class chứa 'number' HOẶC class chứa 'number-only'
+  const numberInputSelector = 'input:not([type="hidden"]):not([disabled]), input.number, input.number-only';
+
+  onEvent(numberInputSelector, 'input', function(e, target) {
+      
+      // 1. XÓA TIMER CŨ (Nếu người dùng gõ tiếp trong vòng 1s thì hủy lệnh trước đó)
+      if (target._debounceTimer) {
+          clearTimeout(target._debounceTimer);
+      }
+
+      // 2. THIẾT LẬP TIMER MỚI (Đợi 1000ms = 1s)
+      target._debounceTimer = setTimeout(function() {
+          // A. LÀM SẠCH DỮ LIỆU (CLEAN DATA)
+          let rawValue = target.value;
+          // Chỉ giữ lại số, dấu chấm (.), và dấu trừ (-)
+          // Nếu bạn muốn chỉ số nguyên thì dùng /[^0-9-]/g
+          let cleanValue = rawValue.replace(/[^0-9-]/g, '');
+
+          // B. CẬP NHẬT DATASET
+          // Luôn lưu giá trị chuẩn (số thực) vào dataset để tính toán sau này
+          // Sử dụng parseFloat để đảm bảo là số, nếu rỗng thì là 0
+          let numericVal = parseFloat(cleanValue);
+          target.dataset.val = isNaN(numericVal) ? 0 : numericVal;
+          
+          const tr = target.closest('tr');
+          if (tr && tr.id && typeof calcRow === 'function') {
+              const rowId = tr.id.replace('row-', '');
+              calcRow(rowId);
+          }
+
+          // Xóa timer referrence sau khi chạy xong
+          delete target._debounceTimer;
+
+      }, 1000); // Thời gian delay: 1000ms = 1s
+  }, true);
+
+  onEvent('input.number, input.number-only', 'click', function(e) {
+    const el = e.target;
+    log(`[AUTO-PROCESS] Đang xử lý input mousedown: ${el.id || 'no-id'}`);
+    if (getVal(el) > 0) return;
+    e.preventDefault();
+    el.select();
+  }, true);
+
+}
+  
+
   function handleServerAction(e) {
     e.preventDefault(); // Chặn hành vi mặc định của thẻ 'a'
     
@@ -63,15 +170,16 @@
   function setupContextMenu(elementOrId = 'detail-tbody') {
       const target = getE(elementOrId);
       const menu = getE('myContextMenu');
+      if (!menu) return;
+
       const btnCopyData = getE('ctx-copyData');
       const btnPasteData = getE('ctx-paste');
       const btnCopy = getE('ctx-copy');
       const btnDelete = getE('ctx-delete');
       const btnDeleteBooking = getE('ctx-delete-bk');
       const btnSaveOne = getE('ctx-save-one');
-      let details = CURRENT_USER.role === 'op' ? 'operator_entries' : 'booking_details';
-
-      if (!menu) return;
+      let collection;
+      let details; 
 
       // A. Sự kiện Click chuột phải (Mở Menu)
       onEvent('#detail-tbody','contextmenu', function(e) {
@@ -85,10 +193,11 @@
 
           // Lưu trạng thái Global
           CURRENT_CTX_ROW = row;
-          let collection;
+          details = CURRENT_USER.role === 'op' ? 'operator_entries' : 'booking_details';
+          
           if (CURRENT_TABLE_KEY === 'bookings' || elementOrId === 'detail-tbody') {
               collection = details;
-          }
+          } else collection = CURRENT_TABLE_KEY;
           CURRENT_ROW_DATA = getRowData(collection, CURRENT_CTX_ROW, target);          
           // Lấy SID từ ô input có class .d-sid
           const sidInput = row.querySelector('.d-sid');
@@ -126,18 +235,18 @@
                 document.getElementById('myContextMenu').style.display = 'none';
                 
                 // Thông báo (Thay bằng Toast của bạn nếu có)
-                logA("9Trip: Copied data", dataToCopy);
+                logA("9Trip: Copied data:" + JSON.stringify(dataToCopy), 'success');
         
             } catch (err) {
                 console.error("9Trip Error Copy:", err);
-                alert("Lỗi: Trình duyệt không cho phép Copy.");
+                logError("Lỗi: Trình duyệt không cho phép Copy.");
             }
           };
       }
         if (btnPasteData) {
             btnPasteData.onclick = (e) => {
                 e.preventDefault();
-                clipboardToRow();
+                clipboardToRow(e);
             }
         };
 
@@ -156,10 +265,7 @@
       btnSaveOne.addEventListener('click', async function (e) {
         e.preventDefault();
         if (CURRENT_CTX_ROW && CURRENT_ROW_DATA) {
-            const res =await DB_MANAGER.saveRecord(
-                CURRENT_TABLE_KEY === 'bookings' || elementOrId === 'detail-tbody' ? 
-                (CURRENT_USER.role === 'op' ? 'operator_entries' : 'booking_details') : 
-                CURRENT_TABLE_KEY, 
+            const res = await DB_MANAGER.saveRecord(collection, 
                 CURRENT_ROW_DATA
             );
             if (res.success) {
@@ -174,7 +280,7 @@
               e.preventDefault();
               if (CURRENT_CTX_ID) {
                   // Gọi hàm xóa item
-                  deleteItem(CURRENT_CTX_ID, details); 
+                  deleteItem(CURRENT_CTX_ID, collection); 
               } else {
                   // Nếu chưa có ID (dòng mới chưa lưu), chỉ xóa trên giao diện
                   logA("Dòng này chưa lưu vào Database. Bạn muốn xóa khỏi giao diện?", 'info', () => {
@@ -394,170 +500,7 @@ async function clipboardToRow() {
       targetEl.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
-  /**
-   * Hàm tập trung tất cả các sự kiện tĩnh của trang
-   * Giúp dễ quản lý, debug và bảo trì sau này
-   */
-  var isEventsInitialized = false;
-  async function setupStaticEvents() {
-    // 1. Gắn sự kiện cho nhiều nút cùng lúc (Class) -> onEvent tự lo việc lặp
-    if (isEventsInitialized) return;
-
-    // 1. CÁC NÚT SERVER ACTION (Giữ nguyên - Đã dùng Delegation = true)
-    onEvent('.btn-server-action', 'click', function(e, target) {
-        handleServerAction(e, target);
-    }, true);
-
-    // 2. CÁC SỰ KIỆN TRONG TAB LIST (Phải dùng Delegation vì tab này render sau)
-    // Tham số cuối cùng là TRUE để bật chế độ Delegation
-    
-    // Nút Lọc & Ô nhập Filter
-    onEvent('#btn-data-filter', 'click', function() { 
-        if(typeof applyGridFilter === 'function') applyGridFilter(); 
-    }, true); // <--- True: Chờ element xuất hiện mới bắt
-    
-    onEvent('#filter-val', 'change', function() { 
-        if(typeof applyGridFilter === 'function') applyGridFilter(); 
-    }, true);
-
-    // Nút Sắp xếp
-    onEvent('#btn-data-sort', 'click', function() {
-        if(typeof applyGridSorter === 'function') applyGridSorter();
-    }, true);
-
-    // 3. CÁC SỰ KIỆN TRONG HEADER (Header có sẵn nên ko cần Delegation cũng được, nhưng dùng luôn cho đồng bộ)
-    onEvent('#global-search', 'keyup', function(e) { 
-        if(e.key === 'Enter') handleSearchClick(); 
-    }, true);
-
-    // 4. CÁC SỰ KIỆN TRONG FORM BOOKING (Cũng render sau -> Cần Delegation)
-    // Ví dụ: Khi thay đổi ngày đi -> Tự tính ngày về/hạn thanh toán
-    onEvent('#BK_Start', 'change', function(e, target) {
-        if(typeof autoSetOrCalcDate === 'function') autoSetOrCalcDate(target.value, 'BK_PayDue');
-        const startDate = new Date(target.value);
-        const endDate = new Date(getVal('BK_End'));
-        if (startDate && endDate && endDate < startDate) {
-            // Nếu ngày kết thúc nhỏ hơn ngày bắt đầu, tự động đặt lại ngày kết thúc
-            setVal('BK_End', formatDateForInput(target.value));
-        }
-    }, true);
-    
-    onEvent('#BK_Deposit', 'change', function(e) {
-        const el = e.target;
-        setTimeout(() => {
-            const grandTotal = getNum('BK_Total');
-            const deposit = getNum('BK_Deposit');
-            const balance = grandTotal - deposit;
-            setNum('BK_Balance', balance);
-        }, 1250);
-    }, true);
-
-    // 3. Các hàm logic khác
-    // Gọi hàm setup sau khi DOM đã render
-
-    setupTableKeyboardNav();
-    
-    // Selector gộp: Chọn input type number HOẶC class chứa 'number' HOẶC class chứa 'number-only'
-    const numberInputSelector = 'input:not([type="hidden"]):not([disabled]), input.number, input.number-only';
-
-    onEvent(numberInputSelector, 'input', function(e, target) {
-        
-        // 1. XÓA TIMER CŨ (Nếu người dùng gõ tiếp trong vòng 1s thì hủy lệnh trước đó)
-        if (target._debounceTimer) {
-            clearTimeout(target._debounceTimer);
-        }
-
-        // 2. THIẾT LẬP TIMER MỚI (Đợi 1000ms = 1s)
-        target._debounceTimer = setTimeout(function() {
-            // A. LÀM SẠCH DỮ LIỆU (CLEAN DATA)
-            let rawValue = target.value;
-            // Chỉ giữ lại số, dấu chấm (.), và dấu trừ (-)
-            // Nếu bạn muốn chỉ số nguyên thì dùng /[^0-9-]/g
-            let cleanValue = rawValue.replace(/[^0-9-]/g, '');
-
-            // B. CẬP NHẬT DATASET
-            // Luôn lưu giá trị chuẩn (số thực) vào dataset để tính toán sau này
-            // Sử dụng parseFloat để đảm bảo là số, nếu rỗng thì là 0
-            let numericVal = parseFloat(cleanValue);
-            target.dataset.val = isNaN(numericVal) ? 0 : numericVal;
-            
-            const tr = target.closest('tr');
-            if (tr && tr.id && typeof calcRow === 'function') {
-                const rowId = tr.id.replace('row-', '');
-                calcRow(rowId);
-            }
-
-            // Xóa timer referrence sau khi chạy xong
-            delete target._debounceTimer;
-
-        }, 1000); // Thời gian delay: 1000ms = 1s
-    }, true);
-
-    onEvent('input.number, input.number-only', 'click', function(e) {
-      const el = e.target;
-      log(`[AUTO-PROCESS] Đang xử lý input mousedown: ${el.id || 'no-id'}`);
-      if (getVal(el) > 0) return;
-      e.preventDefault();
-      el.select();
-    }, true);
-
-  }
-  
-  function test() {
-    const val = getVal('test-input');
-    
-    if (!val) {
-      logA('Vui lòng nhập mã lệnh hoặc tên hàm', 'warning');
-      return;
-    }
-    
-    try {
-      // Cách 1: Thử chạy val như một function call/expression (ví dụ: myFunc(arg1, arg2))
-      const fn1 = new Function(`return (${val.trim()})`);
-      fn1();
-    } catch (e1) {
-      try {
-        // Cách 2: Nếu cách 1 thất bại, thử tạo function mới với nội dung là val
-        const fn2 = new Function(val.trim());
-        fn2();
-      } catch (e2) {
-        logA(`Lỗi khi thực thi: ${e2.message}`, 'danger');
-      }
-    }
-  }
-
-  // --- 3. MAIN CONTROLLER ---
-  async function initApp() {
-      try {
-            log('🚀 [INIT] Bắt đầu khởi tạo...' + CURRENT_USER.role);
-            // Khởi tạo Firebase trước
-            
-            // Bắt đầu lắng nghe Auth -> Logic sẽ chảy về AUTH_MANAGER
-            // AUTH_MANAGER.monitorAuth(); 
-            // B1. UI FIRST: Render khung sườn Dashboard (chưa có số liệu)
-            await UI_RENDERER.init(); 
-            
-            // B2. EVENTS: Gán sự kiện
-            setupStaticEvents();
-            initShortcuts();
-            showLoading(false);
-
-      } catch (e) {
-          logError("Lỗi khởi động!", e);
-      }
-  }
-
-  // 2. Lắng nghe sự kiện DOM Ready
-  //   document.addEventListener('DOMContentLoaded', initApp);
 
 
-  window.addEventListener('load', async function() {
-      try {
-            UI_RENDERER.renderTemplate('body', 'tpl_all.html', false, '.app-container');
-            await initFirebase();
-            
-      } catch (e) {
-          console.error("Critical Error:", e);
-          document.body.innerHTML = `<h3 class="text-danger p-3">Lỗi kết nối hệ thống: ${e.message}</h3>`;
-      }
-  });
+
+
