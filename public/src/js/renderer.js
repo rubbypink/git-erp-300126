@@ -1403,36 +1403,34 @@ function renderDashTable2_Op() {
 	if(!tbody) {log("No tbody found for missing supplier table"); return;}
 	tbody.innerHTML = '';
 	
-	const details = APP_DATA.operator_entries_obj;
+	const details = APP_DATA.operator_entries_obj.filter(r => !r.supplier || String(r.supplier).trim() === '');
+	details = details.reverse(); // Mới nhất lên đầu
 	let count = 0;
 	let total = 0;
 
 	details.forEach(row => {
-		const supplier = row.supplier;
-		const totalCost = row.total_cost;
 		// Điều kiện: Supplier rỗng hoặc null
-		if ((!supplier || String(supplier).trim() === '') && totalCost > 0) {
-			count++;
-			total += getNum(totalCost);
-			const tr = document.createElement('tr');
-			tr.innerHTML = `
-				<td>${row.id}</td>
-				<td>${row.customer_name}</td>
-				<td>${row.service_type}</td>
-				<td>${row.service_name}</td>
-				<td class="text-center">${formatDateVN(row.check_in)}</td>
-				<td>${row.adults}</td>
-				<td>${row.total_cost ? formatMoney(row.total_cost) : formatMoney(row.total_sales)}</td>
-			`;
-			tr.style.cursor = 'pointer';
-			// True nghĩa là click vào Service ID -> Cần tìm Booking ID
-			tr.onclick = (e) => {
-				const isCtrl = e.ctrlKey || e.metaKey;
-				if(!isCtrl) return;
-				handleDashClick(row.id, true);
-			};
-			tbody.appendChild(tr);
-		}
+		count++;
+		total += getNum(row.total_cost);
+		const tr = document.createElement('tr');
+		tr.innerHTML = `
+			<td>${row.id}</td>
+			<td>${row.customer_name}</td>
+			<td>${row.service_type}</td>
+			<td>${row.service_name}</td>
+			<td class="text-center">${formatDateVN(row.check_in)}</td>
+			<td>${row.adults}</td>
+			<td>${row.total_cost ? formatMoney(row.total_cost) : formatMoney(row.total_sales)}</td>
+		`;
+		tr.style.cursor = 'pointer';
+		// True nghĩa là click vào Service ID -> Cần tìm Booking ID
+		tr.onclick = (e) => {
+			const isCtrl = e.ctrlKey || e.metaKey;
+			if(!isCtrl) return;
+			handleDashClick(row.id, true);
+		};
+		tbody.appendChild(tr);
+		
 	});
 	setVal('badge-missing-supplier', `Tổng Phải Trả: ${formatMoney(total)} | Số Lượt: ${count}`);
 }
