@@ -220,7 +220,7 @@ function addDetailRow(data = null) {
     <td><input type="text" class="form-control form-control-sm d-paid number-only text-end text-success fw-bold" data-field="paid_amount" placeholder="0"></td>
     <td><input type="text" class="form-control form-control-sm d-remain number-only text-end text-danger small bg-light" data-field="debt_balance" readonly value="0"></td>
     <td>
-      <select class="form-select form-select-sm d-supplier" data-field="supplier" style="width:130px;">
+      <select class="form-select form-select-sm d-supplier" data-field="supplier" onchange="onSupplierChange(${idx})" style="width:130px;">
         <option value="">--Select supplier--</option>
         ${optsSupplier}
       </select>
@@ -315,31 +315,36 @@ function onTypeChange(idx, resetChildren = true) {
 }
 
 async function onSupplierChange(idx) {
-  const tr = getE(`row-${idx}`);
-  const useDate = tr.querySelector('.d-in').value;
-  const supplier = tr.querySelector('.d-supplier').value;
-  const service = tr.querySelector('.d-name').value;
-  const type = tr.querySelector('.d-type').value;
+  log(`Supplier changed in row ${idx}, updating prices...`);
+  const tr = getE(`row-${idx}`, $('#detail-tbody'));
+  const useDate = tr.querySelector('input[data-field="check_in"]').value;
+  const supplier = tr.querySelector('select[data-field="supplier"]').value;
+  const service = tr.querySelector('select[data-field="service_name"]').value;
+  const type = tr.querySelector('select[data-field="service_type"]').value;
+  log(`Fetching prices for service: ${service}, date: ${useDate}, supplier: ${supplier}, type: ${type}`);
   if(service && useDate && type) {
     if (type === 'Phòng') {
-      const hotel = tr.querySelector('.d-loc').value;
-      const checkOut = tr.querySelector('.d-out').value;
-      const prices = await PriceManager.getHotelPrice(hotel, useDate, checkOut, service);
-      setVal('.d-costA', prices.price || 0, tr);
+      const hotel = tr.querySelector('select[data-field="hotel_name"]').value;
+      const checkOut = tr.querySelector('input[data-field="check_out"]').value;
+      const prices = await window.PriceManager.getHotelPrice(hotel, useDate, checkOut, service);
+      setVal($('input[data-field="cost_adult"]'), prices.price, tr);
     } else {
-      const prices = await PriceManager.getServicePrice(service, useDate, supplier);
-      setVal('.d-costA', prices.adl || 0, tr);
-      setVal('.d-costC', prices.chd || 0, tr);
+      const prices = await window.PriceManager.getServicePrice(service, useDate);
+      log("Retrieved prices:", prices.price.adl);
+      const priceAdult = tr.querySelector('input[data-field="cost_adult"]');
+      const priceChild = tr.querySelector('input[data-field="cost_child"]');
+      setVal(priceAdult, prices.price.adl);
+      setVal(priceChild, prices.price.chd);
     }
   }
 }
 // B. Khi đổi Location -> Nếu Type=Phòng -> Cập nhật Hạng Phòng
 function onLocationChange(idx, resetName = true) {
   const tr = getE(`row-${idx}`);
-  const type = tr.querySelector('.d-type').value;
+  const type = getVal('.d-type', tr);
   if (type === 'Phòng') {
     updateServiceNameList(idx); // Load hạng phòng của KS này
-    if(resetName) tr.querySelector('.d-name').value = "";
+    if(resetName) setVal('.d-name', "", tr);
   }
 }
 // C. Hàm Fill Location (Gộp Hotel Matrix Col 1 + Other)
@@ -351,9 +356,9 @@ function updateLocationList(idx) {
   // Gộp và loại trùng
   const allLocs = [...new Set([...hotels, ...others])];
   const elLoc = getE(`row-${idx}`).querySelector('.d-loc');
-  let currentVal = elLoc.value;
+  let currentVal = getVal('.d-loc', getE(`row-${idx}`));
   elLoc.innerHTML = '<option value="">-</option>' + allLocs.map(x => `<option value="${x}">${x}</option>`).join('');
-  elLoc.value = currentVal;
+  setVal('.d-loc', currentVal, getE(`row-${idx}`));
 }
 // D. Hàm Fill Service Name / Room Type (CORE LOGIC)
 function updateServiceNameList(idx) {
