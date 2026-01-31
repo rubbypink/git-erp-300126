@@ -26,7 +26,22 @@ async function setupStaticEvents() {
             modal.setFooter(false);
             modal.show();
         });
-    }    
+    }
+    const btnBatchCreateData = document.getElementById('btn-batch-create-data');
+    if (btnBatchCreateData) {
+        btnBatchCreateData.addEventListener('click', (e) => {
+            log('[BATCH CREATE DATA] Bắt đầu tạo dữ liệu mẫu...');
+            if (DynamicDataManager) {
+                log('[BATCH CREATE DATA] Khởi tạo DynamicDataManager...');
+                const modal = document.querySelector('at-modal-full');
+                new DynamicDataManager('dynamic-modal-full-body');
+                modal.setFooter(false);
+                modal.show();
+            } else {
+                console.warn('DynamicDataManager or batchCreateData method is not available.');
+            }
+        });
+    }
 
     // 1. CÁC NÚT SERVER ACTION (Giữ nguyên - Đã dùng Delegation = true)
     onEvent('.btn-server-action', 'click', function(e, target) {

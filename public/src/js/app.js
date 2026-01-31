@@ -4,6 +4,7 @@ import './common/components/modal_full.js';
 import {PriceController} from './modules/M_HotelPrice.js';
 import {PriceManager} from './modules/M_PriceManager.js';
 import {ServicePriceController} from './modules/M_ServicePrice.js';
+import {DynamicDataManager} from './modules/M_DynamicTableFB.js';
 
 
 
@@ -11,8 +12,11 @@ import {ServicePriceController} from './modules/M_ServicePrice.js';
 async function initApp() {
     try {
           log('🚀 [INIT] Bắt đầu khởi tạo...' + CURRENT_USER.role);
+          setTimeout(async () => {
+            await initFirebase();
+          }, 500);
           // Khởi tạo Firebase trước
-          await initFirebase();
+          
           // Bắt đầu lắng nghe Auth -> Logic sẽ chảy về AUTH_MANAGER
           // AUTH_MANAGER.monitorAuth(); 
           // B1. UI FIRST: Render khung sườn Dashboard (chưa có số liệu)

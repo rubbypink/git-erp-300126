@@ -1403,7 +1403,7 @@ function renderDashTable2_Op() {
 	if(!tbody) {log("No tbody found for missing supplier table"); return;}
 	tbody.innerHTML = '';
 	
-	let details = APP_DATA.operator_entries_obj.filter(r => !r.supplier || String(r.supplier).trim() === '').sort((a, b) => new Date(a.check_in) - new Date(b.check_in));
+	let details = APP_DATA.operator_entries_obj.filter(r => !r.supplier || String(r.supplier).trim() === '').sort((a, b) => new Date(b.check_in) - new Date(a.check_in));
 
 	let count = 0;
 	let total = 0;

@@ -85,11 +85,11 @@ class ModalFull extends HTMLElement {
             <div id="dynamic-modal-full" class="modal fade" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-fullscreen">
                     <div class="modal-content">
-                        <div class="modal-header border-bottom">
+                        <div class="modal-header p-0 border-bottom" style="max-height: 3vh;">
                             <h5 class="modal-title">${title}</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
-                        <div id="dynamic-modal-full-body" class="modal-body overflow-auto"></div>
+                        <div id="dynamic-modal-full-body" class="modal-body pt-0 overflow-auto"></div>
                         ${showFooter ? `
                             <div class="modal-footer gap-2">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>

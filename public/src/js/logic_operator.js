@@ -327,10 +327,11 @@ async function onSupplierChange(idx) {
       const hotel = tr.querySelector('select[data-field="hotel_name"]').value;
       const checkOut = tr.querySelector('input[data-field="check_out"]').value;
       const prices = await window.PriceManager.getHotelPrice(hotel, useDate, checkOut, service);
+      if (!prices) return;
       setVal($('input[data-field="cost_adult"]'), prices.price, tr);
     } else {
       const prices = await window.PriceManager.getServicePrice(service, useDate);
-      log("Retrieved prices:", prices.price.adl);
+      if (!prices) return;
       const priceAdult = tr.querySelector('input[data-field="cost_adult"]');
       const priceChild = tr.querySelector('input[data-field="cost_child"]');
       setVal(priceAdult, prices.price.adl);

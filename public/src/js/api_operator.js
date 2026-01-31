@@ -6,13 +6,13 @@ async function saveForm(isConfirmed = false) {
     if (data.operator_entries.length === 0) { logA("Vui lòng nhập ít nhất 1 dòng dịch vụ!"); return; }
     for (let i=0; i<data.operator_entries.length; i++) {
       const d = data.operator_entries[i];
-      if(!d.cost_adult || !d.total_cost) {
-          logA(`Dòng thứ ${i+1} thiếu thông tin (Đơn Giá, Thành tiền).`);
+      if(!d.cost_adult && d.total_cost) {
+          logA(`Dòng thứ ${i+1} thiếu thông tin (SL mà lại có Thành tiền).`);
           return;
       }
     }
-    log("Đang gửi dữ liệu Saving...");
-      var operator_entries = data.operator_entries;
+
+    var operator_entries = data.operator_entries;
     try {          
       await DB_MANAGER.batchSave('operator_entries', operator_entries);
       const btnDashUpdate = getE('btn-dash-update');
@@ -24,7 +24,6 @@ async function saveForm(isConfirmed = false) {
       if (btnSelectDatalist) {
         btnSelectDatalist.dispatchEvent(new Event('change'));
       }          
-      log("Lưu dữ liệu thành công!", "success");
       showNotify("Lưu dữ liệu thành công!", true);
     } catch (e) {
       logA("Lỗi chuyển đổi dữ liệu sang mảng: " + e, "error");

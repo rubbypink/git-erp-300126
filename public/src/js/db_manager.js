@@ -37,34 +37,60 @@ const DB_MANAGER = {
         try {
             const counterSnap = await counterRef.get();
             let lastNo = 0;
+            let prefix = '';
+            let useRandomId = false;
 
             // Lấy số hiện tại từ counters_id
             if (counterSnap.exists) {
-                lastNo = counterSnap.data().last_no || 0;
+                if (collectionName === this.COLL.DETAILS) prefix = bookingId ? `${bookingId}_` : 'SID_';
+                else prefix = counterSnap.data().prefix || '';
+                lastNo = counterSnap.data().last_no;
+                if(lastNo && lastNo > 0) await this._updateCounter(collectionName, lastNo + 1);
             }
 
-            const newNo = lastNo + 1;
+            // Nếu counters_id không có thì lấy id mới nhất trong collection để suy ra lastNo/prefix
+            if (!counterSnap.exists) {
+                try {
+                    const latestSnap = await this.db.collection(collectionName)
+                        .orderBy('id', 'desc')
+                        .limit(1)
+                        .get();
+
+                    if (!latestSnap.empty) {
+                        const latestDoc = latestSnap.docs[0].data() || {};
+                        const latestId = String(latestDoc.id || latestSnap.docs[0].id || '').trim();
+
+                        if (/^\d+$/.test(latestId)) {
+                            lastNo = parseInt(latestId, 10);
+                            prefix = '';
+                        } else if (latestId.includes('-')) {
+                            const parts = latestId.split('-').filter(Boolean);
+                            const lastPart = parts[parts.length - 1] || '';
+                            if (/^\d+$/.test(lastPart)) {
+                                lastNo = parseInt(lastPart, 10);
+                                prefix = parts.slice(0, -1).join('-');
+                                prefix = prefix ? `${prefix}-` : '';
+                            } else if (!/\d/.test(latestId)) {
+                                useRandomId = true;
+                            }
+                        } else if (!/\d/.test(latestId)) {
+                            useRandomId = true;
+                        }
+                    } else {
+                        useRandomId = true;
+                    }
+                } catch (e) {
+                    console.warn(`⚠️ Cannot derive lastNo from latest ${collectionName} id:`, e);
+                }
+            }
+
+            let newNo = lastNo + 1;
             let newId;
 
-            // Xác định prefix theo collection type
-            let prefix = '';
-
-            if (collectionName === this.COLL.CUSTOMERS || collectionName === this.COLL.USERS) {
-                // Lấy prefix từ app_config (nếu tồn tại)
-                const configSnap = await this.db.collection('counters_id').doc(collectionName).get();
-                const config = configSnap.exists ? configSnap.data() : {};
-
-                if (collectionName === this.COLL.CUSTOMERS) {
-                    prefix = config.prefix || 'KH-';
-                } else if (collectionName === this.COLL.USERS) {
-                    prefix = config.prefix || 'USER-';
-                }
-            } else if (collectionName === this.COLL.BOOKINGS) {
-                // Bookings: prefix rỗng
-                prefix = '';
-            } else if (collectionName === this.COLL.DETAILS) {
-                // Booking Details: prefix = booking_id + "_"
-                prefix = bookingId ? `${bookingId}_` : 'SID_';
+            if (useRandomId) {
+                newId = `${prefix}${Math.random().toString(36).slice(2, 8).toUpperCase()}`.trim();
+                console.log(`🆔 Generated RANDOM ID for ${collectionName}: ${newId}`);
+                return { newId, newNo };
             }
 
             // Tạo ID cuối cùng
@@ -91,7 +117,7 @@ const DB_MANAGER = {
         const counterRef = this.db.collection('counters_id').doc(collectionName);
         try {
             await counterRef.set({ last_no: newNo }, { merge: true });
-            console.log(`✅ Updated counter for ${collectionName}: ${newNo}`);
+            if (!this.batchCounterUpdates[collectionName] || this.batchCounterUpdates[collectionName]  <= newNo) this.batchCounterUpdates[collectionName] = newNo;
         } catch (e) {
             console.error(`❌ Error updating counter for ${collectionName}:`, e);
         }
@@ -251,7 +277,7 @@ const DB_MANAGER = {
             console.timeEnd("LoadFirestore");
             log(`📥 Data Ready: ${result.bookings.length} BKs, ${result.booking_details.length} DTs`);
             
-            return result;
+            return APP_DATA;
 
         } catch (e) {
             console.error("❌ Critical Error loading data:", e);
@@ -402,12 +428,12 @@ const DB_MANAGER = {
                         this._updateAppDataObj(this.COLL.CUSTOMERS, newCustomer);
                         
                         // Cập nhật counter
-                        await this._updateCounter(this.COLL.CUSTOMERS, newCustomerId.newNo);
-                        
                         dataObj.customer_id = newCustomerId.newId;
                         console.log(`✅ Tạo customer mới thành công: ${newCustomerId.newId}`);
                     } catch (e) {
                         console.error(`❌ Lỗi tạo customer: ${e.message}`);
+                        await this._updateCounter(this.COLL.CUSTOMERS, newCustomerId.newNo - 1);
+                        delete this.batchCounterUpdates[this.COLL.CUSTOMERS];
                         return { success: false, message: "Failed to create customer" };
                     }
                 }
@@ -440,14 +466,6 @@ const DB_MANAGER = {
             if (Array.isArray(dataArray)) {
                 dataArray[0] = docId; // Cập nhật lại array (cột đầu tiên)
             }
-
-            // Lưu counter update cho batch processing
-            if (isBatch) {
-                this.batchCounterUpdates[collectionName] = idResult.newNo;
-            } else {
-                // Nếu không phải batch, cập nhật counter ngay
-                await this._updateCounter(collectionName, idResult.newNo);
-            }
         }
 
         if (!docId) {
@@ -455,7 +473,7 @@ const DB_MANAGER = {
             return { success: false, message: "Missing ID" };
         }
 
-        const docRef = this.db.collection(collectionName).doc(String(docId));
+        const docRef = this.db.collection(collectionName)?.doc(String(docId));
         
         // Thêm timestamp cập nhật
         dataObj.updated_at = firebase.firestore.FieldValue.serverTimestamp();
@@ -485,6 +503,8 @@ const DB_MANAGER = {
                 return { success: true, id: docId };
             } catch (e) {
                 console.error("Save Error:", e);
+                await this._updateCounter(collectionName, this.batchCounterUpdates[collectionName] - 1);
+                delete this.batchCounterUpdates[collectionName];
                 return { success: false, error: e.message };
             }
         }
@@ -514,6 +534,7 @@ const DB_MANAGER = {
         let totalSuccess = 0;
         this.batchCounterUpdates = {}; // Reset counter updates
         const detailsForTrigger = []; // Lưu details để trigger sau
+        const processedData = [];
 
         // ✅ GIAI ĐOẠN 1: TẠO ID CHO NHỮNG ROW CHƯA CÓ ID (Trước khi saveRecord)
         for (const chunk of chunks) {
@@ -535,10 +556,12 @@ const DB_MANAGER = {
                         } else {
                             row.id = idResult.newId; // Cập nhật object.id
                         }
-                        this.batchCounterUpdates[collectionName] = idResult.newNo;
+                        if (!this.batchCounterUpdates[collectionName] || this.batchCounterUpdates[collectionName]  <= idResult.newNo) this.batchCounterUpdates[collectionName] = idResult.newNo;
                         console.log(`🆔 Pre-generated ID: ${idResult.newId}`);
                     }
+                    
                 }
+                processedData.push(row);
             }
         }
 
@@ -575,11 +598,6 @@ const DB_MANAGER = {
                 console.error(`❌ Batch Error in ${collectionName}:`, e);
             }
         }
-
-        // Cập nhật counters
-        for (const collName in this.batchCounterUpdates) {
-            await this._updateCounter(collName, this.batchCounterUpdates[collName]);
-        }
         this.batchCounterUpdates = {};
 
         // ✅ GIAI ĐOẠN 3: SAU KHI batch commit xong, gọi trigger cho tất cả details
@@ -592,7 +610,7 @@ const DB_MANAGER = {
             
         }
 
-        return { success: true, count: totalSuccess };
+        return { success: true, count: totalSuccess, data: processedData };
     },
 
     /**

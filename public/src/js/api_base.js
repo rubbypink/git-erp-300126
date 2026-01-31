@@ -245,6 +245,7 @@ function reloadSystemMode(modeCode) {
         let role = CURRENT_USER.role;
 
         await DB_MANAGER.loadAllData();
+        setTimeout(() => {}, 250); // Đợi một chút để đảm bảo dữ liệu đã sẵn sàng
 
         // 3. Safety Check: Kiểm tra dữ liệu rỗng
         if (!APP_DATA || Object.keys(APP_DATA).length === 0) {
@@ -259,62 +260,62 @@ function reloadSystemMode(modeCode) {
         // ============================================================
         
         // A. Lọc Bookings (Giả định cột trạng thái là Index 11)
-        let validIdSet = new Set();
+        // let validIdSet = new Set();
         
-        // Check if we have object format
-        if (APP_DATA.bookings_obj && APP_DATA.bookings_obj.length > 0) {
-            // Object format
-            const validBookingsRows = APP_DATA.bookings_obj.filter(row => {
-                const status = String(row.status || "").trim().toLowerCase();
-                return status !== 'hủy' && status !== 'cancelled';
-            });
-            APP_DATA.bookings_obj = validBookingsRows;
-            validIdSet = new Set(validBookingsRows.map(row => String(row.id)));
-            log(`🧹 Data Cleaned (object): Giữ lại ${validBookingsRows.length} booking.`);
-        }
-        // Fallback to array format
-        else if (APP_DATA.bookings && APP_DATA.bookings.length > 1) {
-            const mHeader = APP_DATA.bookings[0];
-            const mRows = APP_DATA.bookings.slice(1);
+        // // Check if we have object format
+        // if (APP_DATA.bookings_obj && APP_DATA.bookings_obj.length > 0) {
+        //     // Object format
+        //     const validBookingsRows = APP_DATA.bookings_obj.filter(row => {
+        //         const status = String(row.status || "").trim().toLowerCase();
+        //         return status !== 'hủy' && status !== 'cancelled';
+        //     });
+        //     APP_DATA.bookings_obj = validBookingsRows;
+        //     validIdSet = new Set(validBookingsRows.map(row => String(row.id)));
+        //     log(`🧹 Data Cleaned (object): Giữ lại ${validBookingsRows.length} booking.`);
+        // }
+        // // Fallback to array format
+        // else if (APP_DATA.bookings && APP_DATA.bookings.length > 1) {
+        //     const mHeader = APP_DATA.bookings[0];
+        //     const mRows = APP_DATA.bookings.slice(1);
 
-            const validBookingsRows = mRows.filter(row => {
-                const status = String(row[11] || "").trim().toLowerCase();
-                return status !== 'hủy' && status !== 'cancelled';
-            });
+        //     const validBookingsRows = mRows.filter(row => {
+        //         const status = String(row[11] || "").trim().toLowerCase();
+        //         return status !== 'hủy' && status !== 'cancelled';
+        //     });
 
-            APP_DATA.bookings = [mHeader, ...validBookingsRows];
-            validIdSet = new Set(validBookingsRows.map(row => String(row[0])));
-            log(`🧹 Data Cleaned (array): Giữ lại ${validBookingsRows.length}/${mRows.length} booking.`);
-        }
+        //     APP_DATA.bookings = [mHeader, ...validBookingsRows];
+        //     validIdSet = new Set(validBookingsRows.map(row => String(row[0])));
+        //     log(`🧹 Data Cleaned (array): Giữ lại ${validBookingsRows.length}/${mRows.length} booking.`);
+        // }
 
         // C. Mapping Details theo Role
         const userRole = role;
         const targetSourceKey = (userRole === 'op') ? 'operator_entries' : 'booking_details';
         
-        // Check object format first
-        if (APP_DATA[targetSourceKey + '_obj'] && APP_DATA[targetSourceKey + '_obj'].length > 0) {
-            const validDetailRows = APP_DATA[targetSourceKey + '_obj'].filter(row => 
-                validIdSet.has(String(row.booking_id))
-            );
-            APP_DATA[targetSourceKey + '_obj'] = validDetailRows;
-            log(`🧹 Details Cleaned (object): ${validDetailRows.length} rows`);
-        }
-        // Fallback to array format
-        else if (APP_DATA[targetSourceKey] && APP_DATA[targetSourceKey].length > 1) {
-            const dHeader = APP_DATA[targetSourceKey][0];
-            const dRows = APP_DATA[targetSourceKey].slice(1);
-            const validDetailRows = dRows.filter(row => validIdSet.has(String(row[1])));
+        // // Check object format first
+        // if (APP_DATA[targetSourceKey + '_obj'] && APP_DATA[targetSourceKey + '_obj'].length > 0) {
+        //     const validDetailRows = APP_DATA[targetSourceKey + '_obj'].filter(row => 
+        //         validIdSet.has(String(row.booking_id))
+        //     );
+        //     APP_DATA[targetSourceKey + '_obj'] = validDetailRows;
+        //     log(`🧹 Details Cleaned (object): ${validDetailRows.length} rows`);
+        // }
+        // // Fallback to array format
+        // else if (APP_DATA[targetSourceKey] && APP_DATA[targetSourceKey].length > 1) {
+        //     const dHeader = APP_DATA[targetSourceKey][0];
+        //     const dRows = APP_DATA[targetSourceKey].slice(1);
+        //     const validDetailRows = dRows.filter(row => validIdSet.has(String(row[1])));
             
-            if (userRole === 'op') {
-                APP_DATA.operator_entries = [dHeader, ...validDetailRows];
-            } else {
-                APP_DATA.booking_details = [dHeader, ...validDetailRows];
-            }
-            log(`🧹 Details Cleaned (array): ${validDetailRows.length} rows`);
-        } else {
-            APP_DATA.booking_details = [];
-            APP_DATA.operator_entries = [];
-        }
+        //     if (userRole === 'op') {
+        //         APP_DATA.operator_entries = [dHeader, ...validDetailRows];
+        //     } else {
+        //         APP_DATA.booking_details = [dHeader, ...validDetailRows];
+        //     }
+        //     log(`🧹 Details Cleaned (array): ${validDetailRows.length} rows`);
+        // } else {
+        //     APP_DATA.booking_details = [];
+        //     APP_DATA.operator_entries = [];
+        // }
 
         // [OPTIONAL] Vẫn tạo Alias activeDetails để code mới sau này dùng cho tiện
         APP_DATA.activeDetails = (userRole === 'op') ? 
