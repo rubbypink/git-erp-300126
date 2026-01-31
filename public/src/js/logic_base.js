@@ -1414,30 +1414,7 @@ async function downloadData(type = 'excel') {
  * @param {boolean} isServiceId - True nếu idVal là SID
  */
 function handleDashClick(idVal, isServiceId) {
-    let bkId = idVal;
-
-    // Nếu click vào bảng dịch vụ (SID), cần tìm Booking ID cha của nó
-    if (isServiceId) {
-        log(`🔍 Đang tìm Booking chứa SID: ${idVal}`);
-        let row; 
-        // Tìm trong booking_details cột 0 là SID, cột 1 là BK_ID (Theo COL_INDEX)
-        const dataName = CURRENT_USER.role === 'op' ? 'operator_entries_obj' : 'booking_details_obj';
-        const data = APP_DATA[dataName];
-        if (data && typeof data === 'object') {
-            row = data.filter(o => String(o.id) === String(idVal));
-        } else {
-            row = data.find(r => String(r[0]) === String(idVal));
-        }  
-        if (row) {
-            bkId = row.booking_id || row[1];
-            log(`✅ Map thành công: SID ${idVal} -> BK ${row.booking_id} hoặc ${row[1]}`);
-            
-        } else {
-            logA("Không tìm thấy Booking chứa dịch vụ này!", "error");
-            return;
-        }
-    }
-    onGridRowClick(bkId);
+    onGridRowClick(idVal);
 }
 // ==========================================
 // MODULE: BATCH EDIT (FULL ROW MODE)
