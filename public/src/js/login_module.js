@@ -10,11 +10,53 @@
     };
 
     // --- 1. FIREBASE SETUP MODULE ---
-    var app, auth, db; 
+    var app, auth, db;
+    
+    /**
+     * APP_CORE: Điều phối toàn bộ vòng đời ứng dụng
+     * Tại sao: Đảm bảo không có code nào chạy tự do ngoài tầm kiểm soát của Auth
+     */
+    const APP_CORE = {
+        init: async function() {
+            try {
+                log("🚀 System Booting...", "info");
+                await initFirebase(); // Khởi tạo app, auth, db
+                this.listenAuth();
+            } catch (error) {
+                log("🔥 Boot Error: " + error.message, "danger");
+            }
+        },
+
+        listenAuth: function() {
+            auth.onAuthStateChanged(async (user) => {
+                const launcher = document.getElementById('app-launcher');
+                const app = document.getElementById('main-app');
+                if (user) {
+                    
+                    log("🔓 User detected, verifying profile...", "success");
+                    if(app) app.style.opacity = 1;
+                    await UI_RENDERER.init();
+                    await AUTH_MANAGER.fetchUserProfile(user);
+                    // Sau khi fetch profile và Security Manager đã render template vào app-container
+                    if (launcher) launcher.classList.add('d-none');
+                    app.classList.remove('d-none');
+                    showLoading(false);
+                    // B2. EVENTS: Gán sự kiện
+                    setupStaticEvents();
+                    initShortcuts();
+                } else {
+                    log("🔒 No user. Showing Login...", "warning");
+                    if (launcher) launcher.classList.add('d-none');
+                    if (launcher) launcher.remove();
+                    if(app) app.style.opacity = 1;            
+                    AUTH_MANAGER.showLoginForm();
+                }
+            });
+        }
+    };
 
     async function initFirebase() {
         return new Promise((resolve, reject) => {
-            showLoading(true, "Đang Xác Thực Người Dùng...");
             try {
                 if (!firebase.apps.length) {
                     app = firebase.initializeApp(CFG_FB_RTDB);
@@ -23,7 +65,7 @@
                 }
                 
                 auth = firebase.auth();
-                AUTH_MANAGER.monitorAuth(); 
+                
                 // ✅ CHUẨN: Dùng Firestore
                 db = firebase.firestore(); 
                 
@@ -32,7 +74,6 @@
                     DB_MANAGER.db = db;
                     log("✅ DB_MANAGER connected to Firestore");
                 }
-
                 resolve(app);
             } catch(e) {
                 console.error("🔥 Firebase Init Error:", e);
@@ -44,25 +85,26 @@
     // --- 2. AUTH MODULE (FIRESTORE VERSION) ---
     const AUTH_MANAGER = {
         // Lắng nghe trạng thái đăng nhập
-        monitorAuth: function() {
-            auth.onAuthStateChanged(async (user) => {
-                if (user) {
-                    log('🔓 Đã xác thực Auth, đang tải Profile...', 'info');
-                    await this.fetchUserProfile(user);
-                } else {
-                    showLoading(false);
-                    log('🔒 Chưa đăng nhập', 'warning');
-                    if (typeof showLoading === 'function') showLoading(false);
-                    else document.getElementById('loading-overlay').classList.add('d-none');
-                    log('Đã đóng loading');
-                    this.showLoginForm();
-                }
-            });
-        },
+        // monitorAuth: function() {
+        //     auth.onAuthStateChanged(async (user) => {
+        //         if (user) {
+        //             log('🔓 Đã xác thực Auth, đang tải Profile...', 'info');
+        //             await this.fetchUserProfile(user);
+        //         } else {
+        //             showLoading(false);
+        //             log('🔒 Chưa đăng nhập', 'warning');
+        //             if (typeof showLoading === 'function') showLoading(false);
+        //             else document.getElementById('loading-overlay').classList.add('d-none');
+        //             log('Đã đóng loading');
+        //             this.showLoginForm();
+        //         }
+        //     });
+        // },
 
         // Lấy thông tin chi tiết từ Firestore
         fetchUserProfile: async function(firebaseUser) {
             try {
+
                 // ✅ FIRESTORE: Dùng .collection().doc().get()
                 const docRef = db.collection('users').doc(firebaseUser.uid);
                 const docSnap = await docRef.get();
@@ -111,7 +153,11 @@
                     }
                 } else CURRENT_USER.role = userProfile.role || 'sale';
                 CR_COLLECTION = ROLE_DATA[CURRENT_USER.role] || '';
-                await SECURITY_MANAGER.applySecurity(CURRENT_USER);
+                await Promise.all([
+                    SECURITY_MANAGER.applySecurity(CURRENT_USER), 
+                    loadDataFromFirebase()
+                ]);
+                
                 this.updateUserMenu();
                 log('✅ Chào mừng: ' + (userProfile.user_name || firebaseUser.email), 'success');
                 
@@ -123,12 +169,6 @@
             } finally {
                 // Đóng modal
                 showLoading(false);
-                const modalEl = document.getElementById('dynamic-modal');
-                if (modalEl) {
-                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
-                    if (modalInstance) modalInstance.hide();
-                    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-                }
             }
         },
 
@@ -148,77 +188,50 @@
 
         // Hiển thị Form Login vào Modal
         showLoginForm: function() {
-            const modalBody = `
-                <div class="row g-3 justify-content-center p-3">
-                    <div class="col-12 text-center mb-3">
-                        <img src="https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp" class="img-fluid" style="max-height:50px;">
-                        <h5 class="mt-2 text-secondary">Đăng nhập hệ thống</h5>
-                    </div>
-                    
-                    <div class="col-md-10">
-                        <div class="form-floating mb-3">
-                            <input type="email" class="form-control" id="login-email" placeholder="name@example.com">
-                            <label for="login-email">Email</label>
-                        </div>
-                        <div class="form-floating mb-3">
-                            <input type="password" class="form-control" id="login-pass" placeholder="Password">
-                            <label for="login-pass">Mật khẩu</label>
-                        </div>
-                        <button class="btn btn-primary w-100 py-2 mb-3 fw-bold" onclick="AUTH_MANAGER.handleEmailLogin()">
-                            <i class="fas fa-sign-in-alt me-2"></i> Đăng nhập
-                        </button>
-                        
-                        <div class="position-relative my-4">
-                            <hr class="text-secondary">
-                            <span class="position-absolute top-50 start-50 translate-middle px-2 bg-white text-muted small">HOẶC</span>
-                        </div>
-
-                        <div class="d-grid gap-2">
-                            <button class="btn btn-outline-danger" onclick="AUTH_MANAGER.handleSocialLogin('google')">
-                                <i class="fab fa-google me-2"></i> Tiếp tục với Google
+            // Thay vì dùng Modal, ta render trực tiếp vào app-container để ép người dùng login
+            const loginHTML = `
+                <div class="container d-flex justify-content-center align-items-center vh-100">
+                    <div class="card shadow-lg border-0" style="max-width: 400px; width: 100%; border-radius: 15px;">
+                        <div class="card-body p-5 text-center">
+                            <img src="https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp" class="mb-4" style="height:50px;">
+                            <h4 class="fw-bold mb-4 text-dark">HỆ THỐNG ERP 9TRIP</h4>
+                            
+                            <div class="form-floating mb-3 text-start">
+                                <input type="email" class="form-control" id="login-email" placeholder="name@example.com">
+                                <label>Email nhân viên</label>
+                            </div>
+                            <div class="form-floating mb-4 text-start">
+                                <input type="password" class="form-control" id="login-pass" placeholder="Password">
+                                <label>Mật khẩu</label>
+                            </div>
+                            
+                            <button class="btn btn-primary w-100 py-3 fw-bold shadow-sm" onclick="AUTH_MANAGER.handleEmailLogin()">
+                                ĐĂNG NHẬP NGAY
                             </button>
-                            <button class="btn btn-outline-primary" onclick="AUTH_MANAGER.handleSocialLogin('facebook')">
-                                <i class="fab fa-facebook-f me-2"></i> Tiếp tục với Facebook
-                            </button>
+    
+                            <div class="mt-4 small text-muted">
+                                Hoặc đăng nhập bằng
+                                <div class="d-flex gap-2 justify-content-center mt-2">
+                                    <button class="btn btn-outline-light border text-dark" onclick="AUTH_MANAGER.handleSocialLogin('google')">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" width="18"> Google
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             `;
-
-            // Sử dụng hàm helper có sẵn nếu bạn đã viết, hoặc gọi trực tiếp Bootstrap
-            var modalEl = document.getElementById('dynamic-modal');
-            if(!modalEl)  {
-                UI_RENDERER.renderTemplate('body', 'tmpl-dynamic-modal', false, '.app-container');
-            } else {
-                UI_RENDERER.renderTemplate('body', 'tmpl-dynamic-modal', true, '.app-container');
-            }
-            modalEl = document.getElementById('dynamic-modal');
-            modalEl.querySelector('.modal-title').innerText = ''; // Ẩn title cho đẹp
-            modalEl.querySelector('.modal-body').innerHTML = modalBody;
-            modalEl.querySelector('.modal-footer').style.display = 'none'; // Ẩn footer
-
-            // Prevent close click outside
-            const modal = new bootstrap.Modal(modalEl, {
-                backdrop: 'static',
-                keyboard: false
-            });
-            modal.show();
+            const container = document.getElementById('main-app');
+            container.innerHTML = loginHTML;
+            container.classList.remove('d-none');
             
-            // Thêm sự kiện Enter key cho password input
+            // Gán sự kiện Enter
             setTimeout(() => {
-                const passInput = getE('login-pass');
-                if (passInput) {
-                    passInput.addEventListener('keypress', (event) => {
-                        if (event.key === 'Enter') {
-                            AUTH_MANAGER.handleEmailLogin();
-                        }
-                    });
-                }
+                document.getElementById('login-pass')?.addEventListener('keypress', (e) => {
+                    if(e.key === 'Enter')
+                    this.handleEmailLogin();
+                });
             }, 100);
-            modalEl.addEventListener('hidden.bs.modal', () => {
-                modalEl.remove();
-                UI_RENDERER.renderedTemplates['tmpl-dynamic-modal'] = false;
-            });
         },
 
         handleEmailLogin: async function() {
@@ -417,9 +430,6 @@
 
 
     const SECURITY_MANAGER = {
-        // Cấu hình danh sách Admin cứng
-        
-
         /**
          * HÀM CHÍNH: ÁP DỤNG PHÂN QUYỀN
          * Gọi hàm này ngay sau khi initFirebase() xong và có user profile
@@ -536,3 +546,14 @@
             }
         }
     };
+
+    // 2. Lắng nghe sự kiện DOM Ready
+    //   document.addEventListener('DOMContentLoaded', initApp);
+    document.addEventListener('DOMContentLoaded',  () => {
+        try {
+            APP_CORE.init(); 
+        } catch (e) {
+            console.error("Critical Error:", e);
+            document.body.innerHTML = `<h3 class="text-danger p-3">Lỗi kết nối hệ thống: ${e.message}</h3>`;
+        }
+    });

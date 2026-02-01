@@ -207,6 +207,9 @@
       padding: 0.15rem 0.4rem; /* Ép padding nhỏ nhất có thể */
       min-height: 24px;
     }
+    .btn {
+      border-radius: 1rem; /* Nút bo tròn hơn */
+    }
     td {
       padding: 0.2rem 0.1rem;
     }

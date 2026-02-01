@@ -98,23 +98,52 @@ const UI_RENDERER = {
 	currentSaveHandler: null,
 	COMPONENT_PATH: './src/components/',
 	htmlCache: {},
+
 	// Render Dashboard & Load Data
 	init: async function() {
-		const app = document.getElementById('main-app');
-		if(app) app.style.opacity = 1;
-
-		// 2. Gọi API tải dữ liệu
-		try {
-			if(typeof loadDataFromFirebase === 'function') {
-				await loadDataFromFirebase();
-			}
-			initSettings();
-		} catch(e) {
-			logError(e);
-		} finally {
-			showLoading(false);
-		}
+		await this.renderMainLayout();
+		await this.renderTemplate('body', 'tpl_all.html', false, '.app-container');
+		initSettings();
 	},
+	renderMainLayout: async function(source = 'main_layout.html', containerSelector = '#main-app') {
+		let finalSourcePath = source;
+
+		// Nếu là file HTML ngắn gọn (vd: 'tpl_all.html'), tự động thêm path
+		if (source.endsWith('.html') && !source.includes('/')) {
+			finalSourcePath = this.COMPONENT_PATH + source;
+		}
+        const container = document.querySelector(containerSelector);
+        if (!container) {
+            console.error("❌ Không tìm thấy container: " + containerSelector);
+            return;
+        }
+
+        try {    
+			container.innerHTML = ''; // Xóa nội dung cũ nếu có        
+            // 1. Lấy nội dung template (Sử dụng cache nếu đã tải)
+            let html;
+            if (this.htmlCache[finalSourcePath]) {
+                html = this.htmlCache[finalSourcePath];
+            } else {
+                const response = await fetch(finalSourcePath);
+                if (!response.ok) throw new Error(`Không thể tải template tại ${finalSourcePath}: HTTP ${response.status}`);
+                html = await response.text();
+                this.htmlCache[finalSourcePath] = html; // Lưu cache
+            }
+
+            // 2. Chèn vào đầu container (afterbegin)
+            // 'afterbegin' giúp layout chính (Sidebar/Header) luôn nằm trên cùng 
+            // trước khi các module Sales/Op render dữ liệu vào bên trong.
+            container.insertAdjacentHTML('afterbegin', html);
+            
+            log("✅ Đã render Main Layout thành công", "success");
+            
+        } catch (error) {
+            log("🔥 Lỗi Render Layout: " + error.message, "danger");
+        } finally {
+            showLoading(false);
+        }
+    },	
 
 	/**
 	 * HÀM RENDER ĐA NĂNG (SMART RENDER)

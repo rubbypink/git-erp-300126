@@ -236,8 +236,7 @@ function reloadSystemMode(modeCode) {
 
   async function loadDataFromFirebase() {
     // 1. UI: Hiển thị trạng thái tải
-    if (retryCount === 0) showLoading(true, "Đang tải dữ liệu...");
-    else showLoading(true, `Đang thử lại (${retryCount}/${MAX_RETRIES})...`);
+    if (retryCount > 0) showLoading(true, `Đang thử lại (${retryCount}/${MAX_RETRIES})...`);
 
     const startTime = Date.now();
 
