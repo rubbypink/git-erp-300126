@@ -36,7 +36,7 @@ var LAST_FILTER_SIGNATURE = null;
 var PG_STATE = {
 	data: [],       
 	currentPage: 1, 
-	limit: 50,      
+	limit: 100,      
 	totalPages: 0
 };
 
@@ -92,302 +92,6 @@ var CURRENT_CTX_ROW = null;  // Element dòng (TR)
 // =========================================================================
 // 2. CORE RENDER ENGINE (LAZY LOAD)
 // =========================================================================
-
-const UI_RENDERER = {
-	renderedTemplates: {}, 
-	currentSaveHandler: null,
-	COMPONENT_PATH: './src/components/',
-	htmlCache: {},
-
-	// Render Dashboard & Load Data
-	init: async function() {
-		await this.renderMainLayout();
-		await this.renderTemplate('body', 'tpl_all.html', false, '.app-container');
-		initSettings();
-	},
-	renderMainLayout: async function(source = 'main_layout.html', containerSelector = '#main-app') {
-		let finalSourcePath = source;
-
-		// Nếu là file HTML ngắn gọn (vd: 'tpl_all.html'), tự động thêm path
-		if (source.endsWith('.html') && !source.includes('/')) {
-			finalSourcePath = this.COMPONENT_PATH + source;
-		}
-        const container = document.querySelector(containerSelector);
-        if (!container) {
-            console.error("❌ Không tìm thấy container: " + containerSelector);
-            return;
-        }
-
-        try {    
-			container.innerHTML = ''; // Xóa nội dung cũ nếu có        
-            // 1. Lấy nội dung template (Sử dụng cache nếu đã tải)
-            let html;
-            if (this.htmlCache[finalSourcePath]) {
-                html = this.htmlCache[finalSourcePath];
-            } else {
-                const response = await fetch(finalSourcePath);
-                if (!response.ok) throw new Error(`Không thể tải template tại ${finalSourcePath}: HTTP ${response.status}`);
-                html = await response.text();
-                this.htmlCache[finalSourcePath] = html; // Lưu cache
-            }
-
-            // 2. Chèn vào đầu container (afterbegin)
-            // 'afterbegin' giúp layout chính (Sidebar/Header) luôn nằm trên cùng 
-            // trước khi các module Sales/Op render dữ liệu vào bên trong.
-            container.insertAdjacentHTML('afterbegin', html);
-            
-            log("✅ Đã render Main Layout thành công", "success");
-            
-        } catch (error) {
-            log("🔥 Lỗi Render Layout: " + error.message, "danger");
-        } finally {
-            showLoading(false);
-        }
-    },	
-
-	/**
-	 * HÀM RENDER ĐA NĂNG (SMART RENDER)
-	 * @param {string} targetId - ID của container cha (hoặc 'body')
-	 * @param {string} source - Có thể là DOM ID ('tmpl-form') HOẶC File Path ('form.html')
-	 * @param {boolean} force - True: Bắt buộc render lại (xóa cũ)
-	 * @param {string} positionRef - Selector của phần tử mốc để chèn (dùng khi insertAdjacent)
-	 * @param {string} mode - 'replace' (ghi đè), 'append' (nối đuôi), 'prepend' (lên đầu)
-	 */
-	renderTemplate: async function(targetId, source, force = false, positionRef = null, mode = 'replace') {
-		// 1. CHUẨN HÓA SOURCE KEY (QUAN TRỌNG NHẤT)
-		// Phải xác định unique key ngay từ đầu để check và save thống nhất
-		let finalSourcePath = source;
-
-		// Nếu là file HTML ngắn gọn (vd: 'tpl_all.html'), tự động thêm path
-		if (source.endsWith('.html') && !source.includes('/')) {
-			finalSourcePath = this.COMPONENT_PATH + source;
-		}
-
-		// 2. Guard Clause: Kiểm tra dựa trên FINAL PATH
-		if (this.renderedTemplates[finalSourcePath] && !force && mode === 'replace') {
-			console.log(`⚡ Skipped render: ${finalSourcePath} (Already exists)`);
-			return true; // Trả về true giả lập là đã xong
-		}
-
-		// 3. Xác định nội dung (Content)
-		let contentFragment = null;
-
-		// CASE A: Source là File Path (.html)
-		if (finalSourcePath.endsWith('.html')) {
-			try {
-				let htmlString = '';
-				
-				// Kiểm tra Cache RAM (Nội dung file)
-				if (this.htmlCache[finalSourcePath]) {
-					htmlString = this.htmlCache[finalSourcePath];
-				} else {
-					// Fetch Network
-					const response = await fetch(finalSourcePath);
-					if (!response.ok) throw new Error(`HTTP ${response.status}`);
-					htmlString = await response.text();
-					this.htmlCache[finalSourcePath] = htmlString; // Lưu cache nội dung
-				}
-
-				// 1. Tạo div ảo để chứa HTML
-				const tempDiv = document.createElement('div');
-				tempDiv.innerHTML = htmlString;
-
-				// 2. Tạo Fragment để chứa kết quả
-				contentFragment = document.createDocumentFragment();
-
-				// 3. Chuyển TOÀN BỘ nội dung từ tempDiv sang Fragment
-				// Cách này sẽ giữ nguyên mọi thứ: div, span, và cả thẻ <template>
-				while (tempDiv.firstChild) {
-					contentFragment.appendChild(tempDiv.firstChild);
-				}
-
-			} catch (e) {
-				console.error(`❌ Lỗi tải file ${finalSourcePath}:`, e);
-				return false;
-			}
-		} 
-		// CASE B: Source là DOM ID (<template id="...">)
-		else {
-			const templateEl = document.getElementById(source); // ID thì dùng source gốc
-			if (!templateEl) {
-				console.error(`❌ Không tìm thấy Template ID: ${source}`);
-				return false;
-			}
-			contentFragment = templateEl.content.cloneNode(true);
-			// Với ID, ta dùng ID làm key lưu trữ
-			finalSourcePath = source; 
-		}
-
-		// 4. Security Check & Container Handling
-		let container;
-		
-		// Đảm bảo SECURITY_MANAGER tồn tại trước khi gọi
-		// if (typeof SECURITY_MANAGER !== 'undefined') {
-		//     SECURITY_MANAGER.cleanDOM(contentFragment);
-		// }
-
-		// --- SCENARIO 1: Render vào BODY ---
-		if (targetId === 'body') {
-			container = document.body;
-			
-			if (positionRef) {
-				const refElement = container.querySelector(positionRef);
-				if (refElement) {
-					refElement.parentNode.insertBefore(contentFragment, refElement.nextSibling);
-				} else {
-					container.appendChild(contentFragment);
-				}
-			} else {
-				// Chèn trước script đầu tiên để tránh lỗi JS loading
-				const firstScript = container.querySelector('script');
-				container.insertBefore(contentFragment, firstScript || container.lastChild);
-			}
-		} 
-		// --- SCENARIO 2: Render vào Container ID ---
-		else {
-			container = document.getElementById(targetId);
-			if (!container) {
-				console.warn(`⚠️ Container not found: ${targetId}`);
-				return false;
-			}
-
-			if (mode === 'replace') {
-				container.innerHTML = '';
-				container.appendChild(contentFragment);
-			} else if (mode === 'prepend') {
-				container.insertBefore(contentFragment, container.firstChild);
-			} else { // append
-				container.appendChild(contentFragment);
-			}
-		}
-
-		// 5. Đánh dấu Flag (Sử dụng KEY ĐÃ CHUẨN HÓA)
-		this.renderedTemplates[finalSourcePath] = true;
-		console.log(`✅ Rendered: ${finalSourcePath} -> #${targetId}`);
-		
-		return true;
-	},
-	// Hàm được gọi khi bấm chuyển Tab (Hoặc Init)
-	lazyLoad: function(tabId) {
-		const tmplId = tabId.replace('tab-', 'tmpl-');
-		
-		// 1. Luôn đảm bảo HTML được render trước
-		this.renderTemplate(tabId, tmplId, false);
-
-		// 2. Logic khởi tạo Component (Chạy ngay cả khi chưa có Data)
-		// Ví dụ: Tạo Datepicker, Gán sự kiện click nút update...
-		if (tabId === 'tab-dashboard') {
-				// Setup tháng, ngày lọc... (Cần chạy ngay để user thấy form lọc)
-				if(typeof initDashboard === 'function') initDashboard();
-		}
-		if (tabId === 'tab-form') {
-			setupMainFormUI(APP_DATA.lists);
-			setupTableKeyboardNav();
-			setTimeout(() => {
-			setupContextMenu('detail-tbody');
-			}, 1000); 
-
-		}
-		
-		if (tabId === 'tab-list') {
-				// Vào tab list thì check xem có data chưa để vẽ bảng
-				const tbody = document.getElementById('grid-body');
-				if (APP_DATA && APP_DATA.bookings && tbody && tbody.innerHTML.trim() === "") {
-					renderTableByKey('bookings'); 
-				}
-		} else if (tabId === 'tab-sub-form') {
-			// Khi tab log vừa được render xong -> Lấy dữ liệu từ LS đắp vào
-			const list = APP_DATA.lists.source;
-			if (list) fillSelect('Ext_CustSource', list);
-		} else if (tabId === 'tab-log') {
-			// Khi tab log vừa được render xong -> Lấy dữ liệu từ LS đắp vào
-			if (typeof restoreLogsFromStorage === 'function') {
-					restoreLogsFromStorage();
-			}
-		}
-
-	},
-
-	/**
-	 * Hàm thiết lập hành động cho nút Save của Modal
-	 * @param {Function} newActionFunc - Hàm logic bạn muốn chạy khi bấm Save
-	 */
-	bindBtnEvent: function(newActionFunc, btnId, btnText = null) {
-		let btn = getE(btnId);
-		
-		if (!btn) {
-			log(`Không tìm thấy nút nào của ${btnId} trong DOM!`, 'error');
-			return;
-		}
-
-		// Gỡ bỏ event handler cũ nếu có
-		const newBtn = btn.cloneNode(true);
-		btn.parentNode.replaceChild(newBtn, btn);
-		btn = newBtn;
-		if (btnText) btn.textContent = btnText;
-
-		// 2. SETUP: Gán hàm mới
-		// Lưu ý: Ta nên bọc hàm logic trong 1 khối try-catch để an toàn
-		this.currentSaveHandler = async function(e) {
-			// Prevent Default nếu nút nằm trong form
-			e.preventDefault(); 
-			
-			// Disable nút để tránh bấm liên tục (Double Submit)
-			btn.disabled = true;
-			const currentBtnHTML = btn.innerHTML;
-			btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
-
-			try {
-				// Chạy hàm logic được truyền vào
-				await newActionFunc(e); 
-			} catch (err) {
-				logError("Lỗi hàm bindBtnEvent: ", err);
-				logA("Có lỗi xảy ra: " + err.message);
-			} finally {
-				// Mở lại nút sau khi xong (hoặc tùy logic đóng modal của bạn)
-				btn.disabled = false;
-				btn.innerHTML = currentBtnHTML;
-			}
-		};
-
-		btn.addEventListener('click', this.currentSaveHandler);
-		log("Đã gán sự kiện mới cho Btn Save Modal.");
-	},
-	resetForm: function(e) {
-		const form = e.target.closest('form') || $('form', getE('dynamic-modal-body'));
-		if (form) {
-			form.reset();
-		}
-	},
-	renderModal: function(tmplId, title, btnSaveHandler = null, btnResetHandler = null, modalId='dynamic-modal') {  
-		try {
-
-			this.renderTemplate('body', 'tmpl-dynamic-modal', true, '.app-container');
-
-			const modalEl = getE(modalId);
-			const modalTitleEl = $('.modal-title', modalEl);
-			const modalBody = $('#dynamic-modal-body', modalEl) || getE('dynamic-modal-body');
-			if (modalBody) {
-				this.renderTemplate('dynamic-modal-body', tmplId, true);
-			}
-			if (modalTitleEl && title) {
-				modalTitleEl.innerText = title;
-			}
-			if (btnSaveHandler) {
-				this.bindBtnEvent(btnSaveHandler, 'btn-save-modal');
-			}
-			if (typeof btnResetHandler === 'function') {
-					this.bindBtnEvent(btnResetHandler, 'btn-reset-modal');
-			} else this.bindBtnEvent(this.resetForm, 'btn-reset-modal');
-			const modal = new bootstrap.Modal(modalEl);
-			// modal.handleUpdate();
-			// modal.show();
-			return modal;
-		} catch (e) {
-			logError("Lỗi trong renderModal: ", e);
-		}
-	}
-};
 
 var isSetupTabForm = false;
 const setupMainFormUI = function(lists) {
@@ -550,7 +254,7 @@ try {
 }
 
 function selectTab(targetTabId) {
-	UI_RENDERER.lazyLoad(targetTabId);
+	A.UI.lazyLoad(targetTabId);
 
 	// 2. Tìm nút bấm trên Header
 	const navBtn = document.querySelector(`button[data-bs-target="#${targetTabId}"]`) 
@@ -569,21 +273,21 @@ function selectTab(targetTabId) {
 		setClass($('#tab-shortcut-content'), 'd-none', true);
 		setClass($('#tab-users-content'), 'd-none', true);
 		setClass($('#tab-users-content'), 'admin-only', false); 
-		UI_RENDERER.bindBtnEvent(saveSettings, 'btn-save-modal', 'Áp Dụng Theme');
-		UI_RENDERER.bindBtnEvent(resetSettings, 'btn-reset-modal'); 
+		A.UI.bindBtnEvent(saveThemeSettings, 'btn-save-modal', 'Áp Dụng Theme');
+		A.UI.bindBtnEvent(THEME_MANAGER.resetToDefault, 'btn-reset-modal'); 
 	} else if (targetTabId === 'tab-shortcut-content') {
 		setClass($(targetTabId), 'd-none', false);
 		setClass($('#tab-theme-content'), 'd-none', true);
 		setClass($('#tab-users-content'), 'd-none', true);  
 		setClass($('#tab-users-content'), 'admin-only', false);            
-		UI_RENDERER.bindBtnEvent(saveShortcutsConfig, 'btn-save-modal', 'Lưu Phím Tắt'); 
+		A.UI.bindBtnEvent(saveShortcutsConfig, 'btn-save-modal', 'Lưu Phím Tắt'); 
 	} else if (targetTabId === 'tab-users-content') {
 		setClass($(targetTabId), 'd-none', false);
 		setClass($('#tab-theme-content'), 'd-none', true);
 		setClass($('#tab-shortcut-content'), 'd-none', true);              
-		renderUsersConfig();
-		UI_RENDERER.bindBtnEvent(AUTH_MANAGER.saveUser, 'btn-save-modal', 'Lưu User');
-		UI_RENDERER.bindBtnEvent(() => {
+		A.Auth.renderUsersConfig();
+		A.UI.bindBtnEvent(A.Auth.saveUser, 'btn-save-modal', 'Lưu User');
+		A.UI.bindBtnEvent(() => {
 			document.getElementById('users-form').reset();
 			document.getElementById('form-created-at').valueAsDate = new Date();                    
 		}, 'btn-reset-modal', 'Nhập Lại');    

@@ -1202,7 +1202,7 @@
       // Hàm mở Modal (Entry Point)
       async function openModal(bookingId) {
         if (!bookingId) return logA("Không có mã Booking!", "warning");
-        UI_RENDERER.renderTemplate('body', 'tmpl-dynamic-modal', true, '.app-container');
+        A.UI.renderTemplate('body', 'tmpl-dynamic-modal', true, '.app-container');
         const modalEl = getE('dynamic-modal');
         if (!modalEl) return;
         $('.modal-title', modalEl).innerText = "Xác Nhận Booking: " + bookingId;
@@ -1235,7 +1235,7 @@
       // Hàm render giao diện chính
       function _renderUI() {
         // 1. Load Template
-        UI_RENDERER.renderTemplate('dynamic-modal-body', 'tmpl-confirmation-modal', true);
+        A.UI.renderTemplate('dynamic-modal-body', 'tmpl-confirmation-modal', true);
         
         // 2. Điền dữ liệu Header & Customer
         const m = _currentData.bookings; // [ID, Date, Email, CID, Name, Phone, Start...]
@@ -1262,7 +1262,7 @@
         
         // Cập nhật ngôn ngữ và mode
         _applySettings();
-        UI_RENDERER.renderTemplate('body', 'tmpl-download-pdf');
+        A.UI.renderTemplate('body', 'tmpl-download-pdf');
       }
 
       // Hàm render bảng chi tiết (Xử lý 2 chế độ: Service & Tour)

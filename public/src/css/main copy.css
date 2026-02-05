@@ -1,28 +1,7 @@
 
-    /* =========================================================================
-       MAIN.CSS - RESTRUCTURED WITH CSS GRID & REM UNITS
-       Last Updated: February 2026
-       Changes:
-       - Grid layout: body with 3 rows × 13 columns
-       - All px converted to rem (base: 16px = 1rem)
-       - Mobile responsive optimization
-       ========================================================================= */
-
     /* --- 1. GLOBAL RESET & BOX MODEL --- */
     *, *::before, *::after {
       box-sizing: border-box; /* Đảm bảo padding/margin không làm vỡ kích thước 100% */
-    }
-
-    /* ─────────────────────────────────────────────────────────── */
-    /* MOBILE TOUCH FIX: Allow swipe/gesture navigation */
-    /* ─────────────────────────────────────────────────────────── */
-    html {
-      touch-action: auto;  /* ✅ Allow swipe gestures, pan-x, pan-y */
-    }
-
-    body { 
-      -webkit-user-select: auto;    /* Allow text selection for normal use */
-      user-select: auto;            /* Standard */
     }
 
     /* =========================================================================
@@ -34,37 +13,29 @@
 
     :root {
       color-scheme: light dark;
-      
-      /* ─── LAYOUT GRID CONSTANTS ─── */
-      --grid-cols: 13;                   /* 13 columns for flexibility */
-      --grid-col-7-width: fit-content;   /* Column 7 special handling */
-      --header-height: 8rem;             /* Total header (top-bar + nav-bar) */
-      --header-top-bar-height: 2.4rem;   /* 30% of header */
-      --header-nav-bar-height: 5.6rem;   /* 70% of header */
-      --footer-height: 3rem;             /* Footer height */
-      --content-height: calc(100vh - var(--header-height) - var(--footer-height));
+      --header-height: 8vh; /* Chiều cao tổng của cả 2 hàng header */
       
       /* ─── THEME: LIGHT MODE (Mặc định) ─── */
       /* Bộ màu: Blue/Gray - Chuyên nghiệp, dễ đọc */
       --primary-color: #3b82f6;           /* Blue - Tạo hành động */
       --secondary-color: #64748b;        /* Slate Gray - Phụ vụ */
-      --app-bg: #e6e6e6;                 /* Xám nhạt - Nền sạch */
-      --header-bg: #2c37d1;              /* Xanh đậm - Header nổi bật */
-      --footer-bg: #4d4d4e;              /* Xanh đen - Footer nhất quán */
+      --app-bg: #f8fafc;                 /* Xám nhạt - Nền sạch */
+      --header-bg: #0f172a;              /* Xanh đậm - Header nổi bật */
+      --footer-bg: #1e293b;              /* Xanh đen - Footer nhất quán */
       --text-color: #0f141c;             /* Tối - Văn bản chính */
       --text-secondary: #64748b;         /* Xám - Văn bản phụ */
-      --border-color: #afb8c4;           /* Xám sáng - Border */
+      --border-color: #cbd5e1;           /* Xám sáng - Border */
       --surface-color: #ffffff;          /* Trắng - Card/Modal */
       --hover-bg: #f1f5f9;               /* Xám siêu nhạt - Hover */
-      --input-bg: #e4e4e4;               /* Trắng - Input background */
+      --input-bg: #ffffff;               /* Trắng - Input background */
       --success-color: #10b981;          /* Xanh lá - Thành công */
       --warning-color: #f59e0b;          /* Cam - Cảnh báo */
       --error-color: #ef4444;            /* Đỏ - Lỗi */
       --info-color: #06b6d4;             /* Cyan - Thông tin */
       
       /* Table Colors - Light */
-      --tbl-head-bg: #bec4cc;            /* Xám nhạt - Header table */
-      --tbl-head-text: #030407;          /* Tối - Text header */
+      --tbl-head-bg: #e2e8f0;            /* Xám nhạt - Header table */
+      --tbl-head-text: #1e293b;          /* Tối - Text header */
       --tbl-row-bg: #ffffff;             /* Trắng - Row bình thường */
       --tbl-row-hover: #f1f5f9;          /* Xám siêu nhạt - Hover */
       --tbl-border: #cbd5e1;             /* Xám - Border */
@@ -80,14 +51,14 @@
       --glass-text: #1e293b;
       --glass-border: #cbd5e1;
 
-      /* Typography & Spacing (in REM) */
+      /* Typography & Spacing */
       --font-family: 'Segoe UI', sans-serif;
-      --font-size: 16px;         
-      --spacing-unit: 0.5rem;            /* 8px base unit */
+      --font-size: 14px;
+      --spacing-scale: 1;
       --radius: 0.25rem;
-      --shadow-sm: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.05);
-      --shadow-md: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.1);
-      --shadow-lg: 0 0.625rem 0.9375rem rgba(0, 0, 0, 0.1);
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
     }
 
     /* ─── THEME: DARK MODE ─── */
@@ -113,7 +84,7 @@
         /* Table Colors - Dark */
         --tbl-head-bg: #334155;            /* Xám tối - Header table */
         --tbl-head-text: #f1f5f9;          /* Sáng - Text header */
-        --tbl-row-bg: #415068;             /* Xanh đen - Row bình thường */
+        --tbl-row-bg: #1e293b;             /* Xanh đen - Row bình thường */
         --tbl-row-hover: #334155;          /* Xám tối - Hover */
         --tbl-border: #475569;             /* Xám trung bình - Border */
 
@@ -129,10 +100,43 @@
         --glass-border: #475569;
 
         /* Shadow - Dark (tối hơn) */
-        --shadow-sm: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.3);
-        --shadow-md: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.3);
-        --shadow-lg: 0 0.625rem 0.9375rem rgba(0, 0, 0, 0.3);
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3);
       }
+    }
+
+    /* ─── ALTERNATIVE: Manual Dark Mode Toggle (data-theme attribute) ─── */
+    /* Dùng khi muốn user chủ động chọn theme */
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --primary-color: #7c3aed;
+      --secondary-color: #94a3b8;
+      --app-bg: #1e1f21;
+      --header-bg: #787f8a;
+      --footer-bg: #302a56;
+      --text-color: #f1f5f9;
+      --text-secondary: #cbd5e1;
+      --border-color: #334155;
+      --surface-color: #1e293b;
+      --hover-bg: #334155;
+      --input-bg: #1e293b;
+      --success-color: #4ade80;
+      --warning-color: #facc15;
+      --error-color: #f87171;
+      --info-color: #22d3ee;
+      --tbl-head-bg: #334155;
+      --tbl-head-text: #f1f5f9;
+      --tbl-row-bg: #1e293b;
+      --tbl-row-hover: #334155;
+      --tbl-border: #475569;
+      --tab-active-bg: #334155;
+      --tab-active-text: #7c3aed;
+      --tab-inactive-bg: #1e293b;
+      --tab-inactive-text: #94a3b8;
+      --glass-bg: #1e293b;
+      --glass-text: #f1f5f9;
+      --glass-border: #475569;
     }
 
     /* --- APPLY VARIABLES --- */
@@ -206,29 +210,18 @@
     .dropdown-menu {
         background-color: var(--surface-color) !important;
         color: var(--text-color) !important;
-        border: 0.0625rem solid var(--border-color) !important;
-        border-radius: 0.375rem !important;
-        padding: 0.375rem 0 !important;
-        min-width: 10rem !important;
-        max-width: 20rem !important;
-        box-shadow: 0 0.375rem 0.75rem rgba(0, 0, 0, 0.15) !important;
-        transition: all 0.2s ease;
+        border-color: var(--border-color) !important;
+        transition: all 0.3s ease;
     }
 
     .dropdown-item {
         color: var(--text-color) !important;
-        padding: 0.375rem 0.75rem !important;
-        font-size: 0.8125rem !important;
-        font-weight: 500 !important;
-        border-radius: 0.25rem !important;
-        margin: 0 0.25rem !important;
-        transition: all 0.15s ease;
+        transition: all 0.2s ease;
     }
 
     .dropdown-item:hover {
         background-color: var(--hover-bg) !important;
         color: var(--primary-color) !important;
-        padding-left: 0.875rem !important;
     }
 
     .dropdown-item.active {
@@ -237,9 +230,8 @@
     }
 
     .dropdown-divider {
-        border-color: var(--border-color) !important;
-        opacity: 0.2 !important;
-        margin: 0.25rem 0 !important;
+        border-color: var(--border-color);
+        opacity: 0.3;
     }
 
     /* --- FORM CONTROLS --- */
@@ -249,10 +241,6 @@
         color: var(--text-color) !important;
         border-color: var(--border-color) !important;
         transition: all 0.2s ease;
-        text-align: center;
-        -webkit-user-select: text;    /* Allow text selection in inputs */
-        user-select: text;
-        touch-action: auto;  /* ✅ Allow swipe in inputs */
     }
     .form-control::placeholder {
         color: var(--text-secondary);
@@ -269,9 +257,6 @@
     .btn {
         transition: all 0.2s ease;
         font-weight: 500;
-        text-align: center;
-        line-clamp: 2;
-        touch-action: auto;  /* ✅ Allow swipe on buttons */
     }
 
     .btn-primary {
@@ -345,7 +330,33 @@
 
     tbody td {
         border-color: var(--tbl-border);
-        padding: 0.25rem;
+        padding: 0.75rem;
+    }
+
+    /* --- BADGE & LABEL --- */
+    .badge {
+        transition: all 0.2s ease;
+    }
+
+    .badge-primary {
+        background-color: var(--primary-color) !important;
+    }
+
+    .badge-success {
+        background-color: var(--success-color) !important;
+    }
+
+    .badge-danger {
+        background-color: var(--error-color) !important;
+    }
+
+    .badge-warning {
+        background-color: var(--warning-color) !important;
+        color: #1e293b !important;
+    }
+
+    .badge-info {
+        background-color: var(--info-color) !important;
     }
 
     /* --- MODAL & OVERLAY --- */
@@ -357,7 +368,7 @@
 
     .modal-header {
         background-color: var(--primary-color) !important;
-        color: var(--input-bg) !important;
+        color: #ffffff !important;
         border-color: var(--border-color) !important;
     }
 
@@ -469,173 +480,67 @@
       overflow: hidden; /* Cấm cuộn ở body, chỉ cuộn ở vùng content */
     }
 
-    /* --- 2. MAIN GRID LAYOUT (3 rows × 13 columns) --- */
-    body {
-      display: grid;
-      grid-template-rows: minmax(5vh, auto) 1fr minmax(5vh, auto);
-      grid-template-columns: repeat(var(--grid-cols), minmax(0, 1fr));
-      gap: 0;
-      font-family: var(--font-family) !important;
-      font-size: var(--font-size) !important;
-      transition: background-color 0.3s ease, color 0.3s ease;
-      
-      /* Grid Area Names */
-      grid-template-areas:
-        "h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13"
-        "m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13"
-        "f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13";
-    }
+    /* --- 2. LAYOUT KHUNG SƯỜN (SKELETON) --- */
     .app-container {
-      grid-area: h1 / h1 / -1 / -1;
       display: flex;
       flex-direction: column;
-      height: 100%;
-      width: 100%;
-      overflow: hidden; /* Chỉ cuộn trong app-content */
+      height: 100vh; /* Chiều cao bằng 100% màn hình thiết bị */
+      width: 100vw;
+      margin: 0;
+      padding: 0;
     }
 
-    /* APP-HEADER: Spans row 1, all columns + internal grid layout */
+    /* HEADER: Cố định 6% */
     .app-header {
-      grid-area: h1 / h1 / auto / -1;
-      display: grid;
-      grid-template-rows: 35% 65%;
-      grid-template-columns: repeat(var(--grid-cols), minmax(0, 1fr));
-      transition: background-color 0.3s ease, color 0.3s ease;
-      gap: 0;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1030; /* Bootstrap navbar z-index */
+      width: 100%; /* Căn giữa nội dung theo chiều dọc */
     }
 
-    /* TOP-BAR: Row 1 of header */
-    .app-header .top-bar {
-      grid-row: 1;
-      grid-column: 1 / -1;
-      background: var(--header-bg);
-      color: var(--text-color);
-      padding: 0 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    /* NAV-BAR: Row 2 of header */
-    .app-header .nav-container {
-      grid-row: 2;
-      grid-column: 1 / -1;
-      background: var(--header-bg);
-      color: var(--text-color);
-      padding: 0rem 0.5rem;
-      display: grid;
-      align-items: center;
-      justify-content: flex-start;
-      grid-template-columns: repeat(var(--grid-cols), minmax(0, 1fr));
-      grid-auto-flow: row;
-      gap: 1rem;
-    }
-
-    /* APP-CONTENT: Spans row 2, all columns */
+    /* CONTENT: Chiếm phần còn lại */
     .app-content {
-      grid-column: 1 / -1;
-      flex: 1 1 auto;
-      overflow: hidden;
+      flex: 1 1 auto;       /* Tự động lấp đầy khoảng trống còn lại */
+      overflow: hidden;     /* Ẩn thanh cuộn tổng, scroll sẽ nằm trong từng tab con */
       position: relative;
-      padding: 0.5rem 0.25rem;
-      display: flex;
-      flex-direction: column;
+      margin-top: var(--header-height);
+      padding-top: 1rem;         /* Quan trọng để con bên trong nhận height */
     }
 
-    /* FOOTER-BAR: Spans row 3, all columns */
+    /* FOOTER: Cố định 8% */
     .footer-bar {
-      grid-area: f1 / f1 / auto / -1;
-      max-height: var(--footer-height);
-      min-height: 2rem;
-      flex: 0 0 auto;
-      border-top: 1px solid var(--border-color);
+      max-height: 8vh;          /* Yêu cầu: 8% chiều cao */
+      min-height: 30px;     /* An toàn */
+      flex: 0 0 auto;       /* KHÔNG co giãn */
+      border-top: 1px solid #ccc;
       display: flex;
       justify-content: center;
       align-items: center;
-      background: var(--footer-bg) !important;
-      border-color: var(--border-color) !important;
-      color: var(--text-color) !important;
-      transition: background-color 0.3s ease, color 0.3s ease;
-      padding: 0.9rem;
+      width: 100%;
       z-index: 100;
+      padding: 15px;      /* Padding nội bộ 0 10px*/
     }
 
-    /* ─── CUSTOM GRID UTILITY CLASSES ─── */
-    /* Grid Left: Columns 1-6 (left side, items inline) */
-    .grid-left {
-      grid-column: 1 / 7;
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: 0.5rem;
-      justify-content: flex-start;
-    }
-
-    /* Grid Center: Column 7 (center, fit-content, items inline, centered) */
-    .grid-center {
-      grid-column: 7 / 8;
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: 0.5rem;
-      width: fit-content;
-      justify-content: center;
-      justify-self: center;
-    }
-
-    /* Grid Right: Columns 8-13 (right side, items inline) */
-    .grid-right {
-      grid-column: 8 / -1;
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: 0.5rem;
-      justify-content: flex-end;
-    }
 
     /* Form Elements siêu nhỏ */
     .form-control, .form-control-sm, .form-select-sm, .btn-sm, .input-group-sm {
       font-size: 0.75rem;
-      padding: 0.15rem 0.25rem;
-      min-height: 1.5rem;
+      padding: 0.15rem 0.4rem; /* Ép padding nhỏ nhất có thể */
+      min-height: 24px;
     }
-    .dropdown-menu {
-      font-size: 0.8125rem;
-      max-height: 20rem;
-      overflow-y: auto;
-    }
-    
-    .dropdown-menu .dropdown-item {
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      overflow: hidden;
-    }
-    
     .btn {
-      border-radius: 0.5rem;
+      border-radius: 0.8rem; /* Nút bo tròn hơn */
     }
     
     /* Fix Button Group Border Radius - Giữ lại border-radius cho tất cả button trong group */
     .btn-group > .btn {
-      border-radius: 0.5rem !important;
-    }
-
-    /* ─── SCROLLABLE CONTAINERS: Allow scroll gestures ─── */
-    .app-content,
-    .tab-content,
-    #tbl-container-tab2,
-    .nav-tabs,
-    .app-header .nav-container,
-    .footer-bar {
-      touch-action: auto;  /* ✅ Allow swipe/pan gestures */
-    }
-
-    table.table-bordered thead {
-      border: var(--tbl-border);
+      border-radius: 0.8rem !important;
     }
     
     td {
-      padding: 0;
+      padding: 0.2rem 0.1rem;
     }
 
     td select.form-select-sm, td input.form-control-sm {
@@ -643,13 +548,7 @@
       padding: 0 !important;
       border: none;
     }
-    
-    .badge {
-      padding: 0.25rem 0.5rem;
-      border-radius: 0.25rem;
-      width: fit-content;
-    }
-    
+    .badge { padding: 4px 8px; border-radius: 4px; width: fit-content; }
     .badge.planning { background: #e9ecef; color: #495057; }
     .badge.pending { background: #fff3cd; color: #856404; }
     .badge.in-progress { background: #cff4fc; color: #055160; }    
@@ -659,40 +558,36 @@
 
     .form-floating {
       font-size: 0.75rem;
-      padding: 0.15rem 0.25rem !important;
+      padding: 0.15rem 0.4rem !important; /* Ép padding nhỏ nhất có thể */      
     }
 
     /* Form Labels */
     .form-label {
       margin-bottom: 0 !important;
-      font-size: 0.625rem !important;
+      font-size: 0.7rem !important;
       color: #666;
       font-weight: 600;
     }
 
     /* --- 3. TAB SYSTEM & SCROLLING --- */
     .tab-content {
-      display: flex;
       flex: 1 1 auto; 
-      padding: 0 0.25rem 0.25rem 0.25rem;
-      height: 100%;
-      width: 100%;
+      padding: 0px 4px 4px 4px; /* Padding nhỏ cho nội dung cách lề */
+      height: 100%;        /* Quan trọng để con bên trong nhận height */
     }
     
     .tab-pane {
       height: 100%;
-      width: 100%;
-      display: flex;
+      display: flex;        /* Biến Tab thành Flex container để xử lý con bên trong */
       flex-direction: column;
     }
-    
     .card-header {
-      max-height: 10%;
-      min-height: 1.25rem;
-      flex: 0 0 auto;
-      width: 100%;
+      max-height: 10%;          /* Yêu cầu: 6% chiều cao */
+      min-height: 20px;     /* An toàn: Không nhỏ hơn 45px trên mobile */
+      flex: 0 0 auto;       /* KHÔNG co giãn */
+      width: 100%;      
       background-color: #f8f9fa;
-      padding: 0 0.25rem;
+      padding: 0 0.4rem 0 0.4rem;
       border-bottom: 1px solid #dee2e6;
       font-weight: bold;
       min-height: 2rem;
@@ -701,12 +596,15 @@
     }
 
     /* --- 4. TAB LIST (DANH SÁCH DỮ LIỆU & PAGINATION) --- */
+    /* Đây là phần xử lý yêu cầu Pagination cố định đáy Content */
+    
+    /* Card bao ngoài chiếm hết chiều cao tab */
+
+
     #tab-list {
       height: 100%;
-      width: 100%;
-      flex: 1 1 auto;
+      flex: 1 1 auto; /* Header lọc dữ liệu cố định */
     }
-    
     #tab-list .card {
       height: 100%;
       display: flex;
@@ -716,31 +614,32 @@
 
     /* Container bao gồm Bảng + Pagination */
     #tbl-container-tab2 {
-      flex: 1 1 auto;
+      flex: 1 1 auto;       /* Chiếm hết phần còn lại của card */
       display: flex;
       flex-direction: column;
-      overflow: hidden;
-      height: 100% !important;
+      overflow: hidden;     /* Ngăn tràn ra ngoài */
+      height: 100% !important; /* Override style cũ */
     }
 
     /* Vùng chứa bảng (Scrollable Area) */
     #tbl-container-tab2 .flex-grow-1 {
       flex: 1 1 auto;
-      overflow: auto;
+      overflow: auto;       /* Chỉ cuộn ở vùng này */
     }
 
     /* Vùng Pagination (Footer của Card) */
     #tbl-container-tab2 .card-footer {
-      flex: 0 0 auto;
+      flex: 0 0 auto;       /* Cố định chiều cao */
       background-color: #f8f9fa;
       border-top: 1px solid #dee2e6;
     }
     
     /* --- 5. TAB FORM (NHẬP LIỆU) --- */
+    /* Form cần cuộn độc lập */
     #tab-form {
       overflow-y: auto;
       height: 100%;
-      padding-bottom: 0.625rem;
+      padding-bottom: 10px; /* Tránh bị sát đáy */
     }
 
     /* --- 6. CÁC THÀNH PHẦN KHÁC (TABLE, BUTTON...) --- */
@@ -749,27 +648,24 @@
       position: sticky; 
       top: 0; 
       z-index: 10; 
-      box-shadow: 0 0.125rem 0.125rem -0.0625rem rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1); /* Bóng nhẹ ngăn cách header */
     }
     
-    .table-data td {
-      vertical-align: middle;
-      padding: 0.125rem;
-      font-size: 0.75rem;
-    }
+    .table-data td { vertical-align: middle; padding: 0.2rem; font-size: 0.75rem; }
 
     #tab-log {
       height: 100%;
+      /* position: fixed; */
+      bottom: 0;
     }
-    
     #log-list {
-      height: calc(100% - 2.5rem);
+      height: calc(100% - 40px); /* Trừ đi header log */
       overflow-y: auto;
       background-color: #1e1e1e;
       color: #d4d4d4;
       font-family: 'Courier New', Courier, monospace;
-      padding: 0.625rem;
-      border: 0.03125rem solid #4e3c3c;
+      padding: 10px;
+      border: 0.5px solid #4e3c3c;
     }
 
     .flex-center {
@@ -778,14 +674,12 @@
         align-items: center;
         gap: 1rem;
     }
-    
     .flex-inline-center {
         display: inline-flex;
         justify-content: center;
         align-items: center;
         gap: var(--font-size);
     }
-    
     .flex-inline-center > * {
         display: inline-flex;
     }
@@ -793,36 +687,53 @@
     .line-clamp-2 {
       display: -webkit-box;
       line-clamp: 2;
-      -webkit-line-clamp: 2;
+      -webkit-line-clamp: 2; /* Number of lines to show */
       -webkit-box-orient: vertical;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    
     /* Custom Class để Modal tự co giãn theo nội dung */
     .modal-fit-content .modal-dialog {
-        align-self: center;
-        justify-self: center;
-        max-width: 100%;
-        margin-top: 4.375rem;
-        margin-bottom: 6.25rem;
+        max-width: 100%;       /* Gỡ bỏ giới hạn độ rộng mặc định (500px/800px...) */
+        margin-top: 7vh;
+        margin-bottom: 10vh;
         width: fit-content;
-        height: fit-content;
-        min-width: 25rem;
+        height: fit-content;    /* QUAN TRỌNG: Bắt modal ôm sát nội dung */
+        min-width: 400px;      /* Đặt tối thiểu để không bị quá bé nếu nội dung ít */
     }
 
 
     @keyframes titleSlideIn {
       from {
           opacity: 0;
-          transform: translateX(-1.875rem);
+          transform: translateX(-30px); /* Bắt đầu lệch sang trái 30px */
       }
       to {
           opacity: 1;
-          transform: translateX(0);
+          transform: translateX(0); /* Về vị trí chuẩn */
       }
     }
+    .header-title {
+        /* Các thuộc tính cũ giữ nguyên... */
+        color: var(--primary); 
+        /* --- CẤU HÌNH ANIMATION --- */
+        /* Tên hiệu ứng | Thời gian chạy | Kiểu chuyển động */
+        animation-name: titleSlideIn;
+        animation-duration: 3s;
+        animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+        
+        /* QUAN TRỌNG 1: Chờ 1 giây sau khi xuất hiện mới bắt đầu chạy */
+        animation-delay: 1s;
+        
+        /* Mẹo tối ưu: Báo trước cho trình duyệt để dành GPU xử lý */
+        will-change: transform, opacity; 
+    }
     
+    /* Hiệu ứng phụ: Icon xoay nhẹ khi hiện ra cho sinh động */
+    .header-title i {
+        display: inline-block; /* Bắt buộc để transform hoạt động */
+        animation: iconSpin 3s ease-out forwards;
+    }
     
     @keyframes iconSpin {
         from { transform: rotate(-180deg) scale(0.5); }
@@ -838,7 +749,6 @@
     .flash-effect tr {
       animation: flash-bg 0.5s ease-out;
     }
-    
     /* Animation */
     @keyframes bounceIn {
       0%, 20%, 40%, 60%, 80%, 100% { animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000); }
@@ -846,7 +756,6 @@
       20% { transform: scale3d(1.1, 1.1, 1.1); }
       100% { opacity: 1; transform: scale3d(1, 1, 1); }
     }
-    
     .animate__bounceIn { animation-name: bounceIn; animation-duration: 1s; }
 
     /* CSS Riêng cho Admin Dashboard */
@@ -854,37 +763,43 @@
     #tab-admin-dashboard {
       width: 100%;
       height: 100%;
+      /* position: relative; */
     }
 
     /* Wrapper chính: Căn giữa tuyệt đối & Full màn hình */
     .admin-wrapper {
-      min-height: calc(100vh - 3.75rem);
+      /* Chiều cao tối thiểu trừ đi Header (ước lượng 60px) */
+      min-height: calc(100vh - 60px); 
       width: 100%;
+      
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      align-items: center;
+      justify-content: center; /* Căn giữa dọc */
+      align-items: center;     /* Căn giữa ngang */
+      
       background-color: #f4f6f8;
-      padding: 1.25rem;
+      padding: 20px;
     }
 
     .admin-header-text {
       text-align: center;
-      margin-bottom: 2.5rem;
+      margin-bottom: 40px;
       color: #2c3e50;
-      width: 100%;
+      width: 100%; /* Đảm bảo text không bị co cụm */
     }
 
     /* Thiết kế Card */
     .module-card {
       border: none;
-      border-radius: 1rem;
+      border-radius: 16px;
       background: white;
-      box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.05);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
       transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
       cursor: pointer;
+      
+      /* Fix layout card */
       height: 100%;
-      min-height: 15.625rem;
+      min-height: 250px; /* Chiều cao tối thiểu cho card đẹp hơn */
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -893,8 +808,9 @@
     }
 
     .module-card:hover {
-      box-shadow: 0 0.75rem 1.875rem rgba(0, 0, 0, 0.15);
-      z-index: 2;
+      /* transform: translateY(-8px); */
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+      z-index: 2; /* Nổi lên khi hover */
     }
 
     /* Màu sắc định danh */
@@ -902,8 +818,8 @@
     .card-op    { border-bottom: 5px solid #198754; }
     .card-acc   { border-bottom: 5px solid #ffc107; }
 
-    .module-icon { font-size: 3.5rem; margin-bottom: 1.25rem; opacity: 0.9; }
-    .module-title { font-weight: 700; font-size: 1.25rem; text-transform: uppercase; margin-bottom: 0.3125rem; }
+    .module-icon { font-size: 3.5rem; margin-bottom: 20px; opacity: 0.9; }
+    .module-title { font-weight: 700; font-size: 1.25rem; text-transform: uppercase; margin-bottom: 5px; }
 
     /* -----------------------------------------------------------
     QUY TẮC: "CHỈ ẨN KHI..." (Negative Logic)
@@ -947,310 +863,56 @@
     /* Đảm bảo modal không bị tràn màn hình nếu nội dung quá dài */
     @media (min-width: 576px) {
         .modal-fit-content .modal-dialog {
-            max-width: 95vw;
+            max-width: 95vw;   /* Giới hạn tối đa 95% chiều rộng màn hình */
         }
     }
+    
 
-    /* ========================================================================
-       MOBILE RESPONSIVE (Width < 768px)
-       ======================================================================== */
     @media screen and (max-width: 768px) {
-      /* ─── MOBILE GRID LAYOUT: Allow scroll both directions ─── */
-      body {
-        grid-template-rows: auto 1fr auto;
-        grid-template-columns: 1fr;
-        overflow: auto;
-        overflow-y: auto;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        font-size: 12px;
-      }
-
-      .app-header {
-        grid-area: auto;
-        grid-template-rows: 0 auto;  /* Hide top-bar (height 0) */
-      }
-
-      /* ─── HIDE TOP-BAR ─── */
-      .app-header .top-bar {
-        display: none !important;
-        height: 0 !important;
-        padding: 0 !important;
-      }
-
-      /* ─── NAV-CONTAINER: Horizontal flex, auto-wrap, horizontal scroll ─── */
-      .app-header .nav-container {
-        grid-row: 1;
-        grid-column: 1 / -1;
-        padding: 0.25rem 0;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: flex-start;
-        gap: 0;
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        white-space: nowrap;
-        background: var(--header-bg);
-        border-bottom: 1px solid var(--border-color);
-      }
-
-      /* ─── REDUCE ICON SIZE BY 50% ─── */
-      .app-header .nav-container i,
-      .app-header .nav-container .fa,
-      .app-header .nav-container [class*="fa-"] {
-        font-size: 0.75rem !important;
-        width: 1rem;
-        height: 1rem;
-        line-height: 1rem;
-      }
-
-      .app-header .nav-container button,
-      .app-header .nav-container a {
-        white-space: nowrap;
-        flex-shrink: 0;
-        font-size: 0.65rem;
-        padding: 0.3rem 0.5rem;
-        min-height: 1.5rem;
-        height: 1.5rem;
-      }
-
-      /* Mobile App Content */
-      .app-content {
-        grid-column: 1 / -1;
-        overflow-x: auto;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        padding: 0.35rem 0.175rem;
-        flex: 1 1 auto;
-      }
-
-      /* Mobile Footer: Margin-bottom 1rem, horizontal scroll */
-      .footer-bar {
-        grid-column: 1 / -1;
-        margin-bottom: 1rem;
-        font-size: 0.7rem;
-        min-height: 1.8rem;
-        height: auto;
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        white-space: nowrap;
-        padding: 0.6rem 0.35rem;
-      }
-
-      /* Mobile Tabs */
-      .nav-tabs {
-        flex-wrap: nowrap;
-        gap: 0.175rem;
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        white-space: nowrap;
-        margin-bottom: 0.175rem;
-      }
-
-      .nav-tabs .nav-link {
-        padding: 0.3rem 0.35rem;
-        font-size: 0.65rem;
-        margin-right: 0;
-        margin-bottom: 0;
-        flex-shrink: 0;
-        white-space: nowrap;
-      }
-
-      .tab-content {
-        padding: 0;
-      }
-
-      /* ─── REDUCE PADDING/MARGIN BY 30% ─── */
-      /* Forms: Flex column, left-align, max-width 4/12 columns */
-      form, .form-group {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        width: 100%;
-      }
-
-      input, select, textarea {
-        max-width: 33.33% !important;  /* 4/12 columns */
-        min-width: 50px !important;
-        margin-bottom: 0.21rem !important;
-        height: 1.5rem !important;
-        font-size: 0.7rem !important;
-        font-size: 12px !important;  /* Prevent zoom on iOS */
+      /* 1. Reset khổ rộng cho container chính */
+      body, .container, .main-form {
+        width: 100% !important;
+        min-width: 100% !important;
+        padding: 10px !important;
         box-sizing: border-box !important;
-        padding: 0.15rem 0.2rem !important;
+        flex-direction: column !important;
+        overflow-x: auto; /* Chặn cuộn ngang */
       }
 
+      /* 2. Chuyển các hàng ngang thành cột dọc 
+        (Giả sử bạn dùng div row/col hoặc table để chia cột) */
+      .row, .nav, .nav-bar, .form-group, table, tbody, tr, td {
+        display: block !important;
+        width: 100% !important;
+      }
+
+      /* 3. Tăng kích thước ô nhập liệu cho dễ bấm */
+      input, select, textarea {
+        min-width: 50px; /* Đảm bảo không quá nhỏ */
+        margin-bottom: 10px !important; /* Tạo khoảng cách giữa các ô */
+        height: 45px !important; /* Cao hơn để dễ chạm ngón tay */
+        font-size: 14px !important; /* Chữ to rõ, tránh việc iPhone tự zoom */
+        box-sizing: border-box !important;
+      }
+
+      /* 4. Xử lý Label (Nhãn) */
       label {
         display: block !important;
-        margin-bottom: 0.1rem !important;
-        margin-top: 0.35rem !important;
+        margin-bottom: 5px !important;
         font-weight: bold;
-        font-size: 0.65rem;
+        margin-top: 10px;
       }
 
+      /* 5. Nút bấm to rõ */
       button, .btn, .btn-sm {
-        padding: 0.35rem 0.45rem !important;
-        margin-top: 0.45rem !important;
-        margin-bottom: 0.21rem !important;
-        font-size: 0.65rem !important;
-        min-height: 1.5rem !important;
-        height: 1.5rem !important;
+        width: 50px !important;
+        height: 50px !important;
+        margin-top: 15px !important;
+        font-size: 14px !important;
       }
-
-      /* Hide desktop-only elements */
+      
+      /* 6. Ẩn các thành phần trang trí không cần thiết trên mobile (nếu có) */
       .desktop-only {
         display: none !important;
       }
-
-      /* Mobile Card Header */
-      .card-header {
-        padding: 0.35rem 0.175rem;
-        min-height: 1.5rem;
-        font-size: 0.7rem;
-        margin-bottom: 0.175rem;
-      }
-
-      .card {
-        margin-bottom: 0.35rem;
-        border: 0.5px solid var(--border-color);
-      }
-
-      /* Mobile Tables */
-      .table-data th {
-        padding: 0.2rem 0.1rem;
-        font-size: 0.6rem;
-      }
-
-      .table-data td {
-        padding: 0.1rem;
-        font-size: 0.6rem;
-      }
-
-      /* Mobile Tables Scrollable Container */
-      #tbl-container-tab2 {
-        overflow-x: auto !important;
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      .table {
-        min-width: 100%;
-        margin-bottom: 0.175rem;
-        font-size: 0.6rem;
-      }
-
-      /* ─── MODAL: Center on screen ─── */
-      .modal {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-      }
-
-      .modal-fit-content .modal-dialog {
-        margin: 0 auto !important;
-        width: 90vw !important;
-        max-width: 90vw !important;
-        min-width: 90vw !important;
-        max-height: 90vh !important;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-      }
-
-      .modal-content {
-        border-radius: 0.35rem;
-        align-items: center !important;
-        justify-content: center !important;
-      }
-
-      /* ─── TOAST: Center on screen ─── */
-      .toast-container {
-        position: fixed !important;
-        top: 50% !important;
-        left: 50% !important;
-        transform: translate(-50%, -50%) !important;
-        z-index: 9999 !important;
-        width: auto !important;
-        max-width: 90vw !important;
-      }
-
-      .toast {
-        margin: 0 auto;
-      }
-
-      /* Mobile Admin Wrapper */
-      .admin-wrapper {
-        min-height: calc(100vh - 3rem);
-        padding: 0.5rem 0.35rem;
-      }
-
-      .admin-header-text {
-        margin-bottom: 0.7rem;
-        font-size: 0.85rem;
-      }
-
-      .module-card {
-        min-height: 7rem;
-        margin-bottom: 0.7rem;
-        width: 100%;
-      }
-
-      /* ─── REDUCE ICON SIZE BY 50% ─── */
-      .module-icon {
-        font-size: 1.75rem !important;
-        width: 1.75rem;
-        height: 1.75rem;
-        line-height: 1.75rem;
-        margin-bottom: 0.35rem;
-      }
-
-      .module-title {
-        font-size: 0.7rem;
-      }
-
-      /* Mobile Log */
-      #log-list {
-        padding: 0.2rem;
-        font-size: 0.55rem;
-        max-height: calc(100vh - 10rem);
-        overflow-y: auto;
-      }
-
-      #tab-log {
-        padding: 0;
-      }
-
-      /* Mobile Flex */
-      .flex-center {
-        flex-direction: column;
-        gap: 0.35rem;
-      }
-
-      .flex-inline-center {
-        gap: 0.35rem;
-      }
-
-      /* ─────────────────────────────────────────────────────────── */
-      /* MOBILE GESTURE FIX: Prevent text selection on touch events */
-      /* ─────────────────────────────────────────────────────────── */
-      table tbody tr {
-        -webkit-user-select: auto;  /* iOS */
-        user-select: auto;          /* Standard */
-      }
-
-      table tbody tr * {
-        -webkit-user-select: auto;  /* Inputs, buttons, text inside rows */
-        user-select: auto;
-      }
     }
-
-

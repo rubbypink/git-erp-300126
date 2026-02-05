@@ -1,27 +1,6 @@
 
 
-function test() {
-  const val = getVal('test-input');
-  
-  if (!val) {
-    logA('Vui lòng nhập mã lệnh hoặc tên hàm', 'warning');
-    return;
-  }
-  
-  try {
-    // Cách 1: Thử chạy val như một function call/expression (ví dụ: myFunc(arg1, arg2))
-    const fn1 = new Function(`return (${val.trim()})`);
-    fn1();
-  } catch (e1) {
-    try {
-      // Cách 2: Nếu cách 1 thất bại, thử tạo function mới với nội dung là val
-      const fn2 = new Function(val.trim());
-      fn2();
-    } catch (e2) {
-      logA(`Lỗi khi thực thi: ${e2.message}`, 'danger');
-    }
-  }
-}
+
 
 /**
  * Extract row data from HTML form using data-field attributes
@@ -906,364 +885,65 @@ function updateStatUI(total, qty, avg) {
     if (elAvg) setVal(elAvg, fmt(avg));
 }
 
-/* =========================================================================
-* MODULE: UI SETTINGS MANAGER (V2 - THEME ENGINE)
-* ========================================================================= */
-const SETTINGS_KEY = '9TRIP_ERP_SETTINGS_V2';
-
-// 1. Định nghĩa 4 Bộ chủ đề (Updated with Tabs & Glass)
-const THEMES = {
-    default: {
-        name: "9Trip Standard",
-        colors: {
-        appBg: getComputedStyle(document.documentElement).getPropertyValue('--app-bg').trim(),
-        headerBg: getComputedStyle(document.documentElement).getPropertyValue('--header-bg').trim(),
-        tblHeadBg: getComputedStyle(document.documentElement).getPropertyValue('--tbl-head-bg').trim(),
-        tblHeadText: getComputedStyle(document.documentElement).getPropertyValue('--tbl-head-text').trim(),
-        tabActiveBg: getComputedStyle(document.documentElement).getPropertyValue('--tab-active-bg').trim(),
-        tabActiveText: getComputedStyle(document.documentElement).getPropertyValue('--tab-active-text').trim(),
-        tabInactiveBg: getComputedStyle(document.documentElement).getPropertyValue('--tab-inactive-bg').trim(),
-        tabInactiveText: getComputedStyle(document.documentElement).getPropertyValue('--tab-inactive-text').trim(),
-        glassBg: getComputedStyle(document.documentElement).getPropertyValue('--glass-bg').trim(),
-        glassText: getComputedStyle(document.documentElement).getPropertyValue('--glass-text').trim(),
-        btnPrimary: getComputedStyle(document.documentElement).getPropertyValue('--btn-primary').trim(),
-        btnSuccess: getComputedStyle(document.documentElement).getPropertyValue('--btn-success').trim(),
-        btnDanger: getComputedStyle(document.documentElement).getPropertyValue('--btn-danger').trim(),
-        btnInfo: getComputedStyle(document.documentElement).getPropertyValue('--btn-info').trim(),
-        btnSecondary: getComputedStyle(document.documentElement).getPropertyValue('--btn-secondary').trim()
-        },
-        fontFamily: getComputedStyle(document.documentElement).getPropertyValue('--font-family').trim(),
-        spacingScale: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--spacing-scale').trim()) || 1,
-        src: "https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp"
-    },
-    minimal: {
-        name: "Tối Giản",
-        colors: {
-            appBg: "#ffffff", headerBg: "#f8f9fa",
-            tblHeadBg: "#333333", tblHeadText: "#ffffff",
-            // Tab: Đen trắng rõ ràng
-            tabActiveBg: "#333333", tabActiveText: "#ffffff",
-            tabInactiveBg: "#f1f1f1", tabInactiveText: "#999999",
-            // Safety
-            glassBg: "#f8f9fa", glassText: "#000000",
-            // Buttons: Monochrome
-            btnPrimary: "#000000", btnSuccess: "#444444", btnDanger: "#000000", btnInfo: "#666666", btnSecondary: "#cccccc"
-        },
-        fontFamily: "'Inter', sans-serif",
-        spacingScale: 0.85
-    },
-    warm: {
-        name: "Ấm Áp",
-        colors: {
-            appBg: "#fff8f0", headerBg: "#fae1dd",
-            tblHeadBg: "#fec5bb", tblHeadText: "#6d4c41",
-            // Tab: Tone màu ấm
-            tabActiveBg: "#e8e1dd", tabActiveText: "#d62828",
-            tabInactiveBg: "#fae1dd", tabInactiveText: "#9d8189",
-            // Safety: Nền kem nhẹ
-            glassBg: "#fffaf5", glassText: "#5e503f",
-            // Buttons
-            btnPrimary: "#e76f51", btnSuccess: "#2a9d8f", btnDanger: "#d62828", btnInfo: "#f4a261", btnSecondary: "#8d99ae"
-        },
-        fontFamily: "'Merriweather', serif",
-        spacingScale: 1.15
-    },
-    modern: {
-        name: "Hiện Đại (Dark)",
-        colors: {
-            appBg: "#212529", headerBg: "#2c3034",
-            tblHeadBg: "#343a40", tblHeadText: "#f8f9fa",
-            // Tab: Dark mode Tabs cần nổi bật
-            tabActiveBg: "#0d6efd", tabActiveText: "#ffffff",
-            tabInactiveBg: "#343a40", tabInactiveText: "#adb5bd",
-            // Safety: Màu xám đậm cho input/card
-            glassBg: "#ededed", glassText: "#030303",
-            // Buttons: Neon colors
-            btnPrimary: "#3a86ff", btnSuccess: "#00b4d8", btnDanger: "#ff006e", btnInfo: "#8338ec", btnSecondary: "#6c757d"
-        },
-        fontFamily: "'Roboto', sans-serif",
-        spacingScale: 1
-    }
-};
-
-// 2. Mở Modal & Load Data
-function openSettingsModal() {
+/**
+ * =========================================================================
+ * SETTINGS MODAL - Theme & General Settings
+ * Note: All theme-related logic delegated to THEME_MANAGER class
+ * =========================================================================
+ */
+async function openSettingsModal() {
     try {
-        UI_RENDERER.renderTemplate('body', 'tmpl-download-library');
-        const myModal = UI_RENDERER.renderModal('tmpl-settings-form', 'Cài Đặt Chung', saveSettings, resetSettings);
+        // Render modal template
+        await A.UI.renderTemplate('body', 'tmpl-download-library');
+        const myModal = await A.UI.renderModal(
+            'tmpl-settings-form', 
+            'Cài Đặt Chung', 
+            saveThemeSettings,           // Save callback (calls THEME_MANAGER.saveSettingsFromForm)
+            () => THEME_MANAGER.resetToDefault(true)  // Reset callback with confirmation
+        );
+        
         const modalEl = getE('dynamic-modal');
-        setClass(modalEl, 'modal-fit-content', false); // Remove medium modal
-        setClass($('.modal-dialog', modalEl), 'modal-xl', true); // Make large modal
+        setClass(modalEl, 'modal-fit-content', false);
+        setClass($('.modal-dialog', modalEl), 'modal-xl', true);
         if (!modalEl) return;
         
-        // Load từ Storage hoặc Default
-        const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {};
-        const currentTheme = saved.themePreset || 'default';
-        
-        // Set giá trị Select
-        getE('st-theme-preset').value = currentTheme;
-        
-        // Nếu là Custom, load các giá trị lẻ. Nếu là Preset, load từ THEMES
-        if (currentTheme === 'custom' && saved.colors) {
-            fillSettingsForm(saved);
-        } else {
-            applyThemePreset(currentTheme, false); // false = chỉ điền form, ko apply ngay
+        // --- DELEGATE ALL THEME LOGIC TO THEME_MANAGER ---
+        if (!THEME_MANAGER) {
+            logError('Theme manager not initialized');
+            return;
         }
 
-        // Logo
-        if (saved.logoSrc) getE('st-logo-preview').src = saved.logoSrc; else getE('st-logo-preview').src = getE('main-logo').src;
+        // 1. Fill form with current theme colors
+        THEME_MANAGER.fillSettingsForm();
 
-        // Sync input color với text hiển thị
-        setupColorSync();
-        loadShortcutsToForm();
+        // 2. Setup color sync (color picker ↔ text display sync)
+        THEME_MANAGER.setupColorSync();
+
+        // 3. Load keyboard shortcuts (if function exists)
+        if (typeof loadShortcutsToForm === 'function') {
+            loadShortcutsToForm();
+        }
+
+        // 4. Set logo preview
+        if (getE('st-logo-preview')) {
+            const mainLogo = getE('main-logo');
+            getE('st-logo-preview').src = mainLogo ? mainLogo.src : 'https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp';
+        }
         
+        // Show modal and select theme tab
         myModal.show();
         selectTab('tab-theme-content');
+        
+        log('✅ Settings modal opened - Theme management delegated to THEME_MANAGER', 'info');
     } catch (e) {
         logError("Lỗi mở Cài Đặt:", e);
     }
-    
 }
 
-// 3. Xử lý khi chọn Theme Preset
-function applyThemePreset(presetKey, applyToApp = false) {
-    const theme = THEMES[presetKey];
-    if (!theme) return;
-
-    const setC = (id, val) => { const el = getE(id); if(el) { el.value = val; el.dispatchEvent(new Event('input')); }};
-
-    // Base Colors
-    setC('st-app-bg', theme.colors.appBg);
-    setC('st-header-bg', theme.colors.headerBg);
-    setC('st-tbl-head-bg', theme.colors.tblHeadBg);
-    setC('st-tbl-head-text', theme.colors.tblHeadText);
-    
-    // Tabs Colors (NEW)
-    setC('st-tab-active-bg', theme.colors.tabActiveBg);
-    setC('st-tab-active-text', theme.colors.tabActiveText);
-    setC('st-tab-inactive-bg', theme.colors.tabInactiveBg);
-    setC('st-tab-inactive-text', theme.colors.tabInactiveText);
-
-    // Glass/Safety Colors (NEW)
-    setC('st-glass-bg', theme.colors.glassBg);
-    setC('st-glass-text', theme.colors.glassText);
-
-    // Buttons
-    setC('st-btn-primary', theme.colors.btnPrimary);
-    setC('st-btn-success', theme.colors.btnSuccess);
-    setC('st-btn-danger', theme.colors.btnDanger);
-    setC('st-btn-info', theme.colors.btnInfo);
-    setC('st-btn-secondary', theme.colors.btnSecondary);
-
-    getE('st-font-family').value = theme.fontFamily;
-    getE('st-spacing-scale').value = theme.spacingScale;
-
-    if (applyToApp) {
-        // Có thể gọi saveSettings() nếu muốn lưu ngay
-    }
-}
-
-// 4. Lưu Settings (Cập nhật lấy thêm các field mới)
-function saveSettings() {
-    try {
-        const themePreset = getE('st-theme-preset').value;
-        
-        const settings = {
-            themePreset: themePreset,
-            fontFamily: getE('st-font-family').value,
-            fontSize: getE('st-font-size').value,
-            spacingScale: getE('st-spacing-scale').value,
-            logoSrc: getE('st-logo-preview').src || 'https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp',
-            colors: {
-                appBg: getE('st-app-bg').value,
-                headerBg: getE('st-header-bg').value,
-                tblHeadBg: getE('st-tbl-head-bg').value,
-                tblHeadText: getE('st-tbl-head-text').value,
-                
-                // New Fields
-                tabActiveBg: getE('st-tab-active-bg').value,
-                tabActiveText: getE('st-tab-active-text').value,
-                tabInactiveBg: getE('st-tab-inactive-bg').value,
-                tabInactiveText: getE('st-tab-inactive-text').value,
-                glassBg: getE('st-glass-bg').value,
-                glassText: getE('st-glass-text').value,
-
-                btnPrimary: getE('st-btn-primary').value,
-                btnSuccess: getE('st-btn-success').value,
-                btnDanger: getE('st-btn-danger').value,
-                btnInfo: getE('st-btn-info').value,
-                btnSecondary: getE('st-btn-secondary').value
-            }
-        };
-
-        // Logic check custom
-        if (themePreset !== 'custom') {
-            const original = THEMES[themePreset];
-            // So sánh đơn giản để biết có sửa ko
-            if (original && settings.colors.appBg !== original.colors.appBg) {
-                settings.themePreset = 'custom';
-            }
-        }
-
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-        applyToApp(settings);
-        saveShortcutsConfig();
-        const modalEl = document.getElementById('dynamic-modal');
-        bootstrap.Modal.getInstance(modalEl).hide();
-        
-    } catch (e) {
-        logError(e);
-    }
-}
-
-// 5. Apply vào trang (Core Engine)
-function applyToApp(s) {
-    if (!s) return;
-    const r = document.documentElement;
-    // Apply Colors
-    if (s.colors) {
-        const c = s.colors;
-        r.style.setProperty('--app-bg', c.appBg);
-        r.style.setProperty('--header-bg', c.headerBg);
-        r.style.setProperty('--footer-bg', c.headerBg); 
-        r.style.setProperty('--tbl-head-bg', c.tblHeadBg);
-        r.style.setProperty('--tbl-head-text', c.tblHeadText);
-        
-        // Tabs
-        r.style.setProperty('--tab-active-bg', c.tabActiveBg);
-        r.style.setProperty('--tab-active-text', c.tabActiveText);
-        r.style.setProperty('--tab-inactive-bg', c.tabInactiveBg);
-        r.style.setProperty('--tab-inactive-text', c.tabInactiveText);
-        
-        // Safety Layer
-        r.style.setProperty('--glass-bg', c.glassBg);
-        r.style.setProperty('--glass-text', c.glassText);
-        
-        // Buttons
-        r.style.setProperty('--btn-primary', c.btnPrimary);
-        r.style.setProperty('--btn-success', c.btnSuccess);
-        r.style.setProperty('--btn-danger', c.btnDanger);
-        r.style.setProperty('--btn-info', c.btnInfo);
-        r.style.setProperty('--btn-secondary', c.btnSecondary);
-        
-        // Auto Text Color Logic
-        if (s.themePreset === 'modern') {
-            r.style.setProperty('--text-color', '#f8f9fa');
-            r.style.setProperty('--border-color', '#495057'); // Border tối cho dark mode
-            r.style.setProperty('--tbl-row-hover', 'rgba(255,255,255,0.1)');
-        } else {
-            r.style.setProperty('--text-color', '#333333');
-            r.style.setProperty('--border-color', '#dee2e6');
-            r.style.setProperty('--tbl-row-hover', 'rgba(0,0,0,0.05)');
-        }
-    }
-
-    if (s.fontFamily) r.style.setProperty('--font-family', s.fontFamily);
-    if (s.fontSize) r.style.setProperty('--font-size', s.fontSize + 'px');
-    if (s.spacingScale) r.style.setProperty('--spacing-scale', s.spacingScale);
-
-    // Apply Logo
-    if (s.logoSrc) {
-        const headerTitle = document.querySelector('.app-header h5');
-        if (headerTitle) {
-            let img = headerTitle.querySelector('img.main-logo');
-            if (!img) {
-                img = document.createElement('img');
-                img.className = 'custom-logo me-2';
-                img.style.height = '24px';
-                headerTitle.insertBefore(img, headerTitle.firstChild);
-                const oldIcon = headerTitle.querySelector('.fa-plane');
-                if (oldIcon) oldIcon.style.display = 'none';
-            }
-            img.src = s.logoSrc;
-        }
-    }
-}
-
-// Cập nhật Helper Color Sync để thêm các trường mới
-function setupColorSync() {
-    const pairs = [
-        'st-app-bg', 'st-header-bg', 'st-tbl-head-bg', 'st-tbl-head-text',
-        'st-glass-bg', 'st-glass-text'
-    ];
-    pairs.forEach(id => {
-        const picker = getE(id);
-        const text = getE(id + '-text');
-        if (picker && text) {
-            text.value = picker.value;
-            picker.oninput = () => { text.value = picker.value; getE('st-theme-preset').value = 'custom'; };
-        }
-    });
-}
-
-// Helper: Fill form from saved object
-function fillSettingsForm(s) {
-    if(!s.colors) return;
-    const setC = (id, val) => { const el = getE(id); if(el) el.value = val; };
-    // Base Colors
-
-    setC('st-app-bg', s.colors.appBg);
-    setC('st-header-bg', s.colors.headerBg);
-
-    getE('st-font-family').value = s.fontFamily;
-    getE('st-font-size').value = s.fontSize;
-    getE('st-spacing-scale').value = s.spacingScale || 1;
-
-    setC('st-app-bg', s.colors.appBg);
-    setC('st-header-bg', s.colors.headerBg);
-    setC('st-tbl-head-bg', s.colors.tblHeadBg);
-    setC('st-tbl-head-text', s.colors.tblHeadText);
-
-    // Tabs Colors (NEW)
-    setC('st-tab-active-bg', s.colors.tabActiveBg);
-    setC('st-tab-active-text', s.colors.tabActiveText);
-    setC('st-tab-inactive-bg', s.colors.tabInactiveBg);
-    setC('st-tab-inactive-text', s.colors.tabInactiveText);
-
-    // Glass/Safety Colors (NEW)
-    setC('st-glass-bg', s.colors.glassBg);
-    setC('st-glass-text', s.colors.glassText);
-    // Buttons
-    setC('st-btn-primary', s.colors.btnPrimary);
-    setC('st-btn-success', s.colors.btnSuccess);
-    setC('st-btn-danger', s.colors.btnDanger);
-    setC('st-btn-info', s.colors.btnInfo);
-    setC('st-btn-secondary', s.colors.btnSecondary);
-}
-
-// Init Load
-function initSettings() {
-    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY));
-    if (saved) applyToApp(saved);
-}
-
-// Preview Logo
-function previewLogo() {
-    const file = getE('st-logo-upload').files[0];
-    if (file) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        getE('st-logo-preview').src = e.target.result;
-    }
-    reader.readAsDataURL(file);
-    }
-}
-
-function resetSettings() {
-    logA("Khôi phục cài đặt mặc định", 'info', () => {
-        localStorage.removeItem(SETTINGS_KEY);
-        applyThemePreset('default', true); // Load form default
-        applyToApp(THEMES['default']);     // Apply to UI
-    });
-}
-
-
-/**
- * ----------------------------------------------------------------------
- * MODULE: DOWNLOAD MANAGER (FINAL V3)
- * Logic: All-in-one, Auto VAT Filter, Dynamic ID Index
- * ----------------------------------------------------------------------
- */
+// =========================================================================
+// DOWNLOAD MANAGER (FINAL V3)
+// Logic: All-in-one, Auto VAT Filter, Dynamic ID Index
+// =========================================================================
 async function downloadData(type = 'excel') {
     // --- CẤU HÌNH INDEX (HARD-CODED RULES) ---
     // 1. Cột PayType để check VAT: Cột M trong Database -> Index 12 (0-based)

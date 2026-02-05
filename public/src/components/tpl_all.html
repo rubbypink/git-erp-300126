@@ -32,21 +32,26 @@
       </ul>
     </div>
 
-    <div class="tab-content p-1 scrollable-area bg-light" style="overflow-y: auto">
+    <div class="tab-content p-1 scrollable-area" style="overflow-y: auto">
       <div class="tab-pane fade show active" id="tab-theme-content" role="tabpanel">
-        <h6 class="col-12 fw-bold text-primary mb-1 border-bottom pb-2">
-          1. Giao Diện & Phông Chữ
-        </h6>
-        <form id="themes-form" class="row bg-white border-end bg-warning bg-opacity-50 pb-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="d-inline-flex fw-bold text-primary mb-1 border-bottom pb-2">
+            1. Giao Diện & Phông Chữ
+          </h6>
+          <button id="theme-toggle" class="btn btn-light btn-sm" onclick="toggleTheme()">
+            <i class="fa-solid fa-moon"></i>
+          </button>
+        </div>
+        <form id="themes-form" class="row border-end bg-opacity-50 pb-3">
           <div class="col-3">
             <label class="form-label small fw-bold">Bộ chủ đề mẫu (Theme)</label>
 
             <select class="form-select form-select-sm fw-bold text-primary" id="st-theme-preset"
-              onchange="applyThemePreset(this.value)">
-              <option value="default">🔵 9Trip Standard (Mặc định)</option>
+              onchange="applyThemePresetFromForm(this.value)">
+              <option value="light">🔵 9Trip Standard (Mặc định)</option>
+              <option value="dark">⚫ Hiện Đại (Dark/Modern)</option>
               <option value="minimal">⚪ Tối Giản (Minimalist)</option>
               <option value="warm">🟠 Ấm Áp (Cozy)</option>
-              <option value="modern">⚫ Hiện Đại (Dark/Modern)</option>
               <option value="custom">🔧 Tùy chỉnh (Custom)</option>
             </select>
 
@@ -90,7 +95,7 @@
             <label class="form-label small fw-bold">Logo App</label>
 
             <div class="d-flex align-items-center gap-2">
-              <div class="border p-1 rounded bg-light d-flex justify-content-center align-items-center"
+              <div class="border p-1 rounded d-flex justify-content-center align-items-center"
                 style="width: 40px; height: 40px">
                 <img id="st-logo-preview" src="" style="max-width: 100%; max-height: 100%" />
               </div>
@@ -108,12 +113,11 @@
 
           <div class="row g-2 mb-1">
             <div class="col-12">
-              <small class="text-muted fw-bold text-uppercase bg-light">Màu Nền (Background & Header)</small>
+              <small class="text-muted fw-bold text-uppercase">Màu Nền (Background & Header)</small>
             </div>
 
             <div class="col-3">
               <label class="small">App Background</label>
-
               <div class="input-group input-group-sm">
                 <input type="color" class="form-control form-control-color" id="st-app-bg" value="#f8f9fa" />
 
@@ -215,7 +219,7 @@
             </div>
 
             <div class="col-6">
-              <label class="small">Nền an toàn</label>
+              <label class="small">Nền an toàn (Glass BG)</label>
               <div class="input-group input-group-sm">
                 <input type="color" class="form-control form-control-color" id="st-glass-bg" />
                 <input type="text" class="form-control" id="st-glass-bg-text" readonly />
@@ -223,10 +227,65 @@
             </div>
 
             <div class="col-6">
-              <label class="small">Màu chữ</label>
+              <label class="small">Màu chữ (Glass Text)</label>
               <div class="input-group input-group-sm">
                 <input type="color" class="form-control form-control-color" id="st-glass-text" />
                 <input type="text" class="form-control" id="st-glass-text-text" readonly />
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-2 mt-2">
+            <div class="col-12">
+              <small class="text-muted fw-bold text-uppercase border-top pt-2 d-block mt-2">Màu Bổ Sung (Extra
+                Colors)</small>
+            </div>
+
+            <div class="col-6">
+              <label class="small">Text Color (Chữ Chính)</label>
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-text-color" />
+                <input type="text" class="form-control" id="st-text-color-text" readonly />
+              </div>
+            </div>
+
+            <div class="col-6">
+              <label class="small">Border Color</label>
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-border-color" />
+                <input type="text" class="form-control" id="st-border-color-text" readonly />
+              </div>
+            </div>
+
+            <div class="col-6">
+              <label class="small">Surface Color (Card/Modal)</label>
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-surface-color" />
+                <input type="text" class="form-control" id="st-surface-color-text" readonly />
+              </div>
+            </div>
+
+            <div class="col-6">
+              <label class="small">Hover Background</label>
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-hover-bg" />
+                <input type="text" class="form-control" id="st-hover-bg-text" readonly />
+              </div>
+            </div>
+
+            <div class="col-6">
+              <label class="small">Input Background</label>
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-input-bg" />
+                <input type="text" class="form-control" id="st-input-bg-text" readonly />
+              </div>
+            </div>
+
+            <div class="col-6">
+              <label class="small">Footer Background</label>
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-footer-bg" />
+                <input type="text" class="form-control" id="st-footer-bg-text" readonly />
               </div>
             </div>
           </div>
@@ -240,16 +299,17 @@
             <h6 class="fw-bold text-danger border-bottom pb-2 mb-3">
               <i class="bi bi-command me-2"></i>Cấu hình phím tắt
             </h6>
-            
+
             <!-- Button Thêm Mới Shortcut -->
             <div class="mb-3">
-              <button type="button" class="btn btn-sm btn-success" id="btn-add-shortcut" onclick="showAddShortcutForm()">
+              <button type="button" class="btn btn-sm btn-success" id="btn-add-shortcut"
+                onclick="showAddShortcutForm()">
                 <i class="fa-solid fa-plus me-2"></i>Thêm Phím Tắt Mới
               </button>
             </div>
 
             <!-- Form Nhập Shortcut Mới -->
-            <div class="card card-border bg-light mb-3 d-none" id="add-shortcut-form-container">
+            <div class="card card-border mb-3 d-none" id="add-shortcut-form-container">
               <div class="card-body p-3">
                 <h6 class="fw-bold text-success mb-3">
                   <i class="fa-solid fa-plus-circle me-2"></i>Tạo Phím Tắt Mới
@@ -278,14 +338,17 @@
                     <label for="new-sc-function">Tên Hàm Thực Thi</label>
                   </div>
                   <div class="col-md-2 form-floating">
-                    <input type="text" class="form-control form-control-sm text-center fw-bold" id="new-sc-key" placeholder="Click để ghi" readonly>
+                    <input type="text" class="form-control form-control-sm text-center fw-bold" id="new-sc-key"
+                      placeholder="Click để ghi" readonly>
                     <label for="new-sc-key">Phím Tắt</label>
                   </div>
                   <div class="col-md-1 flex-center">
-                    <button type="button" class="btn btn-sm btn-primary flex-grow-1" id="btn-record-new-key" onclick="startRecordingNewKey()">
+                    <button type="button" class="btn btn-sm btn-primary flex-grow-1" id="btn-record-new-key"
+                      onclick="startRecordingNewKey()">
                       <i class="fa-solid fa-keyboard"></i>
                     </button>
-                    <button type="button" class="btn btn-sm btn-success flex-grow-1" id="btn-save-new-shortcut" onclick="saveNewShortcut()">
+                    <button type="button" class="btn btn-sm btn-success flex-grow-1" id="btn-save-new-shortcut"
+                      onclick="saveNewShortcut()">
                       <i class="fa-solid fa-check"></i>
                     </button>
                     <button type="button" class="btn btn-sm btn-secondary flex-grow-1" onclick="hideAddShortcutForm()">
@@ -335,6 +398,20 @@
                     id="sc-actionCreateBooking" readonly placeholder="Click to set..." data-fn="actionCreateBooking" />
                 </div>
               </div>
+              <div class="list-group-item d-flex justify-content-between align-items-center py-3 px-0">
+                <div>
+                  <div class="fw-bold text-dark">
+                    <i class="fa-solid fa-plus-circle me-2 text-success"></i>Mở Máy
+                    Tính
+                  </div>
+                  <small class="text-muted">Hàm thực thi: <code>openCalculator()</code></small>
+                </div>
+                <div class="position-relative" style="width: 160px">
+                  <input type="text"
+                    class="form-control form-control-sm text-center fw-bold text-primary shortcut-input"
+                    id="sc-openCalculator" readonly placeholder="Click to set..." data-fn="openCalculator" />
+                </div>
+              </div>
 
               <div class="list-group-item d-flex justify-content-between align-items-center py-3 px-0">
                 <div>
@@ -372,40 +449,46 @@
 
       <div class="tab-pane fade admin-only" id="tab-users-content" role="tabpanel">
         <div id="users-config-container">
-            <div class="card shadow-sm border-0 h-100">
-              <div class="card-body h-100">
-                <div class="d-flex flex-row justify-content-between border-bottom pb-2 mb-3"> 
-                  <h6 class="fw-bold text-success">
-                    <i class="fa-solid fa-users me-2"></i>Quản Lý Người Dùng
-                  </h6>
-                  <button type="button" class="btn btn-sm btn-secondary" onclick="renderUsersConfig()">Load</button>
+          <div class="card shadow-sm border-0 h-100">
+            <div class="card-body h-100">
+              <div class="d-flex flex-row justify-content-between border-bottom pb-2 mb-3">
+                <h6 class="fw-bold text-success">
+                  <i class="fa-solid fa-users me-2"></i>Quản Lý Người Dùng
+                </h6>
+                <button type="button" class="btn btn-sm btn-secondary"
+                  onclick="A.Auth.renderUsersConfig()">Load</button>
+              </div>
+              <!-- Phần Form Nhập Liệu -->
+              <form id="users-form" class="row g-2 mb-2 p-2 rounded border h-100" style="font-size: 0.75rem;">
+
+                <div class="col-md-3 form-floating">
+                  <input type="text" class="form-control form-control-sm" id="form-account" placeholder="Account name"
+                    style="max-height: 1.5rem !important;">
+                  <label for="form-account">Tên Tài Khoản</label>
                 </div>
-                <!-- Phần Form Nhập Liệu -->
-                <form id="users-form" class="row g-2 mb-2 p-2 rounded border h-100" style="font-size: 0.75rem;">
 
-                  <div class="col-md-3 form-floating">
-                    <input type="text" class="form-control form-control-sm" id="form-account" placeholder="Account name" style="max-height: 1.5rem !important;">
-                    <label for="form-account">Tên Tài Khoản</label>
-                  </div>
+                <div class="col-md-3 form-floating">
+                  <input type="text" class="form-control form-control-sm" id="form-user-name" placeholder="Họ tên"
+                    style="max-height: 1.5rem !important;">
+                  <label for="form-user-name">Tên Người Dùng</label>
+                </div>
 
-                  <div class="col-md-3 form-floating">
-                    <input type="text" class="form-control form-control-sm" id="form-user-name" placeholder="Họ tên" style="max-height: 1.5rem !important;">
-                    <label for="form-user-name">Tên Người Dùng</label>
-                  </div>
+                <div class="col-md-3 form-floating">
+                  <input type="text" class="form-control form-control-sm" id="form-user-phone" placeholder="0123456789"
+                    style="max-height: 1.5rem !important;">
+                  <label for="form-user-phone">Số Điện Thoại</label>
+                </div>
 
-                  <div class="col-md-3 form-floating">
-                    <input type="text" class="form-control form-control-sm" id="form-user-phone" placeholder="0123456789" style="max-height: 1.5rem !important;">
-                    <label for="form-user-phone">Số Điện Thoại</label>
-                  </div>
+                <div class="col-md-3 form-floating">
+                  <input type="email" class="form-control form-control-sm" id="form-email"
+                    placeholder="user@example.com" style="max-height: 1.5rem !important;">
+                  <label for="form-email">Email</label>
+                </div>
 
-                  <div class="col-md-3 form-floating">
-                    <input type="email" class="form-control form-control-sm" id="form-email" placeholder="user@example.com" style="max-height: 1.5rem !important;">
-                    <label for="form-email">Email</label>
-                  </div>
-
-                  <div class="col-md-3">
-                    <div class="form-floating"> 
-                    <select class="form-select form-select-sm" style="max-height: 1.5rem !important;" id="form-role" onchange="
+                <div class="col-md-3">
+                  <div class="form-floating">
+                    <select class="form-select form-select-sm" style="max-height: 1.5rem !important;" id="form-role"
+                      onchange="
                       const selectedOption = this.options[this.selectedIndex];
                       const level = selectedOption.getAttribute('data-level') || '0';
                       getE('form-level').value = level;
@@ -419,78 +502,85 @@
                       <option value="admin" data-level="99">Admin</option>
                     </select>
                     <label for="form-role">Vai Trò</label>
-                    </div>
                   </div>
-
-                  <div class="col-md-6">
-                    <label class="form-label small fw-bold">Group</label>
-                    <div class="border rounded p-2 bg-white" style="max-height: 150px; overflow-y: auto;">
-                      <div class="form-check form-check-inline">
-                        <input class="form-check-input group-role-checkbox" type="checkbox" id="group-guests" value="GUESTS">
-                        <label class="form-check-label small" for="group-guests">Khách</label>
-                      </div>
-                      <div class="form-check form-check-inline">
-                        <input class="form-check-input group-role-checkbox" type="checkbox" id="group-sales" value="SALES">
-                        <label class="form-check-label small" for="group-sales">Sales Team</label>
-                      </div>
-                      <div class="form-check form-check-inline">
-                        <input class="form-check-input group-role-checkbox" type="checkbox" id="group-operations" value="OPERATIONS">
-                        <label class="form-check-label small" for="group-operations">Operations Team</label>
-                      </div>
-                      <div class="form-check form-check-inline">
-                        <input class="form-check-input group-role-checkbox" type="checkbox" id="group-accountant" value="ACCOUNTANT">
-                        <label class="form-check-label small" for="group-accountant">Kế toán</label>
-                      </div>
-                      <div class="form-check form-check-inline">
-                        <input class="form-check-input group-role-checkbox" type="checkbox" id="group-admin" value="ADMIN">
-                        <label class="form-check-label small" for="group-admin">Admin</label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="col-md-3 form-floating" style="max-height: 1.5rem !important;">
-                    <input type="date" class="form-control form-control-sm" id="form-created-at" readonly>
-                    <label for="form-created-at">Ngày Tạo</label>
-                  </div>
-
-                  <div class="text-muted small" style="max-height: 1.5rem !important;">
-                    <input type="hidden" class="form-control form-control-sm" id="form-level" placeholder="1" min="0" readonly>
-                  </div>
-                  <div class="text-muted small">
-                    <input type="hidden" class="form-control form-control-sm" id="form-uid" readonly placeholder="Tự động" style="max-height: 1.5rem !important;">
-                  </div>
-                  
-                </form>
-
-                <!-- Phần Bảng Dữ Liệu -->
-                <h6 class="fw-bold text-info border-bottom pb-2 mb-3">
-                  <i class="fa-solid fa-table me-2"></i>Danh Sách Người Dùng
-                </h6>
-                <div class="table-responsive" style="max-height: 50vh; overflow-y: auto;">
-                  <table class="table table-bordered table-hover table-sm" id="users-table">
-                    <thead class="table-light sticky-top text-center">
-                      <tr>
-                        <th style="width: 15%">UID</th>
-                        <th style="width: 12%">Account</th>
-                        <th style="width: 15%">Họ & Tên</th>
-                        <th style="width: 12%">Điện Thoại</th>
-                        <th style="width: 15%">Email</th>
-                        <th style="width: 8%">Vai Trò</th>
-                        <th style="width: 7%">Cấp Độ</th>
-                        <th style="width: 10%">Nhóm</th>
-                        <th style="width: 15%">Ngày Tạo</th>
-                        <th style="width: 8%">Hành động</th>
-                      </tr>
-                    </thead>
-                    <tbody id="users-table-body">
-                      <tr>
-                        <td colspan="10" class="text-center text-muted">Đang tải dữ liệu...</td>
-                      </tr>
-                    </tbody>
-                  </table>
                 </div>
+
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold">Group</label>
+                  <div class="border rounded p-2 bg-white" style="max-height: 150px; overflow-y: auto;">
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input group-role-checkbox" type="checkbox" id="group-guests"
+                        value="GUESTS">
+                      <label class="form-check-label small" for="group-guests">Khách</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input group-role-checkbox" type="checkbox" id="group-sales"
+                        value="SALES">
+                      <label class="form-check-label small" for="group-sales">Sales Team</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input group-role-checkbox" type="checkbox" id="group-operations"
+                        value="OPERATIONS">
+                      <label class="form-check-label small" for="group-operations">Operations Team</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input group-role-checkbox" type="checkbox" id="group-accountant"
+                        value="ACCOUNTANT">
+                      <label class="form-check-label small" for="group-accountant">Kế toán</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input group-role-checkbox" type="checkbox" id="group-admin"
+                        value="ADMIN">
+                      <label class="form-check-label small" for="group-admin">Admin</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-3 form-floating" style="max-height: 1.5rem !important;">
+                  <input type="date" class="form-control form-control-sm" id="form-created-at" readonly>
+                  <label for="form-created-at">Ngày Tạo</label>
+                </div>
+
+                <div class="text-muted small" style="max-height: 1.5rem !important;">
+                  <input type="hidden" class="form-control form-control-sm" id="form-level" placeholder="1" min="0"
+                    readonly>
+                </div>
+                <div class="text-muted small">
+                  <input type="hidden" class="form-control form-control-sm" id="form-uid" readonly placeholder="Tự động"
+                    style="max-height: 1.5rem !important;">
+                </div>
+
+              </form>
+
+              <!-- Phần Bảng Dữ Liệu -->
+              <h6 class="fw-bold text-info border-bottom pb-2 mb-3">
+                <i class="fa-solid fa-table me-2"></i>Danh Sách Người Dùng
+              </h6>
+              <div class="table-responsive" style="max-height: 50vh; overflow-y: auto;">
+                <table class="table table-bordered table-hover table-sm" id="users-table">
+                  <thead class="table-light sticky-top text-center">
+                    <tr>
+                      <th style="width: 15%">UID</th>
+                      <th style="width: 12%">Account</th>
+                      <th style="width: 15%">Họ & Tên</th>
+                      <th style="width: 12%">Điện Thoại</th>
+                      <th style="width: 15%">Email</th>
+                      <th style="width: 8%">Vai Trò</th>
+                      <th style="width: 7%">Cấp Độ</th>
+                      <th style="width: 10%">Nhóm</th>
+                      <th style="width: 15%">Ngày Tạo</th>
+                      <th style="width: 8%">Hành động</th>
+                    </tr>
+                  </thead>
+                  <tbody id="users-table-body">
+                    <tr>
+                      <td colspan="10" class="text-center text-muted">Đang tải dữ liệu...</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
+          </div>
         </div>
       </div>
     </div>
@@ -556,7 +646,7 @@
           <tbody id="grid-body"></tbody>
         </table>
       </div>
-      <div class="flex-shrink-0 card-footer w-100 py-1 bg-light border-top">
+      <div class="flex-shrink-0 card-footer w-100 py-1 border-top">
         <div class="d-flex justify-content-between align-items-center">
           <small id="grid-count" class="grid-count">Tổng: 0 dòng</small>
           <div id="pagination" class="pagination m-0"></div>
@@ -577,12 +667,12 @@
   </div>
   <div class="border-top my-2 flex-grow-1">
     <ul id="log-list" data-ontabs="5" class="list-group list-group-flush font-monospace small overflow-auto"></ul>
-  </div> 
+  </div>
 </template>
 <template id="tmpl-admin-dashboard">
 
   <div class="container-fluid admin-wrapper">
-    
+
     <div class="admin-header-text">
       <h2 class="fw-bold"><i class="fas fa-user-shield me-2"></i>TRUNG TÂM QUẢN TRỊ (ADMIN)</h2>
       <p class="text-muted">Xin chào, vui lòng chọn phân hệ làm việc</p>
@@ -590,7 +680,7 @@
 
     <div class="container">
       <div class="row g-4 justify-content-center">
-        
+
         <div class="col-md-4 col-sm-12">
           <div class="card p-5 text-center module-card card-sales" onclick="reloadSystemMode('sale')">
             <div class="module-icon text-primary">

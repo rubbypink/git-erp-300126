@@ -1,116 +1,125 @@
-// CẤU HÌNH FIREBASE
-    var CFG_FB_RTDB = {
-        apiKey: "AIzaSyAhBOSEAGKN5_8_lfWSPLzQ5gBBd33Jzdc",
-        authDomain: "trip-erp-923fd.firebaseapp.com",
-        projectId: "trip-erp-923fd",
-        storageBucket: "trip-erp-923fd.firebasestorage.app",
-        messagingSenderId: "600413765548",
-        appId: "1:600413765548:web:bc644e1e58f7bead5d8409",
-        measurementId: "G-BG2ECM4R89"
-    };
-
-    // --- 1. FIREBASE SETUP MODULE ---
-    var app, auth, db;
     
     /**
      * APP_CORE: Điều phối toàn bộ vòng đời ứng dụng
      * Tại sao: Đảm bảo không có code nào chạy tự do ngoài tầm kiểm soát của Auth
      */
-    const APP_CORE = {
-        init: async function() {
-            try {
-                log("🚀 System Booting...", "info");
-                await initFirebase(); // Khởi tạo app, auth, db
-                this.listenAuth();
-            } catch (error) {
-                log("🔥 Boot Error: " + error.message, "danger");
-            }
-        },
+    // const APP_CORE = {
+    //     isAuth: false,
+    //     init: async function() {
+    //         try {
+    //             log("🚀 System Booting...", "info");
+    //             await initFirebase(); // Khởi tạo app, auth, db
+    //             this.listenAuth();
+    //         } catch (error) {
+    //             log("🔥 Boot Error: " + error.message, "danger");
+    //         }
+    //     },
 
-        listenAuth: function() {
-            auth.onAuthStateChanged(async (user) => {
-                const launcher = document.getElementById('app-launcher');
-                const app = document.getElementById('main-app');
-                if (user) {
+    //     listenAuth: function() {
+    //         auth.onAuthStateChanged(async (user) => {
+    //             const launcher = document.getElementById('app-launcher');
+    //             const app = document.getElementById('main-app');
+    //             if (user) {
+    //                 log("🔓 User detected, verifying profile...", "success");
+    //                 this.isAuth = true;
+    //                 if(app) app.style.opacity = 1;
+    //                 // await A.UI.init();
+    //                 await A.UI.init();
+    //                 await AUTH_MANAGER.fetchUserProfile(user);
+    //                 // Sau khi fetch profile và Security Manager đã render template vào app-container
+    //                 if (launcher) launcher.classList.add('d-none');
+    //                 app.classList.remove('d-none');
+    //                 showLoading(false);
+    //                 // B2. EVENTS: Gán sự kiện
+    //                 // setupStaticEvents();
+    //                 // initShortcuts();
+    //             } else {
+    //                 log("🔒 No user. Showing Login...", "warning");
+    //                 if (launcher) launcher.classList.add('d-none');
+    //                 if (launcher) launcher.remove();
+    //                 if(app) app.style.opacity = 1;            
+    //                 AUTH_MANAGER.showLoginForm();
+    //             }
+    //         });
+    //     }
+    // };
+
+    // async function initFirebase() {
+    //     return new Promise((resolve, reject) => {
+    //         try {
+    //             if (!firebase.apps.length) {
+    //                 app = firebase.initializeApp(CFG_FB_RTDB);
+    //             } else {
+    //                 app = firebase.app();
+    //             }
+                
+    //             auth = firebase.auth();
+                
+    //             // ✅ CHUẨN: Dùng Firestore
+    //             db = firebase.firestore(); 
+                
+    //             // Kích hoạt A.DB
+    //             if (typeof A.DB !== 'undefined') {
+    //                 A.DB.db = db;
+    //                 log("✅ A.DB connected to Firestore");
+    //             }
+    //             resolve(app);
+    //         } catch(e) {
+    //             console.error("🔥 Firebase Init Error:", e);
+    //             reject(e);
+    //         }
+    //     });
+    // }
+
+    //  AUTH MODULE (FIRESTORE VERSION) ---
+    const AUTH_MANAGER = {
+        CFG_FB_RTDB: {
+            apiKey: "AIzaSyAhBOSEAGKN5_8_lfWSPLzQ5gBBd33Jzdc",
+            authDomain: "trip-erp-923fd.firebaseapp.com",
+            projectId: "trip-erp-923fd",
+            storageBucket: "trip-erp-923fd.firebasestorage.app",
+            messagingSenderId: "600413765548",
+            appId: "1:600413765548:web:bc644e1e58f7bead5d8409",
+            measurementId: "G-BG2ECM4R89"
+        },
+        app: null,
+        auth: null,
+        db: null,
+        initFirebase: async function () {
+            return new Promise((resolve, reject) => {
+                try {
+                    if (!firebase.apps.length) {
+                        this.app = firebase.initializeApp(this.CFG_FB_RTDB);
+                    } else {
+                        this.app = firebase.app();
+                    }
                     
-                    log("🔓 User detected, verifying profile...", "success");
-                    if(app) app.style.opacity = 1;
-                    await UI_RENDERER.init();
-                    await AUTH_MANAGER.fetchUserProfile(user);
-                    // Sau khi fetch profile và Security Manager đã render template vào app-container
-                    if (launcher) launcher.classList.add('d-none');
-                    app.classList.remove('d-none');
-                    showLoading(false);
-                    // B2. EVENTS: Gán sự kiện
-                    setupStaticEvents();
-                    initShortcuts();
-                } else {
-                    log("🔒 No user. Showing Login...", "warning");
-                    if (launcher) launcher.classList.add('d-none');
-                    if (launcher) launcher.remove();
-                    if(app) app.style.opacity = 1;            
-                    AUTH_MANAGER.showLoginForm();
+                    this.auth = firebase.auth();
+                    
+                    // ✅ CHUẨN: Dùng Firestore
+                    this.db = firebase.firestore(); 
+                    
+                    // Kích hoạt A.DB
+                    if (typeof A.DB !== 'undefined') {
+                        A.DB.db = this.db;
+                        log("✅ A.DB connected to Firestore");
+                    }
+                    resolve(this.app);
+                } catch(e) {
+                    console.error("🔥 Firebase Init Error:", e);
+                    reject(e);
                 }
             });
-        }
-    };
-
-    async function initFirebase() {
-        return new Promise((resolve, reject) => {
-            try {
-                if (!firebase.apps.length) {
-                    app = firebase.initializeApp(CFG_FB_RTDB);
-                } else {
-                    app = firebase.app();
-                }
-                
-                auth = firebase.auth();
-                
-                // ✅ CHUẨN: Dùng Firestore
-                db = firebase.firestore(); 
-                
-                // Kích hoạt DB_MANAGER
-                if (typeof DB_MANAGER !== 'undefined') {
-                    DB_MANAGER.db = db;
-                    log("✅ DB_MANAGER connected to Firestore");
-                }
-                resolve(app);
-            } catch(e) {
-                console.error("🔥 Firebase Init Error:", e);
-                reject(e);
-            }
-        });
-    }
-
-    // --- 2. AUTH MODULE (FIRESTORE VERSION) ---
-    const AUTH_MANAGER = {
-        // Lắng nghe trạng thái đăng nhập
-        // monitorAuth: function() {
-        //     auth.onAuthStateChanged(async (user) => {
-        //         if (user) {
-        //             log('🔓 Đã xác thực Auth, đang tải Profile...', 'info');
-        //             await this.fetchUserProfile(user);
-        //         } else {
-        //             showLoading(false);
-        //             log('🔒 Chưa đăng nhập', 'warning');
-        //             if (typeof showLoading === 'function') showLoading(false);
-        //             else document.getElementById('loading-overlay').classList.add('d-none');
-        //             log('Đã đóng loading');
-        //             this.showLoginForm();
-        //         }
-        //     });
-        // },
-
+        },
         // Lấy thông tin chi tiết từ Firestore
         fetchUserProfile: async function(firebaseUser) {
             try {
-
                 // ✅ FIRESTORE: Dùng .collection().doc().get()
-                const docRef = db.collection('users').doc(firebaseUser.uid);
+                const docRef = this.db.collection('users').doc(firebaseUser.uid);
                 const docSnap = await docRef.get();
                 if (!docSnap.exists) {
                     alert("Tài khoản chưa có dữ liệu trên ERP. Vui lòng liên hệ Admin.");
-                    auth.signOut();
+                    this.auth.signOut();
                     showLoading(false);
                     return;
                 }
@@ -130,7 +139,7 @@
                         CURRENT_USER.role = JSON.parse(masker).maskedRole;
                         CURRENT_USER.realRole = realRole;
                         localStorage.removeItem('erp-mock-role');
-                        UI_RENDERER.renderedTemplates = {}; // Clear cache template để load lại
+                        A.UI.renderedTemplates = {}; // Clear cache template để load lại
                         log('🎭 Admin masking mode detected. Cleaning up old role scripts...');
 
                         Object.keys(JS_MANIFEST).forEach(role => {
@@ -190,29 +199,29 @@
         showLoginForm: function() {
             // Thay vì dùng Modal, ta render trực tiếp vào app-container để ép người dùng login
             const loginHTML = `
-                <div class="container d-flex justify-content-center align-items-center vh-100">
+                <div class="container grid-center justify-content-center align-items-center vw-100 vh-100">
                     <div class="card shadow-lg border-0" style="max-width: 400px; width: 100%; border-radius: 15px;">
                         <div class="card-body p-5 text-center">
-                            <img src="https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp" class="mb-4" style="height:50px;">
+                            <img src="https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp" class="mb-4" style="height:20vh;">
                             <h4 class="fw-bold mb-4 text-dark">HỆ THỐNG ERP 9TRIP</h4>
                             
                             <div class="form-floating mb-3 text-start">
-                                <input type="email" class="form-control" id="login-email" placeholder="name@example.com">
-                                <label>Email nhân viên</label>
+                                <input type="text" class="form-control" id="login-email" placeholder="name@example.com">
+                                <label>Email/User Name</label>
                             </div>
                             <div class="form-floating mb-4 text-start">
                                 <input type="password" class="form-control" id="login-pass" placeholder="Password">
                                 <label>Mật khẩu</label>
                             </div>
                             
-                            <button class="btn btn-primary w-100 py-3 fw-bold shadow-sm" onclick="AUTH_MANAGER.handleEmailLogin()">
+                            <button class="btn btn-primary w-100 py-3 fw-bold shadow-sm" onclick="A.AUTH.handleEmailLogin()">
                                 ĐĂNG NHẬP NGAY
                             </button>
     
                             <div class="mt-4 small text-muted">
                                 Hoặc đăng nhập bằng
                                 <div class="d-flex gap-2 justify-content-center mt-2">
-                                    <button class="btn btn-outline-light border text-dark" onclick="AUTH_MANAGER.handleSocialLogin('google')">
+                                    <button class="btn btn-outline-light border text-dark" onclick="A.AUTH.handleSocialLogin('google')">
                                         <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" width="18"> Google
                                     </button>
                                 </div>
@@ -228,22 +237,31 @@
             // Gán sự kiện Enter
             setTimeout(() => {
                 document.getElementById('login-pass')?.addEventListener('keypress', (e) => {
-                    if(e.key === 'Enter')
-                    this.handleEmailLogin();
+                    if(e.key === 'Enter') {
+                        showLoading(true);
+                        this.handleEmailLogin();
+                    }
                 });
             }, 100);
         },
 
         handleEmailLogin: async function() {
-            const email = document.getElementById('login-email').value;
+            let email = document.getElementById('login-email').value;
             const pass = document.getElementById('login-pass').value;
             
-            if(!email || !pass) { alert("Thiếu thông tin"); return; }
+            if(!email || !pass) {showLoading(false); alert("Thiếu thông tin"); return; }
+
+            // Kiểm tra nếu email không chứa '@' thì tự động thêm domain
+            if (!email.includes('@')) {
+                email = email + '@9tripphuquoc.com';
+            }
 
             try {
-                await auth.signInWithEmailAndPassword(email, pass);
+                await this.auth.signInWithEmailAndPassword(email, pass);
             } catch(e) {
                 alert("Lỗi đăng nhập: " + e.message);
+            } finally {
+                showLoading(false);
             }
         },
 
@@ -254,21 +272,19 @@
             if (providerName === 'facebook') provider = new firebase.auth.FacebookAuthProvider();
 
             try {
+                showLoading(true);
                 // Dùng signInWithPopup cho tiện trên WebApp
-                await auth.signInWithPopup(provider);
+                await this.auth.signInWithPopup(provider);
             } catch(e) {
                 console.error(e);
                 alert("Lỗi đăng nhập Social: " + e.message);
             } finally {
-                bootstrap.Modal.getInstance($('dynamic-modal')).hide().dispose();
-                setTimeout(() => {
-                    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
-                }, 150);            
+                showLoading(false);           
             }
         },
       
         signOut: function() {
-            auth.signOut().then(() => {
+            this.auth.signOut().then(() => {
                 location.reload(); // Reload trang cho sạch
             });
         },
@@ -279,7 +295,7 @@
         loadUsersData: async function() {
             try {
                 // ✅ FIRESTORE: Lấy toàn bộ collection
-                const snapshot = await db.collection('users').get();
+                const snapshot = await this.db.collection('users').get();
                 
                 if (snapshot.empty) {
                     document.getElementById('users-table-body').innerHTML = '<tr><td colspan="10">Chưa có user nào</td></tr>';
@@ -321,7 +337,7 @@
         loadUserToForm: async function(uid) {
             try {
                 // ✅ FIRESTORE
-                const doc = await db.collection('users').doc(uid).get();
+                const doc = await this.db.collection('users').doc(uid).get();
                 if (!doc.exists) return;
                 
                 const user = doc.data();
@@ -382,33 +398,44 @@
             try {
                 if (userData.uid) {
                     // ✅ FIRESTORE UPDATE: Dùng set với merge: true (an toàn hơn update)
-                    await db.collection('users').doc(userData.uid).set(userData, { merge: true });
+                    await this.db.collection('users').doc(userData.uid).set(userData, { merge: true });
                     logA('Cập nhật thành công');
                 } else {
                     // Tạo mới User (Lưu ý: Auth client side sẽ tự login user mới -> Cần cân nhắc)
                     const password = userData.email.split('@')[0] + '@2026'; // Mật khẩu mặc định
-                    const authResult = await auth.createUserWithEmailAndPassword(userData.email, password);
+                    const authResult = await this.auth.createUserWithEmailAndPassword(userData.email, password);
                     const newUid = authResult.user.uid;
                     
                     userData.uid = newUid;
 
                     // ✅ FIRESTORE CREATE
-                    await db.collection('users').doc(newUid).set(userData);
+                    await this.db.collection('users').doc(newUid).set(userData);
                     logA('Tạo user mới thành công');
                 }
                 
                 
-                renderUsersConfig();
+                this.renderUsersConfig();
             } catch (e) {
                 logError("Lỗi lưu: " + e.message);
             }
+        },
+
+        renderUsersConfig: function() {
+            //   $('.modal-footer').style.display = 'none'; // Ẩn footer nếu có
+            // Set ngày tạo mặc định là hôm nay
+            document.getElementById('users-form').reset();
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('form-created-at').value = today;
+    
+            // Load dữ liệu users vào bảng
+            this.loadUsersData();
         },
 
         deleteUser: async function(uid) {
             if (!confirm('Chắc chắn xóa?')) return;
             try {
                 // ✅ FIRESTORE DELETE
-                await db.collection('users').doc(uid).delete();
+                await this.db.collection('users').doc(uid).delete();
                 this.loadUsersData();
             } catch (e) {
                 logError("Lỗi xóa: " + e.message);
@@ -417,16 +444,16 @@
     };
 
     // Hàm render template users-config vào giao diện
-    function renderUsersConfig() {
-        //   $('.modal-footer').style.display = 'none'; // Ẩn footer nếu có
-        // Set ngày tạo mặc định là hôm nay
-        document.getElementById('users-form').reset();
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('form-created-at').value = today;
+    // function renderUsersConfig() {
+    //     //   $('.modal-footer').style.display = 'none'; // Ẩn footer nếu có
+    //     // Set ngày tạo mặc định là hôm nay
+    //     document.getElementById('users-form').reset();
+    //     const today = new Date().toISOString().split('T')[0];
+    //     document.getElementById('form-created-at').value = today;
 
-        // Load dữ liệu users vào bảng
-        AUTH_MANAGER.loadUsersData();
-    }
+    //     // Load dữ liệu users vào bảng
+    //     AUTH_MANAGER.loadUsersData();
+    // }
 
 
     const SECURITY_MANAGER = {
@@ -443,10 +470,12 @@
             // ✅ FIX: Use await for async loadJSForRole
             if (role === 'op' || role === 'acc') {
                 await loadJSForRole('op');
-                await UI_RENDERER.renderTemplate('body', 'tpl_operator.html', false, '.app-container');
+                await A.UI.renderTemplate('body', 'tpl_operator.html', false, '.app-container');
+                setVal('module-title', 'OPERATOR CENTER -QUẢN LÝ NCC - ĐIỀU HÀNH');
             } else {
                 await loadJSForRole('sale');
-                await UI_RENDERER.renderTemplate('body', 'tpl_sales.html', false, '.app-container');
+                await A.UI.renderTemplate('body', 'tpl_sales.html', false, '.app-container');
+                setVal('module-title', 'SALES CENTER - QUẢN LÝ BOOKING');
             }
             
 
@@ -463,7 +492,7 @@
             if (isHardAdmin || level >= 50) {
                 permissionClass = 'is-admin';
                 
-                UI_RENDERER.lazyLoad('tab-log');
+                A.UI.lazyLoad('tab-log');
                 log('🛡️ Security: ADMIN MODE');
                 if (maskedRole) {
                     maskedClass = `is-${maskedRole}`;
@@ -486,15 +515,15 @@
                     // Level thấp: Check Role cụ thể
                     if (role === 'ketoan' || role === 'acc') {
                         permissionClass = 'is-acc';
-                        UI_RENDERER.renderTemplate('body', 'tpl_operator.html');
+                        A.UI.renderTemplate('body', 'tpl_operator.html');
                     }
                     else if (role === 'op' || role === 'operator' || maskedRole === 'op') {
                         permissionClass = 'is-op';
-                        UI_RENDERER.renderTemplate('body', 'tpl_operator.html');
+                        A.UI.renderTemplate('body', 'tpl_operator.html');
                     }
                     else {
                         permissionClass = 'is-sale';
-                        UI_RENDERER.renderTemplate('body', 'tpl_sales.html');
+                        A.UI.renderTemplate('body', 'tpl_sales.html');
                     }                
 
                     
@@ -547,13 +576,27 @@
         }
     };
 
+    export { AUTH_MANAGER, SECURITY_MANAGER };
+
     // 2. Lắng nghe sự kiện DOM Ready
     //   document.addEventListener('DOMContentLoaded', initApp);
-    document.addEventListener('DOMContentLoaded',  () => {
-        try {
-            APP_CORE.init(); 
-        } catch (e) {
-            console.error("Critical Error:", e);
-            document.body.innerHTML = `<h3 class="text-danger p-3">Lỗi kết nối hệ thống: ${e.message}</h3>`;
-        }
-    });
+    // document.addEventListener('DOMContentLoaded',  () => {
+    //     try {
+    //         APP_CORE.init(); 
+    //         // const btn = document.getElementById('theme-toggle');
+    //         // if (!btn) return;
+    //         // const currentTheme = window.THEME_MANAGER.getCurrentTheme();
+    //         // updateThemeToggleButton(currentTheme);
+    //         // btn.addEventListener('click', (e) => {
+    //         //     e.preventDefault();
+    //         //     const newTheme = window.toggleTheme();
+    //         //     // updateThemeToggleButton(newTheme);
+    //         // });
+    //     } catch (e) {
+    //         console.error("Critical Error:", e);
+    //         document.body.innerHTML = `<h3 class="text-danger p-3">Lỗi kết nối hệ thống: ${e.message}</h3>`;
+    //     }
+    // });
+    // if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    //     document.getElementById('theme-toggle') && updateThemeToggleButton(window.THEME_MANAGER.getCurrentTheme());
+    // }

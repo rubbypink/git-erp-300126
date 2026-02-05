@@ -744,6 +744,54 @@
     }
     return count;
   }
+
+  /**
+ * Helper: Trích xuất dữ liệu từ Table Form dựa trên dataset
+ * @param {string} tableId - ID của table cần lấy dữ liệu
+ * @returns {Array} - Mảng các object đã được map với Firestore field
+ */
+  async function getTableData(tableId) {
+    try {
+        const table = document.getElementById(tableId);
+        if (!table) throw new Error(`Table với ID ${tableId} không tồn tại.`);
+
+        // Lấy tất cả các hàng trong tbody để tránh lấy header
+        const rows = table.querySelectorAll('tbody tr');
+        const dataResult = [];
+
+        rows.forEach((row, index) => {
+            const rowData = {};
+            // Tìm tất cả phần tử có data-field bên trong hàng
+            const inputs = row.querySelectorAll('[data-field]');
+            
+            let hasData = false;
+            inputs.forEach(input => {
+                const fieldName = input.dataset.field; // Lấy tên field từ data-field
+                if (!fieldName) return;
+
+                let value = getVal(input); // Sử dụng hàm getVal để lấy giá trị đúng định dạng
+
+                rowData[fieldName] = value;
+                
+                // Kiểm tra xem hàng có dữ liệu không (tránh lưu hàng trống)
+                if (value !== '' && value !== 0 && value !== false) {
+                    hasData = true;
+                }
+            });
+
+            if (hasData) {
+                dataResult.push(rowData);
+                log(Object.entries(rowData));
+            }
+        });
+
+        return dataResult;
+    } catch (error) {
+        console.error("Lỗi tại Utils.getTableData:", error);
+        return [];
+    }
+  }
+  
   function showLoading(show, text = "Loading...") {
     let el = getE('loading-overlay');
     if (!el) {
@@ -904,7 +952,7 @@
     try {
       // 1. Tải Config (Singleton)
       if (!_GAS_SECRETS) {
-        const docSnap = await DB_MANAGER.db.collection('app_config').doc('app_secrets').get();
+        const docSnap = await A.DB.db.collection('app_config').doc('app_secrets').get();
         if (!docSnap.exists) throw new Error("Missing app_secrets");
         _GAS_SECRETS = docSnap.data();
       }
@@ -1327,37 +1375,12 @@
   var _notifTimer = null;
 
   /**
-   * JS HELPER: Hiển thị thông báo Banner tự động tắt
+   * JS HELPER: wwrapper hàm logA để hiển thị thông báo nhanh
    * @param {String} msg - Nội dung thông báo
    * @param {Boolean} isSuccess - True: Xanh (Thành công), False: Đỏ (Lỗi)
    */
   function showNotify(msg, isSuccess = true) {
-      const banner = getE('notification-banner');
-      if (!banner) return;
-
-      // 1. Reset timer cũ (nếu đang chạy) để tránh tắt ngang
-      if (_notifTimer) clearTimeout(_notifTimer);
-
-      // 2. Cài đặt giao diện (Màu sắc & Icon)
-      // Xóa class màu cũ
-      banner.classList.remove('alert-success', 'alert-danger', 'alert-warning', 'd-none');
-      
-      if (isSuccess && isSuccess !== 'error') {
-          banner.classList.add('alert-success');
-          banner.innerHTML = `<i class="fa-solid fa-check-circle me-2"></i> ${msg}`;
-      } else {
-          banner.classList.add('alert-danger');
-          banner.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-2"></i>LỖI: ${msg}`;
-      }
-
-      // 3. Hiệu ứng Animation (Optional - dùng thư viện animate.css có sẵn của bạn)
-      banner.classList.add('animate__animated', 'animate__fadeInDown');
-
-      // 4. Hẹn giờ tắt sau 5 giây
-      _notifTimer = setTimeout(() => {
-          banner.classList.add('d-none'); // Ẩn đi
-          banner.classList.remove('animate__animated', 'animate__fadeInDown'); // Reset animation
-      }, 5000);
+      logA(msg, isSuccess ? 'success' : 'error');
   }
   // --- BỔ SUNG HÀM FULL SCREEN ---
   function toggleFullScreen() {

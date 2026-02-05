@@ -1,5 +1,5 @@
 
-import '../common/components/modal_full.js';
+
 import '../common/components/custom_tag.js';
 
 // ============================================================
@@ -250,7 +250,7 @@ class HotelMatrixPrice extends HTMLElement {
                 min-height: 50vh;
                 font-family: system-ui, -apple-system, sans-serif;
                 --border-color: #dee2e6; 
-                --header-bg: #f8f9fa; 
+                --header-bg: var(--tbl-head-bg, #f8f9fa); 
             }
 
             /* Meta Info: Không co giãn */
@@ -267,19 +267,18 @@ class HotelMatrixPrice extends HTMLElement {
                 flex: 1; /* Grow to fill space */
                 overflow: auto; /* Scrollbars appear here */
                 position: relative; 
-                /* Bỏ max-height: 70vh đi nhé! */
             }
             
-            table { border-collapse: collapse; width: 100%; min-width: 1200px; font-size: 0.95rem; }
+            table { border-collapse: collapse; width: fit-content; min-width: 1200px; font-size: 0.95rem; justify-self: center; }
             th, td { border: 1px solid var(--border-color); padding: 8px; text-align: center; }
             
             /* Sticky Headers vẫn giữ nguyên để trượt mượt mà */
-            thead th { position: sticky; top: 0; background: var(--header-bg); z-index: 10; }
-            thead tr:nth-child(2) th { top: 37px; } 
-            tbody th.sticky-col { position: sticky; left: 0; background: #fff; z-index: 5; text-align: left; }
+            thead th { position: sticky; top: 0; background: var(--tbl-head-bg, #f8f9fa); z-index: 10; }
+            thead tr:nth-child(2) th { top: 37px; background: var(--header-bg, #e9ecef); } 
+            tbody th.sticky-col { position: sticky; left: 0; background: #fff; z-index: 5; text-align: center; }
             
-            input.price-input { width: 100%; min-width: 80px; text-align: right; }
-            .room-header { background-color: #e2e3e5; text-align: left; font-weight: bold; padding-left: 10px; }
+            input.price-input { width: fit-content; min-width: 80px; text-align: right; background: var(--tbl-row-bg, #fff); color: var(--text-color, #000);}
+            .room-header { background-color: var(--tbl-row-bg, #e2e3e5); text-align: center; font-weight: bold; padding-left: 10px; }
         </style>
         `;
 
@@ -313,7 +312,7 @@ class HotelMatrixPrice extends HTMLElement {
             });
         });
 
-        this.shadowRoot.innerHTML = `${styles}${metaHtml}<div class="table-container"><table><thead><tr>${theadRow1}</tr><tr>${theadRow2}</tr></thead><tbody>${tbody}</tbody></table></div>`;
+        this.shadowRoot.innerHTML = `${styles}${metaHtml}<div class="table-container"><table class="table table-bordered table-info"><thead><tr>${theadRow1}</tr><tr>${theadRow2}</tr></thead><tbody>${tbody}</tbody></table></div>`;
     }
 
     _findValue(key) { return (this._values && this._values[key]) ? this._values[key].toLocaleString() : ''; }
@@ -333,7 +332,7 @@ const DB_PATHS = {
     PRICE_SCHEDULES: 'hotel_price_schedules' 
 };
 
-export class PriceController {
+export class HotelPriceController {
     
     constructor(containerId) {
         this.container = document.getElementById(containerId);
@@ -363,7 +362,7 @@ export class PriceController {
             }
         </style>      
         <div class="card shadow-sm d-flex flex-column" style="height: 100%;">
-                <div class="card-header bg-light p-2 flex-shrink-0 border-bottom">              
+                <div class="card-header p-2 flex-shrink-0 border-bottom">              
                     <div class="d-flex gap-2 align-items-center flex-wrap mb-3">
                         <h5 class="m-0 me-auto text-primary"><i class="bi bi-grid-3x3"></i> Thiết lập Bảng giá</h5>
                         <select id="pc-status" class="form-select form-select-sm fw-bold" style="width:150px">
@@ -378,7 +377,7 @@ export class PriceController {
                         </button>
                     </div>
                     
-                    <div class="d-flex gap-2 bg-white p-2 border rounded align-items-end flex-wrap">
+                    <div class="d-flex gap-2  p-2 border rounded align-items-end flex-wrap">
                         <div>
                             <label class="form-label small mb-1 fw-bold">Nhà cung cấp</label>
                             <select id="pc-supplier" class="form-select form-select-sm" style="min-width: 150px"><option value="">-- Chọn NCC --</option></select>
@@ -421,8 +420,8 @@ export class PriceController {
                     </div>
                 </div>
                 
-                <div class="card-body p-0 flex-grow-1 position-relative" style="overflow: hidden;">
-                    <div id="pc-loading" class="position-absolute w-100 h-100 bg-white d-flex justify-content-center align-items-center start-0 top-0 d-none" style="z-index:10; opacity:0.9">
+                <div class="card-body p-0 flex-grow-1 position-relative mt-2" style="overflow: hidden;">
+                    <div id="pc-loading" class="position-absolute w-100 h-100 d-flex justify-content-center align-items-center start-0 top-0 d-none" style="z-index:10; opacity:0.9">
                         <div class="spinner-border text-primary" role="status"></div>
                     </div>
                     <at-tbl-hotel-price id="pc-matrix-ui"></at-tbl-hotel-price>
@@ -713,4 +712,4 @@ export class PriceController {
     }
 }
 
-window.PriceController = PriceController;
+

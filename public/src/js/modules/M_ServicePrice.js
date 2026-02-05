@@ -103,7 +103,7 @@ class ServicePriceTable extends HTMLElement {
                 table { width: 100%; border-collapse: collapse; min-width: 900px; }
                 th { background: #f8f9fa; padding: 10px; border: 1px solid #dee2e6; font-size: 0.9rem; text-align:center; }
                 td { padding: 5px; border: 1px solid #dee2e6; }
-                input, select { width: 100%; padding: 6px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; }
+                input, select { width: 100%; padding: 6px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; color: var(--text-color, #000); background: var(--tbl-row-bg, #fff); }
                 input:focus, select:focus { outline: 2px solid #86b7fe; border-color: #86b7fe; }
                 .text-end { text-align: right; }
                 .text-center { text-align: center; }
@@ -213,7 +213,7 @@ const DB_PATHS = {
     SERVICE_SCHEDULES: 'service_price_schedules' // Collection mới
 };
 
-export class ServicePriceController {
+export default class ServicePriceController {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
         if (!this.container) throw new Error("Missing container");
@@ -229,7 +229,7 @@ export class ServicePriceController {
                 #${rootId} .card-header { overflow: visible !important; height: auto !important; max-height: none !important; }
             </style>
             <div class="card shadow-sm h-100 d-flex flex-column">
-                <div class="card-header bg-light p-3 border-bottom">
+                <div class="card-header p-3 border-bottom">
                     <div class="d-flex gap-2 align-items-center flex-wrap">
                         <h5 class="m-0 me-auto text-success"><i class="bi bi-ticket-perforated"></i> Bảng giá Dịch vụ</h5>
                         
@@ -244,7 +244,7 @@ export class ServicePriceController {
                         </button>
                     </div>
 
-                    <div class="d-flex gap-2 mt-2 bg-white p-2 border rounded">
+                    <div class="d-flex gap-2 mt-2 p-2 border rounded">
                         <select id="sp-supplier" class="form-select form-select-sm" style="max-width:250px"><option>Đang tải NCC...</option></select>
                         <select id="sp-year" class="form-select form-select-sm" style="width:100px">
                             <option value="2026">2026</option><option value="2027">2027</option>
@@ -253,7 +253,7 @@ export class ServicePriceController {
                     </div>
                 </div>
 
-                <div class="card-body p-3 overflow-auto">
+                <div class="card-body p-3 overflow-auto" style="background: var(--tbl-row-bg, #fff); color: var(--text-color, #000);">
                     <at-tbl-service-price id="sp-table"></at-tbl-service-price>
                 </div>
             </div>
@@ -271,7 +271,7 @@ export class ServicePriceController {
     }
 
     async initData() {
-        // Load NCC từ Global DB_MANAGER hoặc Firebase
+        // Load NCC từ Global A.DB hoặc Firebase
         try {
             const snapshot = await firebase.firestore().collection(DB_PATHS.SUPPLIERS).get();
             let html = '<option value="">-- Chọn Nhà cung cấp --</option>';
@@ -339,5 +339,3 @@ export class ServicePriceController {
         });
     }
 }
-
-window.ServicePriceController = ServicePriceController;

@@ -4,7 +4,7 @@
  * Version: 2.0 (Schema-Driven)
  */
 
-class DynamicFirestoreTable extends HTMLElement {
+class FirestoreDataTable extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
@@ -257,9 +257,9 @@ class DynamicFirestoreTable extends HTMLElement {
         });
     }
 }
-customElements.define('dynamic-firestore-table', DynamicFirestoreTable);
+customElements.define('table-db-data', FirestoreDataTable);
 
-export class DynamicDataManager {
+export default class FirestoreDataTableManager {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
         this.db = firebase.firestore();
@@ -296,7 +296,7 @@ export class DynamicDataManager {
                     </div>
                 </div>
                 <div class="card-body p-2">
-                    <dynamic-firestore-table id="main-matrix"></dynamic-firestore-table>
+                    <table-db-data id="main-matrix"></table-db-data>
                 </div>
             </div>
         `;
@@ -446,7 +446,7 @@ export class DynamicDataManager {
             });
     
             console.log("🚀 Giai đoạn 1: Lưu Master...");
-            const result = await DB_MANAGER.batchSave(collName, cleanMasterData);
+            const result = await A.DB.batchSave(collName, cleanMasterData);
             
             if (!result || !result.success) throw new Error("Lỗi lưu Master.");
     
@@ -507,4 +507,3 @@ export class DynamicDataManager {
     }
 }
 
-window.DynamicDataManager = DynamicDataManager;

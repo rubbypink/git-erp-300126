@@ -37,8 +37,8 @@
           var booking = Object.values(data.bookings);
           var booking_details = data.booking_details.map(d => Object.values(d));
         try {          
-          await DB_MANAGER.saveRecord('bookings', booking);
-          await DB_MANAGER.batchSave('booking_details', booking_details);
+          await A.DB.saveRecord('bookings', booking);
+          await A.DB.batchSave('booking_details', booking_details);
           const btnDashUpdate = getE('btn-dash-update');
           if (btnDashUpdate) {
             btnDashUpdate.click();
@@ -51,8 +51,7 @@
           log("Lưu dữ liệu thành công!", "success");
           showNotify("Lưu dữ liệu thành công!", true);
         } catch (e) {
-          log("Lỗi chuyển đổi dữ liệu sang mảng: " + e);
-          logA("Lỗi chuyển đổi dữ liệu sang mảng: " + e, "error");
+          logError(e);
           return;
         }
       } catch (e) {
@@ -377,7 +376,7 @@
         /**
      * 2. Gửi dữ liệu về Server (Full Row)
      */
-    function saveBatchDetails() {
+    async function saveBatchDetails() {
       log('run saveBatchDetails');
 
       // --- HELPER 1: Lấy Text an toàn (Giữ nguyên logic của bạn) ---
@@ -453,7 +452,7 @@
 
       log("Đang lưu... " + booking_details);
       setBtnLoading('btn-save-batch', true);
-      const res = requestAPI('saveDetailsData', booking_details); // Gửi mảng Full Row
+      const res = await A.DB.batchSave('booking_details', booking_details);
 
       setBtnLoading('btn-save-batch', false);
       if (res) {

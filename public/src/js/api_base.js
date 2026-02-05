@@ -150,7 +150,7 @@ function reloadSystemMode(modeCode) {
    * @param {string} id - ID của item cần xóa
    * @param {string} dataSource - Tên bảng (bookings, booking_details, customer...), mặc định 'booking_details'
    */
-  function deleteItem(id, dataSource = 'booking_details') {
+  async function deleteItem(id, dataSource = 'booking_details') {
       if (!id) {
           logA("Không tìm thấy ID để xóa.", "warning");
           return;
@@ -160,8 +160,8 @@ function reloadSystemMode(modeCode) {
 
       // Sử dụng logA dạng confirm (Callback)
       logA(msg, 'danger', async () => {
-        const res = await DB_MANAGER.deleteRecord(dataSource, id);
-        if (res && res.success) {    
+        const res = await A.DB.deleteRecord(dataSource, id);
+        if (res) {    
             logA(`Đã xóa thành công dòng ID: ${id} từ "${dataSource}".`, "success");        
             // Xóa dòng khỏi giao diện ngay lập tức (UX tối ưu)
             if (CURRENT_CTX_ROW) {
@@ -243,7 +243,7 @@ function reloadSystemMode(modeCode) {
     try {
         let role = CURRENT_USER.role;
 
-        await DB_MANAGER.loadAllData();
+        await A.DB.loadAllData();
         setTimeout(() => {}, 250); // Đợi một chút để đảm bảo dữ liệu đã sẵn sàng
 
         // 3. Safety Check: Kiểm tra dữ liệu rỗng

@@ -14,7 +14,7 @@ async function saveForm(isConfirmed = false) {
 
     var operator_entries = data.operator_entries;
     try {          
-      await DB_MANAGER.batchSave('operator_entries', operator_entries);
+      await A.DB.batchSave('operator_entries', operator_entries);
       const btnDashUpdate = getE('btn-dash-update');
       if (btnDashUpdate) {
         btnDashUpdate.click();
@@ -36,47 +36,23 @@ async function saveForm(isConfirmed = false) {
   }
   
 }
-  /**
-   * 2. Gửi dữ liệu về Server (Full Row)
-   */
-  async function saveBatchDetails() {
-    log('run saveBatchDetails');
+/**
+ * 2. Gửi dữ liệu về Server (Full Row)
+ */
+async function saveBatchDetails() {
+  log('run saveBatchDetails');
+  setBtnLoading('btn-save-batch', true);
 
-    const operator_entries_obj = [];
-    const currentTab = getE('tab-form');
-    const rows = currentTab.querySelectorAll('#detail-tbody tr');
+  const data = await getTableData('tbl-booking-form');
 
-    rows.forEach((tr) => {
-        operator_entries_obj.push({
-            id: getRowVal('d-idbk'),
-            booking_id: getRowVal('d-idbk'),
-            customer_name: getRowVal('d-cust'),
-            hotel_name: getRowVal('d-loc'),
-            service_type: getRowVal('d-type'),
-            name: getRowVal('d-name'),
-            check_in: getRowVal('d-in'),
-            check_out: getRowVal('d-out'),
-            nights: getRowNum('d-night'),
-            adults: getRowNum('d-qty'),
-            children: getRowNum('d-qtyC'),
-            cost_adult: getRowNum('d-costA'),
-            cost_child: getRowNum('d-costC'),
-            surcharge: getRowNum('d-sur'),
-            discount: getRowNum('d-disc'),
-            total_sale: getRowNum('d-totalSales'),
-            ref_code: getRowVal('d-code'),
-            total_cost: getRowNum('d-totalCost'),
-            supplier: getRowVal('d-supplier'),
-            operator_note: getRowVal('d-note'),
-            paid_amount: getRowNum('d-paid'),
-            debt_balance: getRowNum('d-remain')
-        });
-    });
-
-    logA("Đang lưu... " + operator_entries_obj);
-    setBtnLoading('btn-save-batch', true);
-    await DB_MANAGER.batchSave('operator_entries', operator_entries_obj);
-    setBtnLoading('btn-save-batch', false);
+  logA("Đang lưu... Dòng 1: " + data[0].values , "info");
+  
+  const res = await A.DB.batchSave('operator_entries', data);
+  setBtnLoading('btn-save-batch', false);
+  if (res) {
+    logA('Lưu dữ liệu thành công!');
   }
+  
+}
 
 

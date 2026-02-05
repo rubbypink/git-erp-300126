@@ -5,7 +5,7 @@ const DB_PATHS = {
     SERVICE_SCHEDULES: 'service_price_schedules'
 };
 
-export class PriceManager {
+export default class PriceManager {
 
     /**
      * Hàm lấy giá phòng (Core Logic)
@@ -380,5 +380,3 @@ export class PriceManager {
     }
 }
 
-// Gắn vào window để test
-window.PriceManager = PriceManager;

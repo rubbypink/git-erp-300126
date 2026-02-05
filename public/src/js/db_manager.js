@@ -2,9 +2,6 @@
  * DB MANAGER - FIRESTORE VERSION (Final)
  * Tương thích với cấu trúc Operator/Supplier Update
  */
-
-
-
 const DB_MANAGER = {
     db: null,
     batchCounterUpdates: {}, // Lưu counter updates cho batch processing
@@ -300,7 +297,7 @@ const DB_MANAGER = {
      */
     _syncOperatorEntry: async function(detailRow) {
         // ✅ FIX: Xử lý cả array và object format
-        let d_id, d_bkid, d_type, d_service, d_in, d_out, d_night, d_qty, d_child, d_total;
+        let d_id, d_bkid, d_type, d_hotel, d_service, d_in, d_out, d_night, d_qty, d_child, d_total;
         
         if (Array.isArray(detailRow)) {
             // Format array (legacy)
@@ -570,9 +567,7 @@ const DB_MANAGER = {
             const batch = this.db.batch();
             
             chunk.forEach(row => {
-                // Gọi saveRecord nhưng chế độ batch (không trigger)
-                // Lúc này row đã có ID rồi, generateIds sẽ bị bỏ qua
-                log(`Adding to batch save: ${row}`);
+
                 this.saveRecord(collectionName, row, true, batch);
                 
                 // Nếu là booking_details, lưu để trigger sau
@@ -629,7 +624,6 @@ const DB_MANAGER = {
             if (collectionName === this.COLL.DETAILS) {
                 await this.db.collection(this.COLL.OPERATORS).doc(String(id)).delete();
                 this._removeFromAppDataObj(this.COLL.OPERATORS, id);
-                console.log(`🗑 Synced Delete: Operator Entry ${id}`);
             }
             
             return { success: true , message: "Deleted"};
@@ -674,7 +668,144 @@ const DB_MANAGER = {
             return { success: false, error: e.message };
         }
     },
+    /**
+     * CẬP NHẬT HÀNG LOẠT MỘT FIELD CỦA COLLECTION
+     * Lọc tất cả documents có fieldName = oldValue, rồi cập nhật thành newValue
+     * @param {string} collectionName - Tên collection (bookings, customers, ...)
+     * @param {string} fieldName - Tên field cần cập nhật (VD: status, payment_method)
+     * @param {*} oldValue - Giá trị cũ để tìm (VD: "pending", "unpaid")
+     * @param {*} newValue - Giá trị mới để cập nhật (VD: "completed", "paid")
+     * @returns {Promise<{success: boolean, count: number, message: string}>}
+     */
+    batchUpdateFieldData: async function(collectionName, fieldName, oldValue, newValue) {
+        console.time("⏱ Thời gian cập nhật");
+        console.log(`🚀 Bắt đầu cập nhật ${collectionName}.${fieldName}: "${oldValue}" → "${newValue}"`);
+    
+        try {
+            // --- GIAI ĐOẠN 1: KIỂM TRA INPUT ---
+            if (!collectionName || !fieldName) {
+                throw new Error("❌ Lỗi: collectionName và fieldName không được để trống");
+            }
+    
+            // --- GIAI ĐOẠN 2: TẢI TOÀN BỘ COLLECTION ---
+            console.log(`1️⃣ Đang tải collection "${collectionName}"...`);
+            const db = DB_MANAGER.db;
+            
+            if (!db) {
+                throw new Error("❌ Firestore DB chưa khởi tạo");
+            }
+    
+            const collSnap = await db.collection(collectionName).get();
+            console.log(`📦 Tìm thấy ${collSnap.size} documents. Bắt đầu tìm kiếm...`);
+    
+            // --- GIAI ĐOẠN 3: XỬ LÝ VÀ GHI BATCH ---
+            let batch = db.batch();
+            let operationCount = 0;     // Đếm số lệnh trong batch hiện tại
+            let totalUpdated = 0;       // Đếm tổng số đã cập nhật
+            let totalSkipped = 0;       // Đếm số bỏ qua (không match)
+    
+            for (const doc of collSnap.docs) {
+                const data = doc.data();
+                const currentValue = data[fieldName];
+    
+                // So sánh giá trị (chuẩn hóa để tránh lỗi kiểu dữ liệu)
+                const isMatch = (
+                    String(currentValue).trim() === String(oldValue).trim()
+                );
+    
+                if (isMatch) {
+                    // ==> TÌM THẤY KHỚP!
+                    const docRef = db.collection(collectionName).doc(doc.id);
+                    const updateObj = {};
+                    updateObj[fieldName] = newValue;
+                    updateObj.updated_at = firebase.firestore.FieldValue.serverTimestamp();
+    
+                    batch.update(docRef, updateObj);
+                    
+                    operationCount++;
+                    totalUpdated++;
+    
+                    console.log(`✅ [${totalUpdated}] ${doc.id}: ${fieldName} = "${newValue}"`);
+    
+                    // ⚠️ GIỚI HẠN BATCH: Nếu đủ 500 lệnh, bắn lên ngay và tạo túi mới
+                    if (operationCount >= 499) {
+                        console.log(`🔥 Đang commit batch (${operationCount} dòng)...`);
+                        await batch.commit();
+                        batch = db.batch();
+                        operationCount = 0;
+                    }
+                } else {
+                    totalSkipped++;
+                }
+            }
+    
+            // --- GIAI ĐOẠN 4: COMMIT SỐ DƯ CÒN LẠI ---
+            if (operationCount > 0) {
+                console.log(`🔥 Đang commit batch cuối cùng (${operationCount} dòng)...`);
+                await batch.commit();
+            }
+    
+            const result = {
+                success: true,
+                count: totalUpdated,
+                skipped: totalSkipped,
+                message: `✅ Hoàn tất! Cập nhật ${totalUpdated} documents, bỏ qua ${totalSkipped}`
+            };
+    
+            console.log(`🎉 ${result.message}`);
+            return result;
+    
+        } catch (error) {
+            const errorMsg = `❌ Lỗi: ${error.message}`;
+            console.error(errorMsg);
+            return {
+                success: false,
+                count: 0,
+                message: errorMsg
+            };
+        } finally {
+            console.timeEnd("⏱ Thời gian cập nhật");
+        }
+    },
+    /**
+     * CẬP NHẬT 1 DOCUMENT (Đơn giản)
+     * @param {string} collectionName - Tên collection (bookings, customers, ...)
+     * @param {string} id - ID của document
+     * @param {object} objData - Object dữ liệu cần cập nhật
+     * @returns {Promise<{success: boolean, message: string}>}
+     */
+    updateSingle: async function (collectionName, id, objData) {
+        // Kiểm tra input
+        if (!collectionName || !id || !objData) {
+            console.warn("⚠️ updateDocument: Thiếu tham số (collectionName, id, objData)");
+            return { success: false, message: "Missing required parameters" };
+        }
 
+        // ✅ Kiểm tra objData có field 'id' chưa
+        if (!objData.id || objData.id === "") {
+            console.error("❌ updateDocument: objData không có field 'id'");
+            return { success: false, message: "objData must have 'id' field" };
+        }
+
+        const docRef = this.db.collection(collectionName).doc(String(id));
+        
+        try {
+            // Thêm timestamp cập nhật
+            objData.updated_at = firebase.firestore.FieldValue.serverTimestamp();
+            
+            // Cập nhật lên Firebase
+            await docRef.set(objData, { merge: true });
+            
+            // ✅ Cập nhật APP_DATA
+            this._updateAppDataObj(collectionName, objData);
+            
+            console.log(`✅ Updated ${collectionName}/${id}`);
+            return { success: true, message: "Updated successfully" };
+        } catch (e) {
+            console.error(`❌ updateDocument Error:`, e);
+            return { success: false, message: e.message };
+        }
+    }
 };
 
 async function fixMissingCustomerIds() {
@@ -772,96 +903,96 @@ async function fixMissingCustomerIds() {
  * @param {*} newValue - Giá trị mới để cập nhật (VD: "completed", "paid")
  * @returns {Promise<{success: boolean, count: number, message: string}>}
  */
-async function batchUpdateFieldData(collectionName, fieldName, oldValue, newValue) {
-    console.time("⏱ Thời gian cập nhật");
-    console.log(`🚀 Bắt đầu cập nhật ${collectionName}.${fieldName}: "${oldValue}" → "${newValue}"`);
+// async function batchUpdateFieldData(collectionName, fieldName, oldValue, newValue) {
+//     console.time("⏱ Thời gian cập nhật");
+//     console.log(`🚀 Bắt đầu cập nhật ${collectionName}.${fieldName}: "${oldValue}" → "${newValue}"`);
 
-    try {
-        // --- GIAI ĐOẠN 1: KIỂM TRA INPUT ---
-        if (!collectionName || !fieldName) {
-            throw new Error("❌ Lỗi: collectionName và fieldName không được để trống");
-        }
+//     try {
+//         // --- GIAI ĐOẠN 1: KIỂM TRA INPUT ---
+//         if (!collectionName || !fieldName) {
+//             throw new Error("❌ Lỗi: collectionName và fieldName không được để trống");
+//         }
 
-        // --- GIAI ĐOẠN 2: TẢI TOÀN BỘ COLLECTION ---
-        console.log(`1️⃣ Đang tải collection "${collectionName}"...`);
-        const db = DB_MANAGER.db;
+//         // --- GIAI ĐOẠN 2: TẢI TOÀN BỘ COLLECTION ---
+//         console.log(`1️⃣ Đang tải collection "${collectionName}"...`);
+//         const db = DB_MANAGER.db;
         
-        if (!db) {
-            throw new Error("❌ Firestore DB chưa khởi tạo");
-        }
+//         if (!db) {
+//             throw new Error("❌ Firestore DB chưa khởi tạo");
+//         }
 
-        const collSnap = await db.collection(collectionName).get();
-        console.log(`📦 Tìm thấy ${collSnap.size} documents. Bắt đầu tìm kiếm...`);
+//         const collSnap = await db.collection(collectionName).get();
+//         console.log(`📦 Tìm thấy ${collSnap.size} documents. Bắt đầu tìm kiếm...`);
 
-        // --- GIAI ĐOẠN 3: XỬ LÝ VÀ GHI BATCH ---
-        let batch = db.batch();
-        let operationCount = 0;     // Đếm số lệnh trong batch hiện tại
-        let totalUpdated = 0;       // Đếm tổng số đã cập nhật
-        let totalSkipped = 0;       // Đếm số bỏ qua (không match)
+//         // --- GIAI ĐOẠN 3: XỬ LÝ VÀ GHI BATCH ---
+//         let batch = db.batch();
+//         let operationCount = 0;     // Đếm số lệnh trong batch hiện tại
+//         let totalUpdated = 0;       // Đếm tổng số đã cập nhật
+//         let totalSkipped = 0;       // Đếm số bỏ qua (không match)
 
-        for (const doc of collSnap.docs) {
-            const data = doc.data();
-            const currentValue = data[fieldName];
+//         for (const doc of collSnap.docs) {
+//             const data = doc.data();
+//             const currentValue = data[fieldName];
 
-            // So sánh giá trị (chuẩn hóa để tránh lỗi kiểu dữ liệu)
-            const isMatch = (
-                String(currentValue).trim() === String(oldValue).trim()
-            );
+//             // So sánh giá trị (chuẩn hóa để tránh lỗi kiểu dữ liệu)
+//             const isMatch = (
+//                 String(currentValue).trim() === String(oldValue).trim()
+//             );
 
-            if (isMatch) {
-                // ==> TÌM THẤY KHỚP!
-                const docRef = db.collection(collectionName).doc(doc.id);
-                const updateObj = {};
-                updateObj[fieldName] = newValue;
-                updateObj.updated_at = firebase.firestore.FieldValue.serverTimestamp();
+//             if (isMatch) {
+//                 // ==> TÌM THẤY KHỚP!
+//                 const docRef = db.collection(collectionName).doc(doc.id);
+//                 const updateObj = {};
+//                 updateObj[fieldName] = newValue;
+//                 updateObj.updated_at = firebase.firestore.FieldValue.serverTimestamp();
 
-                batch.update(docRef, updateObj);
+//                 batch.update(docRef, updateObj);
                 
-                operationCount++;
-                totalUpdated++;
+//                 operationCount++;
+//                 totalUpdated++;
 
-                console.log(`✅ [${totalUpdated}] ${doc.id}: ${fieldName} = "${newValue}"`);
+//                 console.log(`✅ [${totalUpdated}] ${doc.id}: ${fieldName} = "${newValue}"`);
 
-                // ⚠️ GIỚI HẠN BATCH: Nếu đủ 500 lệnh, bắn lên ngay và tạo túi mới
-                if (operationCount >= 499) {
-                    console.log(`🔥 Đang commit batch (${operationCount} dòng)...`);
-                    await batch.commit();
-                    batch = db.batch();
-                    operationCount = 0;
-                }
-            } else {
-                totalSkipped++;
-            }
-        }
+//                 // ⚠️ GIỚI HẠN BATCH: Nếu đủ 500 lệnh, bắn lên ngay và tạo túi mới
+//                 if (operationCount >= 499) {
+//                     console.log(`🔥 Đang commit batch (${operationCount} dòng)...`);
+//                     await batch.commit();
+//                     batch = db.batch();
+//                     operationCount = 0;
+//                 }
+//             } else {
+//                 totalSkipped++;
+//             }
+//         }
 
-        // --- GIAI ĐOẠN 4: COMMIT SỐ DƯ CÒN LẠI ---
-        if (operationCount > 0) {
-            console.log(`🔥 Đang commit batch cuối cùng (${operationCount} dòng)...`);
-            await batch.commit();
-        }
+//         // --- GIAI ĐOẠN 4: COMMIT SỐ DƯ CÒN LẠI ---
+//         if (operationCount > 0) {
+//             console.log(`🔥 Đang commit batch cuối cùng (${operationCount} dòng)...`);
+//             await batch.commit();
+//         }
 
-        const result = {
-            success: true,
-            count: totalUpdated,
-            skipped: totalSkipped,
-            message: `✅ Hoàn tất! Cập nhật ${totalUpdated} documents, bỏ qua ${totalSkipped}`
-        };
+//         const result = {
+//             success: true,
+//             count: totalUpdated,
+//             skipped: totalSkipped,
+//             message: `✅ Hoàn tất! Cập nhật ${totalUpdated} documents, bỏ qua ${totalSkipped}`
+//         };
 
-        console.log(`🎉 ${result.message}`);
-        return result;
+//         console.log(`🎉 ${result.message}`);
+//         return result;
 
-    } catch (error) {
-        const errorMsg = `❌ Lỗi: ${error.message}`;
-        console.error(errorMsg);
-        return {
-            success: false,
-            count: 0,
-            message: errorMsg
-        };
-    } finally {
-        console.timeEnd("⏱ Thời gian cập nhật");
-    }
-}
+//     } catch (error) {
+//         const errorMsg = `❌ Lỗi: ${error.message}`;
+//         console.error(errorMsg);
+//         return {
+//             success: false,
+//             count: 0,
+//             message: errorMsg
+//         };
+//     } finally {
+//         console.timeEnd("⏱ Thời gian cập nhật");
+//     }
+// }
 
 /**
  * CẬP NHẬT 1 DOCUMENT (Đơn giản)
@@ -870,38 +1001,40 @@ async function batchUpdateFieldData(collectionName, fieldName, oldValue, newValu
  * @param {object} objData - Object dữ liệu cần cập nhật
  * @returns {Promise<{success: boolean, message: string}>}
  */
-async function updateSingle (collectionName, id, objData) {
-    // Kiểm tra input
-    if (!collectionName || !id || !objData) {
-        console.warn("⚠️ updateDocument: Thiếu tham số (collectionName, id, objData)");
-        return { success: false, message: "Missing required parameters" };
-    }
+// async function updateSingle (collectionName, id, objData) {
+//     // Kiểm tra input
+//     if (!collectionName || !id || !objData) {
+//         console.warn("⚠️ updateDocument: Thiếu tham số (collectionName, id, objData)");
+//         return { success: false, message: "Missing required parameters" };
+//     }
 
-    // ✅ Kiểm tra objData có field 'id' chưa
-    if (!objData.id || objData.id === "") {
-        console.error("❌ updateDocument: objData không có field 'id'");
-        return { success: false, message: "objData must have 'id' field" };
-    }
+//     // ✅ Kiểm tra objData có field 'id' chưa
+//     if (!objData.id || objData.id === "") {
+//         console.error("❌ updateDocument: objData không có field 'id'");
+//         return { success: false, message: "objData must have 'id' field" };
+//     }
 
-    const docRef = this.db.collection(collectionName).doc(String(id));
+//     const docRef = this.db.collection(collectionName).doc(String(id));
     
-    try {
-        // Thêm timestamp cập nhật
-        objData.updated_at = firebase.firestore.FieldValue.serverTimestamp();
+//     try {
+//         // Thêm timestamp cập nhật
+//         objData.updated_at = firebase.firestore.FieldValue.serverTimestamp();
         
-        // Cập nhật lên Firebase
-        await docRef.set(objData, { merge: true });
+//         // Cập nhật lên Firebase
+//         await docRef.set(objData, { merge: true });
         
-        // ✅ Cập nhật APP_DATA
-        this._updateAppDataObj(collectionName, objData);
+//         // ✅ Cập nhật APP_DATA
+//         this._updateAppDataObj(collectionName, objData);
         
-        console.log(`✅ Updated ${collectionName}/${id}`);
-        return { success: true, message: "Updated successfully" };
-    } catch (e) {
-        console.error(`❌ updateDocument Error:`, e);
-        return { success: false, message: e.message };
-    }
-};
+//         console.log(`✅ Updated ${collectionName}/${id}`);
+//         return { success: true, message: "Updated successfully" };
+//     } catch (e) {
+//         console.error(`❌ updateDocument Error:`, e);
+//         return { success: false, message: e.message };
+//     }
+// };
 
+window.fixMissingCustomerIds = fixMissingCustomerIds;
 
+export default DB_MANAGER;
 

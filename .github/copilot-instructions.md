@@ -543,7 +543,7 @@ PartnerMailModule.open();
 | [utils.js](public/src/js/utils.js) | Global utilities (1500 lines) | `getVal()`, `setVal()`, `log()`, `formatMoney()` |
 | [db_schema.js](public/src/js/db_schema.js) | Field mapping, format conversion | `arrayToObject()`, `getFieldName()` |
 | [db_manager.js](public/src/js/db_manager.js) | Firestore data loading, ID generation | `generateIds()`, `loadDataFromFirebase()` |
-| [renderer.js](public/src/js/renderer.js) | Dynamic HTML generation (900+ lines) | `renderGrid()`, `renderDashboard()`, `UI_RENDERER.*` |
+| [renderer.js](public/src/js/renderer.js) | Dynamic HTML generation (900+ lines) | `renderGrid()`, `renderDashboard()`, `A.UI.*` |
 | [logic_base.js](public/src/js/logic_base.js) | Shared UI logic (1543 lines) | `applyGridFilter()`, `applyGridSorter()`, `openSettingsModal()` |
 | [logic_operator.js](public/src/js/logic_operator.js) | Operator form logic, calculations | `loadBookingToUI()`, `addDetailRow()`, `calcGrandTotal()` |
 | [api_base.js](public/src/js/api_base.js) | Server API wrapper | `requestAPI()`, `handleSearchClick()` |
@@ -683,7 +683,7 @@ npx eslint "public/src/js/**/*.js"
 - `window.APP_DATA` - All application data
 - `window.CURRENT_USER` - Authenticated user {uid, role, email}
 - `window.CURRENT_CTX_ROW` - Right-click context row
-- `window.UI_RENDERER` - UI rendering engine
+- `window.A.UI` - UI rendering engine
 
 ---
 

@@ -199,19 +199,19 @@ function addDetailRow(data = null) {
     
     
     <td style="width:75px"><select class="form-select form-select-sm d-type text-wrap" data-field="service_type"><option value="">-</option>${optsType}</select></td>
-    <td style="width:12rem"><select class="form-select form-select-sm d-loc text-wrap" data-field="hotel_name" onchange="updateServiceNameList(${idx})"><option value="">---Chọn---</option></select></td>    
-    <td style="width:12rem"><select class="form-select form-select-sm d-name" data-field="service_name"><option value="">-</option></select></td>
+    <td><select class="form-select form-select-sm d-loc text-wrap" data-field="hotel_name" onchange="updateServiceNameList(${idx})"><option value="">---Chọn---</option></select></td>    
+    <td><select class="form-select form-select-sm d-name" data-field="service_name"><option value="">-</option></select></td>
     
-    <td style="width:7rem"><input type="date" class="form-control form-control-sm d-in p-1" data-field="check_in" onchange="autoSetOrCalcDate(this.value, $('.d-out', $('#row-${idx}')))" style="cursor:pointer"></td>
-    <td style="width:7rem"><input type="date" class="form-control form-control-sm d-out p-1" data-field="check_out" onchange="calcRow(${idx})"></td>
-    <td style="width:3rem"><input type="number" class="form-control form-control-sm d-night bg-light text-center number-only" data-field="nights" readonly value="1"></td>
-    <td style="width:3rem"><input type="number" class="form-control form-control-sm d-qty text-center fw-bold number-only" data-field="adults" value="1"></td>
+    <td><input type="date" class="form-control form-control-sm d-in p-1" data-field="check_in" onchange="autoSetOrCalcDate(this.value, $('.d-out', $('#row-${idx}')))" style="cursor:pointer"></td>
+    <td><input type="date" class="form-control form-control-sm d-out p-1" data-field="check_out" onchange="calcRow(${idx})"></td>
+    <td><input type="number" class="form-control form-control-sm d-night bg-light text-center number-only" data-field="nights" readonly value="1"></td>
+    <td><input type="number" class="form-control form-control-sm d-qty text-center fw-bold number-only" data-field="adults" value="1"></td>
     <td><input type="text" class="form-control form-control-sm d-costA fw-bold text-end bg-warning bg-opacity-10 number-only" data-field="cost_adult" placeholder="0"></td>
-    <td style="width:3rem"><input type="number" class="form-control form-control-sm d-qtyC text-center number-only" data-field="children" value="0"></td>
+    <td><input type="number" class="form-control form-control-sm d-qtyC text-center number-only" data-field="children" value="0"></td>
     <td><input type="text" class="form-control form-control-sm d-costC text-end bg-warning bg-opacity-10 number-only" data-field="cost_child" placeholder="0"></td>
     
-    <td style="width:2.5rem"><input type="text" class="form-control form-control-sm d-sur text-end small text-muted number-only" data-field="surcharge" placeholder="0"></td>
-    <td style="width:2.5rem"><input type="text" class="form-control form-control-sm d-disc text-end small text-muted number-only" data-field="discount" placeholder="0"></td>
+    <td><input type="text" class="form-control form-control-sm d-sur text-end small text-muted number-only" data-field="surcharge" placeholder="0"></td>
+    <td><input type="text" class="form-control form-control-sm d-disc text-end small text-muted number-only" data-field="discount" placeholder="0"></td>
     <td><input type="text" class="form-control form-control-sm d-totalSales number fw-bold text-end text-primary bg-light" data-field="total_sale" readonly value="0"></td>
     
     <td><input type="text" class="form-control form-control-sm d-code text-center text-primary font-monospace" data-field="ref_code"></td>
@@ -326,11 +326,11 @@ async function onSupplierChange(idx) {
     if (type === 'Phòng') {
       const hotel = tr.querySelector('select[data-field="hotel_name"]').value;
       const checkOut = tr.querySelector('input[data-field="check_out"]').value;
-      const prices = await window.PriceManager.getHotelPrice(hotel, useDate, checkOut, service);
+      const prices = await A.PriceManager.getHotelPrice(hotel, useDate, checkOut, service);
       if (!prices) return;
       setVal($('input[data-field="cost_adult"]'), prices.price, tr);
     } else {
-      const prices = await window.PriceManager.getServicePrice(service, useDate);
+      const prices = await A.PriceManager.getServicePrice(service, useDate);
       if (!prices) return;
       const priceAdult = tr.querySelector('input[data-field="cost_adult"]');
       const priceChild = tr.querySelector('input[data-field="cost_child"]');
@@ -392,74 +392,76 @@ function updateServiceNameList(idx) {
   if(options.includes(currentVal)) elName.value = currentVal;
 }
 
-/**
- * copyRow: Lấy dữ liệu từ dòng cuối cùng và tạo dòng mới
- * Logic:
- * 1. Tìm dòng cuối cùng trong bảng.
- * 2. Extract giá trị từ các input/select.
- * 3. Reset ID (để tránh trùng lặp khi lưu).
- * 4. Gọi addDetailRow để render.
- */
-function copyRow(sourceRow, addToEnd = true) {
-  const tbody = getE('detail-tbody');
-  const rows = tbody.querySelectorAll('tr');
 
-  // Guard clause: Nếu chưa có dòng nào thì không copy được -> Thêm mới dòng trắng
-  if (rows.length === 0) {
-    log("Copy Row: Bảng trống, thực hiện thêm mới.");
-    addDetailRow(); 
-    return;
+async function syncRow(sourceRow = null) {
+  setBtnLoading('btn-sync-row', true);
+  try {
+    const tbody = getE('detail-tbody');
+    let rows = tbody.querySelectorAll('tr');
+    if (sourceRow) {
+      const sid = sourceRow ? getVal('input[data-field="id"]', sourceRow) : null;
+      if (sid) {
+        const bkDetail = await db.collection('booking_details').doc(sid).get();
+        if (bkDetail.exists) {
+          await A.DB._syncOperatorEntry(bkDetail.data());
+          const newSnap = await db.collection('operator_entries').doc(sid).get();
+          const newData = newSnap.data();
+          const inputs = sourceRow.querySelectorAll('[data-field]');
+          inputs.forEach(input => {
+            const fieldName = input.dataset.field; // Lấy tên field từ data-field
+            if (!fieldName) return;
+            let value = newData[fieldName];
+            setVal(input, value);
+          });
+          logA('Đã đồng bộ dữ liệu từ server cho dòng: ' + sid, 'success');
+          return;
+        } else {
+          logA('Dòng nguồn không tồn tại trên server: ' + sid, 'error');
+          return;
+        }
+      }
+    }
+    else {
+      rows.forEach(async r => {
+        if (r.style.display !== 'none') sourceRow = r;
+        const sid = sourceRow ? getVal('input[data-field="id"]', sourceRow) : null;
+        if (sid) {
+          const bkDetail = await db.collection('booking_details').doc(sid).get();
+          if (bkDetail.exists) {
+            await A.DB._syncOperatorEntry(bkDetail.data());
+            const newSnap = await db.collection('operator_entries').doc(sid).get();
+            const newData = newSnap.data();
+            const inputs = sourceRow.querySelectorAll('[data-field]');
+            inputs.forEach(input => {
+              const fieldName = input.dataset.field; // Lấy tên field từ data-field
+              if (!fieldName) return;
+              let value = newData[fieldName];
+              setVal(input, value);
+            });
+            log('Đã đồng bộ dữ liệu từ server cho dòng: ' + sid, 'success');
+            return;
+          } else {
+            log('Dòng nguồn không tồn tại trên server: ' + sid, 'error');
+            return;
+          }
+        }
+      });
+    }  
   }
-
-  // 1. Lấy dòng cuối cùng (Source Row)
-  const lastRow = sourceRow ? sourceRow : rows[rows.length - 1];
-  
-  // Helper nội bộ: Lấy value an toàn từ row cụ thể
-  const getVal = (cls) => {
-    const el = lastRow.querySelector('.' + cls);
-    return el ? el.value : '';
-  };
-
-  // 2. Chuẩn bị Data Array theo đúng index của addDetailRow
-  // Mapping dựa trên code addDetailRow bạn cung cấp:
-  // [0]:sid, [2]:type, [3]:loc, [4]:name, [5]:in, [6]:out, 
-  // [8]:qty, [9]:pri, [10]:qtyC, [11]:priC, [12]:sur, [13]:disc, [15]:code, [16]:note
-  
-  const rowData = [];
-  
-  // [Quan trọng] Index 0: SID phải để rỗng để hệ thống hiểu là dòng mới (Insert)
-  rowData[0]  = ""; 
-  rowData[1]  = getVal('d-idbk');
-  rowData[2]  = getVal('d-cust');
-  rowData[3]  = getVal('d-type');
-  rowData[4]  = getVal('d-loc');
-  rowData[5]  = getVal('d-name');
-  rowData[6]  = getVal('d-in');
-  rowData[7]  = getVal('d-out');
-  
-  // Index 7 là Night (số đêm) - tự động tính toán, không cần truyền
-  
-  rowData[9]  = getVal('d-qty');
-  rowData[10]  = getVal('d-costA');
-  rowData[11] = getVal('d-qtyC');
-  rowData[12] = getVal('d-costC');
-  rowData[13] = getVal('d-sur');
-  rowData[14] = getVal('d-disc');
-  
-  // Index 14 là Total - tự động tính toán
-  
-  rowData[16] = getVal('d-code');
-  rowData[21] = getVal('d-note');
-
-  log("Copy Row: Sao chép dữ liệu từ dòng " + lastRow.id);
-
-  // 3. Gọi hàm tạo dòng với data đã chuẩn bị
-  if (addToEnd) {
-  addDetailRow(rowData);
-  } else {
-    return rowData;
+  catch (e) {
+    logA("Lỗi đồng bộ dòng: " + e.message, 'error');
+  }
+  finally {
+    setBtnLoading('btn-sync-row', false);
   }
 }
+
+function removeRow(idx) {
+  const row = getE(`row-${idx}`);
+  if(row) row.remove();
+  calcGrandTotal();
+}
+  
 // =========================================================================
 // 2. CALCULATION FUNCTIONS
 // =========================================================================
@@ -891,8 +893,8 @@ function handleAggClick(key, filterType) {
  */
 const PartnerMailModule = (function() {
   
-  function open() {
-    const newModal = UI_RENDERER.renderModal('tmpl-partner-mail', "Send Partner Proposal", send);
+  async function open() {
+    const newModal = await A.UI.renderModal('tmpl-partner-mail', "Send Partner Proposal", send);
     const hotelEl = getE('pm-name');
     const hotelData = window.APP_DATA.lists?.hotelMatrix || [];
     

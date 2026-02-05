@@ -1,7 +1,7 @@
-<div class="app-header shadow-sm my-0 p-1 border-bottom">
+<div class="app-header shadow-sm my-0 p-1 border-bottom" style="height: var(--header-height);">
   <!-- Header Top: Logo & User Menu (FIX: Loại bỏ .row, sử dụng d-flex để tránh negative margin) -->
-  <div class="top-bar px-2 mb-1 bg-gray">
-    <div class="grid-left">
+  <div class="d-flex justify-content-between align-items-center px-2 mb-1">
+    <div class="header-title text-start">
       <img id="main-logo" src="https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp"
         class="bg-white rounded-circle p-1 mx-2 main-logo bg-opacity-75" alt="9Trip Logo"
         style="height: 1.6rem; width: auto;">
@@ -11,7 +11,7 @@
         Guest
       </div>
     </div>
-    <div class="grid-right">
+    <div class="d-flex gap-2 align-items-center justify-content-end">
       <div class="user-menu dropdown d-flex justify-content-end align-items-center">
         <button class="btn btn-light btn-sm dropdown-toggle d-flex align-items-center gap-2" type="button"
           data-bs-toggle="dropdown">
@@ -98,8 +98,8 @@
     </div>
   </div>
   <!-- Header Bottom: Tabs & Title (FIX: Loại bỏ .row, sử dụng d-flex để tránh negative margin) -->
-  <div class="nav-container px-2">
-    <div class="grid-left" style="flex: 0 0 auto; position: relative;">
+  <div class="nav-container d-flex justify-content-between align-items-center px-2" style="flex-wrap: wrap;">
+    <div style="flex: 0 0 auto; position: relative;">
       <ul class="nav nav-tabs px-1 rounded" id="mainTabs" role="tablist">
         <li class="nav-item">
           <button class="nav-link active fw-bold" data-bs-target="#tab-dashboard"
@@ -136,8 +136,15 @@
         </li>
       </ul>
     </div>
-
-    <div class="grid-right" id="header-filters" style="flex: 0 0 auto;">
+    <div style="flex: 1; text-align: center;">
+      <h5 id="module-title" class="m-0 fw-bold text-uppercase d-inline-flex justify-content-center"
+        style="letter-spacing: 1px; font-size: 1.5rem;">
+        QUẢN LÝ BOOKING
+        <i class="fa-solid fa-rotate-right ms-3 admin-only" style="cursor: pointer; font-size: 0.9em;"
+          onclick="reloadPage()" title="Reload"></i>
+      </h5>
+    </div>
+    <div id="header-filters" style="flex: 0 0 auto;">
       <div class="d-flex justify-content-end gap-1 align-items-center">
         <div class="d-flex col-auto d-none" id="datalist-select" data-ontabs="3">
           <select id="btn-select-datalist" class="form-select form-select-sm" style="max-width: 120px;"></select>
@@ -147,7 +154,7 @@
             data-bs-toggle="dropdown" id="download-menu">
             Tải File
           </button>
-          <div class="dropdown-menu desktop-only" aria-labelledby="download-menu">
+          <div class="dropdown-menu" aria-labelledby="download-menu">
             <button class="dropdown-item" type="button" onclick="downloadData()">File Excel</button>
             <button class="dropdown-item" type="button" onclick="downloadData('pdf')">File PDF</button>
           </div>
@@ -165,14 +172,6 @@
         </div>
       </div>
     </div>
-  </div>
-  <div class="grid-center bg-transparent desktop-only" style="grid-row: 1 / 3; min-width: 20vw;">
-    <h5 id="module-title" class="m-0 fw-bold text-uppercase d-inline-flex justify-content-center text-center"
-      style="letter-spacing: 1px; font-size: 1.3rem;">
-      ADMIN MANAGEMENT SYSTEM
-      <span class="ms-3 admin-only align-self-center"><i class="fa-solid fa-rotate-right"
-          style="cursor: pointer; font-size: 0.9em;" onclick="reloadPage()" title="Reload"></i></span>
-    </h5>
   </div>
 </div>
 
@@ -222,28 +221,27 @@
       Form</button>
   </div>
 </div>
-<div class="context-menu dropdown-menu shadow" id="myContextMenu"
-  style="display: none; position: fixed; width: fit-content;">
+<div class="context-menu dropdown-menu shadow" id="myContextMenu" style="display: none; position: fixed;">
   <button class="dropdown-item gap-2 d-flex align-items-center btn-sm btn-light" id="ctx-copyData">
     <i class="fa-solid fa-copy text-primary" style="width:20px"></i>
-    <span>Copy (Hàng)</span>
+    <span>Copy Data Hàng</span>
   </button>
 
   <button class="dropdown-item gap-2 d-flex align-items-center btn btn-sm btn-secondary" id="ctx-paste">
     <i class="fa-solid fa-paste text-success" style="width:20px"></i>
-    <span>Dán (Hàng)</span>
+    <span>Dán Data Hàng</span>
   </button>
   <button class="dropdown-item gap-1 d-flex align-items-center btn btn-sm btn-light" id="ctx-copy"><i
-      class="fa-solid fa-copy text-primary" style="width:15px"></i> Clone (Hàng)</button>
+      class="fa-solid fa-copy text-primary" style="width:15px"></i> Copy Hàng Này</button>
   <div class="dropdown-divider"></div>
   <div class="dropdown-divider"></div>
   <button class="dropdown-item gap-1 d-flex align-items-center text-danger btn btn-sm btn-primary" id="ctx-save-one"><i
-      class="fa-solid fa-save" style="width:15px"></i>Save (Hàng)</button>
-  <button class="dropdown-item gap-1 align-items-center btn btn-sm btn-danger" id="ctx-delete"><i
-      class="fa-solid fa-trash" style="width:15px"></i> Delete (Hàng)</button>
+      class="fa-solid fa-save" style="width:15px"></i>Lưu Hàng Hiện Tại</button>
+  <button class="dropdown-item gap-1 d-flex align-items-center text-danger btn btn-sm btn-light" id="ctx-delete"><i
+      class="fa-solid fa-trash" style="width:15px"></i> Xóa Hàng (Database)</button>
   <div class="dropdown-divider"></div>
-  <button class="dropdown-item gap-1 align-items-center text-danger btn btn-sm btn-warning" id="ctx-delete-bk"><i
-      class="fa-solid fa-trash" style="width:15px"></i>Delete Booking (Database)</button>
+  <button class="dropdown-item gap-1 d-flex align-items-center text-danger btn btn-sm btn-light" id="ctx-delete-bk"><i
+      class="fa-solid fa-trash" style="width:15px"></i>Xóa Booking (Database)</button>
 </div>
 <div class="toast-container position-fixed bottom-0 end-0 p-2"
   style="font-size: 0.75rem; max-width: 15vw; max-height:50vh; z-index: 11000;">
@@ -271,3 +269,28 @@
     <div class="p-2 w-100 overflow-auto" id="overlay-body" style="max-height: 40vh;"></div>
   </div>
 </div>
+<template id="tmpl-dynamic-modal">
+  <div class="modal fade modal-fit-content" id="dynamic-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content shadow-lg border-0">
+        <div class="modal-header header bg-gradient py-2">
+          <h6 class="modal-title fw-bold text-uppercase">
+            <i class="fa-solid fa-sliders me-2"></i>My Modal
+          </h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" id="btn-x-modal"></button>
+        </div>
+
+        <div id="dynamic-modal-body" class="modal-body p-0"></div>
+
+        <div class="modal-footer bg-gray p-2 m-2 gap-2">
+          <button id="btn-reset-modal" type="button" class="btn btn-secondary">
+            Reset
+          </button>
+          <button id="btn-save-modal" type="submit" class="btn btn-primary px-4 fw-bold">
+            <i class="fa-solid fa-check me-2"></i>Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>

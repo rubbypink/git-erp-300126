@@ -8,10 +8,11 @@ const SHORTCUT_KEY_STORAGE = '9TRIP_SHORTCUTS_CFG';
 
 // Cấu hình mặc định
 let APP_SHORTCUTS = {
-    'saveForm': 'Ctrl+S',
-    'reloadPage': 'Ctrl+Q', // Tránh F5 vì yêu cầu Ctrl
-    'openSettingsModal': 'Ctrl+M',
-    'actionCreateBooking': 'Ctrl+B'
+    'saveForm': 'Ctrl+Shift+S',
+    'reloadPage': 'Ctrl+Alt+Q', // Tránh F5 vì yêu cầu Ctrl
+    'openSettingsModal': 'Ctrl+Alt+M',
+    'actionCreateBooking': 'Ctrl+Alt+B',
+    'openCalculator': 'Ctrl+Shift+C',
 };
 
 // 1. Khởi tạo (Gọi hàm này trong initApp)
@@ -446,6 +447,13 @@ function actionCreateBooking() {
         }, 300);
     }
 }
+function openCalculator() {
+    if (CalculatorWidget && typeof CalculatorWidget.toggle === 'function') {
+        CalculatorWidget.toggle();
+    }
+}
+
+
 
 function selectAdminDash() {
     activateTab('tab-admin-dashboard');
