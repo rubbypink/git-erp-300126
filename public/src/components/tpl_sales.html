@@ -128,22 +128,24 @@
       <div class="card-body my-0">
         <div class="row">
           <div class="col-md-10">
-            <div class="d-inline-flex flex-wrap gap-1 py-0 justify-content-around">
+            <div class="d-flex flex-wrap gap-1 py-0 justify-content-around booking-info">
               <div class="col-md-1"><label class="form-label small fw-bold">Mã Booking</label><input type="text"
                   class="form-control form-control-sm fw-bold text-danger" id="BK_ID" readonly placeholder="Auto ID"
                   style="pointer-events: none; user-select: none;">
               </div>
               <div class="col-md-1"><label class="form-label small">Ngày Đặt</label><input type="date"
                   class="form-control form-control-sm" id="BK_Date"></div>
-              <div class="col-md-4"><label class="form-label small fw-bold">Khách Hàng (*)</label>
-                <div class="input-group input-group-sm">
-                  <input type="text" class="form-control mx-1" id="Cust_Name" placeholder="Họ tên khách"
-                    onchange="findCustByPhone()" required list="list-cust-names" autocomplete="off" autofocus><datalist
-                    id="list-cust-names"></datalist>
-                  <input type="text" class="form-control mx-1 phone_number" id="Cust_Phone"
-                    placeholder="SĐT (Enter tìm)" onchange="findCustByPhone()" list="list-cust-phones"
-                    autocomplete="off"><datalist id="list-cust-phones"></datalist>
-                </div>
+              <div class="col-md-2">
+                <label for="Cust_Name" class="form-label small">Khách Hàng (*)</label>
+                <input type="text" class="form-control form-control-sm mx-1" id="Cust_Name" placeholder="Họ tên khách"
+                  onchange="findCustByPhone()" required list="list-cust-names" autocomplete="off" autofocus><datalist
+                  id="list-cust-names"></datalist>
+              </div>
+              <div class="col-md-2">
+                <label for="Cust_Phone" class="form-label small">Số Điện Thoại (*)</label>
+                <input type="text" class="form-control form-control-sm phone_number mx-1" id="Cust_Phone"
+                  placeholder="Số điện thoại khách" onchange="findCustByName()" required list="list-cust-phones"
+                  autocomplete="off"><datalist id="list-cust-phones"></datalist>
               </div>
               <div class="col-md-1"><label class="form-label small">Ngày Đi</label><input type="date"
                   class="form-control form-control-sm" id="BK_Start"></div>
@@ -157,12 +159,20 @@
                   class="form-select form-select-sm" id="Cust_Source"></select></div>
               <div class="col-md-1"><label class="form-label small">Nhân viên</label><select
                   class="form-select form-select-sm" id="BK_Staff"></select></div>
-              <div class="col-md-2"><label class="form-label small">Tên Tour/Combo</label>
-                <div class="input-group input-group-sm"><input type="text" class="form-control form-control-sm"
-                    id="BK_TourName" list="list-tours" placeholder="Nhập tên tour..." onchange="checkAndLoadTemplate()">
-                  <div class="input-group-append"><button class="btn btn-sm btn-outline-secondary mx-1" type="button"
-                      title="Lưu chi tiết hiện tại làm Template" onclick="saveCurrentTemplate()"><i
-                        class="fa-solid fa-floppy-disk rounded"></i></button></div><datalist id="list-tours"></datalist>
+
+              <div class="col-md-2">
+                <label for="BK_TourName" class="form-label small">Tên Tour/Combo</label>
+                <div class="d-flex">
+                  <input type="text" class="form-control form-control-sm" id="BK_TourName" list="list-tours"
+                    placeholder="Nhập tên tour..." onchange="checkAndLoadTemplate()">
+                  <div class="input-group-append">
+                    <button class="btn btn-sm btn-outline-secondary" type="button"
+                      title="Lưu chi tiết hiện tại làm Template" onclick="saveCurrentTemplate()"
+                      style="border-radius: 0;">
+                      <i class="fa-solid fa-floppy-disk"></i>
+                    </button>
+                  </div>
+                  <datalist id="list-tours"></datalist>
                 </div>
               </div>
               <div class="col-md-2"><label class="form-label small fw-bold text-primary ">Tổng Booking</label><input
@@ -211,7 +221,7 @@
         </div>
       </div>
       <div class="table-responsive" id="tbl-booking-form">
-        <table class="table table-bordered table-sm mb-0" style="min-width: 1500px;">
+        <table class="table table-bordered table-sm mb-0" style="min-width: 80%;">
           <thead class="table-secondary text-center align-middle">
             <tr>
               <th width="20">#</th>

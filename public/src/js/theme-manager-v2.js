@@ -23,24 +23,24 @@ const THEME_CONFIG = {
     name: 'light',
     label: '🔵 9Trip Standard (Mặc định)',
     colors: {
-    '--primary-color': '#3b82f6',
+    '--primary-color': '#2376fc',
     '--secondary-color': '#64748b',
     '--app-bg': '#f8fafc',
-    '--header-bg': '#779bfc',
+    '--header-bg': '#7b9aee',
     '--footer-bg': '#888787',
-    '--text-color': '#1e293b',
+    '--text-color': '#07090e',
     '--text-secondary': '#79889c',
-    '--border-color': '#cbd5e1',
-    '--surface-color': '#ffffff',
+    '--border-color': '#113561',
+    '--surface-color': '#faf3e5',
     '--hover-bg': '#f1f5f9',
     '--input-bg': '#ffffff',
     '--success-color': '#10b981',
     '--warning-color': '#f59e0b',
     '--error-color': '#ef4444',
     '--info-color': '#06b6d4',
-    '--tbl-head-bg': '#e2e8f0',
+    '--tbl-head-bg': '#7c9bf1',
     '--tbl-head-text': '#1e293b',
-    '--tbl-row-bg': '#ffffff',
+    '--tbl-row-bg': '#e9e4e4',
     '--tbl-row-hover': '#f1f5f9',
     '--tbl-border': '#cbd5e1',
     '--tab-active-bg': '#ffffff',
@@ -73,26 +73,26 @@ const THEME_CONFIG = {
         '--border-color': '#475569',            // ★ Keep: Medium slate
         '--surface-color': '#1e293b',           // ★ Keep: Slate surface
         '--hover-bg': '#334155',                // ★ Keep: Hover state
-        '--input-bg': '#0f172a',                // ★ Darkened: 1e293b → 0f172a (input darker)
+        '--input-bg': '#364b7e',                // ★ Darkened: 1e293b → 0f172a (input darker)
         '--success-color': '#4ade80',           // ★ Keep: Bright green
         '--warning-color': '#fbbf24',           // ★ Brightened: facc15 → fbbf24 (more orange)
         '--error-color': '#fb7185',             // ★ Brightened: f87171 → fb7185 (brighter red)
         '--info-color': '#22d3ee',              // ★ Keep: Cyan
-        '--tbl-head-bg': '#1e293b',             // ★ Changed: 334155 → 1e293b (darker header)
+        '--tbl-head-bg': '#233046',             // ★ Changed: 334155 → 1e293b (darker header)
         '--tbl-head-text': '#f8fafc',           // ★ Brightened: f1f5f9 → f8fafc (whiter text)
-        '--tbl-row-bg': '#0f172a',              // ★ Darkened: 1e293b → 0f172a (darker rows)
-        '--tbl-row-hover': '#1e293b',           // ★ Changed: 334155 → 1e293b (lighter hover)
+        '--tbl-row-bg': '#485064',              // ★ Darkened: 1e293b → 0f172a (darker rows)
+        '--tbl-row-hover': '#272c33',           // ★ Changed: 334155 → 1e293b (lighter hover)
         '--tbl-border': '#334155',              // ★ Brightened: 475569 → 334155 (more visible)
-        '--tab-active-bg': '#1e293b',           // ★ Darkened: 334155 → 1e293b
+        '--tab-active-bg': '#99a1af',           // ★ Darkened: 334155 → 1e293b
         '--tab-active-text': '#60a5fa',         // ★ Changed: 7c3aed → 60a5fa (brighter blue)
         '--tab-inactive-bg': '#0f172a',         // ★ Changed: 1e293b → 0f172a (darker inactive)
         '--tab-inactive-text': '#cbd5e1',       // ★ Brightened: 94a3b8 → cbd5e1
-        '--glass-bg': '#1e293b',                // ★ Keep: Glass background
+        '--glass-bg': '#3f4144',                // ★ Keep: Glass background
         '--glass-text': '#f8fafc',              // ★ Brightened: f1f5f9 → f8fafc
         '--glass-border': '#334155',            // ★ Brightened: 475569 → 334155
         '--shadow-sm': '0 1px 2px rgba(0, 0, 0, 0.5)',
         '--shadow-md': '0 4px 6px rgba(0, 0, 0, 0.5)',
-        '--shadow-lg': '0 10px 15px rgba(0, 0, 0, 0.5)'
+        '--shadow-lg': '0 10px 15px rgba(51, 51, 51, 0.5)'
     },
     fontFamily: "'Roboto', sans-serif",
     spacingScale: 1,

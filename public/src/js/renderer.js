@@ -1,6 +1,7 @@
 // =========================================================================
 // 1. GLOBAL UI VARIABLES (CHỈ KHAI BÁO BIẾN UI TẠI ĐÂY)
 // =========================================================================
+var isMobile;
 var APP_URL = {
 baseUrl: 'https://script.google.com/macros/s/AKfycbyKK7O71jsyamCcBaeCMA0lio1YdQ_onGrUz1X1IYY/exec',
 devUrl: 'https://script.google.com/macros/s/AKfycbyKK7O71jsyamCcBaeCMA0lio1YdQ_onGrUz1X1IYY/dev',
@@ -267,30 +268,31 @@ function selectTab(targetTabId) {
 		tabTrigger.show();
 	}
 	const tabEl = getE(targetTabId);
-	setClass($('.modal-footer', getE('dynamic-modal')), "d-none", false);
+	A.Modal.setFooter(false); // Ẩn footer mặc định
 	if (targetTabId === 'tab-theme-content') {
 		setClass($(targetTabId), 'd-none', false);
 		setClass($('#tab-shortcut-content'), 'd-none', true);
 		setClass($('#tab-users-content'), 'd-none', true);
 		setClass($('#tab-users-content'), 'admin-only', false); 
-		A.UI.bindBtnEvent(saveThemeSettings, 'btn-save-modal', 'Áp Dụng Theme');
-		A.UI.bindBtnEvent(THEME_MANAGER.resetToDefault, 'btn-reset-modal'); 
+		A.Modal.setSaveHandler(saveThemeSettings, 'Áp Dụng Theme');
+		A.Modal.setResetHandler(THEME_MANAGER.resetToDefault, 'Đặt Lại');
 	} else if (targetTabId === 'tab-shortcut-content') {
 		setClass($(targetTabId), 'd-none', false);
 		setClass($('#tab-theme-content'), 'd-none', true);
 		setClass($('#tab-users-content'), 'd-none', true);  
 		setClass($('#tab-users-content'), 'admin-only', false);            
-		A.UI.bindBtnEvent(saveShortcutsConfig, 'btn-save-modal', 'Lưu Phím Tắt'); 
+		A.Modal.setSaveHandler(saveShortcutsConfig, 'Lưu Phím Tắt');
+		A.Modal.setResetHandler(() => {}, 'Đặt Lại');
 	} else if (targetTabId === 'tab-users-content') {
 		setClass($(targetTabId), 'd-none', false);
 		setClass($('#tab-theme-content'), 'd-none', true);
 		setClass($('#tab-shortcut-content'), 'd-none', true);              
 		A.Auth.renderUsersConfig();
-		A.UI.bindBtnEvent(A.Auth.saveUser, 'btn-save-modal', 'Lưu User');
-		A.UI.bindBtnEvent(() => {
+		A.Modal.setSaveHandler(A.Auth.saveUser, 'Lưu User');
+		A.Modal.setResetHandler(() => {
 			document.getElementById('users-form').reset();
 			document.getElementById('form-created-at').valueAsDate = new Date();                    
-		}, 'btn-reset-modal', 'Nhập Lại');    
+		}, 'Nhập Lại');    
 	}
 	// Thêm delay nhỏ để đảm bảo DOM ready
 	setTimeout(() => {

@@ -19,13 +19,14 @@ const CalculatorWidget = {
             this.renderUI();
             this.attachEvents();
             this.trackLastInput();
+            this.initDragDrop();
         }
     },
 
     // 3. UI: Render HTML (Bootstrap + Vanilla JS)
     renderUI: function() {
         const html = `
-            <div id="${this.config.containerId}" class="shadow-lg" style="position: fixed; bottom: 20px; right: 50px; width: 300px; z-index: 9999; background: #fff; border-radius: 12px; display: none; border: 1px solid #e0e0e0; opacity: 0; transition: opacity ${this.config.animationDuration}ms ease;">
+            <div id="${this.config.containerId}" class="shadow-lg desktop-only" style="position: fixed; bottom: 20px; right: 50px; width: 300px; z-index: 9999; background: #fff; border-radius: 12px; display: none; border: 1px solid #e0e0e0; opacity: 0; transition: opacity ${this.config.animationDuration}ms ease;">
                 
                 <div class="d-flex justify-content-between align-items-center p-2 bg-primary text-white" style="border-radius: 12px 12px 0 0;">
                     <small><i class="fa-solid fa-calculator me-1"></i> Quick Calc (Ctrl + Enter để dán nhanh!)</small>
@@ -100,7 +101,7 @@ const CalculatorWidget = {
         });
 
         // Click nút bật/tắt
-        toggleBtn.addEventListener('click', () => self.toggle());
+        // toggleBtn.addEventListener('click', () => self.toggle());
         collapseBtn.addEventListener('click', () => self.toggle());
 
         // Click nút dán
@@ -235,6 +236,96 @@ const CalculatorWidget = {
                 widget.style.opacity = '1';
             }, 10); // Trigger reflow
         }
+    },
+
+    // 10. DRAG & DROP: Xử lý kéo thả button với smooth movement
+    initDragDrop: function() {
+        const self = this;
+        const btn = document.getElementById('btn-toggle-calc');
+        
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let startLeft = 0;
+        let startBottom = 0;
+        
+        // Bắt đầu kéo - Tắt hết transitions để icon di chuyển mượt
+        btn.addEventListener('mousedown', function(e) {
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            
+            // Lấy vị trí hiện tại
+            const rect = btn.getBoundingClientRect();
+            startLeft = rect.left;
+            startBottom = window.innerHeight - rect.bottom;
+            
+            // Tắt animations ngay lập tức để icon follow cursor mượt mà
+            btn.style.transition = 'none';
+            btn.style.cursor = 'grabbing';
+            btn.style.userSelect = 'none';
+        });
+
+        // Kéo thả - Icon di chuyển realtime theo cursor
+        document.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            
+            // Tính toán khoảng cách di chuyển trên cả X và Y
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            
+            // Cập nhật vị trí mới - NO TRANSITION, SMOOTH FOLLOW
+            const newLeft = startLeft + deltaX;
+            const newBottom = Math.max(20, startBottom - deltaY);
+            
+            // Cập nhật position trực tiếp (không có delay)
+            btn.style.left = newLeft + 'px';
+            btn.style.bottom = newBottom + 'px';
+            btn.style.right = 'auto';
+        });
+
+        // Kết thúc kéo - Snap vào cạnh gần nhất với animation
+        btn.addEventListener('mouseup', function(e) {
+            // Kiểm tra xem có phải là click thực sự hay drag
+            const isMiniClick = Math.abs(e.clientX - startX) < 5 && Math.abs(e.clientY - startY) < 5;
+            
+            if (!isDragging) return;
+            
+            isDragging = false;
+            btn.style.cursor = 'pointer';
+            btn.style.userSelect = 'auto';
+            
+            // Nếu là click nhỏ, toggle calculator
+            if (isMiniClick) {
+                btn.style.transition = '';
+                self.toggle();
+                return;
+            }
+            
+            // Nếu là drag, snap vào cạnh gần nhất
+            const rect = btn.getBoundingClientRect();
+            const distanceToLeft = rect.left;
+            const distanceToRight = window.innerWidth - rect.right;
+            
+            // Bật animation để snap mượt mà
+            btn.style.transition = `all ${self.config.animationDuration}ms ease`;
+            
+            // Tự động dính vào cạnh gần nhất
+            if (distanceToLeft < distanceToRight) {
+                // Dính vào cạnh trái
+                btn.style.left = '20px';
+                btn.style.right = 'auto';
+            } else {
+                // Dính vào cạnh phải
+                btn.style.right = '20px';
+                btn.style.left = 'auto';
+            }
+            
+            // Xóa transition sau khi animation hoàn thành
+            setTimeout(() => {
+                btn.style.transition = '';
+            }, self.config.animationDuration);
+        });
     }
 };
 

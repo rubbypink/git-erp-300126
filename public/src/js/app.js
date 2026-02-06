@@ -6,7 +6,7 @@ import FirestoreDataTableManager from './modules/M_FirestoreDataTable.js';
 import { HotelPriceController } from './modules/M_HotelPrice.js';
 import ServicePriceController from './modules/M_ServicePrice.js';
 import PriceManager from './modules/M_PriceManager.js';
-
+import MobileManager from './modules/MobileManager.js';
 // CalculatorWidget được load từ global scope (không dùng ES Module)
 
 // =========================================================================
@@ -112,7 +112,7 @@ class Application {
                 bodyEl.innerHTML = '';
                 dialog.style.width = 'auto';
                 dialog.style.height = 'auto';
-                dialog.style.maxHeight = '90vh';
+                dialog.style.maxHeight = '88vh';
                 
                 // 3. Check và xử lý content type
                 const isFragment = htmlContent instanceof DocumentFragment;
@@ -140,7 +140,7 @@ class Application {
                     
                     // 5. ✅ Đảm bảo modal không vượt quá viewport
                     const contentHeight = bodyEl.scrollHeight;
-                    const maxHeight = window.innerHeight * 0.8; // 85% viewport
+                    const maxHeight = window.innerHeight * 0.88; // 88% viewport
                     
                     if (contentHeight > maxHeight) {
                         dialog.style.maxHeight = maxHeight + 'px';
@@ -174,7 +174,7 @@ class Application {
             },
 
             /**
-             * Center modal dialog in viewport
+             * Center modal dialog - horizontally centered, positioned from top 10rem
              * @private
              */
             _centerModal: function() {
@@ -184,8 +184,8 @@ class Application {
                 
                 dialog.style.position = 'fixed';
                 dialog.style.left = '50%';
-                dialog.style.top = '50%';
-                dialog.style.transform = 'translate(-50%, -50%)';
+                dialog.style.top = '10%';  // 160px from top
+                dialog.style.transform = 'translateX(-50%)';  // Center horizontally only
                 dialog.style.margin = '0';
             },
 
@@ -206,7 +206,7 @@ class Application {
                 }
             },
 
-            setSaveHandler: function(callback) {
+            setSaveHandler: function(callback, btnText = 'Lưu') {
                 const btn = this._getButton('#btn-save-modal');
                 if (!btn) return;
     
@@ -221,9 +221,10 @@ class Application {
                 
                 btn.addEventListener('click', callback);
                 btn.style.display = 'inline-block';
+                btn.textContent = btnText;
             },
     
-            setResetHandler: function(callback) {
+            setResetHandler: function(callback, btnText = 'Reset') {
                 const btn = this._getButton('#btn-reset-modal');
                 if (!btn) return;
     
@@ -236,6 +237,7 @@ class Application {
                 appInstance.setState({ modalHandlers: handlers });
                 btn.addEventListener('click', callback);
                 btn.style.display = 'inline-block';
+                btn.textContent = btnText;
             },
 
             setFooter: function(show = true) {
@@ -278,8 +280,8 @@ class Application {
                 if (!dialog.style.position || dialog.style.position === 'static') {
                     dialog.style.position = 'fixed';
                     dialog.style.left = '50%';
-                    dialog.style.top = '50%';
-                    dialog.style.transform = 'translate(-50%, -50%)';
+                    dialog.style.top = '10rem';  // 160px from top
+                    dialog.style.transform = 'translateX(-50%)';  // Center horizontally
                     dialog.style.margin = '0';
                     dialog.style.zIndex = '1060'; // Ensure above modal backdrop
                 }
@@ -443,21 +445,21 @@ class Application {
 
         // Create modal HTML template from createDynamicModal spec
         const modalHTML = `
-            <div id="dynamic-modal" class="modal fade" tabindex="-1" aria-hidden="true">
+            <div id="dynamic-modal" class="modal modal-fit-content fade" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog" role="document">
                     <div class="modal-content shadow-lg border-0">
                         <div class="modal-header header bg-gradient py-2">
-                            <h6 class="modal-title fw-bold text-uppercase">
+                            <h6 class="modal-title fw-bold text-uppercase" style="letter-spacing: 1px; justify-self: center;">
                                 <i class="fa-solid fa-sliders me-2"></i>Modal Title
                             </h6>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
-                        <div id="dynamic-modal-body" class="modal-body p-0"></div>
-                        <div class="modal-footer bg-gray p-2 m-2 gap-2">
-                            <button id="btn-reset-modal" type="button" class="btn btn-secondary" style="display: none;">
+                        <div id="dynamic-modal-body" class="modal-body px-2"></div>
+                        <div class="modal-footer bg-gray p-2 m-2 gap-2" data-ft="true">
+                            <button id="btn-reset-modal" type="button" class="btn btn-secondary">
                                 <i class="fa-solid fa-redo me-2"></i>Đặt lại
                             </button>
-                            <button id="btn-save-modal" type="submit" class="btn btn-primary px-4 fw-bold" style="display: none;">
+                            <button id="btn-save-modal" type="submit" class="btn btn-primary px-4 fw-bold">
                                 <i class="fa-solid fa-check me-2"></i>Lưu
                             </button>
                         </div>
@@ -749,11 +751,18 @@ window.A = A;
 
 export default A;
 
-document.addEventListener('DOMContentLoaded',  () => {
+document.addEventListener('DOMContentLoaded', () => {
     try {
+        isMobile = window.innerWidth <= 768 || ('ontouchstart' in window);
         A.init();
-        CalculatorWidget.init(); 
-
+        if (isMobile) {
+            console.log('[App] 📱 Mobile device detected (width <= 768px)');
+            activateTab('tab-form');
+            MobileManager.init();
+            document.querySelectorAll('.desktop-only').forEach(el => el.remove());
+        } else if (typeof CalculatorWidget !== 'undefined' && CalculatorWidget.init) {
+            CalculatorWidget.init();
+        }
     } catch (e) {
         console.error("Critical Error:", e);
         document.body.innerHTML = `<h3 class="text-danger p-3">Lỗi kết nối hệ thống: ${e.message}</h3>`;

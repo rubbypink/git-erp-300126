@@ -1,6 +1,7 @@
 
     // =========================================================================
     // 1. BIẾN & INIT
+
     // =========================================================================
     var detailRowCount = 0;
 
@@ -1202,40 +1203,35 @@
       // Hàm mở Modal (Entry Point)
       async function openModal(bookingId) {
         if (!bookingId) return logA("Không có mã Booking!", "warning");
-        A.UI.renderTemplate('body', 'tmpl-dynamic-modal', true, '.app-container');
-        const modalEl = getE('dynamic-modal');
-        if (!modalEl) return;
-        $('.modal-title', modalEl).innerText = "Xác Nhận Booking: " + bookingId;
-        setClass($('.modal-footer', modalEl), "d-none", true); // Ẩn footer
-        
-        // Reset modal
-        const modalBody = document.getElementById('dynamic-modal-body');
-        modalBody.innerHTML = '<div class="p-5 text-center"><div class="spinner-border text-primary"></div><br>Đang tải dữ liệu...</div>';
-        const myModal = new bootstrap.Modal(modalEl);
-        
-        myModal.show();
 
         try {
           // Gọi API lấy dữ liệu chi tiết
           // Sử dụng lại searchBookingAPI của Server để đảm bảo nhất quán
-          const res = findBookingInLocal(bookingId) || await searchBookingAPI(bookingId);
+          const res = findBookingInLocal(bookingId);
           
           if (res && res.success) {
             _currentData = res;
-            _renderUI();
+            const formEl = getE('tmpl-confirmation-modal');
+            const form = formEl.content.cloneNode(true);
+            if (formEl) {
+              A.Modal.render(form, `Xác nhận dịch vụ New - Booking ID: ${bookingId}`);
+              await _renderUI();
+              A.Modal.show();
+            }
           } else {
-            modalBody.innerHTML = '<div class="alert alert-danger m-3">Không tìm thấy dữ liệu!</div>';
-          }
+            logA(`Không tìm thấy Booking ID: ${bookingId}`, "error");
+          }        
+          
         } catch (e) {
           logError(e);
-          modalBody.innerHTML = `<div class="alert alert-danger m-3">Lỗi: ${e.message}</div>`;
+          logA(`Lỗi: ${e.message}`, "error");
         }
       }
 
       // Hàm render giao diện chính
-      function _renderUI() {
+      async function _renderUI() {
         // 1. Load Template
-        A.UI.renderTemplate('dynamic-modal-body', 'tmpl-confirmation-modal', true);
+        // A.UI.renderTemplate('dynamic-modal-body', 'tmpl-confirmation-modal', true);
         
         // 2. Điền dữ liệu Header & Customer
         const m = _currentData.bookings; // [ID, Date, Email, CID, Name, Phone, Start...]
@@ -1253,7 +1249,7 @@
         setVal('conf-staff', "Sales Executive"); // Nhân viên
 
         // 3. Điền bảng dữ liệu (Table)
-        _renderTable();
+        await _renderTable();
 
         // 4. Điền Tổng tiền
         setVal('conf-total', formatMoney(m.total_amount * 1000));
@@ -1266,7 +1262,7 @@
       }
 
       // Hàm render bảng chi tiết (Xử lý 2 chế độ: Service & Tour)
-      function _renderTable() {
+      async function _renderTable() {
 
           const booking_details = _currentData.booking_details || [];
           const tbodySvc = document.getElementById('conf-tbody-service');
@@ -1475,6 +1471,7 @@
       }
 
       async function exportPDF() {
+          await loadLibraryAsync('html2pdf');
           const btnExport = event.currentTarget;
           const oldText = btnExport.innerHTML;
           btnExport.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Đang xử lý...';

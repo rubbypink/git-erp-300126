@@ -214,14 +214,14 @@
                                 <label>Mật khẩu</label>
                             </div>
                             
-                            <button class="btn btn-primary w-100 py-3 fw-bold shadow-sm" onclick="A.AUTH.handleEmailLogin()">
+                            <button id="btn-mail-login" class="btn btn-primary w-100 py-3 fw-bold shadow-sm">
                                 ĐĂNG NHẬP NGAY
                             </button>
     
                             <div class="mt-4 small text-muted">
                                 Hoặc đăng nhập bằng
                                 <div class="d-flex gap-2 justify-content-center mt-2">
-                                    <button class="btn btn-outline-light border text-dark" onclick="A.AUTH.handleSocialLogin('google')">
+                                    <button id="btn-google-login" class="btn btn-outline-light border text-dark">
                                         <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" width="18"> Google
                                     </button>
                                 </div>
@@ -241,6 +241,14 @@
                         showLoading(true);
                         this.handleEmailLogin();
                     }
+                });
+                document.getElementById('btn-mail-login')?.addEventListener('click', () => {
+                    showLoading(true);
+                    this.handleEmailLogin();
+                });
+                document.getElementById('btn-google-login')?.addEventListener('click', () => {
+                    showLoading(true);
+                    this.handleSocialLogin('google');
                 });
             }, 100);
         },
@@ -443,18 +451,6 @@
         }
     };
 
-    // Hàm render template users-config vào giao diện
-    // function renderUsersConfig() {
-    //     //   $('.modal-footer').style.display = 'none'; // Ẩn footer nếu có
-    //     // Set ngày tạo mặc định là hôm nay
-    //     document.getElementById('users-form').reset();
-    //     const today = new Date().toISOString().split('T')[0];
-    //     document.getElementById('form-created-at').value = today;
-
-    //     // Load dữ liệu users vào bảng
-    //     AUTH_MANAGER.loadUsersData();
-    // }
-
 
     const SECURITY_MANAGER = {
         /**
@@ -578,25 +574,3 @@
 
     export { AUTH_MANAGER, SECURITY_MANAGER };
 
-    // 2. Lắng nghe sự kiện DOM Ready
-    //   document.addEventListener('DOMContentLoaded', initApp);
-    // document.addEventListener('DOMContentLoaded',  () => {
-    //     try {
-    //         APP_CORE.init(); 
-    //         // const btn = document.getElementById('theme-toggle');
-    //         // if (!btn) return;
-    //         // const currentTheme = window.THEME_MANAGER.getCurrentTheme();
-    //         // updateThemeToggleButton(currentTheme);
-    //         // btn.addEventListener('click', (e) => {
-    //         //     e.preventDefault();
-    //         //     const newTheme = window.toggleTheme();
-    //         //     // updateThemeToggleButton(newTheme);
-    //         // });
-    //     } catch (e) {
-    //         console.error("Critical Error:", e);
-    //         document.body.innerHTML = `<h3 class="text-danger p-3">Lỗi kết nối hệ thống: ${e.message}</h3>`;
-    //     }
-    // });
-    // if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    //     document.getElementById('theme-toggle') && updateThemeToggleButton(window.THEME_MANAGER.getCurrentTheme());
-    // }

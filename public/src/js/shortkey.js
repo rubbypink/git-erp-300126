@@ -39,10 +39,9 @@ function buildKeyCombination(e) {
     // Bỏ qua nếu chỉ là phím modifier
     if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return null;
     
-    const keyChar = e.key.toUpperCase();
     if (modifiers.length === 0) return null; // Phải có ít nhất 1 modifier
     
-    return modifiers.join('+') + '+' + keyChar;
+    return modifiers.join('+') + '+' + e.key?.toUpperCase();
 }
 
 // 2B. Helper: Parse function name và arguments từ chuỗi

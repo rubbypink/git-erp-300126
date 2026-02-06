@@ -7,6 +7,7 @@ class ModalFull extends HTMLElement {
         super();
         this.modal = null;
         this.isFullscreen = true;
+        this.showFooter = true;
     }
 
     connectedCallback() {
@@ -16,23 +17,23 @@ class ModalFull extends HTMLElement {
 
     render() {
         const title = this.getAttribute('title') || 'Modal Title';
-        const showFooter = this.getAttribute('data-ft') !== 'false';
+         this.showFooter = this.getAttribute('data-ft') !== 'false';
 
         this.innerHTML = `
             <div id="dynamic-modal-full" class="modal fade" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-fullscreen" id="modalFullDialog">
                     <div class="modal-content">
-                        <div class="modal-header p-0 border-bottom" style="max-height: 3vh;">
-                            <h5 class="modal-title">${title}</h5>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <button type="button" class="btn-resize-modal" id="btnResizeModal" title="Chuyển đổi kích thước" style="border: none; background: none; font-size: 18px; color: #999; cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center;">
+                        <div class="modal-header border-bottom" style="max-height: max-content;">
+                            <h5 class="modal-title" style="font-weight: bold; justify-self: center;">${title}</h5>
+                            <div style="display: flex; gap: 0.6rem; align-items: center;">
+                                <button type="button" class="btn-resize-modal" id="btnResizeModal" title="Chuyển đổi kích thước" style="border: none; background: none; font-size: 1.2rem; color: #999; cursor: pointer; padding: 0.5rem; display: flex; align-items: center; justify-content: center;">
                                     <i class="fas fa-expand"></i>
                                 </button>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
                         </div>
                         <div id="dynamic-modal-full-body" class="modal-body pt-0 overflow-auto"></div>
-                        ${showFooter ? `
+                        ${this.showFooter ? `
                             <div class="modal-footer gap-2">
                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
                                 <button type="button" class="btn btn-primary">Lưu</button>
@@ -84,9 +85,34 @@ class ModalFull extends HTMLElement {
         }
     }
 
-    data(htmlContent) {
-        const body = this.querySelector('.modal-body');
-        if (body) body.innerHTML = htmlContent;
+    data(htmlContent, title = "9 Trip ERP") {
+        const bodyEl = this.querySelector('.modal-body');
+        const titleEl = this.querySelector('.modal-title');
+        if (titleEl) {
+            titleEl.textContent = title;
+        }   
+        // 3. Check và xử lý content type
+        const isFragment = htmlContent instanceof DocumentFragment;
+        const isElement = htmlContent instanceof HTMLElement;
+        const isString = typeof htmlContent === 'string';
+
+        try {
+            if (isString) {
+                // String HTML - dùng innerHTML
+                bodyEl.innerHTML = htmlContent;
+            } else if (isFragment) {
+                // DocumentFragment - clone và append
+                bodyEl.appendChild(htmlContent.cloneNode(true));
+            } else if (isElement) {
+                // HTMLElement - clone và append
+                bodyEl.appendChild(htmlContent.cloneNode(true));
+            } else if (htmlContent) {
+                // Fallback: convert to string
+                bodyEl.innerHTML = String(htmlContent);
+            }
+        } catch (error) {
+            console.error("Error setting modal content:", error);
+        }
     }
 
     show() {
@@ -116,6 +142,31 @@ class ModalFull extends HTMLElement {
             handler.call(this);
         });
     }
+
+    setFooter(showFooter) {
+        this.showFooter = showFooter;
+        const footerEl = this.querySelector('.modal-footer');
+        if (showFooter) {
+            if (!footerEl) {
+                const footerHTML = `
+                    <div class="modal-footer gap-2" data-ft="true">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                        <button type="button" class="btn btn-primary">Lưu</button>
+                    </div>
+                `;
+                this.querySelector('.modal-content').insertAdjacentHTML('beforeend', footerHTML);
+            } else {
+                footerEl.classList.remove('d-none');
+                footerEl.setAttribute('data-ft', 'true');
+            }
+        } else {
+            if (footerEl) {
+                footerEl.classList.add('d-none');
+            }
+        }
+    }
+
+
 
     /**
      * Toggle modal size between fullscreen and XL.
@@ -241,7 +292,10 @@ class OffcanvasMenu extends HTMLElement {
                     <div class="function-grid">
                         ${this._renderFuncBtn('export', 'Xuất Excel', 'file-excel', '#218838')}
                         ${this._renderFuncBtn('import', 'Nhập liệu', 'file-upload', '#007bff')}
-                        ${this._renderFuncBtn('report', 'Báo cáo', 'chart-pie', '#dc3545')}
+                        <button class="func-btn" data-action="openReport" onclick="this.getRootNode().host.openReport()">
+                            <i class="fas fa-chart-line fa-fw" style="color: #dc3545"></i>
+                            <span>Báo cáo</span>
+                        </button>
                         ${this._renderFuncBtn('openSettingsModal', 'Cấu hình', 'cog', '#6c757d')}
                     </div>
                 </div>
@@ -346,7 +400,7 @@ class OffcanvasMenu extends HTMLElement {
                 flex-direction: column;
                 
                 transform: translateX(-102%);
-                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
                 pointer-events: auto;
                 will-change: transform;
                 position: relative;
@@ -806,6 +860,29 @@ class OffcanvasMenu extends HTMLElement {
         }
     }
 
+    openReport() {
+        // Đóng menu sidebar
+        const offcanvas = bootstrap.Offcanvas.getInstance(this.shadowRoot.querySelector('#offcanvas-menu'));
+        if (offcanvas) offcanvas.hide();
+    
+        // Mở Modal Báo Cáo
+        // Kiểm tra xem ModalFull đã được định nghĩa chưa, nếu chưa thì báo lỗi hoặc fallback
+        const modal = document.querySelector('at-modal-full');
+        if (modal) {
+            // Set tiêu đề và hiển thị
+            
+            // Gọi hàm show của Report Module
+            // Lưu ý: Cần đảm bảo script logic_report.js đã được load
+            if (window.ReportModule) {
+                window.ReportModule.init(); // Init report content inside modal
+                modal.show(); // Show modal container
+            } else {
+                console.error("ReportModule not found. Please load logic_report.js");
+                alert("Chưa tải module báo cáo. Vui lòng refresh trang.");
+            }
+        }
+    }
+
     _dispatchUpdate() {
         this.dispatchEvent(new CustomEvent('filter-change', {
             detail: {
@@ -1029,13 +1106,14 @@ class OffcanvasMenu extends HTMLElement {
      * @private
      */
     _initHoverTrigger() {
+        this._hoverTriggerTime = null; // Track when cursor enters trigger zone
         document.addEventListener('mousemove', this._handleMouseMove, false);
     }
     
     /**
-     * Handle global mouse move - open menu when cursor near edge.
+     * Handle global mouse move - open menu when cursor near edge for at least 1s.
      * Only works when NOT pinned and NOT resizing.
-     * ★ FIX: Guard against resize state blocking hover
+     * ★ FIX: Add 1s delay before opening menu to prevent accidental triggers
      * @private
      * @param {MouseEvent} e
      */
@@ -1054,14 +1132,22 @@ class OffcanvasMenu extends HTMLElement {
                 ? window.innerWidth - this.state.triggerWidth 
                 : this.state.triggerWidth;
     
-            if (this.state.isRightSide) {
-                if (e.clientX >= triggerX) {
+            const isInTriggerZone = this.state.isRightSide 
+                ? e.clientX >= triggerX
+                : e.clientX <= triggerX;
+            
+            if (isInTriggerZone) {
+                // Cursor entered trigger zone
+                if (!this._hoverTriggerTime) {
+                    // Record time when cursor first enters
+                    this._hoverTriggerTime = Date.now();
+                } else if (Date.now() - this._hoverTriggerTime >= 1000) {
+                    // Cursor has been in zone for at least 1 second
                     this.open();
                 }
             } else {
-                if (e.clientX <= triggerX) {
-                    this.open();
-                }
+                // Cursor left trigger zone - reset timer
+                this._hoverTriggerTime = null;
             }
         } catch (err) {
             console.warn('Hover trigger error (non-fatal):', err.message);
@@ -1069,7 +1155,7 @@ class OffcanvasMenu extends HTMLElement {
     }
     
     /**
-     * Handle mouse leave from menu wrapper - close after delay.
+     * Handle mouse leave from menu wrapper - close after delay and reset hover timer.
      * Only works when NOT pinned.
      * @private
      */
@@ -1077,6 +1163,9 @@ class OffcanvasMenu extends HTMLElement {
         if (!this.state || !this.state.isHoverEnabled) {
             return;
         }
+        
+        // Reset hover trigger timer khi chuột rời menu
+        this._hoverTriggerTime = null;
         
         setTimeout(() => {
             this.close();

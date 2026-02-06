@@ -1,0 +1,164 @@
+<div class="container-fluid p-3 report-container">
+    <div class="card shadow-sm mb-3 d-print-none">
+        <div class="card-body p-2 d-flex flex-wrap gap-2 align-items-center justify-content-between">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <div class="input-group input-group-sm" style="width: 280px;">
+                    <span class="input-group-text fw-bold text-primary"><i class="fas fa-chart-pie"></i></span>
+                    <select class="form-select fw-bold text-primary" id="rpt-type-select"
+                        onchange="ReportModule.changeReportType(this.value)">
+                        <optgroup label="1. SALES (Kinh Doanh)">
+                            <option value="SALES_GENERAL">Doanh Thu Tổng Hợp</option>
+                            <option value="SALES_SERVICES">Chi tiết theo Dịch vụ</option>
+                            <option value="SALES_MATRIX_STAFF">Doanh Thu NV Chi tiết</option>
+                        </optgroup>
+                        <optgroup label="2. OPERATOR (Điều Hành)">
+                            <option value="OP_GENERAL">Tổng hợp Điều hành</option>
+                            <option value="OP_DEBT_DETAIL">Công nợ chi tiết NCC</option>
+                        </optgroup>
+                        <optgroup label="3. FINANCIAL (Tài Chính)">
+                            <option value="FIN_GENERAL">Tổng hợp Lợi nhuận</option>
+                            <option value="FIN_BY_TYPE">Lợi nhuận theo Loại DV</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div class="d-flex gap-1 align-items-center border-start ps-2">
+                    <select class="form-select form-select-sm" id="rpt-date-field" style="width: 110px;">
+                        <option value="created_at">Ngày tạo</option>
+                        <option value="start_date">Check-in</option>
+                        <option value="end_date">Check-out</option>
+                    </select>
+
+                    <input type="date" id="rpt-date-from" class="form-control form-control-sm" style="width: 130px;">
+                    <span class="text-muted">-</span>
+                    <input type="date" id="rpt-date-to" class="form-control form-control-sm" style="width: 130px;">
+
+                    <div class="btn-group btn-group-sm gap-2 mx-1 border-start border-end pe-1">
+                        <button type="button" class="btn btn-outline-secondary"
+                            onclick="ReportModule.setQuickDate('last_month')">Tháng trước</button>
+                        <button type="button" class="btn btn-outline-secondary"
+                            onclick="ReportModule.setQuickDate('this_year')">Năm nay</button>
+                    </div>
+
+                    <button class="btn btn-primary btn-sm" onclick="ReportModule.refreshData()" title="Xem báo cáo"
+                        style="min-width: 1.5rem;">
+                        <i class="fas fa-filter"></i>
+                    </button>
+
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-danger btn-sm" onclick="ReportModule.exportData('pdf')">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </button>
+                <button class="btn btn-outline-success btn-sm" onclick="ReportModule.exportData('excel')">
+                    <i class="fas fa-file-excel"></i> Excel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3" id="rpt-kpi-area">
+        <div class="col-md-3 col-6">
+            <div class="card bg-primary h-100 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title text-dark small text-uppercase">Tổng Doanh Thu</h6>
+                    <h3 class="fw-bold mb-0" id="kpi-1">0</h3>
+                    <small id="kpi-sub-1">---</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card bg-success h-100 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title text-dark small text-uppercase">Lợi Nhuận Gộp</h6>
+                    <h3 class="fw-bold mb-0" id="kpi-2">0</h3>
+                    <small id="kpi-sub-2">---</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card bg-warning h-100 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title text-dark small text-uppercase">Công Nợ Phải Thu</h6>
+                    <h3 class="fw-bold mb-0" id="kpi-3">0</h3>
+                    <small id="kpi-sub-3">---</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card bg-danger h-100 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title text-dark small text-uppercase">Công Nợ Phải Trả</h6>
+                    <h3 class="fw-bold mb-0" id="kpi-4">0</h3>
+                    <small id="kpi-sub-4">---</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-header bg-white py-2 cursor-pointer" style="cursor: pointer;"
+            onclick="ReportModule.toggleCharts()" title="Click để ẩn/hiện biểu đồ">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold text-primary"><i class="fas fa-chart-line me-2"></i>BIỂU ĐỒ THỐNG KÊ</h6>
+                <i class="fas fa-chevron-up text-muted" id="chart-toggle-icon"></i>
+            </div>
+        </div>
+
+        <div class="card-body collapse show" id="rpt-chart-container">
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <div style="height: 300px; position: relative;">
+                        <canvas id="rpt-chart-main"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div style="height: 300px; position: relative; display: flex; justify-content: center;">
+                        <canvas id="rpt-chart-pie"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card bg-light shadow-sm" style="width: fit-content; min-width: 60%; justify-self: center;">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold text-primary"><i class="fas fa-table me-2"></i>DỮ LIỆU CHI TIẾT</h6>
+            <input type="text" class="form-control form-control-sm d-inline-block w-auto" placeholder="Tìm kiếm..."
+                onkeyup="ReportModule.filterTable(this.value);">
+        </div>
+        <div class="card-body p-0 table-responsive flex-center">
+            <table class="table table-bordered table-striped table-hover mb-0 small" id="rpt-table">
+                <thead class="bg-light text-dark"></thead>
+                <tbody class="text-center"></tbody>
+            </table>
+        </div>
+        <div class="card-footer small text-muted">
+            Hiển thị <span id="rpt-row-count">0</span> dòng dữ liệu.
+        </div>
+    </div>
+</div>
+
+<style>
+    @media print {
+        .d-print-none {
+            display: none !important;
+        }
+
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        .modal-fullscreen .modal-body {
+            overflow: visible !important;
+        }
+
+        .report-container {
+            width: 100%;
+            padding: 0;
+        }
+    }
+</style>

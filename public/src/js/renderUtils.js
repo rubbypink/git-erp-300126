@@ -272,15 +272,15 @@ const UI_RENDERER = {
 	},
 	renderModal: async function(tmplId, title, btnSaveHandler = null, btnResetHandler = null, modalId='dynamic-modal') {  
 		try {
-      const modalContent = await this.renderTemplate(null, tmplId);
+			const modalContent = await this.renderTemplate(null, tmplId);
 
-      A.Modal.render(modalContent, title);
-      if (btnSaveHandler) {
-        A.Modal.setSaveHandler(btnSaveHandler);
-      }
-      if (btnResetHandler) {
-        A.Modal.setResetHandler(btnResetHandler);
-      } else this.bindBtnEvent(this.resetForm, 'btn-reset-modal');
+			A.Modal.render(modalContent, title);
+			if (btnSaveHandler) {
+				A.Modal.setSaveHandler(btnSaveHandler, 'Lưu');
+			}
+			if (btnResetHandler) {
+				A.Modal.setResetHandler(btnResetHandler);
+			} else A.Modal.setResetHandler(this.resetForm, 'Đặt Lại');
 			return A.Modal;
 		} catch (e) {
 			logError("Lỗi trong renderModal: ", e);

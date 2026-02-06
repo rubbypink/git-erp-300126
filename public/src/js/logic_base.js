@@ -901,12 +901,7 @@ async function openSettingsModal() {
             saveThemeSettings,           // Save callback (calls THEME_MANAGER.saveSettingsFromForm)
             () => THEME_MANAGER.resetToDefault(true)  // Reset callback with confirmation
         );
-        
-        const modalEl = getE('dynamic-modal');
-        setClass(modalEl, 'modal-fit-content', false);
-        setClass($('.modal-dialog', modalEl), 'modal-xl', true);
-        if (!modalEl) return;
-        
+            
         // --- DELEGATE ALL THEME LOGIC TO THEME_MANAGER ---
         if (!THEME_MANAGER) {
             logError('Theme manager not initialized');
@@ -1195,28 +1190,15 @@ function _reindexTableRows(tbodyObj) {
 
 // Hàm xóa Local Cache
 function clearLocalCache() {
-    const confirm_clear = confirm('Bạn có chắc chắn muốn xóa Local Cache?\n\nCác dữ liệu sau sẽ bị xóa:\n- Cấu hình Phím Tắt\n- Nhật ký ứng dụng\n- Cài đặt giao diện');
+    const confirm_clear = confirm('Bạn có chắc chắn muốn xóa Local Cache?\n\nTẤT CẢ dữ liệu trong localStorage sẽ bị xóa vĩnh viễn.');
     if (!confirm_clear) return;
 
     try {
-        // 1. Xóa key 9TRIP_SHORTCUTS_CFG
-        localStorage.removeItem('9TRIP_SHORTCUTS_CFG');
-        
-        // 2. Xóa các key có prefix app_logs_
-        const keysToRemove = [];
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('app_logs_')) {
-                keysToRemove.push(key);
-            }
-        }
-        keysToRemove.forEach(key => localStorage.removeItem(key));
-        
-        // 3. Xóa key 9TRIP_ERP_SETTINGS_V2
-        localStorage.removeItem('9TRIP_ERP_SETTINGS_V2');
+        // Xóa tất cả dữ liệu localStorage
+        localStorage.clear();
 
         log('✅ Local Cache đã được xóa thành công');
-        logA('✅ Local Cache đã được xóa thành công!\n\nVui lòng reload trang để áp dụng thay đổi.');
+        logA('✅ Tất cả dữ liệu Local Cache đã được xóa!\n\nVui lòng reload trang để áp dụng thay đổi.');
         
         // Optional: Tự động reload trang
         // setTimeout(() => location.reload(), 1000);
@@ -1224,6 +1206,6 @@ function clearLocalCache() {
         console.error('❌ Lỗi khi xóa Local Cache:', error);
         logA('❌ Có lỗi xảy ra khi xóa Local Cache', 'error');
     }
-}    
+}  
 
 

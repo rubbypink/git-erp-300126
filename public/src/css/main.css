@@ -12,19 +12,6 @@
     *, *::before, *::after {
       box-sizing: border-box; /* Đảm bảo padding/margin không làm vỡ kích thước 100% */
     }
-
-    /* ─────────────────────────────────────────────────────────── */
-    /* MOBILE TOUCH FIX: Allow swipe/gesture navigation */
-    /* ─────────────────────────────────────────────────────────── */
-    html {
-      touch-action: auto;  /* ✅ Allow swipe gestures, pan-x, pan-y */
-    }
-
-    body { 
-      -webkit-user-select: auto;    /* Allow text selection for normal use */
-      user-select: auto;            /* Standard */
-    }
-
     /* =========================================================================
        COLOR SCHEME: LIGHT & DARK THEMES
        Sử dụng 2 bộ màu hài hòa phổ biến nhất
@@ -54,8 +41,8 @@
       --text-color: #0f141c;             /* Tối - Văn bản chính */
       --text-secondary: #64748b;         /* Xám - Văn bản phụ */
       --border-color: #afb8c4;           /* Xám sáng - Border */
-      --surface-color: #ffffff;          /* Trắng - Card/Modal */
-      --hover-bg: #f1f5f9;               /* Xám siêu nhạt - Hover */
+      --surface-color: #e7e7e7;          /* Trắng - Card/Modal */
+      --hover-bg: #eaeaeb;               /* Xám siêu nhạt - Hover */
       --input-bg: #e4e4e4;               /* Trắng - Input background */
       --success-color: #10b981;          /* Xanh lá - Thành công */
       --warning-color: #f59e0b;          /* Cam - Cảnh báo */
@@ -76,7 +63,7 @@
       --tab-inactive-text: #64748b;
 
       /* Glass/Surface Layer - Light */
-      --glass-bg: #ffffff;
+      --glass-bg: #f1e1e1;
       --glass-text: #1e293b;
       --glass-border: #cbd5e1;
 
@@ -159,10 +146,11 @@
         transition: background-color 0.3s ease, color 0.3s ease;
     }
 
-    /* --- ADVANCED TAB STYLING (THEME SYNC) --- */
+    /* ─── SCROLLABLE CONTAINERS: Allow scroll gestures ─── */
     .nav-tabs {
-        border-bottom: 1px solid var(--border-color);
-        transition: border-color 0.3s ease;
+      border-bottom: 1px solid var(--border-color);
+      overflow: auto;  /* Shorthand for horizontal/vertical scroll */
+      -webkit-overflow-scrolling: touch;
     }
     .nav-tabs .nav-link {
         background-color: var(--tab-inactive-bg) !important;
@@ -186,9 +174,9 @@
 
     /* --- CARD & SURFACE COMPONENTS --- */
     .card {
-        background-color: var(--surface-color) !important;
-        color: var(--text-color) !important;
-        border-color: var(--border-color) !important;
+        background-color: var(--surface-color);
+        color: var(--text-color);
+        border-color: var(--border-color);
         box-shadow: var(--shadow-md);
         transition: all 0.3s ease;
     }
@@ -197,9 +185,9 @@
     }
 
     .card-header {
-        background-color: var(--tbl-head-bg) !important;
-        color: var(--tbl-head-text) !important;
-        border-color: var(--border-color) !important;
+        background-color: var(--tbl-head-bg);
+        color: var(--tbl-head-text);
+        border-color: var(--border-color);
     }
 
     /* --- DROPDOWN & MENU --- */
@@ -252,7 +240,8 @@
         text-align: center;
         -webkit-user-select: text;    /* Allow text selection in inputs */
         user-select: text;
-        touch-action: auto;  /* ✅ Allow swipe in inputs */
+        touch-action: manipulation;  /* ✅ Allow zoom but block double-tap zoom */
+        pointer-events: auto;        /* ✅ Ensure input is clickable */
     }
     .form-control::placeholder {
         color: var(--text-secondary);
@@ -271,7 +260,8 @@
         font-weight: 500;
         text-align: center;
         line-clamp: 2;
-        touch-action: auto;  /* ✅ Allow swipe on buttons */
+        touch-action: manipulation;  /* ✅ Allow but block double-tap zoom */
+        pointer-events: auto;        /* ✅ Ensure button is clickable */
     }
 
     .btn-primary {
@@ -395,8 +385,8 @@
 
     /* --- SCROLLBAR STYLING --- */
     ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
     }
 
     ::-webkit-scrollbar-track {
@@ -516,7 +506,7 @@
       justify-content: space-between;
     }
 
-    /* NAV-BAR: Row 2 of header */
+    /* ─── NAV-CONTAINER: Horizontal flex, auto-wrap, horizontal scroll ─── */
     .app-header .nav-container {
       grid-row: 2;
       grid-column: 1 / -1;
@@ -529,17 +519,20 @@
       grid-template-columns: repeat(var(--grid-cols), minmax(0, 1fr));
       grid-auto-flow: row;
       gap: 1rem;
+      pointer-events: auto;
     }
 
     /* APP-CONTENT: Spans row 2, all columns */
     .app-content {
       grid-column: 1 / -1;
       flex: 1 1 auto;
-      overflow: hidden;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
       position: relative;
       padding: 0.5rem 0.25rem;
       display: flex;
       flex-direction: column;
+      pointer-events: auto;
     }
 
     /* FOOTER-BAR: Spans row 3, all columns */
@@ -594,7 +587,7 @@
     }
 
     /* Form Elements siêu nhỏ */
-    .form-control, .form-control-sm, .form-select-sm, .btn-sm, .input-group-sm {
+    .form-control-sm, .form-select-sm, .btn-sm, .input-group-sm, .input-group-append-sm, .input-group-prepend-sm {
       font-size: 0.75rem;
       padding: 0.15rem 0.25rem;
       min-height: 1.5rem;
@@ -627,7 +620,8 @@
     .nav-tabs,
     .app-header .nav-container,
     .footer-bar {
-      touch-action: auto;  /* ✅ Allow swipe/pan gestures */
+      touch-action: manipulation;  /* ✅ Allow pan but block double-tap zoom */
+      pointer-events: auto;        /* ✅ Ensure interactive */
     }
 
     table.table-bordered thead {
@@ -677,6 +671,8 @@
       padding: 0 0.25rem 0.25rem 0.25rem;
       height: 100%;
       width: 100%;
+      overflow: auto;  /* Allow scrolling */
+      -webkit-overflow-scrolling: touch;
     }
     
     .tab-pane {
@@ -719,8 +715,10 @@
       flex: 1 1 auto;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
       height: 100% !important;
+      pointer-events: auto;
     }
 
     /* Vùng chứa bảng (Scrollable Area) */
@@ -738,7 +736,8 @@
     
     /* --- 5. TAB FORM (NHẬP LIỆU) --- */
     #tab-form {
-      overflow-y: auto;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
       height: 100%;
       padding-bottom: 0.625rem;
     }
@@ -804,26 +803,14 @@
         align-self: center;
         justify-self: center;
         max-width: 100%;
-        margin-top: 4.375rem;
+        top: 8%;
+        left: 50%;
         margin-bottom: 6.25rem;
         width: fit-content;
         height: fit-content;
         min-width: 25rem;
     }
 
-
-    @keyframes titleSlideIn {
-      from {
-          opacity: 0;
-          transform: translateX(-1.875rem);
-      }
-      to {
-          opacity: 1;
-          transform: translateX(0);
-      }
-    }
-    
-    
     @keyframes iconSpin {
         from { transform: rotate(-180deg) scale(0.5); }
         to { transform: rotate(0) scale(1); }
@@ -940,317 +927,177 @@
       display: none !important;
     }
 
-    /* =========================================
-    RESPONSIVE MOBILE FIX (SAFE MODE)
-    Chỉ áp dụng cho màn hình nhỏ hơn 768px
-    ========================================= */
-    /* Đảm bảo modal không bị tràn màn hình nếu nội dung quá dài */
-    @media (min-width: 576px) {
-        .modal-fit-content .modal-dialog {
-            max-width: 95vw;
-        }
-    }
+    /* =========================================================================
+    MOBILE TOUCH FIX - REVISED BY 9 TRIP ERP ASSISTANT
+    ========================================================================= */
+ 
+ @media screen and (max-width: 768px) {
 
-    /* ========================================================================
-       MOBILE RESPONSIVE (Width < 768px)
-       ======================================================================== */
-    @media screen and (max-width: 768px) {
-      /* ─── MOBILE GRID LAYOUT: Allow scroll both directions ─── */
-      body {
-        grid-template-rows: auto 1fr auto;
-        grid-template-columns: 1fr;
-        overflow: auto;
-        overflow-y: auto;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        font-size: 12px;
-      }
+  
+  /* 1. KHÔI PHỤC QUYỀN CUỘN CHO BODY */
+  /*  html, body {
+  /*  overflow: auto !important; /* Cho phép cuộn tự nhiên trên Mobile */
+  /*height: auto !important;   /* Tránh việc ép cứng 100% gây mất nội dung */
+  /*touch-action: auto !important; 
+  /*-webkit-overflow-scrolling: touch;
+  /*}
 
-      .app-header {
-        grid-area: auto;
-        grid-template-rows: 0 auto;  /* Hide top-bar (height 0) */
-      }
+  /* 2. ĐIỀU CHỈNH APP-CONTAINER */
+  /*.app-container {
+  /*  display: block !important; /* Chuyển từ Flex/Grid sang Block để cuộn mượt hơn */
+  /*  overflow: visible !important;
+  /*  height: auto !important;
+  /* }
 
-      /* ─── HIDE TOP-BAR ─── */
-      .app-header .top-bar {
-        display: none !important;
-        height: 0 !important;
-        padding: 0 !important;
-      }
+  /* --- FIXED HEADER & SCROLLABLE CONTENT --- */
 
-      /* ─── NAV-CONTAINER: Horizontal flex, auto-wrap, horizontal scroll ─── */
-      .app-header .nav-container {
-        grid-row: 1;
-        grid-column: 1 / -1;
-        padding: 0.25rem 0;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: flex-start;
-        gap: 0;
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        white-space: nowrap;
-        background: var(--header-bg);
-        border-bottom: 1px solid var(--border-color);
-      }
+  /* 1. Đảm bảo container chiếm trọn màn hình và không cuộn body */
+  html, body {
+      overflow: hidden !important;
+      height: auto !important;
+      touch-action: auto !important; 
+      -webkit-overflow-scrolling: touch;      
+  }
+  
+  .app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh; /* Sử dụng biến --vh nếu bạn đã cài đặt ở bước trước */
+      width: 100%;
+      overflow: hidden;
+  }
+  
+  /* 2. Cố định Header */
+  .app-header {
+      flex: 0 0 auto; /* Không cho phép co dãn */
+      /* position: sticky;
+      top: 0; */
+      z-index: 1000;
+      background: var(--header-bg);
+      box-shadow: var(--shadow-md);
+      max-height: 8rem; /* Đảm bảo header không quá lớn chiếm chỗ content */
+      padding: 0.2rem;
+  }
+  
+  /* 3. Vùng nội dung tự cuộn */
+  .app-content {
+      flex: 1 1 auto; /* Chiếm toàn bộ phần còn lại */
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
+      display: flex;
+      flex-direction: column;
+      max-height: 85vh;
+  }  
 
-      /* ─── REDUCE ICON SIZE BY 50% ─── */
-      .app-header .nav-container i,
-      .app-header .nav-container .fa,
-      .app-header .nav-container [class*="fa-"] {
-        font-size: 0.75rem !important;
-        width: 1rem;
-        height: 1rem;
-        line-height: 1rem;
-      }
+  /* 5. FIX NAV-CONTAINER NGANG */
+  .app-header .nav-container {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important; /* Cuộn ngang menu */
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    padding: 0.2rem !important;
+  }
 
-      .app-header .nav-container button,
-      .app-header .nav-container a {
-        white-space: nowrap;
-        flex-shrink: 0;
-        font-size: 0.65rem;
-        padding: 0.3rem 0.5rem;
-        min-height: 1.5rem;
-        height: 1.5rem;
-      }
+  .booking-info {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: start !important;
+    margin: 0.15rem !important;
+    padding: 0.15rem !important;
+  }
+  .booking-info > * .form-control-sm,
+  .booking-info > * .form-select-sm {
+    margin: 0 !important;
+    padding: 0.15rem !important;
+    width: fit-content !important;
+  }
+  /* --- 2. FIX MODAL BACKDROP CLICK-THROUGH --- */
 
-      /* Mobile App Content */
-      .app-content {
-        grid-column: 1 / -1;
-        overflow-x: auto;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        padding: 0.35rem 0.175rem;
-        flex: 1 1 auto;
-      }
+  /* Đảm bảo Modal Container bao phủ toàn màn hình nhưng cho phép click xuyên qua vùng trống */
+  .modal {
+    background-color: rgba(0, 0, 0, 0.5) !important; /* Tạo lớp nền mờ thủ công nếu cần */
+    pointer-events: auto !important;
+  }
 
-      /* Mobile Footer: Margin-bottom 1rem, horizontal scroll */
-      .footer-bar {
-        grid-column: 1 / -1;
-        margin-bottom: 1rem;
-        font-size: 0.7rem;
-        min-height: 1.8rem;
-        height: auto;
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        white-space: nowrap;
-        padding: 0.6rem 0.35rem;
-      }
+  .modal-dialog {
+    /* Quan trọng: Ngăn chặn click-out khi click vào bên trong lòng Modal */
+    pointer-events: auto; 
+    z-index: 1051;
+  }
+  
 
-      /* Mobile Tabs */
-      .nav-tabs {
-        flex-wrap: nowrap;
-        gap: 0.175rem;
-        overflow-x: auto;
-        overflow-y: hidden;
-        -webkit-overflow-scrolling: touch;
-        white-space: nowrap;
-        margin-bottom: 0.175rem;
-      }
+  /* 3. FIX LỖI MODAL CHẶN THAO TÁC */
+  .modal-fit-content .modal-dialog {
+    /* Thay vì absolute gây khó cuộn, dùng margin cho ổn định */
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    margin: 2rem 1.5rem !important;
+    width: 90vw !important;
+    max-width: 90vw !important;
+  }
 
-      .nav-tabs .nav-link {
-        padding: 0.3rem 0.35rem;
-        font-size: 0.65rem;
-        margin-right: 0;
-        margin-bottom: 0;
-        flex-shrink: 0;
-        white-space: nowrap;
-      }
+  /* 4. ĐẢM BẢO CÁC VÙNG NHẬP LIỆU LUÔN TƯƠNG TÁC ĐƯỢC */
+  input, select, textarea, button, .btn {
+    pointer-events: auto !important;
+    touch-action: manipulation !important; /* Cho phép zoom nhấp nhưng không lag */
+    width: fit-content !important;
+    padding: 0.15rem !important;
+    margin: 0.15rem !important;
+  }
+    
+  /* --- TỐI ƯU TOÀN BỘ BUTTON TRONG FOOTER (ANY DEPTH) --- */
+  .footer-bar * .btn {
+      /* Ép các nút về cùng một tiêu chuẩn kích thước */
+      flex: 0 0 auto !important; 
+      min-width: 3rem !important; /* ~80px */
+      height: 2.25rem !important;  /* ~44px - Chuẩn Touch Target của Apple */
+      
+      /* Font và canh lề */
+      font-size: 0.7rem !important;
+      padding: 0 0.45rem !important;
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap !important; /* Không cho chữ xuống dòng trong nút */
+      
+      /* Layout */
+      margin: 0.1rem !important; /* Tạo khoảng cách an toàn xung quanh */
+      border-radius: 0.5rem !important;
+      vertical-align: middle;
+  }
+  /* Xử lý các icon bên trong button cho đồng nhất */
+  .footer-bar * .btn i, 
+  .footer-bar * .btn svg {
+      font-size: 1rem !important;
+      margin-right: 0.15rem; /* Khoảng cách giữa icon và chữ */
+  }
 
-      .tab-content {
-        padding: 0;
-      }
+  /* 4. Footer cố định bên dưới */
+  .footer-bar {
+    display: flex !important; /* 'contents' giúp các thẻ bọc trung gian "vô hình", khiến các button bên trong hành xử như con trực tiếp của footer-bar */
+    flex: 0 0 auto !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important; /* Cuộn ngang menu */
+    overflow-y: hidden !important;    
+    white-space: nowrap !important;
+    padding: 0.2rem!important;
+    margin-bottom: 0.5rem !important;
+    gap: 0.25rem !important;
+  }
 
-      /* ─── REDUCE PADDING/MARGIN BY 30% ─── */
-      /* Forms: Flex column, left-align, max-width 4/12 columns */
-      form, .form-group {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        width: 100%;
-      }
+  .desktop-only {
+    display: none !important;
+  }
 
-      input, select, textarea {
-        max-width: 33.33% !important;  /* 4/12 columns */
-        min-width: 50px !important;
-        margin-bottom: 0.21rem !important;
-        height: 1.5rem !important;
-        font-size: 0.7rem !important;
-        font-size: 12px !important;  /* Prevent zoom on iOS */
-        box-sizing: border-box !important;
-        padding: 0.15rem 0.2rem !important;
-      }
+    
 
-      label {
-        display: block !important;
-        margin-bottom: 0.1rem !important;
-        margin-top: 0.35rem !important;
-        font-weight: bold;
-        font-size: 0.65rem;
-      }
 
-      button, .btn, .btn-sm {
-        padding: 0.35rem 0.45rem !important;
-        margin-top: 0.45rem !important;
-        margin-bottom: 0.21rem !important;
-        font-size: 0.65rem !important;
-        min-height: 1.5rem !important;
-        height: 1.5rem !important;
-      }
 
-      /* Hide desktop-only elements */
-      .desktop-only {
-        display: none !important;
-      }
 
-      /* Mobile Card Header */
-      .card-header {
-        padding: 0.35rem 0.175rem;
-        min-height: 1.5rem;
-        font-size: 0.7rem;
-        margin-bottom: 0.175rem;
-      }
 
-      .card {
-        margin-bottom: 0.35rem;
-        border: 0.5px solid var(--border-color);
-      }
-
-      /* Mobile Tables */
-      .table-data th {
-        padding: 0.2rem 0.1rem;
-        font-size: 0.6rem;
-      }
-
-      .table-data td {
-        padding: 0.1rem;
-        font-size: 0.6rem;
-      }
-
-      /* Mobile Tables Scrollable Container */
-      #tbl-container-tab2 {
-        overflow-x: auto !important;
-        overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch;
-      }
-
-      .table {
-        min-width: 100%;
-        margin-bottom: 0.175rem;
-        font-size: 0.6rem;
-      }
-
-      /* ─── MODAL: Center on screen ─── */
-      .modal {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-      }
-
-      .modal-fit-content .modal-dialog {
-        margin: 0 auto !important;
-        width: 90vw !important;
-        max-width: 90vw !important;
-        min-width: 90vw !important;
-        max-height: 90vh !important;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-      }
-
-      .modal-content {
-        border-radius: 0.35rem;
-        align-items: center !important;
-        justify-content: center !important;
-      }
-
-      /* ─── TOAST: Center on screen ─── */
-      .toast-container {
-        position: fixed !important;
-        top: 50% !important;
-        left: 50% !important;
-        transform: translate(-50%, -50%) !important;
-        z-index: 9999 !important;
-        width: auto !important;
-        max-width: 90vw !important;
-      }
-
-      .toast {
-        margin: 0 auto;
-      }
-
-      /* Mobile Admin Wrapper */
-      .admin-wrapper {
-        min-height: calc(100vh - 3rem);
-        padding: 0.5rem 0.35rem;
-      }
-
-      .admin-header-text {
-        margin-bottom: 0.7rem;
-        font-size: 0.85rem;
-      }
-
-      .module-card {
-        min-height: 7rem;
-        margin-bottom: 0.7rem;
-        width: 100%;
-      }
-
-      /* ─── REDUCE ICON SIZE BY 50% ─── */
-      .module-icon {
-        font-size: 1.75rem !important;
-        width: 1.75rem;
-        height: 1.75rem;
-        line-height: 1.75rem;
-        margin-bottom: 0.35rem;
-      }
-
-      .module-title {
-        font-size: 0.7rem;
-      }
-
-      /* Mobile Log */
-      #log-list {
-        padding: 0.2rem;
-        font-size: 0.55rem;
-        max-height: calc(100vh - 10rem);
-        overflow-y: auto;
-      }
-
-      #tab-log {
-        padding: 0;
-      }
-
-      /* Mobile Flex */
-      .flex-center {
-        flex-direction: column;
-        gap: 0.35rem;
-      }
-
-      .flex-inline-center {
-        gap: 0.35rem;
-      }
-
-      /* ─────────────────────────────────────────────────────────── */
-      /* MOBILE GESTURE FIX: Prevent text selection on touch events */
-      /* ─────────────────────────────────────────────────────────── */
-      table tbody tr {
-        -webkit-user-select: auto;  /* iOS */
-        user-select: auto;          /* Standard */
-      }
-
-      table tbody tr * {
-        -webkit-user-select: auto;  /* Inputs, buttons, text inside rows */
-        user-select: auto;
-      }
-    }
-
+ }
 

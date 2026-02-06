@@ -933,7 +933,6 @@
     };
   }
 
-  
   // Cache cấu hình để không phải gọi Firestore nhiều lần
   let _GAS_SECRETS = null;
 
@@ -1286,10 +1285,12 @@
       });
     } else {
       const toastE = getE('liveToast');
+      if (!toastE) { warn('logA', 'Toast element not found'); return; }
       const header = $('.toast-header');
-      header.classList.remove(...BG_CLASSES);
-      setClass(header, cfg.titleClass);
-
+      if (header) {
+        header.classList.remove(...BG_CLASSES);
+        setClass(header, cfg.titleClass);
+      }
       const body = getE('toast-body');
       const html = `<div class="mb-2 ${cfg.color}"><i class="fa-solid ${cfg.icon} fa-2x animate__animated animate__bounceIn"></i></div>
                   <span class="text-secondary text-wrap fs-6 my-2">${safeMsg}</span>`;
@@ -1442,6 +1443,300 @@
       }
   }
 
+
+  
+  // =========================================================================
+  // SMART ASYNC LIBRARY LOADER - Load thư viện bất đồng bộ (không block page)
+  // =========================================================================
+  
+  // Cache cấu hình Library - Chứa URL(s), trạng thái load, và check function
+  // Thêm library mới chỉ cần thêm entry vào đây, không cần sửa hàm loadLibraryAsync
+  // 
+  // urls có thể là:
+  // - string: URL đơn lẻ
+  // - array: Nhiều URLs (load song song)
+  const _LibraryLoadStatus = {
+    xlsx: {
+      urls: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/2.8.0/xlsx.full.min.js',
+      loaded: false,
+      promise: null,
+      check: () => typeof window.XLSX !== 'undefined'
+    },
+    jspdf: {
+      urls: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+      loaded: false,
+      promise: null,
+      check: () => typeof window.jspdf !== 'undefined'
+    },
+    autotable: {
+      urls: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js',
+      loaded: false,
+      promise: null,
+      check: () => {
+        if (typeof window.jspdf === 'undefined') return false;
+        const doc = new window.jspdf.jsPDF();
+        return typeof doc.autoTable === 'function';
+      }
+    },
+    pdfjs: {
+      urls: [
+        "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
+        "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"
+      ],
+      loaded: false,
+      promise: null,
+      check: () => typeof window.pdfjsLib !== 'undefined'
+    },
+    html2pdf: {
+      urls: 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
+      loaded: false,
+      promise: null,
+      check: () => typeof window.html2pdf !== 'undefined'
+    }
+  };
+  /**
+   * Helper: Load library bất đồng bộ (Async)
+   * Hàm này tự động load từ config trong _LibraryLoadStatus
+   * Support load 1 URL hoặc nhiều URLs (song song)
+   * 
+   * @param {string} libName - Tên lib: 'xlsx', 'jspdf', 'autotable', 'pdfjs'
+   * @returns {Promise<boolean>} - true nếu load thành công, false nếu thất bại
+   * 
+   * Cách thêm library mới:
+   * 1. Thêm entry vào _LibraryLoadStatus với urls (string hoặc array), loaded, promise, check
+   * 2. Gọi loadLibraryAsync('tên-lib-mới') - Xong!
+   * 3. Không cần sửa gì hàm này
+   * 
+   * Ví dụ:
+   * - URL đơn: urls: 'https://cdn.../lib.js'
+   * - Nhiều URLs: urls: ['https://cdn.../lib1.js', 'https://cdn.../lib2.js']
+   */
+  async function loadLibraryAsync(libName) {
+    // 1. Kiểm tra library có tồn tại trong config không
+    const libConfig = _LibraryLoadStatus[libName];
+    if (!libConfig) {
+      logError(`❌ loadLibraryAsync: Unknown library [${libName}]`);
+      return false;
+    }
+
+    // 2. Nếu đã load xong -> return true luôn
+    if (libConfig.loaded === true) {
+      return true;
+    }
+
+    // 3. Nếu đang load -> chờ Promise đó hoàn thành
+    if (libConfig.promise instanceof Promise) {
+      return await libConfig.promise;
+    }
+
+    // 4. Bắt đầu load (tạo Promise)
+    const promise = (async () => {
+      try {
+        // Kiểm tra xem lib đã có sẵn chưa (tránh load 2 lần)
+        if (libConfig.check()) {
+          log(`✅ Library [${libName}] already loaded`, 'success');
+          return true;
+        }
+
+        // Normalize URLs thành array (support cả string và array)
+        const urlsToLoad = Array.isArray(libConfig.urls) 
+          ? libConfig.urls 
+          : [libConfig.urls];
+
+        log(`📥 Loading library [${libName}] (${urlsToLoad.length} file${urlsToLoad.length > 1 ? 's' : ''})...`, 'info');
+
+        // Load tất cả URLs song song
+        const loadPromises = urlsToLoad.map(url => {
+          return new Promise((resolve) => {
+            const script = document.createElement('script');
+            script.src = url;
+            script.async = true;
+
+            script.onload = () => {
+              log(`✅ Loaded: ${url.split('/').pop()}`, 'success');
+              resolve(true);
+            };
+
+            script.onerror = () => {
+              logError(`❌ Failed to load: ${url}`);
+              resolve(false);
+            };
+
+            document.head.appendChild(script);
+          });
+        });
+
+        // Chờ tất cả files load xong
+        const results = await Promise.all(loadPromises);
+
+        // Kiểm tra xem tất cả đều load thành công không
+        const allSuccess = results.every(r => r === true);
+
+        // Kiểm tra lại xem library hoạt động chưa
+        if (allSuccess && libConfig.check()) {
+          log(`✅ Library [${libName}] loaded successfully`, 'success');
+          return true;
+        } else {
+          logError(`❌ Library [${libName}] loaded but check failed`);
+          return false;
+        }
+      } catch (err) {
+        logError(`❌ Error loading library [${libName}]:`, err);
+        return false;
+      }
+    })();
+
+    // 5. Cache Promise để tránh load 2 lần
+    libConfig.promise = promise;
+
+    // 6. Chờ load xong, update status
+    const result = await promise;
+    libConfig.loaded = result;
+    libConfig.promise = null; // Xóa promise sau khi xong
+    return result;
+  }
+
+  /**
+   * Pre-load libraries ngay khi app start (Không block, tải song song)
+   * Gọi function này trong main.js hoặc onready
+   */
+  function preloadExportLibraries() {
+    // Load bất đồng bộ (không chờ)
+    Promise.all([
+      loadLibraryAsync('xlsx'),
+      loadLibraryAsync('jspdf'),
+      loadLibraryAsync('autotable')
+    ]).then(() => {
+      log('📦 All export libraries pre-loaded', 'success');
+    });
+  }
+  
+
+  function downloadTableData_Csv(tableId, fileName = 'table_data.csv') {
+    const table = getE(tableId);
+    if (!table) {
+      logError(`❌ Table with ID "${tableId}" not found.`);
+      return;
+    }
+    let csvContent = '';
+    const rows = table.querySelectorAll('tr');
+    rows.forEach(row => {
+      const cols = row.querySelectorAll('th, td');
+      const rowData = Array.from(cols).map(col => `"${col.innerText.replace(/"/g, '""')}"`).join(',');
+      csvContent += rowData + '\n';
+    });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  async function downloadTableData(exportData, type = 'pdf', fileName = 'export_data', viewText = 'Dữ liệu xuất file') {
+    // KIỂM TRA & LOAD LIBRARY TRƯỚC KHI DÙNG
+    try {
+        if (type === 'excel') {
+            // Load XLSX library
+            const isXlsxReady = await loadLibraryAsync('xlsx');
+            if (!isXlsxReady) {
+                throw new Error("❌ Không thể tải thư viện XLSX. Vui lòng kiểm tra kết nối internet.");
+            }
+
+            showLoading(true, "Đang tạo file Excel...");
+            const wb = window.XLSX.utils.book_new();
+            const ws = window.XLSX.utils.json_to_sheet(exportData);
+            const wscols = Object.keys(exportData[0] || {}).map(() => ({wch: 15}));
+            ws['!cols'] = wscols;
+            window.XLSX.utils.book_append_sheet(wb, ws, "Data");
+            window.XLSX.writeFile(wb, `${fileName}.xlsx`);
+            showLoading(false);
+        } else {
+            // Load jsPDF + autoTable libraries
+            const isJspdfReady = await loadLibraryAsync('jspdf');
+            if (!isJspdfReady) {
+                throw new Error("❌ Không thể tải thư viện jsPDF. Vui lòng kiểm tra kết nối internet.");
+            }
+
+            const isAutotableReady = await loadLibraryAsync('autotable');
+            if (!isAutotableReady) {
+                throw new Error("❌ Không thể tải plugin autoTable. Vui lòng kiểm tra kết nối internet.");
+            }
+
+            showLoading(true, "Đang tạo file PDF...");
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape' });
+            
+            // Cài đặt font hỗ trợ tiếng Việt
+            doc.setFont('arial', 'normal');
+            
+            const headers = [Object.keys(exportData[0] || {})];
+            const body = exportData.map(obj => Object.values(obj));
+            doc.setFontSize(10);
+            doc.text(`BÁO CÁO: ${viewText}`, 14, 15);
+            doc.text(`Ngày xuất: ${new Date().toLocaleString('vi-VN')}`, 14, 20);
+            doc.autoTable({
+                head: headers,
+                body: body,
+                startY: 25,
+                theme: 'grid',
+                styles: { 
+                    font: 'arial',
+                    fontSize: 8,
+                    cellPadding: 2,
+                    overflow: 'linebreak'
+                }, 
+                headStyles: { 
+                    fillColor: [44, 62, 80],
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    font: 'arial'
+                },
+                margin: { left: 10, right: 10 }
+            });
+            doc.save(`${fileName}.pdf`);
+            showLoading(false);
+        }
+        if(typeof showNotify === 'function') showNotify("Đã xuất file thành công!", true);
+    } catch (err) {
+        showLoading(false);
+        logError(err);
+        alert("Lỗi khi xuất file: " + err.message);
+    }
+  }
+
+  function getHtmlContent(url) {
+    return new Promise((resolve, reject) => {
+      let finalSourcePath = url;
+
+      // Nếu là file HTML ngắn gọn (vd: 'tpl_all.html'), tự động thêm path
+      if (url.endsWith('.html') && !url.includes('/')) {
+        finalSourcePath = './src/components/' + url;
+      }
+      fetch(finalSourcePath)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.text();
+        })
+        .then(html => {
+          log(`✅ HTML content loaded from: ${finalSourcePath}`, 'success');
+          resolve(html);
+        })
+        .catch(err => {
+          logError(`❌ Failed to load HTML content from: ${finalSourcePath}`, err);
+          reject(err);
+        });
+    });
+  }
+  
+
   function loadJSFile(filePath, targetIdorEl=null) { 
     if (!targetIdorEl) {
       targetIdorEl = document.body;
@@ -1520,3 +1815,19 @@
       window.location.href = url;
     }
   }
+
+  /**
+   * 9 Trip ERP Helper - Mobile Layout Fixer
+   * Mục tiêu: Tính toán chiều cao thực tế của màn hình (trừ thanh địa chỉ/bàn phím)
+   */
+  // const fixMobileViewport = () => {
+      // 1. Lấy chiều cao viewport thực tế
+      // let vh = window.innerHeight * 0.01;
+      // 2. Thiết lập biến CSS custom --vh
+  //     document.documentElement.style.setProperty('--vh', `${vh}px`);
+  // };
+
+  // Chạy khi load và khi xoay màn hình
+  // window.addEventListener('resize', fixMobileViewport);
+  // window.addEventListener('orientationchange', fixMobileViewport);
+  // fixMobileViewport();

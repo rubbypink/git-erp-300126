@@ -12,15 +12,6 @@ class EventManager {
         this.isInitialized = false;
         this.modules = {};
         
-        // ─── MOBILE GESTURE STATE ───
-        this.isMobile = () => window.matchMedia('(max-width: 768px)').matches;
-        this.touchState = {
-            lastTapTime: {},
-            doubleTapTimeout: 300,  // ✅ Giảm từ 500 → 300ms (thời gian cho 2 tap)
-            longPressTimeout: 500,
-            touchStartX: 0,
-            touchStartY: 0
-        };
     }
 
     async init() {
@@ -40,12 +31,6 @@ class EventManager {
             this._setupNumberInputEvents();
             this._setupContextMenuEvents();
             this._setupKeyboardNavEvents();
-            
-            // 2. Mobile Gestures - tự động kích hoạt trên mobile
-            if (this.isMobile()) {
-                this._setupMobileGestures();
-                log('[EventManager] 📱 Mobile gestures enabled', 'info');
-            }
 
             this.isInitialized = true;
             log('[EventManager] ✅ Tất cả events đã khởi tạo', 'success');
@@ -302,19 +287,6 @@ class EventManager {
                 setNum('BK_Balance', balance);
             }, 1250);
         }, true);
-
-        // ─────────────────────────────────────────────────────────────
-        // Ctrl+Click trên Dashboard Tables để select row
-        // Thay thế bằng Double-Tap trên mobile (xem _setupMobileGestures)
-        // ─────────────────────────────────────────────────────────────
-        // Note: Desktop users sẽ dùng Ctrl+Click (native browser behavior)
-        // Mobile users sẽ dùng double-tap (simulates Ctrl+Click via event)
-        // Cả 2 đều trigger click event handler trong renderer.js
-        // this.on('#tab-dashboard table tbody tr', 'click', (e) => {
-        //     const isCtrl = e.ctrlKey || e.metaKey;
-        //     if (!isCtrl) return;
-        //     // ...handler...
-        // }, true);
     }
 
     /**
@@ -360,121 +332,6 @@ class EventManager {
             e.preventDefault();
             el.select();
         }, true);
-    }
-
-    /**
-     * =========================================================================
-     * SECTION 7B: MOBILE GESTURES (Double-Tap, Long-Press)
-     * =========================================================================
-     * Thay thế Ctrl+Click (double-tap) và Right-Click (long-press) trên toàn bộ app
-     * Hoạt động trên tất cả tables: Dashboard, Detail, Booking, Data List, etc.
-     */
-    _setupMobileGestures() {
-        const menu = document.getElementById('myContextMenu');
-
-        // ─────────────────────────────────────────────────────────────
-        // 1. DOUBLE-TAP: Thay cho Ctrl+Click (toàn bộ app)
-        // ─────────────────────────────────────────────────────────────
-        // Bắt double-tap trên TOÀN BỘ table trong app
-        this.on('table tbody tr', 'touchend', (e) => {
-            // Prevent text selection on double tap
-            e.preventDefault();
-            
-            const row = e.target.closest('tr');
-            if (!row) return;
-
-            const now = Date.now();
-            const rowId = row.id || `row-${Date.now()}`;
-            const lastTap = this.touchState.lastTapTime[rowId] || 0;
-
-            // ✅ FIX: Kiểm tra xem đây có phải lần tap thứ 2 không
-            // lastTap === 0 → tap lần 1, chỉ lưu lại timestamp
-            // lastTap !== 0 && gap < threshold → tap lần 2, đó là double-tap
-            if (lastTap !== 0 && now - lastTap < this.touchState.doubleTapTimeout) {
-                // ✅ Double-tap detected!
-
-                // Simulate Ctrl+Click - Trigger click event with ctrlKey = true
-                const clickEvent = new MouseEvent('click', {
-                    bubbles: true,
-                    cancelable: true,
-                    ctrlKey: true,
-                    metaKey: true  // For Mac
-                });
-                row.dispatchEvent(clickEvent);
-                logA('📱 Double-tap detected - Ctrl+Click simulated', 'info');
-                
-                // ✅ Reset sau khi detect double-tap (để lần tap tiếp theo là tap mới)
-                this.touchState.lastTapTime[rowId] = 0;
-            } else {
-                // ✅ Tap thứ 1 hoặc gap quá dài → coi là tap mới
-                this.touchState.lastTapTime[rowId] = now;
-            }
-        }, true);
-
-        // ─────────────────────────────────────────────────────────────
-        // 2. LONG-PRESS: Thay cho Right-Click (toàn bộ app)
-        // ─────────────────────────────────────────────────────────────
-        let longPressTimer = null;
-
-        // Bắt long-press trên TOÀN BỘ table tbody rows
-        this.on('#detail-tbody tr', 'touchstart', (e) => {
-            // Prevent text selection on long press
-            e.preventDefault();
-            
-            const row = e.target.closest('tr');
-            if (!row) return;
-
-            this.touchState.touchStartX = e.touches[0].clientX;
-            this.touchState.touchStartY = e.touches[0].clientY;
-
-            longPressTimer = setTimeout(() => {
-                // ✅ Long-press detected! (500ms)
-                e.preventDefault();
-
-                // Lưu context cho menu
-                window.CURRENT_CTX_ROW = row;
-                
-                // Xác định collection dựa vào role + current table
-                const tbody = row.closest('tbody');
-                const details = window.CURRENT_USER?.role === 'op' ? 'operator_entries' : 'booking_details';
-                const collection = window.CURRENT_TABLE_KEY === 'bookings' || tbody?.id === 'detail-tbody'
-                    ? details
-                    : window.CURRENT_TABLE_KEY;
-
-                // Lấy ID từ row
-                const sidInput = row.querySelector('.d-sid') || row.cells[0];
-                window.CURRENT_CTX_ID = sidInput?.textContent?.trim() || '';
-
-                // Get row data
-                if (typeof getRowData === 'function') {
-                    window.CURRENT_ROW_DATA = getRowData(collection, window.CURRENT_CTX_ROW, tbody);
-                }
-
-                // Mở context menu tại vị trí touch
-                if (menu) {
-                    menu.style.top = `${e.touches[0].clientY}px`;
-                    menu.style.left = `${Math.max(10, e.touches[0].clientX - 100)}px`;
-                    menu.style.display = 'block';
-                    logA('📱 Long-press detected - Context menu opened', 'info');
-                }
-            }, this.touchState.longPressTimeout);
-        }, true);
-
-        // Hủy timer khi touchend hoặc touchmove (user không giữ lâu)
-        this.on('#detail-tbody tr', 'touchend touchmove', (e) => {
-            clearTimeout(longPressTimer);
-        }, true);
-
-        // Đóng menu khi tap ra ngoài
-        document.addEventListener('touchstart', (e) => {
-            if (!menu) return;
-            // Nếu tap vào menu hoặc row → không đóng
-            if (menu.contains(e.target) || e.target.closest('tr')?.contains(e.target)) {
-                return;
-            }
-            // Tap bên ngoài → đóng menu
-            menu.style.display = 'none';
-        });
     }
 
     /**
