@@ -333,7 +333,10 @@ class OffcanvasMenu extends HTMLElement {
                 <div class="section function-section">
                     <div class="section-title">CHỨC NĂNG HỆ THỐNG</div>
                     <div class="function-grid">
-                        ${this._renderFuncBtn('loadModule_Accountant', 'Test Module Accountant', 'file-excel', '#218838')}
+                        <button class="func-btn" data-action="AdminConsole.init" onclick="AdminConsole.init()">
+                            <i class="fas fa-chart-line fa-fw" style="color: #dc3545"></i>
+                            <span>Admin Console</span>
+                        </button>
                         ${this._renderFuncBtn('import', 'Nhập liệu', 'file-upload', '#007bff')}
                         <button class="func-btn" data-action="openReport" onclick="this.getRootNode().host.openReport()">
                             <i class="fas fa-chart-line fa-fw" style="color: #dc3545"></i>

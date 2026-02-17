@@ -59,7 +59,7 @@
 
         <div class="px-3 mb-3">
             <div class="acc-filter-container" style="width: fit-content; justify-self: start;">
-                <div class="acc-filter-header bg-light" onclick="this.parentElement.classList.toggle('active')">
+                <div class="acc-filter-header bg-light" id="acc-filter-toggle" style="pointer-events: auto;">
                     <div class="d-flex align-items-center">
                         <i class="fas fa-filter text-primary me-2"></i>
                         <span class="fw-bold text-dark me-1">Lọc:</span>
@@ -179,3 +179,34 @@
         </div>
     </div>
 </template>
+
+<script>
+    // Initialize filter toggle handler - works on all devices (touch + click)
+    document.addEventListener('DOMContentLoaded', function () {
+        const filterToggle = document.getElementById('acc-filter-toggle');
+        if (filterToggle) {
+            filterToggle.addEventListener('click', function (e) {
+                e.stopPropagation();
+                const container = this.closest('.acc-filter-container');
+                if (container) {
+                    container.classList.toggle('active');
+                }
+            });
+
+            // Prevent double-tap zoom on mobile
+            filterToggle.addEventListener('touchend', function (e) {
+                if (e.touches.length === 0) {
+                    e.preventDefault();
+                }
+            }, false);
+        }
+
+        // Close filter when clicking outside
+        document.addEventListener('click', function (e) {
+            const filterContainer = document.querySelector('.acc-filter-container.active');
+            if (filterContainer && !filterContainer.contains(e.target)) {
+                filterContainer.classList.remove('active');
+            }
+        });
+    });
+</script>

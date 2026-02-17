@@ -49,7 +49,7 @@
     background: #fff;
     border-radius: var(--acc-border-radius);
     box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-    overflow: hidden; /* Che phần body khi đóng */
+
     position: relative;
     z-index: 100;
 }
@@ -62,6 +62,8 @@
     justify-content: space-between;
     align-items: center;
     user-select: none; /* Tránh bôi đen text khi tap nhanh */
+    border-radius: var(--acc-border-radius);
+    touch-action: manipulation;
 }
 
 .acc-filter-header:active {
@@ -69,16 +71,19 @@
 }
 
 .acc-filter-body {
-    display: none;
-    padding: 1rem;
+    max-height: 0;
+    overflow: hidden;
+    padding: 0 1rem;
     background: #f8f9fa;
-    border-top: 1px solid #eee;
+    transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+    border-top: 1px solid transparent;
 }
 
 /* Animation class */
 .acc-filter-container.active .acc-filter-body {
-    display: block;
-    animation: slideDown 0.25s ease-out;
+    max-height: 600px;
+    padding: 1rem;
+    border-top: 1px solid #eee;
 }
 
 .acc-filter-container.active .transition-icon {
@@ -89,10 +94,7 @@
     transition: transform 0.3s ease;
 }
 
-@keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+/* slideDown animation removed - using max-height transition instead */
 
 .acc-label {
     font-size: 0.8rem;

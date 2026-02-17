@@ -13,6 +13,7 @@ let APP_SHORTCUTS = {
     'openSettingsModal': 'Ctrl+Alt+M',
     'actionCreateBooking': 'Ctrl+Alt+B',
     'openCalculator': 'Ctrl+Shift+C',
+    'openAdminConsole': 'Ctrl+Alt+A',
 };
 
 // 1. Khởi tạo (Gọi hàm này trong initApp)
@@ -452,8 +453,6 @@ function openCalculator() {
     }
 }
 
-
-
-function selectAdminDash() {
-    activateTab('tab-admin-dashboard');
+function openAdminConsole() {
+    window.AdminConsole.init();
 }

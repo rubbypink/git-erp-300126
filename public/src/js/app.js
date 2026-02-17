@@ -7,7 +7,8 @@ import { HotelPriceController } from './modules/M_HotelPrice.js';
 import ServicePriceController from './modules/M_ServicePrice.js';
 import PriceManager from './modules/M_PriceManager.js';
 import MobileManager from './modules/MobileManager.js';
-// CalculatorWidget được load từ global scope (không dùng ES Module)
+import { Lang } from './modules/TranslationModule.js';
+import { AdminConsole } from './modules/AdminController.js';
 
 // =========================================================================
 // APPLICATION CLASS
@@ -906,6 +907,7 @@ class Application {
             this.addModule('HotelPriceController', HotelPriceController);
             this.addModule('ServicePriceController', ServicePriceController);
             this.addModule('PriceManager', PriceManager);
+            this.addModule('Lang', Lang); // Thêm module dịch thuật
         } catch (err) {
             console.error('[App] ❌ Error:', err);
             throw err;

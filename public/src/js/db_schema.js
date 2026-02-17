@@ -94,20 +94,43 @@ const FIELD_MAP = {
         3: 'amount',
         4: 'category',
         5: 'description',
-        6: 'ref_booking_id',
+        6: 'booking_id',
         7: 'fund_source',
-        8: 'created_at',
-        9: 'created_by'
+        8: 'status',
+        9: 'created_at',
+        10: 'created_by',
     },
     fund_accounts: {
         0: 'id',
         1: 'type',
         2: 'name',
         3: 'code',
-        4: 'account_number',
+        4: 'account_no',
         5: 'balance',
         6: 'created_at'
     },
+    transactions_thenice: {
+        0: 'id',
+        1: 'transaction_date',
+        2: 'type',
+        3: 'amount',
+        4: 'category',
+        5: 'description',
+        6: 'booking_id',
+        7: 'fund_source',
+        8: 'status',
+        9: 'created_at',
+        10: 'created_by',
+    },
+    fund_accounts_thenice: {
+        0: 'id',
+        1: 'type',
+        2: 'name',
+        3: 'code',
+        4: 'account_no',
+        5: 'balance',
+        6: 'created_at'
+    },    
 };
 
 // --- HELPERS (Giữ nguyên logic cũ) ---

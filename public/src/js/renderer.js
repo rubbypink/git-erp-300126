@@ -1220,3 +1220,17 @@ function renderAggTable_Op(tableId, dataObj, sumId) {
 	if(getE(sumId)) setVal(sumId, formatMoney(totalBal));
 }
 
+function renderDashboard_Acc() {
+	if (!window.AccountantCtrl) {
+		logA('Modue kế toán chưa được tải. Vui lòng thử lại sau.', 'warning');
+		return;
+	}
+}
+
+function renderDashboard_Acc_thenice() {
+	if (!window.AccountantCtrl) {
+		logA('Modue kế toán chưa được tải. Vui lòng thử lại sau.', 'warning');
+		return;
+	}
+}
+

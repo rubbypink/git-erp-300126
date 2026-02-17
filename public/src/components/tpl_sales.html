@@ -188,9 +188,18 @@
                   class="form-select form-select-sm" id="BK_PayType"></select></div>
               <div class="col-md-1"><label class="form-label small">Hạn TT</label><input type="date"
                   class="form-control form-control-sm" id="BK_PayDue"></div>
-              <div class="col-md-1"><label class="form-label small">Trạng thái</label><input type="text"
-                  class="form-control form-control-sm fw-bold bg-warning bg-opacity-25" id="BK_Status" readonly
-                  value="Đặt Lịch"></div>
+              <div class="col-md-auto"><label class="form-label small">Trạng thái</label>
+                <div class="input-group">
+                  <input type="text"
+                    class="form-control form-control-sm fw-bold bg-warning bg-opacity-25 border-right-0" id="BK_Status"
+                    readonly value="Đặt Lịch">
+                  <button class="btn btn-sm btn-outline-primary rounded-0 border-left-0" type="button"
+                    title="Cập nhật trạng thái" onclick="updateBkStatus()">
+                    <i class="fa-solid fa-rotate"></i>
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
           <div class="col-md-2 py-0 my-2">

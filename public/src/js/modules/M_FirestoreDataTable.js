@@ -263,7 +263,7 @@ export default class FirestoreDataTableManager {
     constructor(containerId) {
         this.container = document.getElementById(containerId);
         this.db = firebase.firestore();
-        this.allCollections = ['suppliers', 'service_price_schedules', 'bookings', 'booking_details', 'hotels', 'customers', 'counters_id', 'app_config', 'app_config/lists/pkg_hotel_price', 'app_config/lists/price_periods', 'app_config/lists/price_type', 'users']; // Danh sách mẫu
+        this.allCollections = ['suppliers', 'service_price_schedules', 'bookings', 'booking_details', 'hotels', 'customers', 'counters_id', 'app_config', 'app_config/lists/pkg_hotel_price', 'app_config/lists/price_periods', 'app_config/lists/price_type', 'users', 'transactions', 'fund_accounts', 'transactions_thenice', 'fund_accounts_thenice', 'app_config/general/settings']; // Danh sách mẫu
         this.initLayout();
     }
 
@@ -392,14 +392,23 @@ export default class FirestoreDataTableManager {
 
         try {
             if (isCollection) {
-                // Xử lý Collection
-                const snapshot = await this.db.collection(path).get();
-                let headers = [];
+                const snapshot = await this.db.collection(path).limit(100).get(); // Limit để tránh treo trình duyệt
+                let headers = await this.getHeaders(path);
                 let data = [];
 
-                headers = await this.getHeaders(path);
-
-                snapshot.forEach(doc => data.push({ ...doc.data(), id: doc.id }));
+                snapshot.forEach(doc => {
+                    let row = doc.data();
+                    row.id = doc.id;
+                    
+                    // FLATTEN DATA: Chuyển Object/Array thành String để hiển thị trên ô input
+                    Object.keys(row).forEach(k => {
+                        if (typeof row[k] === 'object' && row[k] !== null) {
+                            row[k] = JSON.stringify(row[k]); // Hiển thị JSON String thay vì [object Object]
+                        }
+                    });
+                    data.push(row);
+                });
+                
                 this.tableComp.setSchema(headers, data, 'collection');
 
             } else {
@@ -426,70 +435,118 @@ export default class FirestoreDataTableManager {
         }
     }
 
+    /**
+     * [CORE] Xử lý lưu dữ liệu thông minh
+     * 1. Tách dữ liệu Sub-collection (sub:...)
+     * 2. Tự động Parse JSON String thành Object/Array cho Master Data
+     * 3. Gửi Batch Save
+     */
     async handleSave() {
         const collName = this.pathInput.value;
-        const rawData = this.tableComp.getData();
-        if (rawData.length === 0) return alert("Không có dữ liệu.");
+        // Lấy dữ liệu thô từ giao diện (Tất cả đều đang là String do thẻ Input)
+        const rawData = this.tableComp.getData(); 
+        
+        if (rawData.length === 0) return alert("Không có dữ liệu để lưu.");
     
         try {
-            // --- GIAI ĐOẠN 1: CHUẨN BỊ & LƯU MASTER ---
+            // --- GIAI ĐOẠN 1: CHUẨN BỊ & LÀM SẠCH MASTER DATA ---
+            
+            // Xác định các cột là Sub-collection (để loại bỏ khỏi Master)
             const firstRowRaw = rawData[0];
             const subFields = Object.keys(firstRowRaw).filter(key => 
-                String(firstRowRaw[key]).trim().startsWith('sub:')) || Object.keys(firstRowRaw).filter(key => 
-                    String(firstRowRaw[key]).trim() === 'rooms');
+                String(firstRowRaw[key]).trim().startsWith('sub:') || key === 'rooms'
+            );
     
-            // Tạo bản sao để lưu Master, loại bỏ các trường sub:
+            // MAP DATA: Tạo mảng Master sạch & Parse JSON
             const cleanMasterData = rawData.map(row => {
-                const newRow = { ...row };
-                subFields.forEach(f => delete newRow[f]);
+                const newRow = {};
+                
+                Object.keys(row).forEach(key => {
+                    // 1. Bỏ qua field sub-collection
+                    if (subFields.includes(key)) return;
+                    if (String(row[key]).trim().startsWith('sub:')) return;
+
+                    // 2. Lấy giá trị thô
+                    const rawVal = row[key];
+
+                    // 3. SMART PARSE JSON
+                    // Nếu là String và bắt đầu bằng { hoặc [, thử parse lại thành Object
+                    if (typeof rawVal === 'string') {
+                        const trimmed = rawVal.trim();
+                        if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || 
+                            (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+                            try {
+                                newRow[key] = JSON.parse(trimmed);
+                            } catch (e) {
+                                // Parse lỗi (do người dùng nhập sai cú pháp JSON)
+                                // -> Giữ nguyên là String để không mất dữ liệu, nhưng Log cảnh báo
+                                console.warn(`⚠️ Field [${key}] có vẻ là JSON nhưng lỗi cú pháp. Lưu dạng String.`, rawVal);
+                                newRow[key] = rawVal; 
+                            }
+                        } else {
+                            // String bình thường
+                            newRow[key] = rawVal;
+                        }
+                    } else {
+                        // Các dạng khác (null, number nếu có)
+                        newRow[key] = rawVal;
+                    }
+                });
                 return newRow;
             });
     
-            console.log("🚀 Giai đoạn 1: Lưu Master...");
+            console.log("🚀 Giai đoạn 1: Lưu Master (Đã Parse JSON)...", cleanMasterData);
+            
+            // Gọi hàm Batch Save của hệ thống (A.DB)
+            // cleanMasterData lúc này đã chứa Object chuẩn, không phải String "{...}"
             const result = await A.DB.batchSave(collName, cleanMasterData);
             
-            if (!result || !result.success) throw new Error("Lỗi lưu Master.");
+            if (!result || !result.success) throw new Error("Lỗi lưu Master: " + (result.message || "Unknown error"));
     
-            // Lấy dữ liệu ĐÃ CÓ ID (processedData từ batchSave trả về)
+            // Lấy dữ liệu ĐÃ CÓ ID từ Firestore trả về
             const savedMaster = result.data;
     
-            // --- GIAI ĐOẠN 2: LƯU SUB-COLLECTION ---
+            // --- GIAI ĐOẠN 2: LƯU SUB-COLLECTION (Giữ nguyên logic cũ của bạn) ---
             console.log("🚀 Giai đoạn 2: Lưu Sub-collections...");
-            const subBatch = firebase.firestore().batch();
+            
+            // Lưu ý: Dùng lại firebase.firestore() hoặc A.DB.db tùy biến toàn cục
+            const dbInstance = (typeof A !== 'undefined' && A.DB && A.DB.db) ? A.DB.db : firebase.firestore();
+            const subBatch = dbInstance.batch();
             let actionCount = 0;
     
-            // QUAN TRỌNG: Duyệt trực tiếp trên savedMaster để đảm bảo luôn có ID
             savedMaster.forEach((savedRow, index) => {
                 const rowId = savedRow.id || (Array.isArray(savedRow) ? savedRow[0] : null);
                 if (!rowId) return;
     
-                // Tìm lại dữ liệu Sub-collection từ mảng rawData ban đầu bằng index
+                // Tìm lại dòng dữ liệu gốc (chứa chuỗi sub:...)
                 const originalRow = rawData[index]; 
                 if (!originalRow) return;
     
                 subFields.forEach(field => {
                     const rawVal = String(originalRow[field] || "").trim();
-                    const cleanVal = rawVal.replace(/^sub:/i, '');
-                    const subDocNames = cleanVal.split(',').map(s => s.trim()).filter(s => s);
-    
-                    if (subDocNames.length > 0) {
-                        const parentRef = firebase.firestore().collection(collName).doc(String(rowId));
-                        
-                        subDocNames.forEach(subNameRaw => {
-                            // Làm sạch ID để tránh lỗi 5 segments (thay / bằng -)
-                            const subDocId = subNameRaw.replace(/\//g, '-').trim();
+                    
+                    // Logic tách chuỗi "sub: id1, id2"
+                    if (rawVal.toLowerCase().startsWith('sub:')) {
+                        const cleanVal = rawVal.substring(4); // Bỏ chữ "sub:"
+                        const subDocNames = cleanVal.split(',').map(s => s.trim()).filter(s => s);
+        
+                        if (subDocNames.length > 0) {
+                            const parentRef = dbInstance.collection(collName).doc(String(rowId));
                             
-                            if (subDocId) {
-                                const subDocRef = parentRef.collection(field).doc(subDocId);
-                                subBatch.set(subDocRef, {
-                                    id: subDocId,
-                                    name: subNameRaw, // Giữ tên gốc để hiển thị
-                                    parentId: rowId,
-                                    updatedAt: new Date().getTime()
-                                }, { merge: true });
-                                actionCount++;
-                            }
-                        });
+                            subDocNames.forEach(subNameRaw => {
+                                const subDocId = subNameRaw.replace(/\//g, '-').trim();
+                                if (subDocId) {
+                                    const subDocRef = parentRef.collection(field).doc(subDocId);
+                                    subBatch.set(subDocRef, {
+                                        id: subDocId,
+                                        name: subNameRaw, 
+                                        parentId: rowId,
+                                        updatedAt: new Date().getTime()
+                                    }, { merge: true });
+                                    actionCount++;
+                                }
+                            });
+                        }
                     }
                 });
             });
@@ -498,12 +555,22 @@ export default class FirestoreDataTableManager {
                 await subBatch.commit();
             }
     
-            alert(`Hoàn tất! Đã lưu ${result.count} Cha và ${actionCount} Con.`);
+            alert(`✅ Hoàn tất! Đã lưu ${result.count} Document chính và cập nhật ${actionCount} Sub-document.`);
+            
+            // Reload lại bảng để hiển thị dữ liệu mới nhất (Optional)
+            // this.loadStructure(collName); 
     
         } catch (e) {
             console.error("Critical Save Error:", e);
-            alert("Lỗi hệ thống: " + e.message);
+            alert("❌ Lỗi hệ thống: " + e.message);
         }
     }
 }
+
+
+
+
+
+
+
 
