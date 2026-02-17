@@ -13,7 +13,7 @@ var ROLE_DATA = {
 	'sale_sup': 'booking_details',
 	'manager': 'booking_details',
 	'op': 'operator_entries',
-	'acc': 'operator_entries',
+	'acc': 'transactions',
 	'admin': 'booking_details'
 };
 var CR_COLLECTION = ''; // Collection hiện tại dựa trên role người dùng
@@ -159,7 +159,7 @@ const setupMainFormUI = function(lists) {
 		const thead = tblBookingForm.querySelector('thead');
 		if (thead) {
 		// Xác định collection dựa trên role
-		const collectionName = (CURRENT_USER && (CURRENT_USER.role === 'op' || CURRENT_USER.role === 'acc')) 
+		const collectionName = (CURRENT_USER && (CURRENT_USER.role === 'op')) 
 			? 'operator_entries' 
 			: 'booking_details';
 
@@ -241,12 +241,13 @@ try {
 		}
 	} else if (typeof window.prepareCreateCustomer === 'function' && activeTabIndex === TAB_INDEX_BY_ID['tab-sub-form']) {
 		window.prepareCreateCustomer();
+		window.updateCustomerTab(); // Cập nhật lại tab khách hàng sau khi tạo mới
 	} else if (activeTabIndex === TAB_INDEX_BY_ID['tab-list']) {
 	// Khi tab log vừa được render xong -> Lấy dữ liệu từ LS đắp vào
 	// getE('btn-data-filter').click();
 	} else if (activeTabIndex === TAB_INDEX_BY_ID['tab-dashboard']) {
 	// Khi tab log vừa được render xong -> Lấy dữ liệu từ LS đắp vào
-	getE('btn-dash-update').click();
+	getE('btn-dash-update')?.click();
 }
 
 } catch (e) {
@@ -749,14 +750,13 @@ function initBtnSelectDataList(data) {
 	for (const [key, label] of Object.entries(TABLE_DISPLAY_MAP)) { 
 		if (data && data[key] && Array.isArray(data[key])) {
 			// ✅ Role-based filtering
-			// Skip booking_details if user is op or acc
-			if ((CURRENT_USER?.role === 'op' || CURRENT_USER?.role === 'acc') && key === 'booking_details') {
+			if ((CURRENT_USER?.role === 'op') && key === 'booking_details') {
 				continue;
 			}
 			
 			// Skip operator_entries if user role is not op/acc AND level < 5
 			if (key === 'operator_entries' && 
-				!(CURRENT_USER?.role === 'op' || CURRENT_USER?.role === 'acc' || CURRENT_USER?.role === 'admin') &&
+				!(CURRENT_USER?.role === 'op' || CURRENT_USER?.role === 'admin') &&
 				(CURRENT_USER?.level || 0) < 5) {
 				continue;
 			}

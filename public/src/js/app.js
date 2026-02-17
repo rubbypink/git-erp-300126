@@ -23,6 +23,7 @@ class Application {
         eventCache: new Set(), // Cache lưu các sự kiện đã gán
         modalHandlers: {}
     };
+    DATA = {}; // Dữ liệu chung (APP_DATA cũ)
     #config = {
         debug: true, // Bật log để dev
         roles: {},   // ROLE_DATA cũ
@@ -115,23 +116,29 @@ class Application {
                 dialog.style.maxHeight = '88vh';
                 
                 // 3. Check và xử lý content type
-                const isFragment = htmlContent instanceof DocumentFragment;
-                const isElement = htmlContent instanceof HTMLElement;
-                const isString = typeof htmlContent === 'string';
+                // ✅ Xử lý thẻ <template> - extract nội dung từ template.content
+                let processedContent = htmlContent;
+                if (htmlContent instanceof HTMLElement && htmlContent.tagName === 'TEMPLATE') {
+                    processedContent = htmlContent.content;
+                }
+                
+                const isFragment = processedContent instanceof DocumentFragment;
+                const isElement = processedContent instanceof HTMLElement;
+                const isString = typeof processedContent === 'string';
 
                 try {
                     if (isString) {
                         // String HTML - dùng innerHTML
-                        bodyEl.innerHTML = htmlContent;
+                        bodyEl.innerHTML = processedContent;
                     } else if (isFragment) {
                         // DocumentFragment - clone và append
-                        bodyEl.appendChild(htmlContent.cloneNode(true));
+                        bodyEl.appendChild(processedContent.cloneNode(true));
                     } else if (isElement) {
                         // HTMLElement - clone và append
-                        bodyEl.appendChild(htmlContent.cloneNode(true));
-                    } else if (htmlContent) {
+                        bodyEl.appendChild(processedContent.cloneNode(true));
+                    } else if (processedContent) {
                         // Fallback: convert to string
-                        bodyEl.innerHTML = String(htmlContent);
+                        bodyEl.innerHTML = String(processedContent);
                     }
                     
                     // 4. ✅ Force browser re-calculate kích thước
@@ -159,7 +166,7 @@ class Application {
                 }
             },
 
-            show: function(htmlContent = null, title = null) {
+            show: function(htmlContent = null, title = null, saveHandler = null, resetHandler = null) {
                 if (htmlContent) this.render(htmlContent, title);
                 
                 const inst = this._getInstance();
@@ -169,6 +176,9 @@ class Application {
                     setTimeout(() => {
                         this._centerModal();
                         this._initDragHandle();
+                        this._initResizeHandles();
+                        if (saveHandler) this.setSaveHandler(saveHandler);
+                        if (resetHandler) this.setResetHandler(resetHandler);
                     }, 100); // Wait for Bootstrap fade animation
                 }
             },
@@ -207,6 +217,7 @@ class Application {
             },
 
             setSaveHandler: function(callback, btnText = 'Lưu') {
+                this.setFooter(true); // Hiển thị footer nếu có nút save
                 const btn = this._getButton('#btn-save-modal');
                 if (!btn) return;
     
@@ -222,6 +233,7 @@ class Application {
                 btn.addEventListener('click', callback);
                 btn.style.display = 'inline-block';
                 btn.textContent = btnText;
+                
             },
     
             setResetHandler: function(callback, btnText = 'Reset') {
@@ -238,6 +250,7 @@ class Application {
                 btn.addEventListener('click', callback);
                 btn.style.display = 'inline-block';
                 btn.textContent = btnText;
+                this.setFooter(true); // Hiển thị footer nếu có nút reset
             },
 
             setFooter: function(show = true) {
@@ -262,11 +275,12 @@ class Application {
                     btn.parentNode.replaceChild(newBtn, btn);
                     newBtn.style.display = 'none'; // Mặc định ẩn
                 }
-            }  ,
+            },
 
             /**
              * Initialize drag functionality for modal header.
              * Allows users to drag the modal by its header when not fullscreen.
+             * ✅ FIX: Prevents modal size recalculation during drag
              * @private
              */
             _initDragHandle: function() {
@@ -280,7 +294,7 @@ class Application {
                 if (!dialog.style.position || dialog.style.position === 'static') {
                     dialog.style.position = 'fixed';
                     dialog.style.left = '50%';
-                    dialog.style.top = '10rem';  // 160px from top
+                    // dialog.style.top = '5rem';  // 80px from top
                     dialog.style.transform = 'translateX(-50%)';  // Center horizontally
                     dialog.style.margin = '0';
                     dialog.style.zIndex = '1060'; // Ensure above modal backdrop
@@ -290,6 +304,9 @@ class Application {
                 const modalDrag = this;
                 let onMouseMoveHandler = null;
                 let onMouseUpHandler = null;
+                
+                // ✅ NEW: Lưu kích thước modal để lock khi drag (tránh reflow)
+                let savedDimensions = null;
 
                 const onMouseDown = (e) => {
                     // Ignore if fullscreen or clicking on buttons
@@ -308,8 +325,22 @@ class Application {
                     modalDrag.dragState.initialLeft = rect.left;
                     modalDrag.dragState.initialTop = rect.top;
 
+                    // ✅ FIX: Lock kích thước modal trước drag
+                    // Tránh việc offsetHeight trigger reflow khi drag
+                    savedDimensions = {
+                        width: dialog.offsetWidth,
+                        height: dialog.offsetHeight,
+                        maxHeight: dialog.style.maxHeight
+                    };
+                    
+                    // ✅ SET kích thước cứng (pixel-based) để lock
+                    dialog.style.width = savedDimensions.width + 'px';
+                    dialog.style.height = savedDimensions.height + 'px';
+                    dialog.style.minHeight = savedDimensions.height + 'px'; // Prevent shrinking
+                    dialog.style.maxHeight = savedDimensions.height + 'px';
+
                     header.style.cursor = 'grabbing';
-                    dialog.style.transition = 'none'; // Disable transition while dragging
+                    dialog.style.transition = 'none !important'; // Force disable transition
                     dialog.style.userSelect = 'none';
                     document.body.style.userSelect = 'none';
 
@@ -331,11 +362,12 @@ class Application {
                     const newLeft = modalDrag.dragState.initialLeft + deltaX;
                     const newTop = modalDrag.dragState.initialTop + deltaY;
 
-                    // Constrain modal within viewport
+                    // ✅ FIX: Dùng saved dimensions thay vì đọc offsetWidth/offsetHeight
+                    // Tránh trigger reflow/recalculation
                     const viewportWidth = window.innerWidth;
                     const viewportHeight = window.innerHeight;
-                    const dialogWidth = dialog.offsetWidth;
-                    const dialogHeight = dialog.offsetHeight;
+                    const dialogWidth = savedDimensions.width;
+                    const dialogHeight = savedDimensions.height;
 
                     const constrainedLeft = Math.max(0, Math.min(newLeft, viewportWidth - dialogWidth));
                     const constrainedTop = Math.max(0, Math.min(newTop, viewportHeight - dialogHeight));
@@ -353,6 +385,16 @@ class Application {
 
                     modalDrag.dragState.isDragging = false;
                     header.style.cursor = 'grab';
+                    
+                    // ✅ FIX: Restore kích thước modal về 'auto' sau khi drag
+                    if (savedDimensions) {
+                        dialog.style.width = 'auto';
+                        dialog.style.height = 'auto';
+                        dialog.style.minHeight = '';
+                        dialog.style.maxHeight = savedDimensions.maxHeight || '88vh';
+                        savedDimensions = null;
+                    }
+                    
                     dialog.style.transition = ''; // Re-enable transition
                     dialog.style.userSelect = '';
                     document.body.style.userSelect = '';
@@ -366,66 +408,180 @@ class Application {
                 // Attach mousedown to header
                 header.addEventListener('mousedown', onMouseDown);
                 header.style.cursor = 'grab';
+            },
+
+            /**
+             * Initialize resize functionality for modal edges (top & right).
+             * Allows users to resize modal from top edge (height) and right edge (width)
+             * ✅ NEW: Resize handles without affecting drag functionality
+             * @private
+             */
+            _initResizeHandles: function() {
+                const el = this._getEl();
+                const dialog = el ? el.querySelector('.modal-dialog') : null;
+                const modalContent = el ? el.querySelector('.modal-content') : null;
+                
+                if (!dialog || !modalContent) return;
+
+                const modalDrag = this;
+                
+                // ✅ CONFIG: Resize constraints
+                const MIN_WIDTH = 300;
+                const MIN_HEIGHT = 200;
+                const MAX_WIDTH = window.innerWidth * 0.95;
+                const MAX_HEIGHT = window.innerHeight * 0.95;
+                const RESIZE_HANDLE_SIZE = 8; // px
+
+                // ═══════════════════════════════════════════════════════════
+                // 1️⃣ TOP EDGE RESIZE (Chiều cao - Height)
+                // ═══════════════════════════════════════════════════════════
+                
+                let onBotResizeMove = null;
+                let onBotResizeUp = null;
+                let botResizeState = null;
+
+                const onBotResizeDown = (e) => {
+                    // Only trigger on bottom edge
+                    const rect = dialog.getBoundingClientRect();
+                    if (e.clientY < rect.bottom - RESIZE_HANDLE_SIZE) return;
+
+                    botResizeState = {
+                        startY: e.clientY,
+                        initialBottom: rect.bottom,
+                        initialHeight: rect.height
+                    };
+
+                    modalContent.style.cursor = 'ns-resize';
+                    dialog.style.transition = 'none';
+                    document.body.style.userSelect = 'none';
+
+                    document.addEventListener('mousemove', onBotResizeMove);
+                    document.addEventListener('mouseup', onBotResizeUp);
+                    e.preventDefault();
+                };
+
+                onBotResizeMove = (e) => {
+                    if (!botResizeState) return;
+
+                    const deltaY = e.clientY - botResizeState.startY;
+                    const newHeight = botResizeState.initialHeight - deltaY;
+
+                    // Constraints: Respect min/max height
+                    if (newHeight >= MIN_HEIGHT && newHeight <= MAX_HEIGHT) {
+                        const newBottom = botResizeState.initialBottom - deltaY;
+                        
+                        // Update height
+                        dialog.style.height = newHeight + 'px';
+                        dialog.style.minHeight = newHeight + 'px';
+                        dialog.style.maxHeight = newHeight + 'px';
+                        
+                        // Move dialog down when resizing from bottom
+                        dialog.style.bottom = newBottom + 'px';
+                    }
+
+                    e.preventDefault();
+                };
+
+                onBotResizeUp = (e) => {
+                    modalContent.style.cursor = '';
+                    dialog.style.transition = '';
+                    document.body.style.userSelect = '';
+
+                    document.removeEventListener('mousemove', onBotResizeMove);
+                    document.removeEventListener('mouseup', onBotResizeUp);
+                    botResizeState = null;
+                };
+
+                // ═══════════════════════════════════════════════════════════
+                // 2️⃣ RIGHT EDGE RESIZE (Chiều rộng - Width)
+                // ═══════════════════════════════════════════════════════════
+                
+                let onRightResizeMove = null;
+                let onRightResizeUp = null;
+                let rightResizeState = null;
+
+                const onRightResizeDown = (e) => {
+                    // Only trigger on right edge
+                    const rect = dialog.getBoundingClientRect();
+                    if (e.clientX < rect.right - RESIZE_HANDLE_SIZE) return;
+
+                    rightResizeState = {
+                        startX: e.clientX,
+                        initialRight: window.innerWidth - rect.right,
+                        initialWidth: rect.width
+                    };
+
+                    modalContent.style.cursor = 'ew-resize';
+                    dialog.style.transition = 'none';
+                    document.body.style.userSelect = 'none';
+
+                    document.addEventListener('mousemove', onRightResizeMove);
+                    document.addEventListener('mouseup', onRightResizeUp);
+                    e.preventDefault();
+                };
+
+                onRightResizeMove = (e) => {
+                    if (!rightResizeState) return;
+
+                    const deltaX = e.clientX - rightResizeState.startX;
+                    const newWidth = rightResizeState.initialWidth + deltaX;
+
+                    // Constraints: Respect min/max width
+                    if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) {
+                        dialog.style.width = newWidth + 'px';
+                        dialog.style.minWidth = newWidth + 'px';
+                        dialog.style.maxWidth = newWidth + 'px';
+                    }
+
+                    e.preventDefault();
+                };
+
+                onRightResizeUp = (e) => {
+                    modalContent.style.cursor = '';
+                    dialog.style.transition = '';
+                    document.body.style.userSelect = '';
+
+                    document.removeEventListener('mousemove', onRightResizeMove);
+                    document.removeEventListener('mouseup', onRightResizeUp);
+                    rightResizeState = null;
+                };
+
+                // ═══════════════════════════════════════════════════════════
+                // 3️⃣ ATTACH RESIZE HANDLES
+                // ═══════════════════════════════════════════════════════════
+                
+                // Add resize listeners to modal-dialog
+                dialog.addEventListener('mousedown', (e) => {
+                    const rect = dialog.getBoundingClientRect();
+                    const onBotEdge = e.clientY > rect.bottom - RESIZE_HANDLE_SIZE;
+                    const onRightEdge = e.clientX > rect.right - RESIZE_HANDLE_SIZE;
+
+                    if (onBotEdge) onBotResizeDown(e);
+                    else if (onRightEdge) onRightResizeDown(e);
+                });
+
+                // ✅ Add visual feedback: Change cursor on hover over resize edges
+                dialog.addEventListener('mousemove', (e) => {
+                    const rect = dialog.getBoundingClientRect();
+                    const onBotEdge = e.clientY > rect.bottom - RESIZE_HANDLE_SIZE;
+                    const onRightEdge = e.clientX > rect.right - RESIZE_HANDLE_SIZE;
+
+                    if (onBotEdge) {
+                        dialog.style.cursor = 'ns-resize';
+                    } else if (onRightEdge) {
+                        dialog.style.cursor = 'ew-resize';
+                    } else {
+                        dialog.style.cursor = '';
+                    }
+                });
+
+                // Reset cursor when leaving dialog
+                dialog.addEventListener('mouseleave', () => {
+                    dialog.style.cursor = '';
+                });
             }
         }
     };
-
-    constructor(options = {}) {
-        Object.assign(this.#config, options);
-    }
-
-    async init() {
-        try {
-            console.log('[App] 🚀 Initializing...');
-            await this._call('Auth', 'initFirebase');
-            this._ensureModalExists();
-            this.listenAuth();
-            this.addModule('FirestoreDataTableManager', FirestoreDataTableManager);
-            this.addModule('HotelPriceController', HotelPriceController);
-            this.addModule('ServicePriceController', ServicePriceController);
-            this.addModule('PriceManager', PriceManager);
-        } catch (err) {
-            console.error('[App] ❌ Error:', err);
-            throw err;
-        }
-    }
-
-    listenAuth () {
-        this.#modules['Auth'].auth.onAuthStateChanged(async (user) => {
-            const launcher = document.getElementById('app-launcher');
-            const app = document.getElementById('main-app');
-            if (user) {
-                log("🔓 User detected, verifying profile...", "success");
-                if(app) app.style.opacity = 1;
-                // await A.UI.init();
-                await this._call('UI', 'init');
-                await this._call('Auth', 'fetchUserProfile', user);
-                // Sau khi fetch profile và Security Manager đã render template vào app-container
-                if (launcher) launcher.classList.add('d-none');
-                if (app) app.classList.remove('d-none');
-                showLoading(false);
-                const eventManager = new this.#modules['Events']();
-                await eventManager.init();
-                log('[App] ✅ Events initialized');
-                if (typeof window.initShortcuts === 'function') {
-                    window.initShortcuts();
-                }
-                this.#state.isReady = true;
-                console.log('[App] ✅ Ready');
-
-            } else {
-                log("🔒 No user. Showing Login...", "warning");
-                if (launcher) launcher.classList.add('d-none');
-                if (launcher) launcher.remove();
-                if(app) app.style.opacity = 1;            
-                await this._call('Auth', 'showLoginForm');
-            }
-        });
-    }
-
-    // =========================================================================
-    // ★ MODAL INITIALIZATION & MANAGEMENT
-    // =========================================================================
 
     /**
      * Ensure modal HTML template exists and is from createDynamicModal.
@@ -524,8 +680,6 @@ class Application {
     call(moduleName, methodName, ...args) {
         return this._call(moduleName, methodName, ...args);
     }
-
-
 
     // =========================================================================
     // PUBLIC SHORTCUTS (Tùy chọn - để code dễ đọc)
@@ -736,6 +890,61 @@ class Application {
     isReady() {
         return this.#state.isReady;
     }
+    
+    
+    constructor(options = {}) {
+        Object.assign(this.#config, options);
+    }
+
+    async init() {
+        try {
+            console.log('[App] 🚀 Initializing...');
+            await this._call('Auth', 'initFirebase');
+            this._ensureModalExists();
+            this.listenAuth();
+            this.addModule('FirestoreDataTableManager', FirestoreDataTableManager);
+            this.addModule('HotelPriceController', HotelPriceController);
+            this.addModule('ServicePriceController', ServicePriceController);
+            this.addModule('PriceManager', PriceManager);
+        } catch (err) {
+            console.error('[App] ❌ Error:', err);
+            throw err;
+        }
+    }
+
+    listenAuth () {
+        this.#modules['Auth'].auth.onAuthStateChanged(async (user) => {
+            const launcher = document.getElementById('app-launcher');
+            const app = document.getElementById('main-app');
+            if (user) {
+                log("🔓 User detected, verifying profile...", "success");
+                if(app) app.style.opacity = 1;
+                // await A.UI.init();
+                await this._call('UI', 'init');
+                await this._call('Auth', 'fetchUserProfile', user);
+                // Sau khi fetch profile và Security Manager đã render template vào app-container
+                if (launcher) launcher.classList.add('d-none');
+                if (app) app.classList.remove('d-none');
+                showLoading(false);
+                const eventManager = new this.#modules['Events']();
+                await eventManager.init();
+                log('[App] ✅ Events initialized');
+                if (typeof window.initShortcuts === 'function') {
+                    window.initShortcuts();
+                }
+                this.#state.isReady = true;
+                console.log('[App] ✅ Ready');
+
+            } else {
+                log("🔒 No user. Showing Login...", "warning");
+                if (launcher) launcher.classList.add('d-none');
+                if (launcher) launcher.remove();
+                if(app) app.style.opacity = 1;            
+                await this._call('Auth', 'showChoiceScreen');
+            }
+        });
+    }
+
 }
 
 // =========================================================================
@@ -763,6 +972,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (typeof CalculatorWidget !== 'undefined' && CalculatorWidget.init) {
             CalculatorWidget.init();
         }
+
     } catch (e) {
         console.error("Critical Error:", e);
         document.body.innerHTML = `<h3 class="text-danger p-3">Lỗi kết nối hệ thống: ${e.message}</h3>`;

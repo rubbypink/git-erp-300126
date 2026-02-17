@@ -7,15 +7,15 @@ class ModalFull extends HTMLElement {
         super();
         this.modal = null;
         this.isFullscreen = true;
-        this.showFooter = true;
+        this.showFooter = false;
     }
 
     connectedCallback() {
-        this.render();
+        this.init();
         this.setupModal();
     }
 
-    render() {
+    init() {
         const title = this.getAttribute('title') || 'Modal Title';
          this.showFooter = this.getAttribute('data-ft') !== 'false';
 
@@ -35,7 +35,7 @@ class ModalFull extends HTMLElement {
                         <div id="dynamic-modal-full-body" class="modal-body pt-0 overflow-auto"></div>
                         ${this.showFooter ? `
                             <div class="modal-footer gap-2">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                                <button type="button" class="btn btn-secondary">Xoá</button>
                                 <button type="button" class="btn btn-primary">Lưu</button>
                             </div>
                         ` : ''}
@@ -81,42 +81,52 @@ class ModalFull extends HTMLElement {
         }
 
         if (content) {
-            this.data(content);
+            this.render(content);
         }
     }
 
-    data(htmlContent, title = "9 Trip ERP") {
+    render(htmlContent, title = "9 Trip MD Full") {
         const bodyEl = this.querySelector('.modal-body');
         const titleEl = this.querySelector('.modal-title');
         if (titleEl) {
             titleEl.textContent = title;
         }   
         // 3. Check và xử lý content type
-        const isFragment = htmlContent instanceof DocumentFragment;
-        const isElement = htmlContent instanceof HTMLElement;
-        const isString = typeof htmlContent === 'string';
+        // ✅ Xử lý thẻ <template> - extract nội dung từ template.content
+        let processedContent = htmlContent;
+        if (htmlContent instanceof HTMLElement && htmlContent.tagName === 'TEMPLATE') {
+            processedContent = htmlContent.content;
+        }
+        
+        const isFragment = processedContent instanceof DocumentFragment;
+        const isElement = processedContent instanceof HTMLElement;
+        const isString = typeof processedContent === 'string';
 
         try {
             if (isString) {
                 // String HTML - dùng innerHTML
-                bodyEl.innerHTML = htmlContent;
+                bodyEl.innerHTML = processedContent;
             } else if (isFragment) {
                 // DocumentFragment - clone và append
-                bodyEl.appendChild(htmlContent.cloneNode(true));
+                bodyEl.appendChild(processedContent.cloneNode(true));
             } else if (isElement) {
                 // HTMLElement - clone và append
-                bodyEl.appendChild(htmlContent.cloneNode(true));
-            } else if (htmlContent) {
+                bodyEl.appendChild(processedContent.cloneNode(true));
+            } else if (processedContent) {
                 // Fallback: convert to string
-                bodyEl.innerHTML = String(htmlContent);
+                bodyEl.innerHTML = String(processedContent);
             }
         } catch (error) {
             console.error("Error setting modal content:", error);
         }
     }
 
-    show() {
-        this.modal?.show();
+    show(htmlContent = null, title = null, saveHandler = null, resetHandler = null) {
+        if (!this.modal) {alert('Modal not initialized!'); return;}
+        if (htmlContent) this.render(htmlContent, title);
+        if (saveHandler) this.setSaveHandler(saveHandler);
+        if (resetHandler) this.setResetHandler(resetHandler);
+        this.modal.show();
     }
 
     hide() {
@@ -132,6 +142,7 @@ class ModalFull extends HTMLElement {
     }
 
     setSaveHandler(handler) {
+        this.setFooter(true); // Hiển thị footer nếu có nút save
         const saveBtn = this.getSaveBtn();
         if (!saveBtn || typeof handler !== 'function') return;
 
@@ -141,6 +152,38 @@ class ModalFull extends HTMLElement {
         newBtn.addEventListener('click', () => {
             handler.call(this);
         });
+    }
+
+    setResetHandler(handler, btnText = 'Reset') {
+        const footerEl = this.querySelector('.modal-footer');
+        if (!footerEl) return;
+        let resetBtn = footerEl.querySelector('.btn-secondary');
+        if (!resetBtn) {
+            resetBtn = document.createElement('button');
+            resetBtn.type = 'button';
+            resetBtn.className = 'btn btn-secondary';
+            resetBtn.textContent = btnText;
+            footerEl.insertBefore(resetBtn, footerEl.firstChild);
+        } else {
+            resetBtn.textContent = btnText;
+            resetBtn.classList.remove('d-none');
+        }
+        if (typeof handler === 'function') {
+            resetBtn.addEventListener('click', () => {
+                handler.call(this);
+            });
+        } else {
+            resetBtn.addEventListener('click', (e) => {
+                const inputEls = this.querySelectorAll('.modal-body input, .modal-body select, .modal-body textarea');
+                inputEls.forEach(input => {
+                    if (input.type === 'checkbox' || input.type === 'radio') {
+                        input.checked = false;
+                    } else {
+                        input.value = '';
+                    }
+                });
+            });
+        }
     }
 
     setFooter(showFooter) {
@@ -290,7 +333,7 @@ class OffcanvasMenu extends HTMLElement {
                 <div class="section function-section">
                     <div class="section-title">CHỨC NĂNG HỆ THỐNG</div>
                     <div class="function-grid">
-                        ${this._renderFuncBtn('export', 'Xuất Excel', 'file-excel', '#218838')}
+                        ${this._renderFuncBtn('loadModule_Accountant', 'Test Module Accountant', 'file-excel', '#218838')}
                         ${this._renderFuncBtn('import', 'Nhập liệu', 'file-upload', '#007bff')}
                         <button class="func-btn" data-action="openReport" onclick="this.getRootNode().host.openReport()">
                             <i class="fas fa-chart-line fa-fw" style="color: #dc3545"></i>
@@ -1279,7 +1322,7 @@ if (!customElements.get('offcanvas-menu')) {
             menu.addEventListener('resize-changed', (e) => {
                 _updateMenuState({ menuWidth: e.detail.width });
             });
-            menu.toggleSide();
+            // menu.toggleSide();
         }
 
         if (!document.querySelector('at-modal-full')) {

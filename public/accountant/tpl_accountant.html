@@ -1,0 +1,181 @@
+<template id="tmpl-dashboard">
+    <div class="acc-wrapper container-fluid p-0">
+        <div class="acc-header d-flex justify-content-between align-items-center px-3 py-2 bg-white shadow-sm">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-wallet text-primary fs-4 me-2"></i>
+                <h5 class="m-0 fw-bold text-dark">Kế Toán</h5>
+            </div>
+
+            <div class="acc-entity-selector">
+                <select id="acc-entity-select" class="form-select form-select-sm fw-bold border-0 bg-light text-primary"
+                    onchange="window.AccountantCtrl.init()">
+                    <option value="9trip">🏢 9 Trip ERP</option>
+                    <option value="thenice">🏨 The Nice Hotel</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="p-3">
+            <div class="row g-3">
+                <div class="col-12 col-lg-6">
+                    <div class="acc-card h-100 border-start border-4 border-primary">
+                        <div class="acc-card-header d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-uppercase text-muted small fw-bold"><i
+                                    class="fas fa-landmark me-1"></i>Tổng
+                                Quỹ Thực Tế</span>
+                            <span class="fs-5 fw-bold text-primary" id="d-total-fund">0</span>
+                        </div>
+                        <div id="acc-fund-list-container" class="acc-fund-list">
+                            <div class="text-center text-muted small fst-italic py-2">Đang tải dữ liệu quỹ...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                    <div class="acc-card h-100 border-start border-4 border-success">
+                        <div class="acc-card-header d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-uppercase text-muted small fw-bold"><i
+                                    class="fas fa-chart-line me-1"></i>Lãi/Lỗ (Net)</span>
+                            <span class="fs-5 fw-bold text-success" id="d-net-balance">0</span>
+                        </div>
+                        <div class="row text-center mt-3">
+                            <div class="col-6 border-end">
+                                <div class="small text-muted mb-1">Tổng Thu (IN)</div>
+                                <div class="fw-bold text-success" id="d-total-in">0</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="small text-muted mb-1">Tổng Chi (OUT)</div>
+                                <div class="fw-bold text-danger" id="d-total-out">0</div>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-end">
+                            <small class="text-muted fst-italic" style="font-size: 0.75rem;">*Theo bộ lọc hiển
+                                thị</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-3 mb-3">
+            <div class="acc-filter-container" style="width: fit-content; justify-self: start;">
+                <div class="acc-filter-header bg-light" onclick="this.parentElement.classList.toggle('active')">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-filter text-primary me-2"></i>
+                        <span class="fw-bold text-dark me-1">Lọc:</span>
+                        <span id="acc-filter-summary" class="text-primary fw-bold">Tháng này</span>
+                    </div>
+                    <i class="fas fa-chevron-down text-muted transition-icon"></i>
+                </div>
+
+                <div class="acc-filter-body">
+                    <div class="mb-3">
+                        <label class="acc-label">Giai đoạn</label>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <select id="acc-filter-period" class="form-select form-select-sm flex-grow-1">
+                                <option value="today">Hôm nay</option>
+                                <option value="week">Tuần này</option>
+                                <option value="month" selected>Tháng này</option>
+                                <option value="quarter">Quý này</option>
+                                <option value="year">Năm nay</option>
+                                <option value="all">Tất cả</option>
+                                <option value="custom">Tùy chọn ngày...</option>
+                            </select>
+                        </div>
+                        <div id="acc-custom-date-row" class="row g-2 mt-2 d-none">
+                            <div class="col-6">
+                                <label class="acc-label-xs">Từ ngày</label>
+                                <input type="date" id="acc-filter-start" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-6">
+                                <label class="acc-label-xs">Đến ngày</label>
+                                <input type="date" id="acc-filter-end" class="form-control form-control-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="acc-label">Tìm chi tiết</label>
+                        <div class="input-group input-group-sm">
+                            <select id="acc-filter-field" class="form-select" style="max-width: 35%;">
+                                <option value="all">Tất cả</option>
+                            </select>
+                            <input type="text" id="acc-filter-value" class="form-control" placeholder="Nhập từ khóa...">
+                        </div>
+                    </div>
+
+                    <div class="text-end">
+                        <button class="btn btn-sm btn-primary w-100" id="btn-apply-filter" onclick="">
+                            <i class="fas fa-check me-1"></i> Áp dụng bộ lọc
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-3 pb-5 mb-5">
+            <div class="table-responsive bg-white rounded shadow-sm acc-table-wrapper">
+                <table class="table table-hover align-middle mb-0 text-nowrap text-center" id="acc-transaction-table">
+                    <thead class="bg-light text-secondary small">
+                        <tr>
+                            <th class="ps-3" width="100px">Ngày</th>
+                            <th width="80px">Loại</th>
+                            <th class="text-end">Số tiền</th>
+                            <th>Nội dung</th>
+                            <th>Quỹ</th>
+                            <th>Trạng thái</th>
+                            <th width="40px"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="acc-table-body">
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-center mt-3 text-muted small">
+                Hiển thị <span id="acc-showing-count" class="fw-bold">0</span> giao dịch
+            </div>
+        </div>
+
+        <div class="d-none">
+            <select id="tpl-fund-select-options">
+            </select>
+        </div>
+    </div>
+</template>
+<template id="tmpl-acc-footer-bar">
+    <div class="acc-action-bar" id="acc-footer-bar">
+        <div class="acc-global-search-wrapper">
+            <i class="fas fa-search text-muted search-icon"></i>
+            <input type="text" id="acc-global-search" class="form-control form-control-sm ps-5 rounded-pill"
+                placeholder="Tìm trên trang...">
+        </div>
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-light text-primary btn-icon-only rounded-circle" id="btn-sync-sales" title="Update"
+                onclick="window.AccountantCtrl?.init()">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+
+            <button class="btn btn-light text-secondary btn-icon-only rounded-circle" id="btn-report" title="Báo cáo">
+                <i class="fas fa-file-invoice"></i>
+            </button>
+
+            <div class="btn-group dropup">
+                <button type="button" class="btn btn-primary rounded-pill px-3 fw-bold shadow-sm"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-plus me-1"></i> Tạo
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2 rounded-3 mb-2">
+                    <li><button class="dropdown-item rounded-2 text-success py-2 fw-bold" id="btn-add-in"
+                            onclick="window.AccountantCtrl.openTransactionModal('IN')">
+                            <i class="fas fa-arrow-down me-2"></i> Phiếu Thu (IN)
+                        </button></li>
+                    <li><button class="dropdown-item rounded-2 text-danger py-2 fw-bold" id="btn-add-out"
+                            onclick="window.AccountantCtrl.openTransactionModal('OUT')">
+                            <i class="fas fa-arrow-up me-2"></i> Phiếu Chi (OUT)
+                        </button></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</template>

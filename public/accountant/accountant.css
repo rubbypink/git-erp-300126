@@ -1,0 +1,212 @@
+/* public/accountant/accountant.css */
+
+:root {
+    --acc-primary: #0d6efd;
+    --acc-success: #198754;
+    --acc-danger: #dc3545;
+    --acc-bg: #f5f7fa;
+    --acc-card-bg: #ffffff;
+    --acc-text-muted: #6c757d;
+    --acc-border-radius: 12px;
+    --acc-action-bar-height: 70px;
+    --acc-header-height: 60px;
+}
+
+/* 1. GLOBAL LAYOUT */
+.acc-wrapper {
+    background-color: var(--acc-bg);
+    min-height: calc(100vh - var(--acc-action-bar-height));
+    padding-bottom: 80px !important; /* Space for Action Bar */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* 2. CARD UI STYLING */
+.acc-card {
+    background: var(--acc-card-bg);
+    border-radius: var(--acc-border-radius);
+    padding: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    transition: transform 0.2s;
+}
+
+/* Hiệu ứng chạm nhẹ trên mobile */
+.acc-card:active {
+    transform: scale(0.98); 
+}
+
+.acc-fund-list {
+    max-height: 120px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+/* Scrollbar mỏng cho list quỹ */
+.acc-fund-list::-webkit-scrollbar { width: 4px; }
+.acc-fund-list::-webkit-scrollbar-thumb { background: #dee2e6; border-radius: 4px; }
+
+/* 3. COLLAPSIBLE FILTER */
+.acc-filter-container {
+    background: #fff;
+    border-radius: var(--acc-border-radius);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    overflow: hidden; /* Che phần body khi đóng */
+    position: relative;
+    z-index: 100;
+}
+
+.acc-filter-header {
+    padding: 0.75rem 1rem;
+    background: #fff;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    user-select: none; /* Tránh bôi đen text khi tap nhanh */
+}
+
+.acc-filter-header:active {
+    background-color: #f8f9fa;
+}
+
+.acc-filter-body {
+    display: none;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-top: 1px solid #eee;
+}
+
+/* Animation class */
+.acc-filter-container.active .acc-filter-body {
+    display: block;
+    animation: slideDown 0.25s ease-out;
+}
+
+.acc-filter-container.active .transition-icon {
+    transform: rotate(180deg);
+}
+
+.transition-icon {
+    transition: transform 0.3s ease;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.acc-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--acc-text-muted);
+    margin-bottom: 5px;
+    display: block;
+}
+.acc-label-xs {
+    font-size: 0.7rem;
+    color: var(--acc-text-muted);
+}
+
+/* 4. TABLE STYLING */
+.acc-table-wrapper {
+    border: 1px solid #e9ecef;
+}
+
+#acc-transaction-table th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    padding: 12px 8px;
+}
+
+#acc-transaction-table td {
+    padding: 12px 8px;
+    font-size: 0.9rem;
+}
+
+/* Highlight search text class */
+.highlight-text {
+    background-color: #ffc107;
+    padding: 2px 0;
+    border-radius: 2px;
+}
+
+/* 5. ACTION BAR (STICKY BOTTOM) */
+.acc-action-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: var(--acc-action-bar-height);
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 15px;
+    z-index: 1050;
+    box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
+}
+
+/* Global Search Input Design */
+.acc-global-search-wrapper {
+    position: relative;
+    flex-grow: 1;
+    margin-right: 10px;
+}
+
+.acc-global-search-wrapper .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.9rem;
+}
+
+#acc-global-search {
+    padding-left: 35px; /* Chừa chỗ cho icon */
+    background-color: #f1f3f5;
+    border: none;
+    height: 40px; /* Touch target tốt */
+    font-size: 0.9rem;
+}
+
+#acc-global-search:focus {
+    background-color: #fff;
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+}
+
+/* Button Icons */
+.btn-icon-only {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #dee2e6;
+}
+select > option {
+    max-width: 100%;
+    width: fit-content;
+}
+
+/* 6. RESPONSIVE TWEAKS */
+@media (min-width: 992px) {
+    /* Desktop adjustments */
+    .acc-wrapper {
+        padding-bottom: 20px !important;
+        padding-top: 20px;
+    }
+    
+    .acc-action-bar {
+        position: sticky;
+        top: 10px;
+        bottom: auto;
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        margin: 0 15px 20px 15px;
+        width: auto;
+    }
+}

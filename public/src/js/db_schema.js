@@ -86,7 +86,28 @@ const FIELD_MAP = {
         7: 'bank_name',
         8: 'contact_person',
         9: 'dept_balance'
-    }
+    },
+    transactions: {
+        0: 'id',
+        1: 'transaction_date',
+        2: 'type',
+        3: 'amount',
+        4: 'category',
+        5: 'description',
+        6: 'ref_booking_id',
+        7: 'fund_source',
+        8: 'created_at',
+        9: 'created_by'
+    },
+    fund_accounts: {
+        0: 'id',
+        1: 'type',
+        2: 'name',
+        3: 'code',
+        4: 'account_number',
+        5: 'balance',
+        6: 'created_at'
+    },
 };
 
 // --- HELPERS (Giữ nguyên logic cũ) ---

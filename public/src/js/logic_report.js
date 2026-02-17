@@ -40,7 +40,7 @@ window.ReportModule = (function() {
         const resp = await fetch('./src/components/report_dashboard.html');
         if (resp.ok) {
             const htmlText = await resp.text();
-            modal.data(htmlText, 'BÁO CÁO & THỐNG KÊ');
+            modal.render(htmlText, 'BÁO CÁO & THỐNG KÊ');
             modal.setFooter(false); // Ẩn nút footer
         } else {
             alert("Không thể tải giao diện báo cáo: " + resp.statusText);

@@ -1,3 +1,4 @@
+    // const { default: DB_MANAGER } = require("./db_manager");
 
     // 3. Hàm Save Booking (Front-end Validation & Confirm)
     async function saveForm(isConfirmed = false) {
@@ -11,7 +12,6 @@
             extendedCust = window.getExtendedCustomerData();
             if (extendedCust) {
               const custData = {
-                ...data.customer,
                 ...extendedCust
               };
               data.customer = custData;
@@ -27,17 +27,29 @@
         if (data.booking_details.length === 0) { logA("Vui lòng nhập ít nhất 1 dòng dịch vụ!"); return; }
         for (let i=0; i<data.booking_details.length; i++) {
           const d = data.booking_details[i];
-          if(!d.type || !d.name || !d.qtyA || !d.total) {
-              logA(`Dòng thứ ${i+1} thiếu thông tin (Loại, Tên, SL hoặc Thành tiền).`);
+          if(!d.type || !d.name || !d.qtyA) {
+              logA(`Dòng thứ ${i+1} thiếu thông tin (Loại, Tên, SL).`);
               return;
           }
         }
         log("Đang gửi dữ liệu Saving...");
 
           var booking = Object.values(data.bookings);
-          var booking_details = data.booking_details.map(d => Object.values(d));
+          var bookingId = data.bookings.id;
         try {          
-          await A.DB.saveRecord('bookings', booking);
+          const newBk = await A.DB.saveRecord('bookings', booking);
+          
+          // =========================================================================
+          // CẬP NHẬT BOOKING_ID CHO TẤT CẢ BOOKING_DETAILS NẾU CHƯA CÓ GIÁ TRỊ
+          // =========================================================================
+          const updatedDetails = data.booking_details.map(detail => {
+            if (!detail.booking_id) {
+              detail.booking_id = newBk.id;
+            }
+            return detail;
+          });
+          
+          var booking_details = updatedDetails.map(d => Object.values(d));
           await A.DB.batchSave('booking_details', booking_details);
           const btnDashUpdate = getE('btn-dash-update');
           if (btnDashUpdate) {
@@ -106,7 +118,7 @@
     }
     // =========================================================================
     // EXPORT FORM HANDLER
-    function createContract() {
+    async function createContract() {
       // 1. Kiểm tra dữ liệu cơ bản
       if (typeof getFormData !== 'function') return;
 
@@ -141,32 +153,99 @@
             // Tự động chuyển sang Tab Customer
             try {
               activateTab('tab-sub-form');
+              const phoneInput = getVal('Ext_CustPhone') || getVal('Cust_Phone');
+              const customers = window.APP_DATA ? window.APP_DATA.customers_obj : [];
+      
+              let found = null;
+              
+              if (phoneInput.length >= 3) {
+                found = customers.find(c => {
+                  if (!c) return false;
+                  
+                  // Object format: c.phone hoặc c.customer_phone
+                  if (typeof c === 'object' && !Array.isArray(c)) {
+                  const phone = c.phone || c.customer_phone || '';
+                  return String(phone).includes(phoneInput);
+                  }
+                  
+                  // Array format: c[6] là phone index
+                  if (Array.isArray(c)) {
+                  return c[6] && String(c[6]).includes(phoneInput);
+                  }
+                  
+                  return false;
+                });
+                
+                // =========================================================================
+                // CẬP NHẬT FORM NẾU TÌM THẤY KHÁCH HÀNG (Đảm bảo found trả về dữ liệu nguyên hàng)
+                // =========================================================================
+                if (found && (typeof found === 'object')) {
+                  log(`✅ Tìm thấy khách hàng`, 'info');
+                  console.log('Found customer full data:', found); // Debug: để kiểm tra cấu trúc
+                  
+                  // Xử lý cả Object và Array format
+                  const isObj = !Array.isArray(found);
+                  
+                  // Trích xuất dữ liệu từ full row
+                  const cccd = isObj 
+                    ? (found.cccd || found.id_card || '') 
+                    : (found[3] || ''); // Index 3 cho array format
+                  
+                  const cccdDate = isObj 
+                    ? (found.cccd_date || found.id_card_date || '') 
+                    : (found[4] || ''); // Index 4 cho array format
+                  
+                  const email = isObj 
+                    ? (found.email || '') 
+                    : (found[7] || ''); // Index 7 cho array format (hoặc điều chỉnh theo cấu trúc thực tế)
+                  
+                  const address = isObj 
+                    ? (found.address || '') 
+                    : (found[5] || ''); // Index 5 cho array format
+                  
+                  const dob = isObj 
+                    ? (found.dob || found.date_of_birth || '') 
+                    : (found[2] || ''); // Index 2 cho array format
+                  
+                  // Cập nhật form fields - chỉ nếu có dữ liệu
+                  if (cccd) setVal('Ext_CustCCCD', cccd);
+                  if (cccdDate) setVal('Ext_CustCCCDDate', cccdDate);
+                  if (email) setVal('Ext_CustEmail', email);
+                  if (address) setVal('Ext_CustAddress', address);
+                  if (dob) setVal('Ext_CustDOB', dob);
+                  
+                  log('✅ Tải thông tin khách hàng từ DB thành công', 'success');
+                } else if (!found) {
+                  log('⚠️ Không tìm thấy khách hàng với số điện thoại: ' + phoneInput, 'warning');
+                }
+              }
             } catch(e) { logError(e); }
             return; // DỪNG LẠI, không export
         }
       }
       // 5. HỢP NHẤT DỮ LIỆU & GỬI ĐI
       // (Nếu chạy đến đây nghĩa là: Hoặc dữ liệu đủ, Hoặc user đang đứng ở Tab Customer và cố tình export)
-      const finalCustomer = {
-          ...basicData.customer,
-          ...extendedCust
-      };
+      // const finalCustomer = {
+      //     ...basicData.customer,
+      //     ...extendedCust
+      // };
 
       const payload = {
         bookings: basicData.bookings,
         booking_details: basicData.booking_details,
-        customer: finalCustomer
+        customer: extendedCust
       };
       setBtnLoading("btn-create-contract", true, "Creating...");
       log("Đang xuất dữ liệu sang Sheet Booking Form...", "warning");
       // showLoading(true);
-      const res = requestAPI('createBookingContract',...Object.values(payload));
+      const res = await requestAPI('createBookingContract', payload);
       if (res) {
           // HTML nội dung (Giữ nguyên logic cũ của bạn)
           const htmlContent = `
             <div class="text-center p-2">
-              <div class="mb-3 text-success"><i class="fa-solid fa-circle-check fa-3x"></i></div>
-              <h5 class="fw-bold text-success">${res.message}</h5>
+              <div class="mb-3 text-success"><i class="fa-solid ${res.docUrl ? 'fa-circle-check' : 'fa-circle-exclamation'} fa-3x"></i></div>
+              <h5 class="fw-bold text-success">${res.message ? res.message : 'Có lỗi xảy ra'}</h5>
+            ` + (res.docUrl ? `
               <p class="small text-muted">File đã lưu vào Drive.</p>
               <div class="d-grid gap-2 col-10 mx-auto mt-4">
                   <a href="${res.docUrl}" target="_blank" class="btn btn-primary">
@@ -181,22 +260,24 @@
                     <i class="fa-solid fa-trash"></i> Xóa file này
                   </button>
               </div>
+              ` : `
             </div>
-          `;
+          `);
           // GỌI HÀM MỚI TẠI ĐÂY:
           showOverlay("KẾT QUẢ XUẤT HỢP ĐỒNG", htmlContent);
-          log("Tạo hợp đồng thành công.", "success");
+          log("Tạo hợp đồng thành công.", res.docUrl, "success");
       } else {
           logA("Lỗi: " + res.message);
       }
+      setBtnLoading("btn-create-contract", false);
       
     }
     // Hàm xử lý xóa file (Nằm riêng ở client)
-    function requestDeleteFile(fileId) {
+    async function requestDeleteFile(fileId) {
       if(!confirm("Bạn chắc chắn muốn xóa file hợp đồng vừa tạo khỏi Google Drive?")) return;
       // Đổi nút bấm thành đang xóa...
       showLoading(true);
-      const res = requestAPI('deleteGeneratedFile', fileId);
+      const res = await requestAPI('deleteGeneratedFileAPI', fileId);
 
       showLoading(false);
       if(res) {
@@ -332,48 +413,51 @@
             logA("Vui lòng nhập Tên và Số điện thoại!");
             return;
         }
-        if (typeof requestAPI === 'function') {
-          const res = await requestAPI('saveCustomerAPI', data);
-          if (res) {
-            const newCust = res.customer;
-            if(APP_DATA.customer) {
-              // Cập nhật APP_DATA.customer ngay lập tức
-              const custIndex = APP_DATA.customer.findIndex(r => r?.[COL_INDEX.C_PHONE] && r[COL_INDEX.C_PHONE] === newCust.phone);
-              if (custIndex !== -1) {
-                APP_DATA.customer[custIndex] = Object.values(newCust);
-                log("Cập nhật KH vào APP_DATA:" + Object.values(newCust));
-              } else {
-                APP_DATA.customer.unshift(Object.values(newCust));
-                log("Thêm KH mới vào APP_DATA:" + Object.values(newCust));
-              }
+        showLoading(true, "Đang lưu thông tin khách hàng...");
+
+        const res = await A.DB.saveRecord('customers', data);
+        if (res) {
+          const newCust = res.customer;
+          if(APP_DATA.customer) {
+            // Cập nhật APP_DATA.customer ngay lập tức
+            const custIndex = APP_DATA.customer.findIndex(r => r?.[COL_INDEX.C_PHONE] && r[COL_INDEX.C_PHONE] === newCust.phone);
+            if (custIndex !== -1) {
+              APP_DATA.customer[custIndex] = Object.values(newCust);
+              log("Cập nhật KH vào APP_DATA:" + Object.values(newCust));
+            } else {
+              APP_DATA.customer.unshift(Object.values(newCust));
+              log("Thêm KH mới vào APP_DATA:" + Object.values(newCust));
             }
-
-            setVal('Cust_Name', newCust.full_name);
-            setVal('Cust_Phone', newCust.phone);
-            setVal('Cust_Source', newCust.source);
-
-            // 2. Khóa lại các ô nhập liệu ở Tab Customer (để quay về trạng thái View Mode)
-            const elName = getE('Ext_CustName');
-            const elPhone = getE('Ext_CustPhone');
-            const btnSave = getE('btn-save-customer');
-            
-            if(elName) { elName.readOnly = true; elName.classList.add('bg-light'); }
-            if(elPhone) { elPhone.readOnly = true; elPhone.classList.add('bg-light'); }
-            if(btnSave) btnSave.classList.add('d-none'); // Ẩn nút lưu
-
-            // 3. Chuyển người dùng về lại Tab Booking để làm việc tiếp
-            const tab1Btn = document.querySelector('button[data-bs-target="#tab-form"]');
-            if(tab1Btn) bootstrap.Tab.getOrCreateInstance(tab1Btn).show();
           }
-        
-        } else log("Ko thấy hàm requestAPI");
+
+          setVal('Cust_Name', newCust.full_name);
+          setVal('Cust_Phone', newCust.phone);
+          setVal('Cust_Source', newCust.source);
+
+          // 2. Khóa lại các ô nhập liệu ở Tab Customer (để quay về trạng thái View Mode)
+          const elName = getE('Ext_CustName');
+          const elPhone = getE('Ext_CustPhone');
+          const btnSave = getE('btn-save-customer');
+          
+          if(elName) { elName.readOnly = true; elName.classList.add('bg-light'); }
+          if(elPhone) { elPhone.readOnly = true; elPhone.classList.add('bg-light'); }
+          if(btnSave) btnSave.classList.add('d-none'); // Ẩn nút lưu
+
+          // 3. Chuyển người dùng về lại Tab Booking để làm việc tiếp
+          const tab1Btn = document.querySelector('button[data-bs-target="#tab-form"]');
+          if(tab1Btn) bootstrap.Tab.getOrCreateInstance(tab1Btn).show();
+        }
+      
+
       } catch (e) {
         log("LỖI: ", e.message, 'error');
+      } finally {
+        showLoading(false);
       }
     
     };
 
-        /**
+    /**
      * 2. Gửi dữ liệu về Server (Full Row)
      */
     async function saveBatchDetails() {

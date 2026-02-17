@@ -5,6 +5,143 @@
    * "Clean Date" - Tập trung xử lý ngày tháng gọn gàng (YYYY-MM-DD).
    * =========================================================================
    */
+  /**
+   * =========================================================================
+   * ERROR HANDLER UTILITY - Global Error Management
+   * Purpose: Prevents errors from crashing the application
+   * =========================================================================
+   *
+   * Features:
+   * - Safe function wrappers (async/sync)
+   * - Safe DOM operations
+   * - Safe API calls
+   * - Centralized error logging
+   * - Error recovery patterns
+   *
+   * Load Order: EARLY (after utils.js and before main.js)
+   */
+  
+  /**
+   * =========================================================================
+   * 1. GLOBAL ERROR CONFIGURATION
+   * =========================================================================
+   */
+  const ERROR_CONFIG = {
+    ENABLE_LOGGING: true,
+    LOG_TO_STORAGE: true,
+    MAX_STORED_ERRORS: 100,
+    ERROR_TIMEOUT_MS: 5000,
+    STORAGE_KEY: 'app_errors_log',
+    CONTEXTS: {}  // Track error contexts {functionName: count}
+  };
+  
+  /**
+   * =========================================================================
+   * 2. ERROR LOGGER - Centralized Error Logging
+   * =========================================================================
+   */
+  const ErrorLogger = {
+    stack: [],
+  
+    /**
+     * Log error with context and metadata
+     * @param {Error|string} error - Error object or message
+     * @param {string} context - Where error occurred (function/module name)
+     * @param {object} meta - Additional metadata {severity, data}
+     */
+    log: function(error, context = 'UNKNOWN', meta = {}) {
+      if (!ERROR_CONFIG.ENABLE_LOGGING) return;
+  
+      const errorEntry = {
+        id: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        timestamp: new Date().toISOString(),
+        context: context,
+        message: error?.message || String(error),
+        stack: error?.stack || 'No stack trace',
+        severity: meta.severity || 'error',
+        data: meta.data || null,
+        userAgent: navigator.userAgent
+      };
+  
+      // Add to memory stack
+      this.stack.push(errorEntry);
+      if (this.stack.length > ERROR_CONFIG.MAX_STORED_ERRORS) {
+        this.stack.shift();
+      }
+  
+      // Count errors by context
+      ERROR_CONFIG.CONTEXTS[context] = (ERROR_CONFIG.CONTEXTS[context] || 0) + 1;
+  
+      // Log to storage
+      if (ERROR_CONFIG.LOG_TO_STORAGE) {
+        this._saveToStorage(errorEntry);
+      }
+  
+      // Log to console (DEV only)
+      if (typeof log === 'function') {
+        log(`[${context}] ${errorEntry.message}`, errorEntry.severity);
+      } else {
+        console.error(`[${context}] ❌`, errorEntry.message, error);
+      }
+  
+      return errorEntry.id;
+    },
+  
+    /**
+     * Save error to localStorage for later analysis
+     */
+    _saveToStorage: function(errorEntry) {
+      try {
+        let stored = JSON.parse(localStorage.getItem(ERROR_CONFIG.STORAGE_KEY) || '[]');
+        stored.push(errorEntry);
+        if (stored.length > ERROR_CONFIG.MAX_STORED_ERRORS) {
+          stored = stored.slice(-ERROR_CONFIG.MAX_STORED_ERRORS);
+        }
+        localStorage.setItem(ERROR_CONFIG.STORAGE_KEY, JSON.stringify(stored));
+      } catch (e) {
+        console.warn('⚠️ Cannot save error to localStorage', e);
+      }
+    },
+  
+    /**
+     * Get all logged errors from memory
+     */
+    getAll: function() {
+      return [...this.stack];
+    },
+  
+    /**
+     * Get errors by context
+     */
+    getByContext: function(context) {
+      return this.stack.filter(e => e.context === context);
+    },
+  
+    /**
+     * Clear error log
+     */
+    clear: function() {
+      this.stack = [];
+      ERROR_CONFIG.CONTEXTS = {};
+      try {
+        localStorage.removeItem(ERROR_CONFIG.STORAGE_KEY);
+      } catch (e) {
+        console.warn('⚠️ Cannot clear localStorage', e);
+      }
+    },
+  
+    /**
+     * Export errors as JSON
+     */
+    export: function() {
+      return {
+        exported: new Date().toISOString(),
+        errors: this.stack,
+        summary: ERROR_CONFIG.CONTEXTS
+      };
+    }
+  };
+
 
   const LOG_CFG = {
       ENABLE: true,
@@ -1018,7 +1155,7 @@
       if (isSuccess) {
           // Kỹ thuật: Object Destructuring & Rest Syntax
           // Tách các biến kỹ thuật ra (unused), phần còn lại (payload) chính là thứ ta cần
-          const { success, status, message, code, error, ...payload } = res;
+          const { success, status, code, error, ...payload } = res;
           
           // payload lúc này chứa: { data: ..., ...extras }
           
@@ -1028,8 +1165,8 @@
           return payload; 
       } else {
           // Xử lý lỗi (Log & Return null)
-          if (res.status || res.error) {
-              log(`❌ API Error [${res.code || 'UNKNOWN'}]:`, res.error || res.message, 'error');
+          if (res.status !== 200 || res.error) {
+              log(`❌ API Error [${res.status || 'UNKNOWN'}]:`, res.error || res.message, 'error');
           }
           return null;
       }
@@ -1710,6 +1847,65 @@
     }
   }
 
+  /**
+   * Chuyển đổi trạng thái của một Element giữa DOM và Template.
+   * - Nếu Element đang hiển thị: Bọc nó vào <template> (Ẩn khỏi DOM).
+   * - Nếu Element đang trong <template>: Đưa nó trở lại DOM.
+   * @param {string} targetId - ID của element cần toggle (không phải ID của template).
+   * @returns {HTMLElement|null} - Trả về Element nếu vừa unwrap, hoặc null nếu vừa wrap.
+   */
+  function toggleTemplate(targetId) {
+      try {
+          const tmplId = 'tmpl-' + targetId;
+          
+          // Trường hợp 1: Element đang "Sống" trên DOM -> Cần đưa vào Template
+          const activeElement = getE(targetId);
+          
+          if (activeElement) {
+              // 1. Tạo thẻ template
+              const template = document.createElement('template');
+              template.id = tmplId;
+
+              // 2. Chèn template vào ngay trước element để giữ vị trí
+              activeElement.parentNode.insertBefore(template, activeElement);
+
+              // 3. Chuyển element vào trong template content
+              // Lưu ý: appendChild sẽ di chuyển node từ DOM vào Fragment
+              template.content.appendChild(activeElement);
+
+              log(`[Utils] Đã ẩn element #${targetId} vào template #${tmplId}`);
+              return null;
+          }
+
+          // Trường hợp 2: Element đang "Ngủ" trong Template -> Cần đánh thức dậy
+          const templateElement = getE(tmplId);
+          
+          if (templateElement) {
+              // 1. Lấy nội dung từ template (DocumentFragment)
+              const content = templateElement.content;
+              
+              // Tìm lại element gốc bên trong để return
+              const originalElement = content.querySelector('#' + targetId) || content.firstElementChild;
+
+              // 2. Đưa nội dung ra ngoài (chèn vào chỗ của thẻ template)
+              templateElement.parentNode.insertBefore(content, templateElement);
+
+              // 3. Xóa thẻ template đi (vì element đã ra ngoài rồi)
+              templateElement.remove();
+
+              log(`[Utils] Đã khôi phục element #${targetId} từ template`);
+              return originalElement;
+          }
+
+          console.warn(`[Utils] Không tìm thấy Element #${targetId} hoặc Template #${tmplId}`);
+          return null;
+
+      } catch (error) {
+          console.error(`[Utils] Lỗi trong toggleTemplate('${targetId}'):`, error);
+          return null;
+      }
+  }
+
   function getHtmlContent(url) {
     return new Promise((resolve, reject) => {
       let finalSourcePath = url;
@@ -1737,30 +1933,64 @@
   }
   
 
-  function loadJSFile(filePath, targetIdorEl=null) { 
-    if (!targetIdorEl) {
-      targetIdorEl = document.body;
-    } else if (typeof targetIdorEl === 'string') {
-      const el = getE(targetIdorEl);
-      if (el) targetIdorEl = el;
-      else {
-        logError(`❌ Target element not found for loadJSFile: ${targetIdorEl}`);
-        return Promise.reject(new Error(`Target element not found: ${targetIdorEl}`));
+  /**
+   * Tải file JS động vào DOM.
+   * Tự động phát hiện Role Accountant để tải dạng Module (ES6).
+   * * @param {string} filePath - Đường dẫn file JS
+   * @param {string|HTMLElement} targetIdorEl - Vị trí append (mặc định là body)
+   * @returns {Promise}
+   */
+  function loadJSFile(filePath, userRole = null, targetIdorEl = null) {
+      // 1. Xử lý target element
+      if (!targetIdorEl) {
+          targetIdorEl = document.body;
+      } else if (typeof targetIdorEl === 'string') {
+          const el = getE(targetIdorEl); // Đảm bảo hàm getE có sẵn
+          if (el) {
+              targetIdorEl = el;
+          } else {
+              const errorMsg = `❌ [loadJSFile] Target element not found: ${targetIdorEl}`;
+              if (typeof logError === 'function') logError(errorMsg);
+              return Promise.reject(new Error(errorMsg));
+          }
       }
-    }
-    return new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = filePath;
-      targetIdorEl.appendChild(s);
-      s.onload = () => {
-        log(`✅ JS File loaded: ${filePath}`);
-        resolve();
-      };
-      s.onerror = () => {
-        logError(`❌ Failed to load JS file: ${filePath}`);
-        reject(new Error(`Failed to load JS file: ${filePath}`));
-      };
-    });
+  
+      return new Promise((resolve, reject) => {
+          try {
+              const s = document.createElement('script');
+              s.src = filePath;
+  
+              // 2. Logic kiểm tra Role để set type="module"
+              // Kiểm tra an toàn xem biến CURRENT_USER có tồn tại không trước khi truy cập
+              if (userRole) {
+                  const role = userRole.toLowerCase();
+                  if (role === 'acc' || role === 'acc_thenice') {
+                      s.type = 'module';
+                  }
+              }
+  
+              // 3. Xử lý sự kiện load/error
+              s.onload = () => {
+                  const mode = s.type === 'module' ? 'ES6 Module' : 'Classic Script';
+                  if (typeof log === 'function') log(`✅ JS File loaded (${mode}): ${filePath}`);
+                  resolve(s);
+              };
+  
+              s.onerror = (e) => {
+                  const errorMsg = `❌ Failed to load JS file: ${filePath}`;
+                  if (typeof logError === 'function') logError(errorMsg);
+                  reject(new Error(errorMsg));
+              };
+  
+              // 4. Append vào DOM
+              targetIdorEl.appendChild(s);
+  
+          } catch (err) {
+              // Catch các lỗi đồng bộ khi tạo element
+              if (typeof logError === 'function') logError(`❌ Error inside loadJSFile: ${err.message}`);
+              reject(err);
+          }
+      });
   }
   /**
    * ✅ FIX: Make loadJSForRole asynchronous to prevent scope/timing issues
@@ -1783,7 +2013,7 @@
 
     const loadPromises = fileNames.map(fname => {
         const path = baseFilePath + fname;
-        return loadJSFile(path).catch(err => {
+        return loadJSFile(path, userRole).catch(err => {
             logError(`❌ Error loading JS for role ${userRole}, file ${fname}:`, err);
             // Don't throw - continue loading other files
             return null;
@@ -1816,18 +2046,5 @@
     }
   }
 
-  /**
-   * 9 Trip ERP Helper - Mobile Layout Fixer
-   * Mục tiêu: Tính toán chiều cao thực tế của màn hình (trừ thanh địa chỉ/bàn phím)
-   */
-  // const fixMobileViewport = () => {
-      // 1. Lấy chiều cao viewport thực tế
-      // let vh = window.innerHeight * 0.01;
-      // 2. Thiết lập biến CSS custom --vh
-  //     document.documentElement.style.setProperty('--vh', `${vh}px`);
-  // };
 
-  // Chạy khi load và khi xoay màn hình
-  // window.addEventListener('resize', fixMobileViewport);
-  // window.addEventListener('orientationchange', fixMobileViewport);
-  // fixMobileViewport();
+

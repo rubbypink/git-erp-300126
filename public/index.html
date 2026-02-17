@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-  <title>9 Trip Phu Quoc ERP @2026</title>
+  <title>9 Trip Phu Quoc - Du Lịch Dễ Dàng...</title>
   <link rel="icon" type="image/png" href="./src/images/favicon.png?v=2">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -41,12 +41,16 @@
     var ADMIN_EMAILS = ['tranthuaanh90@gmail.com', '9tripphuquoc@gmail.com', 'tranthuaanh90@9tripphuquoc.com'];
     var JS_MANIFEST = {
       sale: ['logic_sales.js', 'api_sales.js'],
-      op: ['logic_operator.js', 'api_operator.js']
+      op: ['logic_operator.js', 'api_operator.js'],
+      acc: ['controller_accountant.js'],
+      acc_thenice: ['controller_accountant.js']
     };
     var TEMPLATE_MANIFEST = {
       base: ['tmpl-dashboard', 'tmpl-form'],
       sale: ['tmpl-sub-form', 'tmpl-confirmation-modal'],
-      op: ['tmpl-partner-mail']
+      op: ['tmpl-partner-mail'],
+      acc: ['tmpl-report', 'tmpl-acc-footer-bar'],
+      acc_thenice: ['tmpl-report', 'tmpl-acc-footer-bar']
     };
   </script>
 
@@ -56,9 +60,7 @@
   <script src="./src/js/common/components/offcanvas_menu.js"></script>
   <script src="./src/js/theme-manager-v2.js"></script>
   <script src="./src/js/common/components/calculator_widget.js"></script>
-
   <script src="./src/js/db_schema.js"></script>
-
   <script src="./src/js/shortkey.js"></script>
   <script src="./src/js/renderer.js"></script>
   <script src="./src/js/logic_base.js"></script>

@@ -341,7 +341,7 @@ class EventManager {
      */
     _setupContextMenuEvents() {
         // const tbody = document.getElementById('detail-tbody');
-        const menu = document.getElementById('myContextMenu');
+        const menu = document.getElementById('bookingContextMenu');
 
         if (!menu) {
             console.warn('[EventManager] Context menu elements not found');

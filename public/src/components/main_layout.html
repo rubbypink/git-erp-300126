@@ -1,178 +1,183 @@
-<div class="app-header shadow-sm my-0 p-1 border-bottom">
-  <!-- Header Top: Logo & User Menu (FIX: Loại bỏ .row, sử dụng d-flex để tránh negative margin) -->
-  <div class="top-bar px-2 mb-1 bg-gray">
-    <div class="grid-left">
-      <img id="main-logo" src="https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp"
-        class="bg-white rounded-circle p-1 mx-2 main-logo bg-opacity-75" alt="9Trip Logo"
-        style="height: 1.6rem; width: auto;">
-      <span class="fst-italic fw-bold me-2 d-none d-md-inline-flex" style="width: fit-content;">Xin
-        chào!</span>
-      <div class="badge badge-danger ps-0 fw-bold d-none d-md-inline-flex opacity-75 w-auto" id="user-menu-text">
-        Guest
-      </div>
-    </div>
-    <div class="grid-right">
-      <div class="user-menu dropdown d-flex justify-content-end align-items-center">
-        <button class="btn btn-light btn-sm dropdown-toggle d-flex align-items-center gap-2" type="button"
-          data-bs-toggle="dropdown">
-          <i class="fa-solid fa-user text-info"></i>
-        </button>
-        <ul class="dropdown-menu px-1 animate__animated animate__fadeIn" id="user-menu">
-          <li id="user-info-card" class="px-2 border-bottom">
-            <div class="text-muted small">
-              <div><strong id="user-menu-name"></strong></div>
-              <div id="user-menu-email" style="font-size: 0.85rem;"></div>
-            </div>
-          </li>
-          <hr class="dropdown-divider">
-          <li><button class="dropdown-item btn-sm d-flex align-items-center gap-2" id="btn-logout-menu"
-              onclick="A.Auth.signOut()" style="display:none;"><i class="fa-solid fa-sign-out-alt text-danger"
-                style="width:20px"></i> Đăng Xuất</button></li>
-          <li><button class="dropdown-item btn-sm d-flex align-items-center gap-2" id="btn-login-menu"
-              onclick="A.Auth.showLoginForm()"><i class="fa-solid fa-sign-in-alt text-primary" style="width:20px"></i>
-              Đăng Nhập</button></li>
-          <li class="manager-only">
-            <hr class="dropdown-divider">
-            <select id="btn-select-masked-role" class="form-select form-select-sm fw-bold text-primary"
-              style="max-width: 120px;" onchange="reloadSystemMode(this.value);">
-              <option id="user-menu-role" value="" selected>--Chọn Role--</option>
-              <option value="sale">Sales Mode</option>
-              <option value="op">Operator Mode</option>
-            </select>
-          </li>
-        </ul>
-      </div>
-      <div class="dropdown">
-        <button class="btn btn-light btn-sm dropdown-toggle d-flex align-items-center gap-2" type="button"
-          data-bs-toggle="dropdown">
-          <i class="fa-solid fa-gear text-secondary"></i><span class="fw-bold text-secondary d-none">Hệ Thống</span>
-        </button>
-        <ul class="dropdown-menu px-1 animate__animated animate__fadeIn">
-          <li><button class="dropdown-item btn-sm d-flex align-items-center gap-2" onclick="reloadPage()"><i
-                class="fa-solid fa-rotate text-primary" style="width:20px"></i> Reload ERP</button></li>
-          <li><button class="dropdown-item btn-sm d-flex align-items-center gap-2" onclick="loadDataFromFireBase()"><i
-                class="fa-solid fa-skull" style="width:20px"></i> Cập Nhật Dữ Liệu Mới</button></li>
-          <li><button class="dropdown-item btn-sm d-flex align-items-center gap-2" onclick="toggleFullScreen()"><i
-                class="fa-solid fa-expand" style="width:20px"></i> Toàn Màn Hình</button></li>
-          <li>
-            <hr class="dropdown-divider">
-          </li>
-          <li class="admin-only bg-secondary bg-opacity-50">
-            <button class="dropdown-item btn-sm d-flex align-items-center gap-2" onclick="openSettingsModal()">
-              <i class="fa-solid fa-sliders text-success" style="width:20px"></i> Cài Đặt
+<div class="app-header shadow-sm my-0 p-0 border-bottom">
+  <div class="nav-container">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary w-100 p-0">
+      <a class="navbar-brand" href="javascript:void(0);">
+        <img id="main-logo" src="https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp"
+          class="bg-white rounded-circle main-logo" alt="9Trip Logo" onclick="reloadPage()"
+          style="height: calc(var(--header-height) * 0.9); width: auto;">
+      </a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#mainNavBar"
+        aria-controls="mainNavBar" aria-expanded="false" aria-label="Toggle navigation">O
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse justify-content-between" id="mainNavBar">
+        <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+          <li class="nav-item">
+            <button class="nav-link active fw-bold" data-bs-target="#tab-dashboard"
+              onclick="activateTab('tab-dashboard')">
+              <i class="fa-solid fa-chart-line text-primary"></i> Dashboard
             </button>
           </li>
-          <li class="admin-only">
-            <a class="dropdown-item btn-sm d-flex align-items-center gap-2"
-              href="https://docs.google.com/spreadsheets/d/176ik2ueN6UvUFbjrmrIag2tJY18hgbAqUPhDInG7cdo/edit?gid=888235904#gid=888235904"
-              target="_blank" rel="noopener noreferrer">
-              <i class="fa-solid fa-external-link-alt text-primary" style="width:20px"></i>Mở Operator Database
-            </a>
-            <a class="dropdown-item btn-sm d-flex align-items-center gap-2"
-              href="https://docs.google.com/spreadsheets/d/1E54Ibp0WvH2c4fFEbXdneuxSLK_qc6ClV2qwQM7AFMw/edit?gid=1052080251#gid=1052080251"
-              target="_blank" rel="noopener noreferrer">
-              <i class="fa-solid fa-external-link-alt text-primary" style="width:20px"></i>Mở Sales Database
-            </a>
-            <a class="dropdown-item btn-sm d-flex align-items-center gap-2"
-              href="https://script.google.com/home/projects/1Nthq68r_ZRPbkP7d8FChIxn6_29YSkDTDJpM9o2EKFGSof9xncAeeJcx/edit"
-              target="_blank" rel="noopener noreferrer">
-              <i class="fa-solid fa-external-link-alt text-primary" style="width:20px"></i>Mở Mã Nguồn GAS
-            </a>
-            <a class="dropdown-item btn-sm d-flex align-items-center gap-2"
-              href="https://console.firebase.google.com/u/0/project/trip-erp-923fd/firestore" target="_blank"
-              rel="noopener noreferrer">
-              <i class="fa-solid fa-external-link-alt text-primary" style="width:20px"></i>Mở Mã Nguồn FB
-            </a>
-            <hr class="dropdown-divider">
-            <button class="dropdown-item btn-sm d-flex align-items-center gap-2 text-warning"
-              onclick="clearLocalCache()">
-              <i class="fa-solid fa-trash text-warning" style="width:20px"></i>Xóa Local Cache
+          <li class="nav-item">
+            <button class="nav-link" data-bs-target="#tab-form" onclick="activateTab('tab-form')">
+              Booking
             </button>
-            <button id="btn-batch-create-data"
-              class="dropdown-item btn-sm d-flex align-items-center gap-2 text-warning">
-              <i class="fa-solid fa-sign-in-alt text-warning" style="width:20px"></i>Batch New Data
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-bs-target="#tab-list" onclick="activateTab('tab-list')">
+              Full Data
+            </button>
+          </li>
+          <li class="nav-item d-none" data-ontabs="4">
+            <button class="nav-link text-info" data-bs-target="#tab-sub-form" onclick="activateTab('tab-sub-form')">
+              <i class="fa-solid fa-user-tag"></i> Khách hàng
+            </button>
+          </li>
+          <li class="nav-item admin-only">
+            <button class="nav-link" data-bs-target="#tab-log" onclick="activateTab('tab-log')">
+              Admin Log
+            </button>
+          </li>
+
+          <li class="nav-item admin-only">
+            <button class="nav-link text-danger" data-bs-target="#tab-admin-dashboard"
+              onclick="activateTab('tab-admin-dashboard')">
+              <i class="fa-solid fa-user-shield"></i> Admin
             </button>
           </li>
         </ul>
-      </div>
-    </div>
-  </div>
-  <!-- Header Bottom: Tabs & Title (FIX: Loại bỏ .row, sử dụng d-flex để tránh negative margin) -->
-  <div class="nav-container px-2">
-    <div class="grid-left" style="flex: 0 0 auto; position: relative;">
-      <ul class="nav nav-tabs px-1 rounded" id="mainTabs" role="tablist">
-        <li class="nav-item">
-          <button class="nav-link active fw-bold" data-bs-target="#tab-dashboard"
-            onclick="activateTab('tab-dashboard')">
-            <i class="fa-solid fa-chart-line text-primary"></i> Dashboard
-          </button>
-        </li>
-        <li class="nav-item">
-          <button class="nav-link" data-bs-target="#tab-form" onclick="activateTab('tab-form')">
-            Booking
-          </button>
-        </li>
-        <li class="nav-item">
-          <button class="nav-link" data-bs-target="#tab-list" onclick="activateTab('tab-list')">
-            Full Data
-          </button>
-        </li>
-        <li class="nav-item d-none" data-ontabs="4">
-          <button class="nav-link text-info" data-bs-target="#tab-sub-form" onclick="activateTab('tab-sub-form')">
-            <i class="fa-solid fa-user-tag"></i> Khách hàng
-          </button>
-        </li>
-        <li class="nav-item admin-only">
-          <button class="nav-link" data-bs-target="#tab-log" onclick="activateTab('tab-log')">
-            Admin Log
-          </button>
-        </li>
+        <span class="navbar-text">
+          <h5 id="module-title" class="m-0 fw-bold text-uppercase d-inline-flex justify-content-center text-center"
+            style="letter-spacing: 1px; font-size: 1.3rem;">
+            ADMIN MANAGEMENT SYSTEM
+          </h5>
+        </span>
+        <div class="d-flex align-items-center gap-1">
+          <form class="form-inline mx-2 my-lg-0">
+            <div class="input-group mr-sm-2 flex-center gap-0">
+              <div class="input-group-prepend">
+                <div class="input-group-text fst-italic fw-bold d-none"
+                  style="width: fit-content; border: none; background-color: transparent;">Xin
+                  chào! <small class="badge planning fst-italic w-auto" id="user-menu-text">Guest</small>
+                </div>
+                <div class="input-group mr-sm-2 flex-center" id="header-filters" style="flex: 0 0 auto;">
 
-        <li class="nav-item admin-only">
-          <button class="nav-link text-danger" data-bs-target="#tab-admin-dashboard"
-            onclick="activateTab('tab-admin-dashboard')">
-            <i class="fa-solid fa-user-shield"></i> Admin
-          </button>
-        </li>
-      </ul>
-    </div>
+                  <div class="d-flex col-auto d-none" id="datalist-select" data-ontabs="3">
+                    <select id="btn-select-datalist" class="form-select form-select-sm"
+                      style="max-width: 120px;"></select>
+                  </div>
+                  <div class="dropdown d-none" id='btn-group-download' data-ontabs="3">
+                    <button class="btn btn-warning btn-sm dropdown-toggle d-flex align-items-center gap-2" type="button"
+                      data-bs-toggle="dropdown" id="download-menu">
+                      Tải File
+                    </button>
+                    <div class="dropdown-menu desktop-only" aria-labelledby="download-menu">
+                      <button class="dropdown-item" type="button" onclick="downloadData()">File Excel</button>
+                      <button class="dropdown-item" type="button" onclick="downloadData('pdf')">File PDF</button>
+                    </div>
+                  </div>
 
-    <div class="grid-right" id="header-filters" style="flex: 0 0 auto;">
-      <div class="d-flex justify-content-end gap-1 align-items-center">
-        <div class="d-flex col-auto d-none" id="datalist-select" data-ontabs="3">
-          <select id="btn-select-datalist" class="form-select form-select-sm" style="max-width: 120px;"></select>
-        </div>
-        <div class="dropdown d-none" id='btn-group-download' data-ontabs="3">
-          <button class="btn btn-warning btn-sm dropdown-toggle d-flex align-items-center gap-2" type="button"
-            data-bs-toggle="dropdown" id="download-menu">
-            Tải File
-          </button>
-          <div class="dropdown-menu desktop-only" aria-labelledby="download-menu">
-            <button class="dropdown-item" type="button" onclick="downloadData()">File Excel</button>
-            <button class="dropdown-item" type="button" onclick="downloadData('pdf')">File PDF</button>
-          </div>
-        </div>
+                </div>
+              </div>
+              <input type="text" id="global-search" class="form-control" placeholder="Tìm kiếm..."
+                oninput="handleSearchClick()">
 
-        <div id="search-area" class="flex-center d-none" data-ontabs="1 2">
-          <div class="input-group input-group-sm gap-1">
-            <input type="text" id="global-search" class="form-control" placeholder="Tìm kiếm..." autofocus>
-            <div class="input-group-append gap-1">
-              <button class="btn btn-sm btn-outline-primary" type="button" onclick="handleSearchClick()">
-                <i class="fa-solid fa-search"></i>
-              </button>
+              <div class="input-group-append ps-0">
+                <button class="btn btn-danger" type="button" onclick="handleSearchClick()" style="border-radius: 0;">
+                  <i class="fa-solid fa-search"></i>
+                </button>
+              </div>
             </div>
+          </form>
+          <div class="user-menu dropdown d-flex justify-content-end align-items-center">
+            <button class="btn btn-light btn-sm dropdown-toggle d-flex align-items-center gap-2" type="button"
+              data-bs-toggle="dropdown">
+              <i class="fa-solid fa-user text-info"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end px-1 animate__animated animate__fadeIn" id="user-menu">
+              <li id="user-info-card" class="px-2 border-bottom">
+                <div class="text-muted small">
+                  <div><strong id="user-menu-name"></strong></div>
+                  <div id="user-menu-email" style="font-size: 0.85rem;"></div>
+                </div>
+              </li>
+              <hr class="dropdown-divider">
+              <li><button class="dropdown-item btn-sm d-flex align-items-center gap-2" id="btn-logout-menu"
+                  onclick="A.Auth.signOut()" style="display:none;"><i class="fa-solid fa-sign-out-alt text-danger"
+                    style="width:20px"></i> Đăng Xuất</button></li>
+              <li><button class="dropdown-item btn-sm d-flex align-items-center gap-2" id="btn-login-menu"
+                  onclick="A.Auth.showChoiceScreen()"><i class="fa-solid fa-sign-in-alt text-primary"
+                    style="width:20px"></i>
+                  Đăng Nhập</button></li>
+              <li class="manager-only">
+                <hr class="dropdown-divider">
+                <select id="btn-select-masked-role" class="form-select form-select-sm fw-bold text-primary"
+                  style="max-width: 120px;" onchange="reloadSystemMode(this.value);">
+                  <option id="user-menu-role" value="" selected>--Chọn Role--</option>
+                  <option value="sale">Sales Mode</option>
+                  <option value="op">Operator Mode</option>
+                </select>
+              </li>
+            </ul>
+          </div>
+          <div class="dropdown">
+            <button class="btn btn-light btn-sm dropdown-toggle d-flex align-items-center gap-2" type="button"
+              data-bs-toggle="dropdown">
+              <i class="fa-solid fa-gear text-secondary"></i><span class="fw-bold text-secondary d-none">Hệ Thống</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end px-1 animate__animated animate__fadeIn">
+              <li><button class="dropdown-item btn-sm d-flex align-items-center gap-2" onclick="reloadPage()"><i
+                    class="fa-solid fa-rotate text-primary" style="width:20px"></i> Reload ERP</button></li>
+              <li><button class="dropdown-item btn-sm d-flex align-items-center gap-2"
+                  onclick="loadDataFromFireBase()"><i class="fa-solid fa-skull" style="width:20px"></i> Cập Nhật Dữ Liệu
+                  Mới</button></li>
+              <li><button class="dropdown-item btn-sm d-flex align-items-center gap-2" onclick="toggleFullScreen()"><i
+                    class="fa-solid fa-expand" style="width:20px"></i> Toàn Màn Hình</button></li>
+              <li>
+                <hr class="dropdown-divider">
+              </li>
+              <li class="admin-only bg-secondary bg-opacity-50">
+                <button class="dropdown-item btn-sm d-flex align-items-center gap-2" onclick="openSettingsModal()">
+                  <i class="fa-solid fa-sliders text-success" style="width:20px"></i> Cài Đặt
+                </button>
+              </li>
+              <li class="admin-only">
+                <a class="dropdown-item btn-sm d-flex align-items-center gap-2"
+                  href="https://docs.google.com/spreadsheets/d/176ik2ueN6UvUFbjrmrIag2tJY18hgbAqUPhDInG7cdo/edit?gid=888235904#gid=888235904"
+                  target="_blank" rel="noopener noreferrer">
+                  <i class="fa-solid fa-external-link-alt text-primary" style="width:20px"></i>Mở Operator Database
+                </a>
+                <a class="dropdown-item btn-sm d-flex align-items-center gap-2"
+                  href="https://docs.google.com/spreadsheets/d/1E54Ibp0WvH2c4fFEbXdneuxSLK_qc6ClV2qwQM7AFMw/edit?gid=1052080251#gid=1052080251"
+                  target="_blank" rel="noopener noreferrer">
+                  <i class="fa-solid fa-external-link-alt text-primary" style="width:20px"></i>Mở Sales Database
+                </a>
+                <a class="dropdown-item btn-sm d-flex align-items-center gap-2"
+                  href="https://script.google.com/home/projects/1Nthq68r_ZRPbkP7d8FChIxn6_29YSkDTDJpM9o2EKFGSof9xncAeeJcx/edit"
+                  target="_blank" rel="noopener noreferrer">
+                  <i class="fa-solid fa-external-link-alt text-primary" style="width:20px"></i>Mở Mã Nguồn GAS
+                </a>
+                <a class="dropdown-item btn-sm d-flex align-items-center gap-2"
+                  href="https://console.firebase.google.com/u/0/project/trip-erp-923fd/firestore" target="_blank"
+                  rel="noopener noreferrer">
+                  <i class="fa-solid fa-external-link-alt text-primary" style="width:20px"></i>Mở Mã Nguồn FB
+                </a>
+                <hr class="dropdown-divider">
+                <button class="dropdown-item btn-sm d-flex align-items-center gap-2 text-warning"
+                  onclick="clearLocalCache()">
+                  <i class="fa-solid fa-trash text-warning" style="width:20px"></i>Xóa Local Cache
+                </button>
+                <button id="btn-batch-create-data"
+                  class="dropdown-item btn-sm d-flex align-items-center gap-2 text-warning">
+                  <i class="fa-solid fa-sign-in-alt text-warning" style="width:20px"></i>Batch New Data
+                </button>
+              </li>
+            </ul>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-  <div class="grid-center bg-transparent desktop-only" style="grid-row: 1 / 3; min-width: 20vw;">
-    <h5 id="module-title" class="m-0 fw-bold text-uppercase d-inline-flex justify-content-center text-center"
-      style="letter-spacing: 1px; font-size: 1.3rem;">
-      ADMIN MANAGEMENT SYSTEM
-      <span class="ms-3 admin-only align-self-center"><i class="fa-solid fa-rotate-right"
-          style="cursor: pointer; font-size: 0.9em;" onclick="reloadPage()" title="Reload"></i></span>
-    </h5>
+    </nav>
   </div>
 </div>
 
@@ -222,7 +227,7 @@
       Form</button>
   </div>
 </div>
-<div class="context-menu dropdown-menu shadow" id="myContextMenu"
+<div class="context-menu dropdown-menu shadow" id="bookingContextMenu"
   style="display: none; position: fixed; width: fit-content;">
   <button class="dropdown-item gap-2 d-flex align-items-center btn-sm btn-light" id="ctx-copyData">
     <i class="fa-solid fa-copy text-primary" style="width:20px"></i>

@@ -895,8 +895,8 @@ async function openSettingsModal() {
     try {
         // Render modal template
         await A.UI.renderTemplate('body', 'tmpl-download-library');
-        const myModal = await A.UI.renderModal(
-            'tmpl-settings-form', 
+        await A.Modal.show(
+            getE('tmpl-settings-form'), 
             'Cài Đặt Chung', 
             saveThemeSettings,           // Save callback (calls THEME_MANAGER.saveSettingsFromForm)
             () => THEME_MANAGER.resetToDefault(true)  // Reset callback with confirmation
@@ -926,8 +926,7 @@ async function openSettingsModal() {
         }
         
         // Show modal and select theme tab
-        myModal.show();
-        selectTab('tab-theme-content');
+        // selectTab('tab-theme-content');
         
         log('✅ Settings modal opened - Theme management delegated to THEME_MANAGER', 'info');
     } catch (e) {
@@ -1169,18 +1168,24 @@ function reverseDetailsRows() {
 /**
  * HELPER INTERNAL: Đánh lại số thứ tự cho bảng
  * Giả định: Cột STT luôn nằm ở ô đầu tiên (cells[0])
+ * Cập nhật: Icon fa-times cuối hàng với giá trị idx mới
  */
 function _reindexTableRows(tbodyObj) {
     const rows = tbodyObj.rows;
     for (let i = 0; i < rows.length; i++) {
-        // Cập nhật ID của thẻ tr
+        // 1. Cập nhật ID của thẻ tr
         rows[i].id = `row-${i + 1}`;
         
-        // Tìm ô STT (thường là td đầu tiên hoặc input hidden chứa index)
+        // 2. Cập nhật ô STT (thường là td đầu tiên)
         const firstCell = rows[i].cells[0];
-        
-        // Nếu STT là text thuần trong <td>
         if(firstCell) firstCell.innerText = (i + 1);
+        
+        // 3. Cập nhật tham số removeRow(idx) cho icon fa-times ở cuối hàng
+        const deleteIcon = rows[i].querySelector('i.fa-times');
+        if(deleteIcon) {
+            // Cập nhật onclick attribute với giá trị idx mới
+            deleteIcon.setAttribute('onclick', `removeRow(${i})`);
+        }
         
         // Nếu STT nằm trong input (trường hợp input hidden lưu order)
         // const inputOrder = rows[i].querySelector('.input-order');

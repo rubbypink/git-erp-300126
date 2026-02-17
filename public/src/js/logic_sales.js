@@ -110,7 +110,9 @@
         detailRowCount = 0;
         
         if (Array.isArray(detailsData)) {
-          detailsData.forEach(row => {
+          // Sắp xếp chi tiết theo thứ tự service_type và check_in
+          const sortedDetails = sortDetailsData(detailsData);
+          sortedDetails.forEach(row => {
               // Gọi hàm thêm dòng
               addDetailRow(row);
           });
@@ -211,6 +213,62 @@
       const row = getE(`row-${idx}`);
       if(row) row.remove();
       calcGrandTotal();
+    }
+
+    /**
+     * sortDetailsData: Sắp xếp dữ liệu chi tiết theo thứ tự service_type và check_in
+     * Thứ tự ưu tiên: Vé MB -> Vé Tàu -> Phòng -> Xe -> Các loại khác
+     * Nếu cùng type, sắp xếp theo check_in (ngày sớm trước)
+     * @param {Array} detailsData - Dữ liệu chi tiết cần sắp xếp
+     * @returns {Array} Mảng đã sắp xếp
+     */
+    function sortDetailsData(detailsData) {
+      if (!Array.isArray(detailsData) || detailsData.length === 0) return detailsData;
+
+      const typeOrder = ['Vé MB', 'Vé Tàu', 'Phòng', 'Xe'];
+
+      // Helper: Lấy service_type (hỗ trợ cả array và object format)
+      const getServiceType = (row) => {
+        if (!row) return '';
+        if (typeof row === 'object' && !Array.isArray(row)) {
+          return row.service_type || row[COL_INDEX.D_TYPE] || '';
+        }
+        return row[COL_INDEX.D_TYPE] || '';
+      };
+
+      // Helper: Lấy check_in date (hỗ trợ cả array và object format)
+      const getCheckInDate = (row) => {
+        if (!row) return 0;
+        let checkIn = '';
+        if (typeof row === 'object' && !Array.isArray(row)) {
+          checkIn = row.check_in || row[COL_INDEX.D_IN] || '';
+        } else {
+          checkIn = row[COL_INDEX.D_IN] || '';
+        }
+        return checkIn ? new Date(checkIn).getTime() : 0;
+      };
+
+      // Helper: Lấy priority của service_type
+      const getTypePriority = (serviceType) => {
+        const idx = typeOrder.indexOf(serviceType);
+        return idx >= 0 ? idx : typeOrder.length; // Các loại khác được priority cao nhất
+      };
+
+      return detailsData.sort((a, b) => {
+        // 1. Sắp xếp theo type priority
+        const aPriority = getTypePriority(getServiceType(a));
+        const bPriority = getTypePriority(getServiceType(b));
+
+        if (aPriority !== bPriority) {
+          return aPriority - bPriority;
+        }
+
+        // 2. Nếu cùng type, sắp xếp theo check_in date (sớm trước)
+        const aDate = getCheckInDate(a);
+        const bDate = getCheckInDate(b);
+
+        return aDate - bDate;
+      });
     }
       /**
      * copyRow: Lấy dữ liệu từ dòng cuối cùng và tạo dòng mới
@@ -576,7 +634,7 @@
       const startDate = new Date(getVal('BK_Start'));
       const today = new Date(); // YYYY-MM-DD
       let stt;
-      if (curStatus !== 'Hủy' && curStatus !== 'Xong BK') {
+      if (curStatus !== 'Hủy') {
         if (grandTotal === 0) stt = 'Hủy';
         else if (startDate <= today && deposit === grandTotal) stt =  'Xong BK';
         else if (deposit === grandTotal && grandTotal > 0) stt = 'Thanh Toán';
@@ -644,7 +702,7 @@
           payType: getVal('BK_PayType'),
           payDue: getVal('BK_PayDue'),          
           note: getVal('BK_Note'),
-          staff: getVal('BK_Staff'),
+          staff: getVal('BK_Staff') || CURRENT_USER.name || '',
           status: '',          
           bkDate: getVal('BK_Date'),
           tourName: getVal('BK_TourName'), // Thêm Tour Name          
@@ -663,7 +721,6 @@
         // 3. Details Data
         const booking_details = [];
         document.querySelectorAll('#detail-tbody tr').forEach(tr => {
-          // FIX: Kiểm tra element trước khi gọi .value
           booking_details.push({
             sid: getVal('.d-sid', tr),
             booking_id: bookings.id,
@@ -711,17 +768,17 @@
         const detailsData = res.booking_details;
         const customerData = res.customer;
         // THÊM: Đồng bộ sang Tab Khách hàng
-        if (typeof window.updateCustomerTab === 'function') {
-            // res.customer là dữ liệu full lấy từ searchBookingAPI (bước trước ta đã làm)
-            const syncData = {
-                full_name: res.bookings[4] || res.bookings.customer_name, // Name từ Booking Bookings
-                phone: res.bookings[5] || res.bookings.customer_phone, // Phone từ Booking Bookings
-                source: "", // Sẽ lấy từ fullRaw
-                fullRaw: res.customer // Data lấy từ DB_CUSTOMER
-            };
+        // if (typeof window.updateCustomerTab === 'function' && getE('tab-sub-form')) {
+        //     // res.customer là dữ liệu full lấy từ searchBookingAPI (bước trước ta đã làm)
+        //     const syncData = {
+        //         full_name: res.bookings[4] || res.bookings.customer_name, // Name từ Booking Bookings
+        //         phone: res.bookings[5] || res.bookings.customer_phone, // Phone từ Booking Bookings
+        //         source: "", // Sẽ lấy từ fullRaw
+        //         fullRaw: res.customer // Data lấy từ DB_CUSTOMER
+        //     };
 
-            window.updateCustomerTab(syncData);
-        }
+        //     window.updateCustomerTab(syncData);
+        // }
 
         if (typeof loadBookingToUI === 'function') {
             loadBookingToUI(bkData, customerData, detailsData);
@@ -917,35 +974,31 @@
      * @param {Object} custData - { name, phone, email, ... }
      */
     window.updateCustomerTab = function(custData) {
-      if(!custData) return;
-
-      // Helper gán giá trị
-      const setVal = (id, v) => {
-        const el = getE(id);
-        if(el) el.value = v || "";
-      };
+      if(!custData && getE('tab-sub-form')) {
+        // 1. Đồng bộ dữ liệu cơ bản từ Booking Form
+        getE('Ext_CustName') ? setVal('Ext_CustName', getVal('Cust_Name')) : null;
+        getE('Ext_CustPhone') ? setVal('Ext_CustPhone', getVal('Cust_Phone')) : null;
+        getE('Ext_CustSource') ? setVal('Ext_CustSource', getVal('Cust_Source')) : null;
+        return;
+      }
 
       // 1. Đồng bộ dữ liệu cơ bản từ Booking Form
-      setVal('Ext_CustName', custData.full_name);
-      setVal('Ext_CustPhone', custData.phone);
-      setVal('Ext_CustSource', custData.source);
+      setVal('Ext_CustName', getVal('Cust_Name'));
+      setVal('Ext_CustPhone', getVal('Cust_Phone'));
+      setVal('Ext_CustSource', getVal('Cust_Source'));
 
       // 2. Điền dữ liệu chi tiết (nếu lấy từ DB)
       // Map theo index cột của DB_CUSTOMER hoặc Object trả về từ searchBookingAPI
       // Giả sử searchBookingAPI trả về mảng customer full: [ID, Phone, Name, Email, Addr, Note, Type, Source, ...]
       
-      if (Array.isArray(custData.fullRaw)) {
+      if (custData.fullRaw) {
           const raw = custData.fullRaw;
-          // Mapping dựa trên cấu trúc DB_CUSTOMER của bạn
-          // Index: 0:ID, 1:Phone, 2:Name, 3:Email, 4:Addr, 5:Note, 6:Type, 7:Source, ...
-          // (Bạn cần điều chỉnh index này khớp với thực tế file Sheet của bạn)
-          setVal('Ext_CustEmail', raw[7] || ""); 
-          setVal('Ext_CustAddr', raw[4] || "");
-          setVal('Ext_CustCCCDDate', raw[6]);
-          setVal('Ext_CustDOB', raw[3] || "");
-          setVal('Ext_CustCCCD', raw[5] || "");
-          // Các trường CCCD, DOB nếu chưa có trong DB_CUSTOMER thì user phải tự nhập
-          // setVal('Ext_CustCCCD', raw[?]); 
+
+          setVal('Ext_CustEmail', raw.email || raw[7] || ""); 
+          setVal('Ext_CustAddr', raw.address || raw[5] || "");
+          setVal('Ext_CustCCCDDate', raw.id_card_date || raw[4] || "");
+          setVal('Ext_CustDOB', raw.dob || raw[2] || "");
+          setVal('Ext_CustCCCD', raw.id_card || raw[3] || "");
       }
     };
 
@@ -955,8 +1008,7 @@
     window.getExtendedCustomerData = function() {
       try {
         // Ưu tiên lấy từ Tab 4, nếu Tab 4 trống thì fallback về Tab 1
-        const custPhone = getVal('Ext_CustPhone') || getVal('Cust_Phone');
-        const phone = custPhone ? String(custPhone).replace(/^'/, "").trim() : "";
+        const phone = getVal('Ext_CustPhone') || getVal('Cust_Phone');
 
         let custRow = null;
           
@@ -991,7 +1043,7 @@
         const formSource = getVal('Cust_Source') || getVal('Ext_CustSource');
         
         if (custRow) {
-          log('Thấy cust row');
+          log('Thấy cust row', custRow);
           
           // Lấy dữ liệu từ object hoặc array
           let dbSource = "";

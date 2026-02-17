@@ -1,75 +1,5 @@
     
-    /**
-     * APP_CORE: Điều phối toàn bộ vòng đời ứng dụng
-     * Tại sao: Đảm bảo không có code nào chạy tự do ngoài tầm kiểm soát của Auth
-     */
-    // const APP_CORE = {
-    //     isAuth: false,
-    //     init: async function() {
-    //         try {
-    //             log("🚀 System Booting...", "info");
-    //             await initFirebase(); // Khởi tạo app, auth, db
-    //             this.listenAuth();
-    //         } catch (error) {
-    //             log("🔥 Boot Error: " + error.message, "danger");
-    //         }
-    //     },
-
-    //     listenAuth: function() {
-    //         auth.onAuthStateChanged(async (user) => {
-    //             const launcher = document.getElementById('app-launcher');
-    //             const app = document.getElementById('main-app');
-    //             if (user) {
-    //                 log("🔓 User detected, verifying profile...", "success");
-    //                 this.isAuth = true;
-    //                 if(app) app.style.opacity = 1;
-    //                 // await A.UI.init();
-    //                 await A.UI.init();
-    //                 await AUTH_MANAGER.fetchUserProfile(user);
-    //                 // Sau khi fetch profile và Security Manager đã render template vào app-container
-    //                 if (launcher) launcher.classList.add('d-none');
-    //                 app.classList.remove('d-none');
-    //                 showLoading(false);
-    //                 // B2. EVENTS: Gán sự kiện
-    //                 // setupStaticEvents();
-    //                 // initShortcuts();
-    //             } else {
-    //                 log("🔒 No user. Showing Login...", "warning");
-    //                 if (launcher) launcher.classList.add('d-none');
-    //                 if (launcher) launcher.remove();
-    //                 if(app) app.style.opacity = 1;            
-    //                 AUTH_MANAGER.showLoginForm();
-    //             }
-    //         });
-    //     }
-    // };
-
-    // async function initFirebase() {
-    //     return new Promise((resolve, reject) => {
-    //         try {
-    //             if (!firebase.apps.length) {
-    //                 app = firebase.initializeApp(CFG_FB_RTDB);
-    //             } else {
-    //                 app = firebase.app();
-    //             }
-                
-    //             auth = firebase.auth();
-                
-    //             // ✅ CHUẨN: Dùng Firestore
-    //             db = firebase.firestore(); 
-                
-    //             // Kích hoạt A.DB
-    //             if (typeof A.DB !== 'undefined') {
-    //                 A.DB.db = db;
-    //                 log("✅ A.DB connected to Firestore");
-    //             }
-    //             resolve(app);
-    //         } catch(e) {
-    //             console.error("🔥 Firebase Init Error:", e);
-    //             reject(e);
-    //         }
-    //     });
-    // }
+   
 
     //  AUTH MODULE (FIRESTORE VERSION) ---
     const AUTH_MANAGER = {
@@ -128,9 +58,11 @@
                 const userProfile = docSnap.data();
                 // Merge data
                 CURRENT_USER.uid = firebaseUser.uid;
+                CURRENT_USER.name = userProfile.user_name || '';
                 CURRENT_USER.email = firebaseUser.email;   
                 CURRENT_USER.level = userProfile.level;
                 CURRENT_USER.profile = userProfile;
+                CURRENT_USER.group = userProfile.group || '';
                 const masker = localStorage.getItem('erp-mock-role');
                 
                 if (masker) {                  
@@ -195,6 +127,43 @@
             // if(document.getElementById('btn-login-menu')) document.getElementById('btn-login-menu').classList.add('d-none');
         },
 
+        // Hiển thị màn hình lựa chọn Khách / Nhân sự
+        showChoiceScreen: function() {
+            const choiceHTML = `
+                <div class="container grid-center justify-content-center align-items-center vw-100 vh-100">
+                    <div class="card shadow-lg border-0" style="max-width: 500px; width: 100%; border-radius: 15px;">
+                        <div class="card-body p-5 text-center">
+                            <img src="https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp" class="mb-4" style="height:20vh;">
+                            <h4 class="fw-bold mb-2 text-dark">HỆ THỐNG 9TRIP</h4>
+                            <p class="text-muted mb-5">Bạn là khách hay nhân sự?</p>
+                            
+                            <div class="d-grid gap-3">
+                                <button id="btn-choice-customer" class="btn btn-outline-primary btn-lg py-3 fw-bold">
+                                    <i class="fa-solid fa-user-tie me-2"></i> KHÁCH HÀNG
+                                </button>
+                                <button id="btn-choice-staff" class="btn btn-primary btn-lg py-3 fw-bold shadow-sm">
+                                    <i class="fa-solid fa-briefcase me-2"></i> NHÂN SỰ
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            const container = document.getElementById('main-app');
+            container.innerHTML = choiceHTML;
+            container.classList.remove('d-none');
+            
+            // Gán sự kiện
+            setTimeout(() => {
+                document.getElementById('btn-choice-customer')?.addEventListener('click', () => {
+                    window.location.href = 'https://9tripvietnam.com';
+                });
+                document.getElementById('btn-choice-staff')?.addEventListener('click', () => {
+                    this.showLoginForm();
+                });
+            }, 100);
+        },
+
         // Hiển thị Form Login vào Modal
         showLoginForm: function() {
             // Thay vì dùng Modal, ta render trực tiếp vào app-container để ép người dùng login
@@ -226,6 +195,12 @@
                                     </button>
                                 </div>
                             </div>
+                            
+                            <div class="mt-4">
+                                <button id="btn-back-choice" class="btn btn-link text-muted">
+                                    ← Quay lại
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -249,6 +224,9 @@
                 document.getElementById('btn-google-login')?.addEventListener('click', () => {
                     showLoading(true);
                     this.handleSocialLogin('google');
+                });
+                document.getElementById('btn-back-choice')?.addEventListener('click', () => {
+                    this.showChoiceScreen();
                 });
             }, 100);
         },
@@ -464,10 +442,25 @@
 
             
             // ✅ FIX: Use await for async loadJSForRole
-            if (role === 'op' || role === 'acc') {
+            if (role === 'op') {
                 await loadJSForRole('op');
                 await A.UI.renderTemplate('body', 'tpl_operator.html', false, '.app-container');
                 setVal('module-title', 'OPERATOR CENTER -QUẢN LÝ NCC - ĐIỀU HÀNH');
+            } else if (role === 'acc' || role === 'acc_thenice' || role === 'ketoan') {
+                if (!document.getElementById('css-accountant')) {
+                    const link = document.createElement('link');
+                    link.id = 'css-accountant';
+                    link.rel = 'stylesheet';
+                    link.href = '/accountant/accountant.css';
+                    document.head.appendChild(link);
+                }
+                
+                await A.UI.renderTemplate('body', '/accountant/tpl_accountant.html', false, '.app-container');
+                
+                await A.UI.renderTemplate('body', 'tmpl-acc-footer-bar', false, '#main-footer', 'prepend');
+                toggleTemplate('main-footer');
+                setVal('module-title', 'ACCOUNTING CENTER - QUẢN LÝ KẾ TOÁN');
+                await loadJSFile('/accountant/controller_accountant.js', role); // Load JS riêng cho Kế toán
             } else {
                 await loadJSForRole('sale');
                 await A.UI.renderTemplate('body', 'tpl_sales.html', false, '.app-container');
@@ -511,7 +504,12 @@
                     // Level thấp: Check Role cụ thể
                     if (role === 'ketoan' || role === 'acc') {
                         permissionClass = 'is-acc';
-                        A.UI.renderTemplate('body', 'tpl_operator.html');
+                        // A.UI.renderTemplate('body', '/accountant/tpl_accountant.html');
+                        // window.AccountantCtrl?.init();
+                    }
+                    else if (role === 'acc_thenice') {
+                        permissionClass = 'is-acc-thenice';
+                        A.UI.renderTemplate('body', '/accountant/tpl_accountant.html', false, '.app-container');
                     }
                     else if (role === 'op' || role === 'operator' || maskedRole === 'op') {
                         permissionClass = 'is-op';
@@ -566,8 +564,7 @@
                 container.querySelectorAll('.sales-only, .acc-only').forEach(el => el.remove());
             }
             if (body.classList.contains('is-acc')) {
-                container.querySelectorAll('.sales-only').forEach(el => el.remove()); // Acc xem được Op, chỉ xóa Sale
-                
+                container.querySelectorAll('.sales-only').forEach(el => el.remove()); // Acc xem được Op, chỉ xóa Sale               
             }
         }
     };
