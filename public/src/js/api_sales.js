@@ -20,24 +20,26 @@
 
         // --- VALIDATION FRONT-END ---
         // 1. Check Bookings
-        if (!data.customer.full_name) { logA("Vui lòng nhập Tên khách hàng!"); return; }
-        if (!data.customer.phone) { logA("Vui lòng nhập SĐT khách hàng!"); return; }
-        if (!data.bookings.startDate || !data.bookings.endDate) { logA("Vui lòng chọn ngày đi/về!"); return; }
+        // if (!data.customer.full_name) { logA("Vui lòng nhập Tên khách hàng!"); return; }
+        // if (!data.customer.phone) { logA("Vui lòng nhập SĐT khách hàng!"); return; }
+        // if (!data.bookings.startDate || !data.bookings.endDate) { logA("Vui lòng chọn ngày đi/về!"); return; }
         // 2. Check Details
-        if (data.booking_details.length === 0) { logA("Vui lòng nhập ít nhất 1 dòng dịch vụ!"); return; }
-        for (let i=0; i<data.booking_details.length; i++) {
-          const d = data.booking_details[i];
-          if(!d.type || !d.name || !d.qtyA) {
-              logA(`Dòng thứ ${i+1} thiếu thông tin (Loại, Tên, SL).`);
-              return;
-          }
-        }
-        log("Đang gửi dữ liệu Saving...");
+        // if (data.booking_details.length === 0) { logA("Vui lòng nhập ít nhất 1 dòng dịch vụ!"); return; }
+        // for (let i=0; i<data.booking_details.length; i++) {
+        //   const d = data.booking_details[i];
+        //   if(!d.type || !d.name || !d.qtyA) {
+        //       logA(`Dòng thứ ${i+1} thiếu thông tin (Loại, Tên, SL).`);
+        //       return;
+        //   }
+        // }
 
-          var booking = Object.values(data.bookings);
-          var bookingId = data.bookings.id;
+        var booking = Object.values(data.bookings);
+        var bookingId = data.bookings.id;
         try {          
           const newBk = await A.DB.saveRecord('bookings', booking);
+          if (newBk && !bookingId) { 
+            window.notifyToAll('NEW BOOKING', `Booking mới đã được tạo với ID: ${newBk.id} - ${newBk.staff_id}`);
+          }
           
           // =========================================================================
           // CẬP NHẬT BOOKING_ID CHO TẤT CẢ BOOKING_DETAILS NẾU CHƯA CÓ GIÁ TRỊ
@@ -53,14 +55,13 @@
           await A.DB.batchSave('booking_details', booking_details);
           const btnDashUpdate = getE('btn-dash-update');
           if (btnDashUpdate) {
-            btnDashUpdate.click();
+            trigger(btnDashUpdate, 'click');
           }
           
           const btnSelectDatalist = getE('btn-select-datalist');
           if (btnSelectDatalist) {
             btnSelectDatalist.dispatchEvent(new Event('change'));
           }          
-          log("Lưu dữ liệu thành công!", "success");
           showNotify("Lưu dữ liệu thành công!", true);
         } catch (e) {
           logError(e);

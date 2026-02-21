@@ -187,6 +187,27 @@ const DB_MANAGER = {
     },
     
     loadAllData: async function() {
+
+        /** * KIỂM TRA BỘ NHỚ ĐỆM (CACHE CHECK)
+         * Điều kiện: Có data, có mốc thời gian và chưa quá 24h
+         */
+        const cachedData = localStorage.getItem('APP_DATA');
+        const lastSync = localStorage.getItem('LAST_SYNC');
+        const limitTime = 24 * 60 * 60 * 1000; // 24 giờ tính bằng miliseconds
+
+        let result = {}; // Biến chứa dữ liệu cuối cùng
+
+        if (cachedData && lastSync && (Date.now() - parseInt(lastSync) < limitTime)) {
+            try {
+                result = JSON.parse(cachedData);
+                log("Tải dữ liệu thành công từ Cache (Tiết kiệm 1 Read)");
+                APP_DATA = result;
+                return result;
+            } catch (e) {
+                log("Cache bị lỗi định dạng, tiến hành tải mới từ Server", e);
+                result = null; 
+            }
+        }
         if (!this.db) { console.error("❌ DB chưa init"); return null; }
         
         // Lấy User hiện tại từ Firebase Auth (Đã đăng nhập ở bước trước)
@@ -195,47 +216,130 @@ const DB_MANAGER = {
 
         console.time("LoadFirestore");
 
+        // ✅ NEW: Xác định danh sách collections cần load dựa trên COLL_MANIFEST + role
+        const userRole = CURRENT_USER?.role || null;
+        let allowedCollections = [];
+        
+        // Nếu role có giá trị → lấy từ COLL_MANIFEST[role]
+        // Nếu không → dùng danh sách mặc định (tất cả)
+        if (userRole && COLL_MANIFEST && COLL_MANIFEST[userRole]) {
+            allowedCollections = COLL_MANIFEST[userRole];
+            console.log(`✅ Loading collections for role [${userRole}]:`, allowedCollections);
+        } else {
+            // Fallback: dùng danh sách mặc định (nếu role chưa set)
+            allowedCollections = ['bookings', 'booking_details', 'operator_entries', 'customers'];
+            if (!userRole) console.log(`⚠️ CURRENT_USER.role chưa set, dùng danh sách mặc định:`, allowedCollections);
+            else console.log(`⚠️ COLL_MANIFEST[${userRole}] không tìm thấy, dùng danh sách mặc định`);
+        }
+
         // 1. CHUẨN BỊ HEADER (Tên cột) - Giữ tham chiếu, không push vào data nữa
-        const headers = {
-            bookings: getHeader(FIELD_MAP.bookings),
-            booking_details: getHeader(FIELD_MAP.booking_details),
-            operator_entries: getHeader(FIELD_MAP.operator_entries),
-            customers: getHeader(FIELD_MAP.customers),
-            users: getHeader(FIELD_MAP.users)
-        };       
-        // Cấu trúc dữ liệu trả về 
-        const result = {
+        // Chỉ tạo header cho collections được filter
+        const headers = {};
+        if (allowedCollections.includes('bookings')) headers.bookings = getHeader(FIELD_MAP.bookings);
+        if (allowedCollections.includes('booking_details')) headers.booking_details = getHeader(FIELD_MAP.booking_details);
+        if (allowedCollections.includes('operator_entries')) headers.operator_entries = getHeader(FIELD_MAP.operator_entries);
+        if (allowedCollections.includes('customers')) headers.customers = getHeader(FIELD_MAP.customers);
+        if (allowedCollections.includes('users')) headers.users = getHeader(FIELD_MAP.users);
+
+        // Cấu trúc dữ liệu trả về (Khởi tạo tất cả collections)
+        result = {
             header: headers, 
             
-            // Legacy Arrays (Empty init - Point 2)
+            // Legacy Arrays (Empty init)
             bookings: [], 
             booking_details: [],
             operator_entries: [],
             customers: [],
+            transactions: [],
+            suppliers: [],
+            fund_accounts: [],
+            transactions_thenice: [],
+            fund_accounts_thenice: [],
+            hotels: [],
+            hotel_price_schedules: [],
+            service_price_schedules: [],
+            users: [],
             
-            // Modern Objects (Point 1)
+            // Modern Objects
             bookings_obj: [],
             booking_details_obj: [],
             operator_entries_obj: [],
             customers_obj: [],
+            transactions_obj: [],
+            suppliers_obj: [],
+            fund_accounts_obj: [],
+            transactions_thenice_obj: [],
+            fund_accounts_thenice_obj: [],
+            hotels_obj: [],
+            hotel_price_schedules_obj: [],
+            service_price_schedules_obj: [],
+            users_obj: [],
             
             lists: {},         
             currentUser: {}    
         };
-        try {
-            // TẢI SONG SONG TẤT CẢ (Parallel Fetching) -> Tối ưu tốc độ
-            const [cfgSnap, userList, bkSnap, dtSnap, opSnap, cusSnap] = await Promise.all([
-                this.db.collection('app_config').doc('current').get(), // 0. Config
-                this.db.collection('users').get(),
-                this.db.collection('bookings').orderBy('created_at', 'desc').limit(1000).get(), // 2. Bookings
-                this.db.collection('booking_details').orderBy('booking_id', 'desc').limit(4000).get(), // 3. Details
-                this.db.collection('operator_entries').orderBy('booking_id', 'desc').limit(4000).get(),// 4. Operator
-                this.db.collection('customers').limit(1000).get()        // 5. Customers
-            ]);
 
-            // --- 1. XỬ LÝ CONFIG (LISTS) ---
-            if (cfgSnap.exists) {
-                const rawCfg = cfgSnap.data();
+        try {
+            // ✅ NEW: Xây dựng Promise.all() động dựa trên allowedCollections
+            const requests = {
+                cfg: this.db.collection('app_config').doc('current').get(),
+                users: this.db.collection('users').get()
+            };
+
+            // Thêm các collections theo role
+            if (allowedCollections.includes('bookings')) {
+                requests.bookings = this.db.collection('bookings').orderBy('created_at', 'desc').limit(1000).get();
+            }
+            if (allowedCollections.includes('booking_details')) {
+                requests.booking_details = this.db.collection('booking_details').orderBy('booking_id', 'desc').limit(4000).get();
+            }
+            if (allowedCollections.includes('operator_entries')) {
+                requests.operator_entries = this.db.collection('operator_entries').orderBy('booking_id', 'desc').limit(4000).get();
+            }
+            if (allowedCollections.includes('customers')) {
+                requests.customers = this.db.collection('customers').limit(1000).get();
+            }
+            if (allowedCollections.includes('transactions')) {
+                requests.transactions = this.db.collection('transactions').orderBy('created_at', 'desc').limit(4000).get();
+            }
+            if (allowedCollections.includes('suppliers')) {
+                requests.suppliers = this.db.collection('suppliers').limit(1000).get();
+            }
+            if (allowedCollections.includes('fund_accounts')) {
+                requests.fund_accounts = this.db.collection('fund_accounts').limit(1000).get();
+            }
+            if (allowedCollections.includes('transactions_thenice')) {
+                requests.transactions_thenice = this.db.collection('transactions_thenice').orderBy('created_at', 'desc').limit(4000).get();
+            }
+            if (allowedCollections.includes('fund_accounts_thenice')) {
+                requests.fund_accounts_thenice = this.db.collection('fund_accounts_thenice').limit(1000).get();
+            }
+            if (allowedCollections.includes('hotels')) {
+                requests.hotels = this.db.collection('hotels').limit(1000).get();
+            }
+            if (allowedCollections.includes('hotel_price_schedules')) {
+                requests.hotel_price_schedules = this.db.collection('hotel_price_schedules').orderBy('created_at', 'desc').limit(4000).get();
+            }
+            if (allowedCollections.includes('service_price_schedules')) {
+                requests.service_price_schedules = this.db.collection('service_price_schedules').orderBy('created_at', 'desc').limit(4000).get();
+            }
+            if (allowedCollections.includes('users')) {
+                requests.users = this.db.collection('users').get();
+            }
+
+            // TẢI SONG SONG TẤT CẢ (Parallel Fetching) -> Tối ưu tốc độ
+            const responses = await Promise.all(Object.values(requests));
+            
+            // Mapping responses back to keys
+            const resultMap = {};
+            const keys = Object.keys(requests);
+            keys.forEach((key, idx) => {
+                resultMap[key] = responses[idx];
+            });
+
+            // --- 1. XỬ LÝ CONFIG (LISTS) - Luôn load ---
+            if (resultMap.cfg && resultMap.cfg.exists) {
+                const rawCfg = resultMap.cfg.data();
                 const parsedCfg = {};
                 for (let k in rawCfg) {
                     try {
@@ -247,44 +351,54 @@ const DB_MANAGER = {
                 }
                 result.lists = parsedCfg;
             }
-            // --- 3. XỬ LÝ DỮ LIỆU BẢNG (Point 1: Assign correct data types) ---
-            
-            bkSnap.forEach(doc => {
-                const data = doc.data();
-                // Point 1: Store raw object
-                result.bookings_obj.push(data);
-                // Point 2: Maintain array format for legacy compatibility (No header row)
-                result.bookings.push(objectToArray(data, 'bookings'));
-            });
-            dtSnap.forEach(doc => {
-                const data = doc.data();
-                result.booking_details_obj.push(data);
-                result.booking_details.push(objectToArray(data, 'booking_details'));
-            });
-            opSnap.forEach(doc => {
-                const data = doc.data();
-                result.operator_entries_obj.push(data);
-                result.operator_entries.push(objectToArray(data, 'operator_entries'));
-            });
-            cusSnap.forEach(doc => {
-                const data = doc.data();
-                result.customers_obj.push(data);
-                result.customers.push(objectToArray(data, 'customers'));
-            });
 
-            const staffList = [];
-            userList.forEach(doc => {
-                const data = doc.data();
-                staffList.push(data.user_name || 'No Name');
-            });
-            result.lists.staff = staffList;
+            // --- 2. XỬ LÝ USERS (STAFF LIST) - Luôn load ---
+            if (resultMap.users) {
+                const staffList = [];
+                resultMap.users.forEach(doc => {
+                    const data = doc.data();
+                    staffList.push(data.user_name || 'No Name');
+                });
+                result.lists.staff = staffList;
+            }
+
+            // --- 3. XỬ LÝ DỮ LIỆU BẢNG (Assign correct data types) - Chỉ xử lý collections được filter ---
+            for (const collName of allowedCollections) {
+                if (!resultMap[collName]) {
+                    console.warn(`⚠️ No data found for collection: ${collName}`);
+                    continue;
+                }
+
+                // ✅ Ensure arrays exist before pushing
+                if (!Array.isArray(result[collName])) {
+                    result[collName] = [];
+                }
+                if (!Array.isArray(result[`${collName}_obj`])) {
+                    result[`${collName}_obj`] = [];
+                }
+
+                resultMap[collName].forEach(doc => {
+                    const data = doc.data();
+                    // Point 1: Store raw object
+                    result[`${collName}_obj`].push(data);
+                    // Point 2: Maintain array format for legacy compatibility
+                    result[collName].push(objectToArray(data, collName));
+                });
+            }
 
             // Gán vào biến toàn cục APP_DATA
             A.DATA = result;
             APP_DATA = result;
+            localStorage.setItem('APP_DATA', JSON.stringify(result));
+
+            // 2. Lưu mốc thời gian đồng bộ (dưới dạng số Miliseconds)
+            localStorage.setItem('LAST_SYNC', Date.now().toString());
 
             console.timeEnd("LoadFirestore");
-            log(`📥 Data Ready: ${result.bookings.length} BKs, ${result.booking_details.length} DTs`);
+            const bkCount = result.bookings.length;
+            const dtCount = result.booking_details.length;
+            const txCount = result.transactions.length;
+            log(`📥 Data Ready: ${bkCount} BKs, ${dtCount} DTs${txCount > 0 ? `, ${txCount} TXs` : ''}`);
             
             return APP_DATA;
 
@@ -335,19 +449,138 @@ const DB_MANAGER = {
         }
     },
 
-    runQuery: async function(collectionName, fieldName, operator, value, fieldOrder = 'created_at',  limit = 2000) {
-        if (!this.db) { console.error("❌ DB chưa init"); return null; }
-        console.log(`🔍 Running query on ${collectionName}: ${fieldName} ${operator} ${value}`);
+    /**
+     * syncDelta: Đồng bộ dữ liệu linh hoạt (Full Load nếu thiếu, Delta Sync nếu đã có)
+     */
+    syncDelta: async function (collection) {
         try {
-            const querySnap = await this.db.collection(collectionName)
-                .where(fieldName, operator, value)
-                .limit(limit)
-                .orderBy(fieldOrder, 'desc')
-                .get();
+            const lastSync = localStorage.getItem('LAST_SYNC');
+            const lastSyncDate = lastSync ? new Date(parseInt(lastSync)) : null;
+            let collectionsToSync = [];
+
+            // 1. Xác định danh sách cần xử lý theo Role
+            if (collection) {
+                collectionsToSync = [collection];
+            } else {
+                const role = window.CURRENT_USER?.role;
+                const roleMap = {
+                    'sale': ['bookings', 'booking_details'],
+                    'op': ['bookings', 'operator_entries'],
+                    'acc': ['transactions', 'fund_accounts'],
+                    'acc_thenice': ['transactions_thenice', 'fund_accounts_thenice'],
+                    'admin': ['bookings', 'booking_details', 'operator_entries']
+                };
+                collectionsToSync = roleMap[role] || [];
+            }
+
+            if (collectionsToSync.length === 0) return 0;
+
+            // 2. Chạy xử lý song song
+            const results = await Promise.all(collectionsToSync.map(async (colName) => {
+                // KIỂM TRA: Nếu trong APP_DATA chưa có mảng của collection này
+                const isMissingData = !window.APP_DATA[`${colName}_obj`] || !Array.isArray(window.APP_DATA[colName]);
+
+                let query;
+                if (isMissingData || !lastSyncDate) {
+                    // TRƯỜNG HỢP A: Load toàn bộ vì chưa có dữ liệu gốc
+                    log(`[${colName}] Chưa có dữ liệu trong APP_DATA. Đang tải toàn bộ...`);
+                    query = db.collection(colName);
+                } else {
+                    // TRƯỜNG HỢP B: Delta Sync vì đã có dữ liệu gốc
+                    query = db.collection(colName).where("updated_at", ">", lastSyncDate);
+                }
+
+                const querySnapshot = await query.get();
+                
+                if (!querySnapshot.empty) {
+                    log(`[${colName}] Đang xử lý ${querySnapshot.size} bản ghi.`);
+                    
+                    if (isMissingData) {
+                        // Nếu là load mới hoàn toàn, khởi tạo mảng mới
+                        window.APP_DATA[`${colName}_obj`] = querySnapshot.docs.map(doc => ({
+                            id: doc.id, ...doc.data()
+                        }));
+                    } else {
+                        // Nếu là delta, dùng hàm hòa trộn hiện tại
+                        querySnapshot.forEach((doc) => {
+                            const dataObj = { id: doc.id, ...doc.data() };
+                            this._updateAppDataObj(colName, dataObj);
+                        });
+                    }
+                    return querySnapshot.size;
+                }
+                return 0;
+            }));
+
+            const totalChanges = results.reduce((a, b) => a + b, 0);
+
+            // 3. Cập nhật bộ nhớ cứng và mốc thời gian
+            if (totalChanges > 0) {
+                localStorage.setItem('APP_DATA', JSON.stringify(window.APP_DATA));
+                initBtnSelectDataList(); // Cập nhật lại dropdown nếu có thay đổi dữ liệu
+            }
+            
+            // Luôn cập nhật mốc sync mới nhất
+            localStorage.setItem('LAST_SYNC', Date.now().toString());
+
+            return totalChanges;
+
+        } catch (e) {
+            log(`Lỗi syncDelta (Hybrid): `, e);
+            return 0;
+        }
+    },
+
+    /**
+     * Chạy query trên collection với điều kiện where
+     * 
+     * @param {string} collectionName - Tên collection
+     * @param {string} fieldName - Tên field để filter
+     * @param {string} operator - Toán tử ('==', '<', '>', '<=', '>=', '!=', 'in', 'array-contains', etc.)
+     * @param {any} value - Giá trị so sánh
+     * @param {string|null} [fieldOrder=null] - Field dùng để sắp xếp (mặc định: không sắp xếp)
+     * @param {number|null} [limit=null] - Giới hạn số lượng kết quả (mặc định: không giới hạn)
+     * @returns {Promise<Array|null>} - Mảng các document hoặc null nếu lỗi
+     * 
+     * @example
+     * // Không có sắp xếp hay giới hạn
+     * const results = await A.DB.runQuery('transactions', 'booking_id', '==', 'BK001');
+     * 
+     * // Với sắp xếp
+     * const results = await A.DB.runQuery('transactions', 'booking_id', '==', 'BK001', 'created_at', 100);
+     */
+    runQuery: async function(collectionName, fieldName, operator, value, fieldOrder = null, limit = null) {
+        if (!this.db) { 
+            console.error("❌ DB chưa init"); 
+            return null; 
+        }
+        
+        const params = `${fieldName} ${operator} ${value}`;
+        console.log(`🔍 Query on ${collectionName}: ${params}`);
+        
+        try {
+            // ✅ Xây dựng query điều kiện cơ bản
+            let query = this.db.collection(collectionName).where(fieldName, operator, value);
+            
+            // ✅ Chỉ thêm orderBy nếu được cung cấp
+            if (fieldOrder) {
+                query = query.orderBy(fieldOrder, 'desc');
+                console.log(`  📊 Ordered by ${fieldOrder} DESC`);
+            }
+            
+            // ✅ Chỉ thêm limit nếu được cung cấp và > 0
+            if (limit && limit > 0) {
+                query = query.limit(limit);
+                console.log(`  ⚙️ Limited to ${limit} results`);
+            }
+            
+            // ✅ Thực thi query
+            const querySnap = await query.get();
             const results = [];
             querySnap.forEach(doc => {
                 results.push(doc.data());
             });
+            
             console.log(`✅ Query returned ${results.length} items from ${collectionName}`);
             return results;
         } catch (e) {
@@ -454,6 +687,7 @@ const DB_MANAGER = {
      */
     saveRecord: async function(collectionName, dataArray, isBatch = false, batchRef = null) {
         let dataObj;
+        let isNew;
         if (typeof dataArray === 'object' && !Array.isArray(dataArray)) {
             
             dataObj = dataArray; // Đã là object, không cần convert
@@ -533,7 +767,7 @@ const DB_MANAGER = {
         // --- KIỂM TRA VÀ TẠO ID MỚI NẾU CẦN ---
         if (!docId || docId === "") {
             console.log(`🔄 ID trống, đang tạo ID mới cho ${collectionName}...`);
-            
+                        
             // Xác định bookingId nếu là booking_details
             let bookingId = null;
             if (collectionName === this.COLL.DETAILS) {
@@ -552,6 +786,7 @@ const DB_MANAGER = {
             if (Array.isArray(dataArray)) {
                 dataArray[0] = docId; // Cập nhật lại array (cột đầu tiên)
             }
+            isNew = true;
         }
 
         if (!docId) {
@@ -584,8 +819,12 @@ const DB_MANAGER = {
                 // Sau khi detail commit thành công, gọi trigger
                 if (collectionName === this.COLL.DETAILS) {
                     await this._syncOperatorEntry(dataArray);
+                    if (!isNew) {
+                        NotificationModule.sendToOperator(`Booking Detail ${dataObj.id} cập nhật!`, `Khách: ${dataObj.customer_name || dataArray[COL_INDEX.M_CUST] || "Unknown"} cập nhật DV ${dataObj.service_name || dataArray[COL_INDEX.D_SERVICE] || "Unknown"}`);
+                    }
+                } else if (collectionName === this.COLL.BOOKINGS) {
+                    if(isNew) NotificationModule.sendToOperator(`Booking ${dataObj.id} mới!`, `Khách: ${dataObj.customer_name || dataArray[COL_INDEX.M_CUST] || "Unknown"}`);
                 }
-                
                 return { success: true, id: docId };
             } catch (e) {
                 console.error("Save Error:", e);

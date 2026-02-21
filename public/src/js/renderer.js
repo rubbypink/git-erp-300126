@@ -53,14 +53,24 @@ const TABLE_DISPLAY_MAP = {
 	'booking_details':  'Chi Tiết Booking', // Ưu tiên 1
 	'operator_entries': 'Booking NCC',
 	'customers': 'Khách Hàng',
-	'partners':  'Đối Tác'
+	'suppliers':  'Đối Tác',
+	'transactions': 'DS Thu Chi',
+	'transactions_thenice': 'DS Thu Chi - The Nice',
+	'users': 'Tài Khoản',
+	'hotels': 'Khách Sạn',
+	'hotel_price_schedules': 'Bảng Giá Khách Sạn',
+	'service_price_schedules': 'Bảng Giá Dịch Vụ',
 };
 const TABLE_HIDDEN_FIELDS = {
 	'bookings':  ['created_at', 'customer_id'],
 	'booking_details': ['id', 'booking_id'], 
 	'operator_entries': ['id', 'booking_id', 'customer_name'], 
 	'customers': ['created_at'],
-	'partners':  ['created_at']
+	'suppliers':  ['created_at'],
+	'users': ['created_at'],
+	'hotels': ['created_at'],
+	'hotel_price_schedules': ['created_at'],
+	'service_price_schedules': ['created_at']
 };
 
 const TAB_INDEX_BY_ID = {
@@ -82,8 +92,12 @@ const TABLE_DATE_CONFIG = {
 	'bookings': 6,    // Bảng Bookings: Ngày ở cột 6
 	'booking_details': 5,   // Bảng Details: Ngày ở cột 5
 	'operator_entries': 6,    
-	'products': 2,  // Ví dụ bảng SP: Ngày nhập ở cột 2
-	'customers': null // Bảng Khách hàng: Không lọc theo ngày
+	'transactions': 1,  // Ví dụ bảng SP: Ngày nhập ở cột 2
+	'customers': null, // Bảng Khách hàng: Không lọc theo ngày
+	'users': null, // Bảng Tài Khoản: Không lọc theo ngày
+	'hotels': null, // Bảng Khách Sạn: Không lọc theo ngày
+	'hotel_price_schedules': null, // Bảng Giá Khách Sạn: Không lọc theo ngày
+	'service_price_schedules': null // Bảng Giá Dịch Vụ: Không lọc theo ngày
 };
 
 // Global State cho Context Menu
@@ -235,7 +249,7 @@ try {
 		// Chỉ set default nếu đang ở chế độ tạo mới (Start rỗng)
 		CURRENT_TABLE_KEY = 'bookings';
 		if (typeof setMany === 'function' && typeof getVal === 'function') {
-			if (getVal('BK_Start') === '') {
+			if (getE('BK_Start') && getVal('BK_Start') === '') {
 				setMany(['BK_Date', 'BK_Start', 'BK_End'], new Date());
 			}
 		}
@@ -247,7 +261,7 @@ try {
 	// getE('btn-data-filter').click();
 	} else if (activeTabIndex === TAB_INDEX_BY_ID['tab-dashboard']) {
 	// Khi tab log vừa được render xong -> Lấy dữ liệu từ LS đắp vào
-	getE('btn-dash-update')?.click();
+	trigger('btn-dash-update', 'click');
 }
 
 } catch (e) {
@@ -353,8 +367,6 @@ function generateGridColsFromObject(collectionName) {
 		}
 		return res;
 	});
-
-	console.log("Auto-generated Grid Cols (Object):", GRID_COLS);
 }
 
 function renderHeaderHtml(collectionName) {
@@ -739,6 +751,14 @@ function updateFilterOptions() {
 	setVal('filter-val', "");
 }
 
+/**
+ * ✅ OPTIMIZED: Render option list based on COLL_MANIFEST role-based access control
+ * Displays only collections that:
+ * 1. Are defined in COLL_MANIFEST for current user's role
+ * 2. Have data available in APP_DATA (supports both object & array formats)
+ * 
+ * @param {object} [data] - Source data object (defaults to APP_DATA)
+ */
 function initBtnSelectDataList(data) {
 	if (!data) data = APP_DATA;
 	const selectElem = document.getElementById('btn-select-datalist');
@@ -747,22 +767,26 @@ function initBtnSelectDataList(data) {
 	selectElem.innerHTML = '';
 	let hasOption = false;
 
-	for (const [key, label] of Object.entries(TABLE_DISPLAY_MAP)) { 
-		if (data && data[key] && Array.isArray(data[key])) {
-			// ✅ Role-based filtering
-			if ((CURRENT_USER?.role === 'op') && key === 'booking_details') {
-				continue;
-			}
-			
-			// Skip operator_entries if user role is not op/acc AND level < 5
-			if (key === 'operator_entries' && 
-				!(CURRENT_USER?.role === 'op' || CURRENT_USER?.role === 'admin') &&
-				(CURRENT_USER?.level || 0) < 5) {
-				continue;
-			}
-			
+	// ✅ Use COLL_MANIFEST to determine allowed collections by role
+	const userRole = CURRENT_USER?.role || 'sale';
+	const allowedCollections = (COLL_MANIFEST && COLL_MANIFEST[userRole]) || [];
+
+	// Only render options for collections that:
+	// 1. Are in COLL_MANIFEST for this role
+	// 2. Have data available (object or legacy format)
+	for (const [key, label] of Object.entries(TABLE_DISPLAY_MAP)) {
+		// ✅ FIX: Skip if collection is not allowed for this role
+		if (!allowedCollections.includes(key)) {
+			continue;
+		}
+
+		// ✅ IMPROVE: Check both object format (new) and array format (legacy)
+		const hasObjectData = data && data[key + '_obj'] && Array.isArray(data[key + '_obj']) && data[key + '_obj'].length > 0;
+		const hasArrayData = data && data[key] && Array.isArray(data[key]) && data[key].length > 0;
+
+		if (hasObjectData || hasArrayData) {
 			const opt = document.createElement('option');
-			opt.value = key; 
+			opt.value = key;
 			opt.textContent = label;
 			selectElem.appendChild(opt);
 			hasOption = true;
@@ -774,7 +798,9 @@ function initBtnSelectDataList(data) {
 		selectElem.disabled = true;
 	} else {
 		selectElem.disabled = false;
-		if (data['bookings']) selectElem.value = 'bookings';
+		if (data['bookings'] || data['bookings_obj']) {
+			selectElem.value = 'bookings';
+		}
 	}
 }
 
@@ -783,6 +809,7 @@ function initBtnSelectDataList(data) {
 // =========================================================================
 
 function initDashboard() {
+	if (CURRENT_USER?.role === 'acc' || CURRENT_USER?.role === 'acc_thenice') return; 
 	const today = new Date();
 	setVal('dash-filter-from', new Date(today.getFullYear(), today.getMonth(), 1));
 	setVal('dash-filter-to', new Date(today.getFullYear(), today.getMonth() + 1, 0));
@@ -795,7 +822,7 @@ function initDashboard() {
 }
 
 function renderDashboard() {
-	if (!APP_DATA || !APP_DATA.bookings || !APP_DATA.booking_details) return;
+	if (!APP_DATA || !APP_DATA.bookings) return;
 	
 	// Render các bảng con
 	renderDashTable1();
@@ -805,8 +832,6 @@ function renderDashboard() {
 }
 
 function renderDashTable1() {
-	// Logic vẽ Booking mới (7 ngày)
-	log("renderDash1 done");
 	const tbody = document.querySelector('#tbl-dash-new-bk tbody');
 	if(!tbody) return;
 	tbody.innerHTML = '';
@@ -1222,14 +1247,14 @@ function renderAggTable_Op(tableId, dataObj, sumId) {
 
 function renderDashboard_Acc() {
 	if (!window.AccountantCtrl) {
-		logA('Modue kế toán chưa được tải. Vui lòng thử lại sau.', 'warning');
+		log('Modue kế toán chưa được tải. Vui lòng thử lại sau.', 'warning');
 		return;
 	}
 }
 
 function renderDashboard_Acc_thenice() {
 	if (!window.AccountantCtrl) {
-		logA('Modue kế toán chưa được tải. Vui lòng thử lại sau.', 'warning');
+		log('Modue kế toán chưa được tải. Vui lòng thử lại sau.', 'warning');
 		return;
 	}
 }

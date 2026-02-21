@@ -214,10 +214,78 @@ const DB_PATHS = {
 };
 
 export default class ServicePriceController {
+    // =========================================================================
+    // INTERNAL VARIABLES (Singleton Instance & Cache Management)
+    // =========================================================================
+    static _instance = null;
+    static _cacheData = {
+        suppliers: null,
+        serviceSchedules: {} // Map {docId: data}
+    };
+    
     constructor(containerId) {
+        this.containerId = containerId;
         this.container = document.getElementById(containerId);
         if (!this.container) throw new Error("Missing container");
-        this.initLayout();
+        
+        // ─────────────────────────────────────────────────────────────
+        // Store event handler references for cleanup (prevent duplicate)
+        // ─────────────────────────────────────────────────────────────
+        this._eventHandlers = {
+            onSupplierChange: null,
+            onYearChange: null,
+            onBtnLoadClick: null,
+            onBtnSaveClick: null
+        };
+    }
+
+    /**
+     * Initialize ServicePriceController instance (Singleton Pattern with Force Option)
+     * @param {string} containerId - Container element ID
+     * @param {boolean} isForce - Force create new instance (default: false)
+     * @returns {ServicePriceController} - Instance of controller
+     * 
+     * LOGIC:
+     * - Nếu instance đã tồn tại && !isForce -> reuse instance cũ
+     * - Nếu chưa có || isForce=true -> tạo instance mới
+     * - LUÔN gọi initLayout() mỗi lần (để khôi phục DOM)
+     */
+    static init(containerId, isForce = false) {
+        let instance;
+        
+        // ─────────────────────────────────────────────────────────────
+        // STEP 1: Determine instance (reuse old or create new)
+        // ─────────────────────────────────────────────────────────────
+        if (!isForce && ServicePriceController._instance) {
+            instance = ServicePriceController._instance;
+        } else {
+            instance = new ServicePriceController(containerId);
+            ServicePriceController._instance = instance;
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // STEP 2: ALWAYS reinitialize layout (restore DOM)
+        // ─────────────────────────────────────────────────────────────
+        instance.initLayout();
+        
+        return instance;
+    }
+
+    /**
+     * Clear singleton instance (Useful for testing or cleanup)
+     */
+    static clearInstance() {
+        ServicePriceController._instance = null;
+    }
+
+    /**
+     * Clear all cached data
+     */
+    static clearCache() {
+        ServicePriceController._cacheData = {
+            suppliers: null,
+            serviceSchedules: {}
+        };
     }
 
     initLayout() {
@@ -266,57 +334,255 @@ export default class ServicePriceController {
         this.btnLoad = this.container.querySelector('#sp-btn-load');
         this.btnSave = this.container.querySelector('#sp-btn-save');
 
-        this.initData();
+        // ─────────────────────────────────────────────────────────────
+        // IMPORTANT: Remove old event listeners before attaching new ones
+        // This prevents duplicate listeners when initLayout is called again
+        // ─────────────────────────────────────────────────────────────
+        this.detachEvents();
         this.attachEvents();
+        this.initData();
     }
 
     async initData() {
-        // Load NCC từ Global A.DB hoặc Firebase
-        try {
-            const snapshot = await firebase.firestore().collection(DB_PATHS.SUPPLIERS).get();
-            let html = '<option value="">-- Chọn Nhà cung cấp --</option>';
-            snapshot.forEach(doc => {
-                const d = doc.data();
-                html += `<option value="${doc.id}">${d.name || doc.id}</option>`;
+        // ─────────────────────────────────────────────────────────────
+        // STEP 1: Check cache first before fetching from Firestore
+        // ─────────────────────────────────────────────────────────────
+        const cache = ServicePriceController._cacheData;
+        let suppliers;
+
+        if (cache.suppliers !== null) {
+            suppliers = cache.suppliers;
+        } else {
+            // Load NCC từ Global APP_DATA hoặc Firebase
+            try {
+                // ─────────────────────────────────────────────────────────────
+                // Try to get suppliers from global APP_DATA
+                // APP_DATA.suppliers_obj structure: [{id, name, ...}, ...]
+                // ─────────────────────────────────────────────────────────────
+                suppliers = window.APP_DATA?.suppliers_obj || [];
+
+                // Convert to standard format if needed
+                suppliers = suppliers.map(s => ({
+                    id: s.id,
+                    name: s.name || s.supplier_name || ''
+                }));
+
+                // If no suppliers from APP_DATA, fetch from Firebase
+                if (suppliers.length === 0) {
+                    const snapshot = await firebase.firestore().collection(DB_PATHS.SUPPLIERS).get();
+                    suppliers = [];
+                    snapshot.forEach(doc => {
+                        suppliers.push({
+                            id: doc.id,
+                            name: doc.data().name || doc.data().supplier_name || doc.id
+                        });
+                    });
+                }
+
+                // ─────────────────────────────────────────────────────────────
+                // Save suppliers to cache for future use
+                // ─────────────────────────────────────────────────────────────
+                cache.suppliers = suppliers;
+            } catch (e) {
+                console.error('[ServicePriceController] Lỗi load suppliers:', e);
+                suppliers = []; // Fallback to empty array
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // STEP 2: Render suppliers into dropdown
+        // ─────────────────────────────────────────────────────────────
+        let html = '<option value="">-- Chọn Nhà cung cấp --</option>';
+        if (suppliers && suppliers.length > 0) {
+            suppliers.forEach(supplier => {
+                html += `<option value="${supplier.id}">${supplier.name || supplier.id}</option>`;
             });
-            this.selSupplier.innerHTML = html;
-        } catch (e) { console.error(e); }
+        }
+        this.selSupplier.innerHTML = html;
     }
 
-    attachEvents() {
-        // Load Data
-        this.btnLoad.addEventListener('click', async () => {
-            const supplierId = this.selSupplier.value;
-            const year = this.selYear.value;
-            if(!supplierId) return alert("Chưa chọn NCC");
+    /**
+     * ★ PRIVATE: Fetch table data từ Firestore (với cache checking)
+     */
+    async _fetchTableData() {
+        const supplierId = this.selSupplier.value;
+        const year = this.selYear.value;
+        if (!supplierId) return;
 
-            const docId = `${supplierId}_${year}`.toUpperCase();
+        // ─────────────────────────────────────────────────────────────
+        // Check cache first
+        // ─────────────────────────────────────────────────────────────
+        const cache = ServicePriceController._cacheData;
+        const docId = `${supplierId}_${year}`.toUpperCase();
+
+        if (cache.serviceSchedules[docId]) {
+            console.log('[ServicePriceController] ⚡ Cache hit! Dùng dữ liệu đã lưu');
+            return;
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // Fetch from Firestore if not in cache
+        // ─────────────────────────────────────────────────────────────
+        console.log('[ServicePriceController] 🔄 Fetch data từ Firestore...');
+        try {
+            // Get data từ service_price_schedules
+            const doc = await firebase.firestore().collection(DB_PATHS.SERVICE_SCHEDULES).doc(docId).get();
             
-            try {
-                // Get data từ service_price_schedules
-                const doc = await firebase.firestore().collection(DB_PATHS.SERVICE_SCHEDULES).doc(docId).get();
-                
-                if (doc.exists) {
-                    const data = doc.data();
-                    this.table.setData(data.items || []);
-                    this.selStatus.value = data.info.status || 'actived';
-                    // Toast nếu có
-                } else {
-                    this.table.setData([]); // Tạo mới
-                    this.selStatus.value = 'actived';
-                }
-            } catch (e) { alert("Lỗi tải: " + e.message); }
-        });
+            const tableData = doc.exists ? doc.data() : { items: [], info: { status: 'actived' } };
+            
+            // ─────────────────────────────────────────────────────────────
+            // Save to cache after successful fetch
+            // ─────────────────────────────────────────────────────────────
+            cache.serviceSchedules[docId] = tableData;
+            
+            console.log('[ServicePriceController] ✅ Data fetched & cached');
+        } catch (e) {
+            console.error('[ServicePriceController] Lỗi tải:', e);
+            throw e;
+        }
+    }
 
-        // Save Data
-        this.btnSave.addEventListener('click', async () => {
+    /**
+     * ★ PRIVATE: Render table data từ cache vào UI component
+     */
+    _renderTableData() {
+        const supplierId = this.selSupplier.value;
+        const year = this.selYear.value;
+        if (!supplierId) return;
+
+        const cache = ServicePriceController._cacheData;
+        const docId = `${supplierId}_${year}`.toUpperCase();
+        const tableData = cache.serviceSchedules[docId];
+
+        if (!tableData) {
+            console.warn('[ServicePriceController] Cache trống, không render');
+            return;
+        }
+
+        console.log('[ServicePriceController] 🎨 Render từ cache...');
+        this.table.setData(tableData.items || []);
+        this.selStatus.value = tableData.info?.status || 'actived';
+    }
+
+    /**
+     * ★ PUBLIC: Load Table Data (Fetch + Render)
+     * Reset table data first, then fetch and render new data
+     */
+    async loadTableData() {
+        try {
+            // ─────────────────────────────────────────────────────────────
+            // STEP 1: Reset table to empty before loading new data
+            // ─────────────────────────────────────────────────────────────
+            console.log('[ServicePriceController] 🔄 Reset bảng dữ liệu...');
+            this.table.setData([]);
+            this.selStatus.value = 'actived';
+
+            // ─────────────────────────────────────────────────────────────
+            // STEP 2: Fetch data from cache or Firestore
+            // ─────────────────────────────────────────────────────────────
+            await this._fetchTableData();
+
+            // ─────────────────────────────────────────────────────────────
+            // STEP 3: Render loaded data to table
+            // ─────────────────────────────────────────────────────────────
+            this._renderTableData();
+        } catch (error) {
+            alert('Lỗi tải: ' + error.message);
+        }
+    }
+
+    // --- EVENT MANAGEMENT ---
+
+    /**
+     * Remove all event listeners to prevent duplicate listeners
+     * Called before attachEvents() when reinitializing layout
+     */
+    detachEvents() {
+        if (!this._eventHandlers) return;
+        
+        if (this._eventHandlers.onSupplierChange && this.selSupplier) {
+            this.selSupplier.removeEventListener('change', this._eventHandlers.onSupplierChange);
+        }
+        
+        if (this._eventHandlers.onYearChange && this.selYear) {
+            this.selYear.removeEventListener('change', this._eventHandlers.onYearChange);
+        }
+        
+        if (this._eventHandlers.onBtnLoadClick && this.btnLoad) {
+            this.btnLoad.removeEventListener('click', this._eventHandlers.onBtnLoadClick);
+        }
+        
+        if (this._eventHandlers.onBtnSaveClick && this.btnSave) {
+            this.btnSave.removeEventListener('click', this._eventHandlers.onBtnSaveClick);
+        }
+
+        // Reset all handlers to null
+        this._eventHandlers = {
+            onSupplierChange: null,
+            onYearChange: null,
+            onBtnLoadClick: null,
+            onBtnSaveClick: null
+        };
+    }
+
+    /**
+     * Attach all event listeners
+     * Store references to handlers for cleanup later
+     */
+    attachEvents() {
+        // ─────────────────────────────────────────────────────────────
+        // SUPPLIER CHANGE EVENT
+        // ─────────────────────────────────────────────────────────────
+        this._eventHandlers.onSupplierChange = () => {
+            // Enable/disable load button based on supplier selection
+            this.btnLoad.disabled = !this.selSupplier.value;
+        };
+        
+        this.selSupplier.addEventListener('change', this._eventHandlers.onSupplierChange);
+
+        // ─────────────────────────────────────────────────────────────
+        // YEAR CHANGE EVENT (Optional: could be used for cache invalidation)
+        // ─────────────────────────────────────────────────────────────
+        this._eventHandlers.onYearChange = () => {
+            this.btnLoad.disabled = !this.selSupplier.value;
+        };
+        
+        this.selYear.addEventListener('change', this._eventHandlers.onYearChange);
+
+        // ─────────────────────────────────────────────────────────────
+        // LOAD DATA BUTTON CLICK
+        // ─────────────────────────────────────────────────────────────
+        this._eventHandlers.onBtnLoadClick = async () => {
+            if (!this.selSupplier.value) {
+                alert("Chưa chọn NCC");
+                return;
+            }
+            await this.loadTableData();
+        };
+        
+        this.btnLoad.addEventListener('click', this._eventHandlers.onBtnLoadClick);
+
+        // ─────────────────────────────────────────────────────────────
+        // SAVE DATA BUTTON CLICK
+        // ─────────────────────────────────────────────────────────────
+        this._eventHandlers.onBtnSaveClick = async () => {
             const supplierId = this.selSupplier.value;
             const year = this.selYear.value;
-            if(!supplierId) return alert("Chưa chọn NCC");
+            
+            if (!supplierId) {
+                alert("Chưa chọn NCC");
+                return;
+            }
 
             const items = this.table.getData();
-            if(items.length === 0) return alert("Chưa có dịch vụ nào để lưu");
+            if (items.length === 0) {
+                alert("Chưa có dịch vụ nào để lưu");
+                return;
+            }
 
+            // ─────────────────────────────────────────────────────────────
+            // Prepare payload and save to Firestore
+            // ─────────────────────────────────────────────────────────────
             const docId = `${supplierId}_${year}`.toUpperCase();
             const payload = {
                 info: {
@@ -327,15 +593,26 @@ export default class ServicePriceController {
                     updatedAt: new Date().getTime()
                 },
                 items: items,
-                searchTags: [supplierId, year.toString()] // Hỗ trợ tìm kiếm sau này
+                searchTags: [supplierId, year.toString()]
             };
 
             try {
                 await firebase.firestore().collection(DB_PATHS.SERVICE_SCHEDULES)
-                .doc(docId)
-                .set(payload, { merge: true });
+                    .doc(docId)
+                    .set(payload, { merge: true });
+                
+                // ─────────────────────────────────────────────────────────────
+                // Update cache after successful save
+                // ─────────────────────────────────────────────────────────────
+                const cache = ServicePriceController._cacheData;
+                cache.serviceSchedules[docId] = payload;
+                
                 alert("Đã lưu thành công!");
-            } catch (e) { alert("Lỗi lưu: " + e.message); }
-        });
+            } catch (e) {
+                alert("Lỗi lưu: " + e.message);
+            }
+        };
+        
+        this.btnSave.addEventListener('click', this._eventHandlers.onBtnSaveClick);
     }
 }

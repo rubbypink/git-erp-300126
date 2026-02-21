@@ -5,7 +5,33 @@ const DB_PATHS = {
     SERVICE_SCHEDULES: 'service_price_schedules'
 };
 
+// ★ NEW: Timeout config (milliseconds)
+const TIMEOUT_CONFIG = {
+    GET_HOTEL_PRICE: 10000,      // 10 seconds
+    GET_SERVICE_PRICE: 10000,    // 10 seconds
+    FETCH_OPERATIONS: 10000      // 10 seconds
+};
+
 export default class PriceManager {
+
+    /**
+     * ★ NEW: Helper function - Wrap promise với timeout
+     * @param {Promise} promise - Promise cần thực thi
+     * @param {number} timeoutMs - Timeout milliseconds
+     * @param {string} operationName - Tên operation (để log)
+     */
+    static async _withTimeout(promise, timeoutMs, operationName = 'Operation') {
+        return Promise.race([
+            promise,
+            new Promise((_, reject) =>
+                setTimeout(() => {
+                    const error = new Error(`⏱️ ${operationName} TIMEOUT - Vượt quá ${timeoutMs}ms`);
+                    error.code = 'TIMEOUT';
+                    reject(error);
+                }, timeoutMs)
+            )
+        ]);
+    }
 
     /**
      * Hàm lấy giá phòng (Core Logic)
@@ -14,6 +40,33 @@ export default class PriceManager {
         try {
             console.time("Timer_getHotelPrice");
             
+            // ★ NEW: Wrap toàn bộ hàm với timeout
+            return await this._withTimeout(
+                this._executeGetHotelPrice(hotelIdentifier, checkInDate, checkOutDate, roomIdentifier, rateTypeId, packageId),
+                TIMEOUT_CONFIG.GET_HOTEL_PRICE,
+                'getHotelPrice'
+            );
+        } catch (error) {
+            console.error("[PriceManager] Error:", error);
+            console.timeEnd("Timer_getHotelPrice");
+            
+            // ★ NEW: Handle timeout error specially
+            if (error.code === 'TIMEOUT') {
+                return {
+                    success: false,
+                    error: error.message,
+                    code: 'TIMEOUT'
+                };
+            }
+            
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * ★ NEW: Thực thi logic getHotelPrice (Tách ra để wrap timeout)
+     */
+    static async _executeGetHotelPrice(hotelIdentifier, checkInDate, checkOutDate, roomIdentifier, rateTypeId = 'base', packageId = 'base') {
             // BƯỚC 1: CHUẨN BỊ DỮ LIỆU (Chạy song song để tối ưu tốc độ)
             // Ta cần 3 nguồn: 
             // 1. Bảng giá Active của Hotel (để lấy giá)
@@ -38,11 +91,16 @@ export default class PriceManager {
 
             const year = checkInDateObj.getFullYear();
             
-            const [priceDoc, roomsList, periodsList] = await Promise.all([
-                this._fetchPriceSchedule(hotelIdentifier, year),
-                this._fetchHotelRooms(hotelIdentifier),
-                this._fetchMasterPeriods()
-            ]);
+            // ★ FIX: Wrap Promise.all() với timeout
+            const [priceDoc, roomsList, periodsList] = await this._withTimeout(
+                Promise.all([
+                    this._fetchPriceSchedule(hotelIdentifier, year),
+                    this._fetchHotelRooms(hotelIdentifier),
+                    this._fetchMasterPeriods()
+                ]),
+                TIMEOUT_CONFIG.FETCH_OPERATIONS,
+                'Data fetching'
+            );
 
             // --- Validate dữ liệu nền ---
             if (!priceDoc) return { error: `Không tìm thấy bảng giá Active năm ${year} cho ${hotelIdentifier}` };
@@ -126,11 +184,6 @@ export default class PriceManager {
                 },
                 details_price: details_price_text
             };
-
-        } catch (error) {
-            console.error("PriceManager Error:", error);
-            return { success: false, error: error.message };
-        }
     }
     /**
      * Tra cứu đơn giá Dịch vụ (Lookup Only)
@@ -140,91 +193,117 @@ export default class PriceManager {
      */
     static async getServicePrice(serviceName, useDate, supplierId = null) {
         try {
-            const dUse = new Date(useDate);
-            const year = dUse.getFullYear();
+            console.time("Timer_getServicePrice");
             
-            // Hàm con: Tìm item khớp trong 1 document bảng giá
-            const findMatchInDoc = (docData) => {
-                const items = docData.items || [];
-                const matchedItem = items.find(item => {
-                    // 1. Check Tên
-                    const isNameMatch = item.name && item.name.trim().toLowerCase() === serviceName.trim().toLowerCase();
-                    if (!isNameMatch) return false;
-                    // 2. Check Ngày hiệu lực
-                    return this._checkDateInRange(dUse, item.from || '01/01', item.to || '31/12');
-                });
-
-                if (matchedItem) {
-                    return {
-                        supplierId: docData.info.supplierId,
-                        supplierName: docData.info.supplierName,
-                        updatedAt: docData.info.updatedAt || 0, // Dùng để sort mới nhất
-                        adl: Number(matchedItem.adl) || 0,
-                        chd: Number(matchedItem.chd) || 0,
-                        note: matchedItem.note
-                    };
-                }
-                return null;
-            };
-
-            let candidates = [];
-
-            // TRƯỜNG HỢP 1: Có chỉ định Supplier ID -> Tìm đích danh
-            if (supplierId) {
-                const docId = `${supplierId}_${year}`.toUpperCase();
-                const docSnap = await firebase.firestore().collection(DB_PATHS.SERVICE_SCHEDULES).doc(docId).get();
-                
-                if (docSnap.exists) {
-                    const data = docSnap.data();
-                    if (data.info && data.info.status === 'actived') {
-                        const match = findMatchInDoc(data);
-                        if (match) candidates.push(match);
-                    }
-                }
-            } 
-            // TRƯỜNG HỢP 2: Không chỉ định Supplier -> Quét tất cả bảng giá Active trong năm
-            else {
-                const querySnap = await firebase.firestore().collection(DB_PATHS.SERVICE_SCHEDULES)
-                    .where('info.year', '==', year)
-                    .where('info.status', '==', 'actived')
-                    .get();
-
-                querySnap.forEach(doc => {
-                    const match = findMatchInDoc(doc.data());
-                    if (match) candidates.push(match);
-                });
-            }
-
-            if (candidates.length === 0) {
-                return { success: false, error: "Không tìm thấy giá phù hợp" };
-            }
-
-            // Sắp xếp: Mới nhất lên đầu (dựa vào updatedAt)
-            candidates.sort((a, b) => b.updatedAt - a.updatedAt);
-
-            // Kết quả chính (Thằng mới nhất)
-            const bestMatch = candidates[0];
-
-            return {
-                success: true,
-                // Giá trả về của thằng tốt nhất
-                price: {
-                    adl: bestMatch.adl,
-                    chd: bestMatch.chd
-                },
-                // Thông tin NCC của thằng tốt nhất
-                supplier: {
-                    id: bestMatch.supplierId,
-                    name: bestMatch.supplierName
-                },
-                // Danh sách tất cả các kết quả tìm được (để bạn làm Tooltip tham khảo)
-                matches: candidates 
-            };
-
+            // ★ NEW: Wrap với timeout
+            return await this._withTimeout(
+                this._executeGetServicePrice(serviceName, useDate, supplierId),
+                TIMEOUT_CONFIG.GET_SERVICE_PRICE,
+                'getServicePrice'
+            );
         } catch (error) {
-            console.error("Lỗi tra cứu giá dịch vụ:", error);
+            console.error("[PriceManager] Service Price Error:", error);
+            console.timeEnd("Timer_getServicePrice");
+            
+            // ★ NEW: Handle timeout error specially
+            if (error.code === 'TIMEOUT') {
+                return {
+                    success: false,
+                    error: error.message,
+                    code: 'TIMEOUT'
+                };
+            }
+            
             return { success: false, error: error.message };
         }
+    }
+
+    /**
+     * ★ NEW: Thực thi logic getServicePrice (Tách ra để wrap timeout)
+     */
+    static async _executeGetServicePrice(serviceName, useDate, supplierId = null) {
+        const dUse = new Date(useDate);
+        const year = dUse.getFullYear();
+        
+        // Hàm con: Tìm item khớp trong 1 document bảng giá
+        const findMatchInDoc = (docData) => {
+            const items = docData.items || [];
+            const matchedItem = items.find(item => {
+                // 1. Check Tên
+                const isNameMatch = item.name && item.name.trim().toLowerCase() === serviceName.trim().toLowerCase();
+                if (!isNameMatch) return false;
+                // 2. Check Ngày hiệu lực
+                return this._checkDateInRange(dUse, item.from || '01/01', item.to || '31/12');
+            });
+
+            if (matchedItem) {
+                return {
+                    supplierId: docData.info.supplierId,
+                    supplierName: docData.info.supplierName,
+                    updatedAt: docData.info.updatedAt || 0, // Dùng để sort mới nhất
+                    adl: Number(matchedItem.adl) || 0,
+                    chd: Number(matchedItem.chd) || 0,
+                    note: matchedItem.note
+                };
+            }
+            return null;
+        };
+
+        let candidates = [];
+
+        // TRƯỜNG HỢP 1: Có chỉ định Supplier ID -> Tìm đích danh
+        if (supplierId) {
+            const docId = `${supplierId}_${year}`.toUpperCase();
+            const docSnap = await firebase.firestore().collection(DB_PATHS.SERVICE_SCHEDULES).doc(docId).get();
+            
+            if (docSnap.exists) {
+                const data = docSnap.data();
+                if (data.info && data.info.status === 'actived') {
+                    const match = findMatchInDoc(data);
+                    if (match) candidates.push(match);
+                }
+            }
+        } 
+        // TRƯỜNG HỢP 2: Không chỉ định Supplier -> Quét tất cả bảng giá Active trong năm
+        else {
+            const querySnap = await firebase.firestore().collection(DB_PATHS.SERVICE_SCHEDULES)
+                .where('info.year', '==', year)
+                .where('info.status', '==', 'actived')
+                .get();
+
+            querySnap.forEach(doc => {
+                const match = findMatchInDoc(doc.data());
+                if (match) candidates.push(match);
+            });
+        }
+
+        if (candidates.length === 0) {
+            return { success: false, error: "Không tìm thấy giá phù hợp" };
+        }
+
+        // Sắp xếp: Mới nhất lên đầu (dựa vào updatedAt)
+        candidates.sort((a, b) => b.updatedAt - a.updatedAt);
+
+        // Kết quả chính (Thằng mới nhất)
+        const bestMatch = candidates[0];
+
+        console.timeEnd("Timer_getServicePrice");
+
+        return {
+            success: true,
+            // Giá trả về của thằng tốt nhất
+            price: {
+                adl: bestMatch.adl,
+                chd: bestMatch.chd
+            },
+            // Thông tin NCC của thằng tốt nhất
+            supplier: {
+                id: bestMatch.supplierId,
+                name: bestMatch.supplierName
+            },
+            // Danh sách tất cả các kết quả tìm được (để bạn làm Tooltip tham khảo)
+            matches: candidates 
+        };
     }
     // ========================================================
     // PRIVATE HELPERS (Xử lý Logic tìm kiếm & Fetch)

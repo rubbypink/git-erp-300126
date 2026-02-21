@@ -121,44 +121,68 @@
     <div class="card my-2">
       <div class="card-header justify-content-between bg-primary bg-gradient bg-opacity-75 text-white py-0">
         <small class="fw-bold">THÔNG TIN BOOKING</small>
-        <button type="button" class="btn btn-sm btn-outline-light float-end my-1 mx-2" onclick="createConfirmation()"
-          title="Xem trước & Gửi Xác Nhận Đặt Dịch Vụ (Email/PDF)">
-          <i class="fa-solid fa-envelope"></i> Gửi Email Xác Nhận
+        <div class="btn-group btn-group-sm float-end my-1 mx-2" role="group">
+          <button type="button" class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown"
+            aria-expanded="false">
+            <i class="fa-solid fa-tools"></i> Tác vụ
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-sm shadow-sm">
+            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="createConfirmation()"
+                title="Xem trước & Gửi Xác Nhận Đặt Dịch Vụ (Email/PDF)">
+                <i class="fa-solid fa-envelope me-2"></i> Gửi Email Xác Nhận
+              </a></li>
+            <li>
+              <hr class="dropdown-divider my-1">
+            </li>
+            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="updateDeposit()"
+                title="Cập nhật tổng tiền đặt cọc từ giao dịch">
+                <i class="fa-solid fa-coins me-2"></i> Cập nhật Deposit
+              </a></li>
+            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="updateBkStatus()"
+                title="Cập nhật trạng thái booking tự động">
+                <i class="fa-solid fa-refresh me-2"></i> Cập nhật Trạng thái
+              </a></li>
+            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="calcGrandTotal()"
+                title="Tính lại tổng tiền booking">
+                <i class="fa-solid fa-calculator me-2"></i> Tính lại Tổng
+              </a></li>
+          </ul>
+        </div>
       </div>
-      <div class="card-body my-0">
+      <div class="card-body my-0" id="sub-booking-form">
         <div class="row">
           <div class="col-md-10">
             <div class="d-flex flex-wrap gap-1 py-0 justify-content-around booking-info">
               <div class="col-md-1"><label class="form-label small fw-bold">Mã Booking</label><input type="text"
-                  class="form-control form-control-sm fw-bold text-danger" id="BK_ID" readonly placeholder="Auto ID"
-                  style="pointer-events: none; user-select: none;">
+                  class="form-control form-control-sm fw-bold text-danger" id="BK_ID" data-field="id" readonly
+                  placeholder="Auto ID" style="pointer-events: none; user-select: none;">
               </div>
               <div class="col-md-1"><label class="form-label small">Ngày Đặt</label><input type="date"
-                  class="form-control form-control-sm" id="BK_Date"></div>
+                  class="form-control form-control-sm" id="BK_Date" data-field="created_at"></div>
               <div class="col-md-2">
                 <label for="Cust_Name" class="form-label small">Khách Hàng (*)</label>
-                <input type="text" class="form-control form-control-sm mx-1" id="Cust_Name" placeholder="Họ tên khách"
-                  onchange="findCustByPhone()" required list="list-cust-names" autocomplete="off" autofocus><datalist
-                  id="list-cust-names"></datalist>
+                <input type="text" class="form-control form-control-sm mx-1" id="Cust_Name" data-field="customer_name"
+                  placeholder="Họ tên khách" onchange="findCustByPhone()" required list="list-cust-names"
+                  autocomplete="off" autofocus><datalist id="list-cust-names"></datalist>
               </div>
               <div class="col-md-2">
                 <label for="Cust_Phone" class="form-label small">Số Điện Thoại (*)</label>
                 <input type="text" class="form-control form-control-sm phone_number mx-1" id="Cust_Phone"
-                  placeholder="Số điện thoại khách" onchange="findCustByName()" required list="list-cust-phones"
-                  autocomplete="off"><datalist id="list-cust-phones"></datalist>
+                  data-field="customer_phone" placeholder="Số điện thoại khách" onchange="findCustByName()" required
+                  list="list-cust-phones" autocomplete="off"><datalist id="list-cust-phones"></datalist>
               </div>
               <div class="col-md-1"><label class="form-label small">Ngày Đi</label><input type="date"
-                  class="form-control form-control-sm" id="BK_Start"></div>
+                  class="form-control form-control-sm" id="BK_Start" data-field="start_date"></div>
               <div class="col-md-1"><label class="form-label small">Ngày Về</label><input type="date"
-                  class="form-control form-control-sm" id="BK_End"></div>
+                  class="form-control form-control-sm" id="BK_End" data-field="end_date"></div>
               <div class="col-md-1"><label class="form-label small">Ng Lớn</label><input type="text" inputmode="numeric"
-                  class="form-control form-control-sm number-only" id="BK_Adult" value="2"></div>
+                  class="form-control form-control-sm number-only" id="BK_Adult" data-field="adults" value="2"></div>
               <div class="col-md-1"><label class="form-label small">Trẻ Em</label><input type="text" inputmode="numeric"
-                  class="form-control form-control-sm number-only" id="BK_Child"></div>
+                  class="form-control form-control-sm number-only" id="BK_Child" data-field="children"></div>
               <div class="col-md-1"><label class="form-label small">Nguồn</label><select
-                  class="form-select form-select-sm" id="Cust_Source"></select></div>
+                  class="form-select form-select-sm" id="Cust_Source" data-field="source"></select></div>
               <div class="col-md-1"><label class="form-label small">Nhân viên</label><select
-                  class="form-select form-select-sm" id="BK_Staff"></select></div>
+                  class="form-select form-select-sm" id="BK_Staff" data-field="staff_id"></select></div>
 
               <div class="col-md-2">
                 <label for="BK_TourName" class="form-label small">Tên Tour/Combo</label>
@@ -177,22 +201,22 @@
               </div>
               <div class="col-md-2"><label class="form-label small fw-bold text-primary ">Tổng Booking</label><input
                   type="text" class="form-control form-control-sm fw-bold text-end bg-warning number" id="BK_Total"
-                  readonly value="0"></div>
+                  data-field="total_amount" readonly value="0"></div>
               <div class="col-md-1"><label class="form-label small fw-bold text-success">Đặt Cọc</label><input
                   type="number" class="form-control form-control-sm text-end border-success number" id="BK_Deposit"
-                  value="0"></div>
+                  data-field="deposit_amount" value="0"></div>
               <div class="col-md-1"><label class="form-label small fw-bold text-danger">Còn Lại</label><input
                   type="text" class="form-control form-control-sm text-end fw-bold text-danger number" id="BK_Balance"
-                  readonly value="0"></div>
+                  data-field="balance_amount" readonly value="0"></div>
               <div class="col-md-1"><label class="form-label small">Loại TT</label><select
-                  class="form-select form-select-sm" id="BK_PayType"></select></div>
+                  class="form-select form-select-sm" id="BK_PayType" data-field="payment_method"></select></div>
               <div class="col-md-1"><label class="form-label small">Hạn TT</label><input type="date"
-                  class="form-control form-control-sm" id="BK_PayDue"></div>
+                  class="form-control form-control-sm" id="BK_PayDue" data-field="payment_due_date"></div>
               <div class="col-md-auto"><label class="form-label small">Trạng thái</label>
                 <div class="input-group">
                   <input type="text"
                     class="form-control form-control-sm fw-bold bg-warning bg-opacity-25 border-right-0" id="BK_Status"
-                    readonly value="Đặt Lịch">
+                    data-field="status" readonly value="Đặt Lịch">
                   <button class="btn btn-sm btn-outline-primary rounded-0 border-left-0" type="button"
                     title="Cập nhật trạng thái" onclick="updateBkStatus()">
                     <i class="fa-solid fa-rotate"></i>
@@ -204,7 +228,7 @@
           </div>
           <div class="col-md-2 py-0 my-2">
             <textarea name="BK_Note" class="form-control form-control-sm pt-2 align-middle" id="BK_Note"
-              placeholder="Ghi Chú:" rows="5"></textarea>
+              data-field="note" placeholder="Ghi Chú:" rows="5"></textarea>
           </div>
         </div>
       </div>
@@ -270,22 +294,25 @@
           Booking Form.</div>
         <div class="row g-3">
           <div class="col-6 col-md-4"><label class="form-label small fw-bold">Họ và Tên</label><input type="text"
-              class="form-control form-control-sm" id="Ext_CustName" readonly placeholder="Tự động đồng bộ..."></div>
+              class="form-control form-control-sm" id="Ext_CustName" data-field="full_name" readonly
+              placeholder="Tự động đồng bộ..."></div>
           <div class="col-6 col-md-4"><label class="form-label small fw-bold">Số điện thoại</label><input type="text"
-              class="form-control form-control-sm phone_number" id="Ext_CustPhone" readonly
+              class="form-control form-control-sm phone_number" id="Ext_CustPhone" data-field="phone" readonly
               placeholder="Tự động đồng bộ..."></div>
           <div class="col-6 col-md-4"><label class="form-label small">Email</label><input type="email"
-              class="form-control form-control-sm" id="Ext_CustEmail" placeholder="abc@gmail.com"></div>
+              class="form-control form-control-sm" id="Ext_CustEmail" data-field="email" placeholder="abc@gmail.com">
+          </div>
           <div class="col-6 col-md-4"><label class="form-label small">Số CCCD/Passport</label><input type="text"
-              class="form-control form-control-sm" id="Ext_CustCCCD"></div>
+              class="form-control form-control-sm" id="Ext_CustCCCD" data-field="id_card"></div>
           <div class="col-6 col-md-4"><label class="form-label small">Ngày Cấp</label><input type="date"
-              class="form-control form-control-sm" id="Ext_CustCCCDDate"></div>
+              class="form-control form-control-sm" id="Ext_CustCCCDDate" data-field="id_card_date"></div>
           <div class="col-6 col-md-4"><label class="form-label small">Ngày Sinh</label><input type="date"
-              class="form-control form-control-sm" id="Ext_CustDOB"></div>
+              class="form-control form-control-sm" id="Ext_CustDOB" data-field="dob"></div>
           <div class="col-8 col-md-8"><label class="form-label small">Địa chỉ thường trú</label><input type="text"
-              class="form-control form-control-sm" id="Ext_CustAddr" placeholder="Số nhà, đường, phường, quận..."></div>
+              class="form-control form-control-sm" id="Ext_CustAddr" data-field="address"
+              placeholder="Số nhà, đường, phường, quận..."></div>
           <div class="col-4 col-md-4"><label class="form-label small">Nguồn khách</label><select type="text"
-              class="form-select form-select-sm" id="Ext_CustSource"></div>
+              class="form-select form-select-sm" id="Ext_CustSource" data-field="source"></div>
         </div>
         <input type="hidden" id="Ext_CustHiddenID">
         <div class="row mt-3" data-ontabs="4">

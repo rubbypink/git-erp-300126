@@ -29,7 +29,7 @@ class EventManager {
             this._setupSearchEvents();
             this._setupFormEvents();
             this._setupNumberInputEvents();
-            this._setupContextMenuEvents();
+            this._setupBkFormCtm();
             this._setupKeyboardNavEvents();
 
             this.isInitialized = true;
@@ -108,38 +108,6 @@ class EventManager {
     }
 
     _setupModalEvents() {
-        // Nút Hotel Price
-        const btnHotelPrice = document.getElementById('btn-hotel-rate-plans');
-        if (btnHotelPrice && A.HotelPriceController) {
-            btnHotelPrice.addEventListener('click', async (e) => {
-                const modal = document.querySelector('at-modal-full');
-                if (!modal) {
-                    console.warn('[EventManager] Modal not found');
-                    modal = document.createElement('at-modal-full');
-                    document.body.appendChild(modal);
-                }
-                new A.HotelPriceController('dynamic-modal-full-body');
-                modal.setFooter?.(false);
-                modal.show?.();
-            });
-        }
-
-        // Nút Service Price
-        const btnServicePrice = document.getElementById('btn-service-rate-plans');
-        if (btnServicePrice && A.ServicePriceController) {
-            btnServicePrice.addEventListener('click', async (e) => {
-                let modal = document.querySelector('at-modal-full');
-                if (!modal) {
-                    console.warn('[EventManager] Modal not found');
-                    modal = document.createElement('at-modal-full');
-                    document.body.appendChild(modal);
-                }
-                new A.ServicePriceController('dynamic-modal-full-body');
-                modal.setFooter?.(false);
-                modal.show?.();
-            });
-        }
-
         // Nút Batch Create Data
         const btnBatchCreate = document.getElementById('btn-batch-create-data');
         if (btnBatchCreate && A.FirestoreDataTableManager) {
@@ -147,13 +115,13 @@ class EventManager {
                 log('[BATCH CREATE DATA] Bắt đầu tạo dữ liệu mẫu...');
                 let modal = document.querySelector('at-modal-full');
                 if (!modal) {
-                    console.warn('[EventManager] Modal not found');
+                    console.warn('[EventManager] Modal not found, creating...');
                     modal = document.createElement('at-modal-full');
                     document.body.appendChild(modal);
                 }
                 new A.FirestoreDataTableManager('dynamic-modal-full-body');
+                modal.show(null, 'Tạo Dữ Liệu Mẫu');
                 modal.setFooter?.(false);
-                modal.show?.();
             });
         }
     }
@@ -336,10 +304,10 @@ class EventManager {
 
     /**
      * =========================================================================
-     * SECTION 7: CONTEXT MENU EVENTS (Right Click)
+     * SECTION 7: BOOKING FORM CONTEXT MENU EVENTS (Right Click)
      * =========================================================================
      */
-    _setupContextMenuEvents() {
+    _setupBkFormCtm() {
         // const tbody = document.getElementById('detail-tbody');
         const menu = document.getElementById('bookingContextMenu');
 
@@ -347,7 +315,6 @@ class EventManager {
             console.warn('[EventManager] Context menu elements not found');
             return;
         }
-        
 
         // Right click event
         this.on('#detail-tbody', 'contextmenu', (e) => {
@@ -381,22 +348,16 @@ class EventManager {
             menu.style.display = 'block';
         }, true);
 
-        // Click outside to close - ONLY close if click is outside menu
         document.addEventListener('click', (e) => {
             if (!menu || menu.contains(e.target)) return;
-                        
-            // Click bên ngoài menu → đóng menu
             menu.style.display = 'none';
-            // window.CURRENT_CTX_ROW = null;
-            // window.CURRENT_CTX_ID = null;
-            // window.CURRENT_ROW_DATA = null;
         });
 
         // Setup context menu buttons
-        this._setupContextMenuButtons(menu);
+        this._setupBkFormCtmBtn(menu);
     }
 
-    _setupContextMenuButtons(menu) {
+    _setupBkFormCtmBtn(menu) {
         const btnCopyData = menu.querySelector('#ctx-copyData');
         const btnPasteData = menu.querySelector('#ctx-paste');
         const btnCopy = menu.querySelector('#ctx-copy');

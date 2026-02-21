@@ -1,6 +1,3 @@
-    
-   
-
     //  AUTH MODULE (FIRESTORE VERSION) ---
     const AUTH_MANAGER = {
         CFG_FB_RTDB: {
@@ -25,7 +22,6 @@
                     }
                     
                     this.auth = firebase.auth();
-                    
                     // ✅ CHUẨN: Dùng Firestore
                     this.db = firebase.firestore(); 
                     
@@ -44,55 +40,6 @@
         // Lấy thông tin chi tiết từ Firestore
         fetchUserProfile: async function(firebaseUser) {
             try {
-                // ✅ FIRESTORE: Dùng .collection().doc().get()
-                const docRef = this.db.collection('users').doc(firebaseUser.uid);
-                const docSnap = await docRef.get();
-                if (!docSnap.exists) {
-                    alert("Tài khoản chưa có dữ liệu trên ERP. Vui lòng liên hệ Admin.");
-                    this.auth.signOut();
-                    showLoading(false);
-                    return;
-                }
-                
-                // ✅ FIRESTORE: Dùng .data()
-                const userProfile = docSnap.data();
-                // Merge data
-                CURRENT_USER.uid = firebaseUser.uid;
-                CURRENT_USER.name = userProfile.user_name || '';
-                CURRENT_USER.email = firebaseUser.email;   
-                CURRENT_USER.level = userProfile.level;
-                CURRENT_USER.profile = userProfile;
-                CURRENT_USER.group = userProfile.group || '';
-                const masker = localStorage.getItem('erp-mock-role');
-                
-                if (masker) {                  
-                    const realRole = JSON.parse(masker).realRole;
-                    if (realRole === 'admin' || realRole === 'manager' || CURRENT_USER.level >= 50) {
-                        CURRENT_USER.role = JSON.parse(masker).maskedRole;
-                        CURRENT_USER.realRole = realRole;
-                        localStorage.removeItem('erp-mock-role');
-                        A.UI.renderedTemplates = {}; // Clear cache template để load lại
-                        log('🎭 Admin masking mode detected. Cleaning up old role scripts...');
-
-                        Object.keys(JS_MANIFEST).forEach(role => {
-                            JS_MANIFEST[role].forEach(fileName => {
-                                document.querySelectorAll(`script[src*="${fileName}"]`).forEach(script => {
-                                    script.remove();
-                                    log(`✂️ Removed script: ${fileName}`);
-                                });
-                            });
-                        });
-                        log('🎭 Clearing cached templates...');
-                        Object.keys(TEMPLATE_MANIFEST).forEach(role => {
-                            TEMPLATE_MANIFEST[role].forEach(templateId => {
-                                document.querySelectorAll(`#${templateId}`).forEach(template => {
-                                    template.remove();
-                                    log(`✂️ Removed template: ${templateId}`);
-                                });
-                            });
-                        });
-                    }
-                } else CURRENT_USER.role = userProfile.role || 'sale';
                 CR_COLLECTION = ROLE_DATA[CURRENT_USER.role] || '';
                 await Promise.all([
                     SECURITY_MANAGER.applySecurity(CURRENT_USER), 
@@ -100,7 +47,7 @@
                 ]);
                 
                 this.updateUserMenu();
-                log('✅ Chào mừng: ' + (userProfile.user_name || firebaseUser.email), 'success');
+                log('✅ Chào mừng: ' + (CURRENT_USER.profile.user_name || firebaseUser.email), 'success');
                 
                 SECURITY_MANAGER.cleanDOM(document);
 
@@ -130,19 +77,19 @@
         // Hiển thị màn hình lựa chọn Khách / Nhân sự
         showChoiceScreen: function() {
             const choiceHTML = `
-                <div class="container grid-center justify-content-center align-items-center vw-100 vh-100">
-                    <div class="card shadow-lg border-0" style="max-width: 500px; width: 100%; border-radius: 15px;">
-                        <div class="card-body p-5 text-center">
-                            <img src="https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp" class="mb-4" style="height:20vh;">
-                            <h4 class="fw-bold mb-2 text-dark">HỆ THỐNG 9TRIP</h4>
-                            <p class="text-muted mb-5">Bạn là khách hay nhân sự?</p>
+                <div style="display: flex; justify-content: center; align-items: center; width: 100vw; height: 100vh; margin: 0; padding: 1rem;">
+                    <div class="card shadow-lg border-0" style="max-width: 95vw; max-height: 90vh; width: 100%; border-radius: 15px; display: flex; flex-direction: column;">
+                        <div class="card-body p-3 p-md-5 text-center d-flex flex-column align-items-center justify-content-center" style="flex: 1;">
+                            <img src="https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp" class="mb-3 mb-md-4" style="height: 15vh; max-height: 100px;">
+                            <h4 class="fw-bold mb-2 text-dark" style="font-size: 1.1rem;">CÔNG TY TNHH 9 TRIP PHU QUOC</h4>
+                            <p class="text-muted mb-4 mb-md-5" style="font-size: 0.9rem;">Bạn là khách hàng tại 9 Trip?</p>
                             
-                            <div class="d-grid gap-3">
-                                <button id="btn-choice-customer" class="btn btn-outline-primary btn-lg py-3 fw-bold">
-                                    <i class="fa-solid fa-user-tie me-2"></i> KHÁCH HÀNG
+                            <div class="d-flex flex-column flex-md-row gap-3 justify-content-center align-items-center" style="width: 100%; max-width: 360px;">
+                                <button id="btn-choice-customer" class="btn btn-primary btn-lg py-3 fw-bold" style="font-size: 1.5rem; flex: 1; min-width: 100px;">
+                                    <i class="fa-solid fa-user-tie me-2"></i> ĐÚNG
                                 </button>
-                                <button id="btn-choice-staff" class="btn btn-primary btn-lg py-3 fw-bold shadow-sm">
-                                    <i class="fa-solid fa-briefcase me-2"></i> NHÂN SỰ
+                                <button id="btn-choice-staff" class="btn btn-secondary btn-lg py-3 fw-bold shadow-sm" style="font-size: 1.5rem; flex: 1; min-width: 100px;">
+                                    <i class="fa-solid fa-briefcase me-2"></i> KHÔNG
                                 </button>
                             </div>
                         </div>
@@ -168,36 +115,38 @@
         showLoginForm: function() {
             // Thay vì dùng Modal, ta render trực tiếp vào app-container để ép người dùng login
             const loginHTML = `
-                <div class="container grid-center justify-content-center align-items-center vw-100 vh-100">
-                    <div class="card shadow-lg border-0" style="max-width: 400px; width: 100%; border-radius: 15px;">
-                        <div class="card-body p-5 text-center">
-                            <img src="https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp" class="mb-4" style="height:20vh;">
-                            <h4 class="fw-bold mb-4 text-dark">HỆ THỐNG ERP 9TRIP</h4>
+                <div style="display: flex; justify-content: center; align-items: center; width: 100vw; height: 100vh; margin: 0; padding: 1rem;">
+                    <div class="card shadow-lg border-0" style="max-width: 95vw; max-height: 90vh; width: 100%; border-radius: 15px; overflow-y: auto; display: flex; flex-direction: column;">
+                        <div class="card-body p-3 p-md-5 d-flex flex-column align-items-center justify-content-center text-center">
+                            <img src="https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp" class="mb-3 mb-md-4" style="height: 15vh; max-height: 100px;">
+                            <h4 class="fw-bold mb-3 mb-md-4 text-dark" style="font-size: 1.1rem;">9 TRIP SYSTEM</h4>
                             
-                            <div class="form-floating mb-3 text-start">
-                                <input type="text" class="form-control" id="login-email" placeholder="name@example.com">
-                                <label>Email/User Name</label>
+                            <div style="width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control form-control-sm" id="login-email" placeholder="name@example.com" style="font-size: 0.9rem;">
+                                    <label style="font-size: 0.8rem;">Email/User Name</label>
+                                </div>
+                                <div class="form-floating mb-3 mb-md-4">
+                                    <input type="password" class="form-control form-control-sm" id="login-pass" placeholder="Password" style="font-size: 0.9rem;">
+                                    <label style="font-size: 0.8rem;">Mật khẩu</label>
+                                </div>
+                                
+                                <button id="btn-mail-login" class="btn btn-lg btn-primary py-3 fw-bold shadow-sm" style="font-size: 0.9rem;">
+                                    ĐĂNG NHẬP
+                                </button>
                             </div>
-                            <div class="form-floating mb-4 text-start">
-                                <input type="password" class="form-control" id="login-pass" placeholder="Password">
-                                <label>Mật khẩu</label>
-                            </div>
-                            
-                            <button id="btn-mail-login" class="btn btn-primary w-100 py-3 fw-bold shadow-sm">
-                                ĐĂNG NHẬP NGAY
-                            </button>
     
-                            <div class="mt-4 small text-muted">
+                            <div class="mt-3 mt-md-4 small text-muted" style="max-width: 350px;">
                                 Hoặc đăng nhập bằng
                                 <div class="d-flex gap-2 justify-content-center mt-2">
-                                    <button id="btn-google-login" class="btn btn-outline-light border text-dark">
-                                        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" width="18"> Google
+                                    <button id="btn-google-login" class="btn btn-outline-light border text-dark" style="font-size: 0.8rem;">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" width="16"> Google
                                     </button>
                                 </div>
                             </div>
                             
-                            <div class="mt-4">
-                                <button id="btn-back-choice" class="btn btn-link text-muted">
+                            <div class="mt-3 mt-md-4">
+                                <button id="btn-back-choice" class="btn btn-link text-muted" style="font-size: 0.85rem;">
                                     ← Quay lại
                                 </button>
                             </div>
@@ -277,10 +226,12 @@
 
         // --- QUẢN LÝ USER (ADMIN) ---
 
-        // Load danh sách users
+        /**
+         * Load danh sách users từ Firestore để hiển thị
+         */
         loadUsersData: async function() {
             try {
-                // ✅ FIRESTORE: Lấy toàn bộ collection
+                // ✅ FIRESTORE: Lấy toàn bộ collection users
                 const snapshot = await this.db.collection('users').get();
                 
                 if (snapshot.empty) {
@@ -296,7 +247,7 @@
                     const createdDate = new Date(user.created_at || Date.now()).toLocaleDateString('vi-VN');
                     
                     html += `
-                        <tr class="text-center" style="cursor: pointer;" onclick="AUTH_MANAGER.loadUserToForm('${uid}')">
+                        <tr class="text-center" style="cursor: pointer;" onclick="A.Auth.loadUserToForm('${uid}')">
                             <td><small>${uid.substring(0, 5)}...</small></td>
                             <td>${user.account || '-'}</td>
                             <td>${user.user_name || '-'}</td>
@@ -306,7 +257,7 @@
                             <td>${user.level || 0}</td>
                             <td>${(user.group || "")}</td>
                             <td>${createdDate}</td>
-                            <td><button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); AUTH_MANAGER.deleteUser('${uid}')"><i class="fa-solid fa-trash"></i></button></td>
+                            <td><button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); A.Auth.deleteUser('${uid}')"><i class="fa-solid fa-trash"></i></button></td>
                         </tr>
                     `;
                 });
@@ -319,10 +270,13 @@
             }
         },
 
-        // Load chi tiết 1 user
+        /**
+         * Load chi tiết user vào form để edit
+         * Chỉ đọc từ Firestore
+         */
         loadUserToForm: async function(uid) {
             try {
-                // ✅ FIRESTORE
+                // ✅ FIRESTORE: Lấy dữ liệu user
                 const doc = await this.db.collection('users').doc(uid).get();
                 if (!doc.exists) return;
                 
@@ -354,7 +308,16 @@
             }
         },
 
-        // Lưu/Cập nhật user vào Firebase
+        /**
+         * Lưu/Cập nhật user vào Firestore
+         * 
+         * Flow mới (Firestore-first):
+         * 1. CASE 1 (Update): Save Firestore → Trigger sync sang Auth
+         * 2. CASE 2 (Create): Generate UID (role-ddmmyy) → Save Firestore (kèm password) 
+         *                     → Trigger functions tự động tạo Auth user
+         * 
+         * ⭐ Không còn tạo Auth trực tiếp, toàn bộ do Trigger xử lý
+         */
         saveUser: async function() {
             const userData = {};
             userData.uid = document.getElementById('form-uid').value.trim();
@@ -373,8 +336,9 @@
             });
             userData.group = groupRoles.join(', ');
 
+            // ─── Validation ───
             if (!userData.email) {
-                logA('Vui lòng nhập đầy đủ Account và Email');
+                logA('Vui lòng nhập Email');
                 return;
             }
             if (!userData.account) {
@@ -382,30 +346,39 @@
             }
 
             try {
+                // CASE 1: Cập nhật user hiện tại
+                // Chỉ cần lưu Firestore → Trigger sẽ auto sync sang Auth
                 if (userData.uid) {
-                    // ✅ FIRESTORE UPDATE: Dùng set với merge: true (an toàn hơn update)
                     await this.db.collection('users').doc(userData.uid).set(userData, { merge: true });
-                    logA('Cập nhật thành công');
-                } else {
-                    // Tạo mới User (Lưu ý: Auth client side sẽ tự login user mới -> Cần cân nhắc)
-                    const password = userData.email.split('@')[0] + '@2026'; // Mật khẩu mặc định
-                    const authResult = await this.auth.createUserWithEmailAndPassword(userData.email, password);
-                    const newUid = authResult.user.uid;
-                    
-                    userData.uid = newUid;
-
-                    // ✅ FIRESTORE CREATE
-                    await this.db.collection('users').doc(newUid).set(userData);
-                    logA('Tạo user mới thành công');
+                    log(`✅ User ${userData.uid} updated in Firestore`, 'success');
+                    log('💡 Trigger sẽ tự động đồng bộ sang Firebase Auth', 'info');
+                    this.renderUsersConfig();
+                    return;
                 }
+
+                // CASE 2: Tạo user mới (Firestore TRƯỚC)
+                // Bước 1: Tạo UID dạng: role-ddmmyy
+                const newUid = this.generateUserUID(userData.role);
+                log(`📝 Generated UID: ${newUid}`, 'info');
+
+                // Bước 2: Tạo mật khẩu mặc định
+                const defaultPassword = userData.email.split('@')[0] + '@2026';
+
+                // Bước 3: Lưu vào Firestore (kèm password để trigger tạo Auth)
+                userData.uid = newUid;
+                userData.password = defaultPassword; // Trigger sẽ đọc field này để tạo Auth
                 
-                
+                await this.db.collection('users').doc(newUid).set(userData);
+                log(`✅ Firestore document created: ${newUid}`, 'success');
+
+                // Bước 4: Trigger sẽ tự động đọc dữ liệu từ Firestore và tạo Firebase Auth user
+                logA(`✅ Tạo người dùng thành công!\n📧 Email: ${userData.email}\n🔑 Trigger sẽ tạo Auth account\n⏳ Vui lòng đợi...`);
+
                 this.renderUsersConfig();
-            } catch (e) {
-                logError("Lỗi lưu: " + e.message);
+            } catch (error) {
+                logError('❌ Lỗi lưu user: ' + error.message);
             }
         },
-
         renderUsersConfig: function() {
             //   $('.modal-footer').style.display = 'none'; // Ẩn footer nếu có
             // Set ngày tạo mặc định là hôm nay
@@ -417,18 +390,35 @@
             this.loadUsersData();
         },
 
+        /**
+         * Tạo UID theo định dạng: ROLE-DDMMYY
+         * Ví dụ: "OP-200226" (Operator, ngày 20/02/26)
+         */
+        generateUserUID: function(role) {
+            const today = new Date();
+            const dd = String(today.getDate()).padStart(2, '0');
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const yy = String(today.getFullYear()).slice(-2);
+            return `${role.toUpperCase()}-${dd}${mm}${yy}`;
+        },
+
+        /**
+         * Xóa user khỏi Firestore
+         * Trigger "syncUserAuthDeleteOnDelete" sẽ tự động xóa Firebase Auth account
+         */
         deleteUser: async function(uid) {
-            if (!confirm('Chắc chắn xóa?')) return;
+            if (!confirm('Chắc chắn xóa user này?\n⚠️ Trigger sẽ tự động xóa Auth account')) return;
             try {
-                // ✅ FIRESTORE DELETE
+                // ✅ FIRESTORE DELETE → Trigger xóa Auth
                 await this.db.collection('users').doc(uid).delete();
+                log(`✅ User ${uid} deleted from Firestore`, 'success');
+                log('💡 Trigger sẽ tự động xóa Firebase Auth account', 'info');
                 this.loadUsersData();
-            } catch (e) {
-                logError("Lỗi xóa: " + e.message);
+            } catch (error) {
+                logError('❌ Lỗi xóa user: ' + error.message);
             }
         }
     };
-
 
     const SECURITY_MANAGER = {
         /**
@@ -458,7 +448,7 @@
                 await A.UI.renderTemplate('body', '/accountant/tpl_accountant.html', false, '.app-container');
                 
                 await A.UI.renderTemplate('body', 'tmpl-acc-footer-bar', false, '#main-footer', 'prepend');
-                toggleTemplate('main-footer');
+                toggleTemplate('erp-main-footer');
                 setVal('module-title', 'ACCOUNTING CENTER - QUẢN LÝ KẾ TOÁN');
                 await loadJSFile('/accountant/controller_accountant.js', role); // Load JS riêng cho Kế toán
             } else {
@@ -539,7 +529,8 @@
 
             // Định nghĩa quy tắc xóa (Ngược lại với CSS hiển thị)
             // Nếu KHÔNG PHẢI Admin -> Xóa .admin-only
-            if (!body.classList.contains('is-admin')) {
+            const isAdmin = (CURRENT_USER.realRole && CURRENT_USER.realRole.toLowerCase() === 'admin');
+            if (!body.classList.contains('is-admin') && !isAdmin) {
                 container.querySelectorAll('.admin-only').forEach(el => el.remove());
             }
 
@@ -563,8 +554,10 @@
             if (body.classList.contains('is-op') || role ==='op') {
                 container.querySelectorAll('.sales-only, .acc-only').forEach(el => el.remove());
             }
-            if (body.classList.contains('is-acc')) {
-                container.querySelectorAll('.sales-only').forEach(el => el.remove()); // Acc xem được Op, chỉ xóa Sale               
+            if (body.classList.contains('is-acc') || CURRENT_USER.role === 'acc_thenice') {
+                container.querySelectorAll('.sales-only').forEach(el => el.remove());
+                container.querySelectorAll('[data-bs-target="#tab-form"]').forEach(el => el.remove()); // Ẩn tab Dashboard chung       
+                document.querySelector('erp-main-footer')?.remove(); // Ẩn footer chung
             }
         }
     };

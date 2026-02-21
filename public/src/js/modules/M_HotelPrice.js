@@ -238,7 +238,23 @@ class HotelMatrixPrice extends HTMLElement {
     // Render bảng chính
     render() {
         if (!this._schema) return;
-        const { info, periods, packages, rooms } = this._schema;
+        const { info, packages, rooms } = this._schema;
+        
+        // ─────────────────────────────────────────────────────────────
+        // Optimize period sorting order
+        // Display order: Thấp Điểm → Mùa Thường → Cao Điểm → Giá năm
+        // ─────────────────────────────────────────────────────────────
+        const periodOrder = ['Thấp Điểm', 'Mùa Thường', 'Cao Điểm', 'Giá năm'];
+        const periods = [...this._schema.periods].sort((a, b) => {
+            const indexA = periodOrder.indexOf(a.name);
+            const indexB = periodOrder.indexOf(b.name);
+            
+            // Periods in order get priority; others sorted alphabetically at end
+            const orderA = indexA >= 0 ? indexA : periodOrder.length + a.name.localeCompare(b.name);
+            const orderB = indexB >= 0 ? indexB : periodOrder.length + b.name.localeCompare(a.name);
+            
+            return orderA - orderB;
+        });
 
         const styles = `
         <style>
@@ -251,6 +267,7 @@ class HotelMatrixPrice extends HTMLElement {
                 font-family: system-ui, -apple-system, sans-serif;
                 --border-color: #dee2e6; 
                 --header-bg: var(--tbl-head-bg, #f8f9fa); 
+                --sticky-col-width: 120px;
             }
 
             /* Meta Info: Không co giãn */
@@ -269,16 +286,78 @@ class HotelMatrixPrice extends HTMLElement {
                 position: relative; 
             }
             
-            table { border-collapse: collapse; width: fit-content; min-width: 1200px; font-size: 0.95rem; justify-self: center; }
-            th, td { border: 1px solid var(--border-color); padding: 8px; text-align: center; }
+            table { 
+                border-collapse: collapse; 
+                width: fit-content; 
+                min-width: 1200px; 
+                font-size: 0.95rem; 
+                justify-self: center;
+                table-layout: auto;
+            }
+            
+            th, td { 
+                border: 1px solid var(--border-color); 
+                padding: 8px; 
+                text-align: center;
+                box-sizing: border-box;
+            }
             
             /* Sticky Headers vẫn giữ nguyên để trượt mượt mà */
-            thead th { position: sticky; top: 0; background: var(--tbl-head-bg, #f8f9fa); z-index: 10; }
-            thead tr:nth-child(2) th { top: 37px; background: var(--header-bg, #e9ecef); } 
-            tbody th.sticky-col { position: sticky; left: 0; background: #fff; z-index: 5; text-align: center; }
+            thead th { 
+                position: sticky; 
+                top: 0; 
+                background: var(--tbl-head-bg, #f8f9fa); 
+                z-index: 10;
+                min-width: 80px;
+                white-space: nowrap;
+            }
             
-            input.price-input { width: fit-content; min-width: 80px; text-align: right; background: var(--tbl-row-bg, #fff); color: var(--text-color, #000);}
-            .room-header { background-color: var(--tbl-row-bg, #e2e3e5); text-align: center; font-weight: bold; padding-left: 10px; }
+            thead tr:nth-child(2) th { 
+                top: 37px; 
+                background: var(--header-bg, #e9ecef); 
+            } 
+            
+            /* Sticky Column (Loại phòng) - FIX responsive */
+            tbody th.sticky-col { 
+                position: sticky; 
+                left: 0; 
+                background: #fff; 
+                z-index: 5; 
+                text-align: center;
+                min-width: var(--sticky-col-width);
+                width: var(--sticky-col-width);
+                flex-shrink: 0;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            
+            /* Đảm bảo header cột đầu tiên cũng sticky */
+            thead th:first-child {
+                position: sticky;
+                left: 0;
+                z-index: 11;
+                min-width: var(--sticky-col-width);
+                width: var(--sticky-col-width);
+                flex-shrink: 0;
+            }
+            
+            input.price-input { 
+                width: 100%;
+                min-width: 70px;
+                text-align: right; 
+                background: var(--tbl-row-bg, #fff); 
+                color: var(--text-color, #000);
+                box-sizing: border-box;
+                padding: 4px;
+            }
+            
+            .room-header { 
+                background-color: var(--tbl-row-bg, #e2e3e5); 
+                text-align: center; 
+                font-weight: bold; 
+                padding-left: 10px;
+            }
         </style>
         `;
 
@@ -333,13 +412,94 @@ const DB_PATHS = {
 };
 
 export class HotelPriceController {
+    // =========================================================================
+    // INTERNAL VARIABLES (Singleton Instance & Cache Management)
+    // =========================================================================
+    static _instance = null;
+    static _cacheData = {
+        masterData: null,
+        suppliers: null,
+        periods: null,
+        packages: null,
+        priceTypes: null,
+        hotels: null,
+        priceSchedules: {} // Map {docId: data}
+    };
     
     constructor(containerId) {
         this.container = document.getElementById(containerId);
         if (!this.container) throw new Error(`Không tìm thấy container: #${containerId}`);
         
         this.masterData = { periods: [], packages: [], priceTypes: [] };
-        this.initLayout();
+        
+        // ─────────────────────────────────────────────────────────────
+        // Store event handler references for cleanup (prevent duplicate)
+        // ─────────────────────────────────────────────────────────────
+        this._eventHandlers = {
+            onSupplierChange: null,
+            onHotelChange: null,
+            onBtnViewClick: null,
+            onBtnReloadClick: null,
+            onBtnSaveClick: null
+        };
+    }
+
+    /**
+     * Initialize HotelPriceController instance (Singleton Pattern with Force Option)
+     * @param {string} containerId - Container element ID
+     * @param {boolean} isForce - Force create new instance (default: false)
+     * @returns {HotelPriceController} - Instance of controller
+     * 
+     * LOGIC:
+     * - Nếu instance đã tồn tại && !isForce -> reuse instance cũ
+     * - Nếu chưa có || isForce=true -> tạo instance mới
+     * - LUÔN gọi initLayout() mỗi lần (để khôi phục DOM)
+     * 
+     * Điều này đảm bảo modal HTML được tạo lại khi modal đóng/mở
+     */
+    static init(containerId, isForce = false) {
+        let instance;
+        
+        // ─────────────────────────────────────────────────────────────
+        // STEP 1: Determine instance (reuse old or create new)
+        // ─────────────────────────────────────────────────────────────
+        if (!isForce && HotelPriceController._instance) {
+            // Reuse existing instance
+            instance = HotelPriceController._instance;
+        } else {
+            // Create new instance
+            instance = new HotelPriceController(containerId);
+            HotelPriceController._instance = instance;
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // STEP 2: ALWAYS reinitialize layout (restore DOM)
+        // ─────────────────────────────────────────────────────────────
+        instance.initLayout();
+        
+        return instance;
+    }
+
+    /**
+     * Clear singleton instance (Useful for testing or cleanup)
+     */
+    static clearInstance() {
+        HotelPriceController._instance = null;
+    }
+
+    /**
+     * Clear all cached data
+     */
+    static clearCache() {
+        HotelPriceController._cacheData = {
+            masterData: null,
+            suppliers: null,
+            periods: null,
+            packages: null,
+            priceTypes: null,
+            hotels: null,
+            priceSchedules: {}
+        };
     }
 
     initLayout() {
@@ -389,7 +549,7 @@ export class HotelPriceController {
                         <div>
                             <label class="form-label small mb-1 fw-bold">Năm</label>
                             <select id="pc-year" class="form-select form-select-sm" style="width:90px">
-                                <option value="2025">2025</option><option value="2026">2026</option>
+                                <option value="2026">2026</option><option value="2027">2027</option>
                             </select>
                         </div>
                         
@@ -397,8 +557,12 @@ export class HotelPriceController {
                             <i class="bi bi-gear"></i> Cấu hình hiển thị
                         </button>
                         
-                        <button id="pc-btn-load" class="btn btn-primary btn-sm" disabled>
-                            <i class="bi bi-download"></i> Tải dữ liệu
+                        <button id="pc-btn-view" class="btn btn-primary btn-sm" disabled>
+                            <i class="bi bi-eye"></i> Xem Bảng Giá
+                        </button>
+                        
+                        <button id="pc-btn-reload" class="btn btn-warning btn-sm" disabled>
+                            <i class="bi bi-arrow-clockwise"></i> Reload Data
                         </button>
                     </div>
 
@@ -440,10 +604,16 @@ export class HotelPriceController {
         this.chkPackages = this.container.querySelector('#chk-group-packages');
         this.chkTypes = this.container.querySelector('#chk-group-types');
 
-        this.btnLoad = this.container.querySelector('#pc-btn-load');
+        this.btnView = this.container.querySelector('#pc-btn-view');
+        this.btnReload = this.container.querySelector('#pc-btn-reload');
         this.btnSave = this.container.querySelector('#pc-btn-save');
         this.loadingOverlay = this.container.querySelector('#pc-loading');
 
+        // ─────────────────────────────────────────────────────────────
+        // IMPORTANT: Remove old event listeners before attaching new ones
+        // This prevents duplicate listeners when initLayout is called again
+        // ─────────────────────────────────────────────────────────────
+        this.detachEvents();
         this.attachEvents();
         this.initMasterData();
     }
@@ -451,17 +621,51 @@ export class HotelPriceController {
     async initMasterData() {
         this.toggleLoading(true);
         try {
-            const [suppliers, periods, packages, types] = await Promise.all([
-                this._getCollectionData(DB_PATHS.SUPPLIERS),
-                this._getCollectionData(DB_PATHS.PERIODS),
-                this._getCollectionData(DB_PATHS.PACKAGES),
-                this._getCollectionData(DB_PATHS.TYPES)
-            ]);
+            // ─────────────────────────────────────────────────────────────
+            // STEP 1: Check cache first before fetching from Firestore
+            // ─────────────────────────────────────────────────────────────
+            const cache = HotelPriceController._cacheData;
+            let suppliers, periods, packages, types;
 
-            this.masterData.periods = periods.sort((a,b) => a.from - b.from);
+            // Check and use cached data or fetch from firebase
+            if (cache.suppliers !== null) {
+                suppliers = cache.suppliers;
+            } else {
+                suppliers = await this._getCollectionData(DB_PATHS.SUPPLIERS);
+                cache.suppliers = suppliers;
+            }
+
+            if (cache.periods !== null) {
+                periods = cache.periods;
+            } else {
+                periods = await this._getCollectionData(DB_PATHS.PERIODS);
+                cache.periods = periods;
+            }
+
+            if (cache.packages !== null) {
+                packages = cache.packages;
+            } else {
+                packages = await this._getCollectionData(DB_PATHS.PACKAGES);
+                cache.packages = packages;
+            }
+
+            if (cache.priceTypes !== null) {
+                types = cache.priceTypes;
+            } else {
+                types = await this._getCollectionData(DB_PATHS.TYPES);
+                cache.priceTypes = types;
+            }
+
+            // ─────────────────────────────────────────────────────────────
+            // STEP 2: Update local masterData
+            // ─────────────────────────────────────────────────────────────
+            this.masterData.periods = periods.sort((a, b) => a.from - b.from);
             this.masterData.packages = packages;
             this.masterData.priceTypes = types;
 
+            // ─────────────────────────────────────────────────────────────
+            // STEP 3: Render UI with loaded data
+            // ─────────────────────────────────────────────────────────────
             this.renderOptions(this.selSupplier, suppliers, 'id', 'name', 'Chọn Nhà cung cấp');
 
             // Render Checkboxes
@@ -469,9 +673,10 @@ export class HotelPriceController {
             this.renderCheckboxGroup(this.chkPackages, packages, 'chk-package');
             this.renderCheckboxGroup(this.chkTypes, types, 'chk-type');
 
-            // --- FIX 1: Set mặc định (Default Filters) NGAY LÚC KHỞI TẠO ---
-            // Chỉ set 1 lần duy nhất khi vào trang, sau đó user tích gì thì giữ nguyên
-            this._applyFilters(null); 
+            // ─────────────────────────────────────────────────────────────
+            // STEP 4: Save masterData to cache for future use
+            // ─────────────────────────────────────────────────────────────
+            cache.masterData = this.masterData;
 
         } catch (error) {
             console.error("Lỗi Init:", error);
@@ -480,28 +685,121 @@ export class HotelPriceController {
         }
     }
 
+    // --- EVENT MANAGEMENT ---
+
+    /**
+     * Remove all event listeners to prevent duplicate listeners
+     * Called before attachEvents() when reinitializing layout
+     */
+    detachEvents() {
+        if (!this._eventHandlers) return;
+        
+        if (this._eventHandlers.onSupplierChange && this.selSupplier) {
+            this.selSupplier.removeEventListener('change', this._eventHandlers.onSupplierChange);
+        }
+        
+        if (this._eventHandlers.onHotelChange && this.selHotel) {
+            this.selHotel.removeEventListener('change', this._eventHandlers.onHotelChange);
+        }
+        
+        if (this._eventHandlers.onBtnViewClick && this.btnView) {
+            this.btnView.removeEventListener('click', this._eventHandlers.onBtnViewClick);
+        }
+        
+        if (this._eventHandlers.onBtnReloadClick && this.btnReload) {
+            this.btnReload.removeEventListener('click', this._eventHandlers.onBtnReloadClick);
+        }
+        
+        if (this._eventHandlers.onBtnSaveClick && this.btnSave) {
+            this.btnSave.removeEventListener('click', this._eventHandlers.onBtnSaveClick);
+        }
+
+        // Reset all handlers to null
+        this._eventHandlers = {
+            onSupplierChange: null,
+            onHotelChange: null,
+            onBtnViewClick: null,
+            onBtnReloadClick: null,
+            onBtnSaveClick: null
+        };
+    }
+
+    /**
+     * Attach all event listeners
+     * Store references to handlers for cleanup later
+     */
     attachEvents() {
-        this.selSupplier.addEventListener('change', async () => {
+        // ─────────────────────────────────────────────────────────────
+        // SUPPLIER CHANGE EVENT
+        // ─────────────────────────────────────────────────────────────
+        this._eventHandlers.onSupplierChange = async () => {
             const supplierId = this.selSupplier.value;
             this.selHotel.innerHTML = '<option value="">-- Đang tải... --</option>';
             this.selHotel.disabled = true;
-            this.btnLoad.disabled = true;
+            this.btnView.disabled = true;
+            this.btnReload.disabled = true;
 
             if (supplierId) {
-                const lists = APP_DATA.lists;
-                // Logic thực tế bạn nên query where supplierId
-                const hotels = await this._getCollectionData(DB_PATHS.HOTELS);
-                
+                // ─────────────────────────────────────────────────────────────
+                // Check cache first before fetching hotels data
+                // ─────────────────────────────────────────────────────────────
+                const cache = HotelPriceController._cacheData;
+                let hotels;
+
+                if (cache.hotels !== null) {
+                    hotels = cache.hotels;
+                } else {
+                    hotels = await this._getCollectionData(DB_PATHS.HOTELS);
+                    cache.hotels = hotels;
+                }
+
                 this.renderOptions(this.selHotel, hotels, 'id', 'name', 'Chọn Khách sạn');
                 this.selHotel.disabled = false;
             } else {
                 this.selHotel.innerHTML = '<option value="">-- Chọn Khách sạn --</option>';
             }
-        });
+        };
 
-        this.selHotel.addEventListener('change', () => { this.btnLoad.disabled = !this.selHotel.value; });
-        this.btnLoad.addEventListener('click', async () => await this.loadMatrixData());
-        this.btnSave.addEventListener('click', async () => await this.saveMatrixData());
+        this.selSupplier.addEventListener('change', this._eventHandlers.onSupplierChange);
+
+        // ─────────────────────────────────────────────────────────────
+        // HOTEL CHANGE EVENT
+        // ─────────────────────────────────────────────────────────────
+        this._eventHandlers.onHotelChange = () => {
+            const isHotelSelected = !!this.selHotel.value;
+            this.btnView.disabled = !isHotelSelected;
+            this.btnReload.disabled = !isHotelSelected;
+        };
+
+        this.selHotel.addEventListener('change', this._eventHandlers.onHotelChange);
+
+        // ─────────────────────────────────────────────────────────────
+        // VIEW DATA BUTTON CLICK (Uses Cache)
+        // ─────────────────────────────────────────────────────────────
+        this._eventHandlers.onBtnViewClick = async () => await this.loadMatrixData();
+        this.btnView.addEventListener('click', this._eventHandlers.onBtnViewClick);
+
+        // ─────────────────────────────────────────────────────────────
+        // RELOAD DATA BUTTON CLICK (Forces Fresh Fetch)
+        // ─────────────────────────────────────────────────────────────
+        this._eventHandlers.onBtnReloadClick = async () => {
+            this._cacheData = {
+                masterData: null,
+                periods: null,
+                packages: null,
+                priceTypes: null,
+                priceSchedules: {}
+            };
+            this.masterData = { periods: [], packages: [], priceTypes: [] };
+            await this.loadMatrixData();
+        };
+        this.btnReload.addEventListener('click', this._eventHandlers.onBtnReloadClick);
+
+        // ─────────────────────────────────────────────────────────────
+        // SAVE DATA BUTTON CLICK
+        // ─────────────────────────────────────────────────────────────
+        this._eventHandlers.onBtnSaveClick = async () => await this.saveMatrixData();
+        this.btnSave.addEventListener('click', this._eventHandlers.onBtnSaveClick);
     }
 
     // --- LOGIC CHECKBOX FILTER ---
@@ -514,36 +812,6 @@ export class HotelPriceController {
                 <label class="form-check-label" for="${className}-${item.id}">${item.name}</label>
             </div>
         `).join('');
-    }
-
-    // Set trạng thái checked cho checkbox
-    // IDs: Mảng id cần check. Nếu null -> Check Default
-    // type: 'period' | 'package' | 'rateType'
-    _applyFilters(savedConfig = null) {
-        // Helper check
-        const setCheck = (container, className, conditionFn) => {
-            const inputs = container.querySelectorAll(`.${className}`);
-            inputs.forEach((input, index) => {
-                input.checked = conditionFn(input.value, index);
-            });
-        };
-
-        if (savedConfig) {
-            // CASE 1: LOAD CŨ -> Dùng config đã lưu
-            setCheck(this.chkPeriods, 'chk-period', (val) => savedConfig.periodIds.includes(val));
-            setCheck(this.chkPackages, 'chk-package', (val) => savedConfig.packageIds.includes(val));
-            setCheck(this.chkTypes, 'chk-type', (val) => savedConfig.rateTypeIds.includes(val));
-        } else {
-            // CASE 2: LOAD MỚI -> Dùng Default Rules
-            // Periods: check 'all_year' (Giả sử id là 'all_year' hoặc 'p_all')
-            setCheck(this.chkPeriods, 'chk-period', (val) => val === 'all_year' || val === 'p01'); // Fix logic ID của bạn ở đây
-
-            // Packages: check package đầu tiên hoặc id 'base'
-            setCheck(this.chkPackages, 'chk-package', (val, idx) => idx === 0 || val === 'base');
-
-            // Rate Types: check id 'base'
-            setCheck(this.chkTypes, 'chk-type', (val) => val === 'base' || val === 'bb'); // Fix logic ID
-        }
     }
 
     // Lấy danh sách ID đang được check để lọc Schema
@@ -562,54 +830,90 @@ export class HotelPriceController {
 
         if (!hotelId || !supplierId) return;
         
-        // --- FIX 3: Tự động ẩn Config Panel khi bấm Load ---
+        // ─────────────────────────────────────────────────────────────
+        // Auto hide config panel when clicking Load
+        // ─────────────────────────────────────────────────────────────
         const configPanel = document.getElementById('configPanel');
         if (configPanel && configPanel.classList.contains('show')) {
-            configPanel.classList.remove('show'); // Đóng panel
-            // (Optional) Nếu muốn đẹp hơn thì giả lập click vào nút toggle nếu bạn muốn update aria-expanded
+            configPanel.classList.remove('show');
         }
 
         this.toggleLoading(true);
         try {
-            // 1. Get Data Saved
+            // ─────────────────────────────────────────────────────────────
+            // STEP 1: Get Data from Cache or Firestore
+            // ─────────────────────────────────────────────────────────────
             const docId = `${supplierId}_${hotelId}_${year}`.toUpperCase();
-            const savedData = await this._getDocData(DB_PATHS.PRICE_SCHEDULES, docId);
-
-            // 2. Apply Filters (XỬ LÝ LOGIC FIX TẠI ĐÂY)
+            const cache = HotelPriceController._cacheData;
             
-            if (savedData && savedData.info && savedData.info.viewConfig) {
-                // TRƯỜNG HỢP CÓ DỮ LIỆU CŨ:
-                // Hỏi: Bạn muốn ưu tiên Config đã lưu hay Config user vừa tích chọn?
-                // Thông thường: Nếu load lại bảng cũ -> Nên hiển thị đúng như lúc lưu.
-                this._applyFilters(savedData.info.viewConfig);
-            } 
-            else {
-                // TRƯỜNG HỢP TẠO MỚI (New):
-                // --- FIX 2: TUYỆT ĐỐI KHÔNG GỌI this._applyFilters(null) Ở ĐÂY ---
-                // Lý do: Nếu gọi, nó sẽ reset hết checkbox user vừa mất công chọn về mặc định.
-                // Kệ user, user chọn gì thì dùng nấy.
+            let savedData = null;
+            if (cache.priceSchedules[docId]) {
+                savedData = cache.priceSchedules[docId];
+            } else {
+                savedData = await this._getDocData(DB_PATHS.PRICE_SCHEDULES, docId);
+                if (savedData) {
+                    cache.priceSchedules[docId] = savedData;
+                }
             }
 
-            // 3. Update Status UI
+            // ─────────────────────────────────────────────────────────────
+            // STEP 2: Determine filter IDs (from saved viewConfig or current checkboxes)
+            // Pure logic: use viewConfig if exists, else use user's current checkbox selections
+            // ─────────────────────────────────────────────────────────────
+            let activePeriodIds, activePackageIds, activeTypeIds;
+
+            if (savedData?.info?.viewConfig) {
+                // CASE A: Restore from saved viewConfig (existing price table)
+                activePeriodIds = savedData.info.viewConfig.periodIds || [];
+                activePackageIds = savedData.info.viewConfig.packageIds || [];
+                activeTypeIds = savedData.info.viewConfig.rateTypeIds || [];
+                console.log('[HotelPriceController] 💾 Sử dụng viewConfig từ bảng giá cũ');
+            } else {
+                // CASE B: Use current checkbox selections (new price table)
+                activePeriodIds = this._getCheckedIds(this.chkPeriods, 'chk-period');
+                activePackageIds = this._getCheckedIds(this.chkPackages, 'chk-package');
+                activeTypeIds = this._getCheckedIds(this.chkTypes, 'chk-type');
+                console.log('[HotelPriceController] 🔘 Sử dụng lựa chọn checkbox hiện tại');
+            }
+
+            // ─────────────────────────────────────────────────────────────
+            // STEP 3: Update Status UI
+            // ─────────────────────────────────────────────────────────────
             if (savedData && savedData.info && savedData.info.status) {
                 this.selStatus.value = savedData.info.status;
             } else {
-                this.selStatus.value = 'actived'; 
+                this.selStatus.value = 'actived';
             }
 
-            // 4. Get active IDs from Checkboxes (Lấy giá trị thực tế trên UI hiện tại)
-            const activePeriodIds = this._getCheckedIds(this.chkPeriods, 'chk-period');
-            const activePackageIds = this._getCheckedIds(this.chkPackages, 'chk-package');
-            const activeTypeIds = this._getCheckedIds(this.chkTypes, 'chk-type');
-
-            if (activePeriodIds.length === 0 || activePackageIds.length === 0 || activeTypeIds.length === 0) {
-                alert("Cảnh báo: Bộ lọc hiển thị đang rỗng. Bảng giá sẽ không hiển thị cột nào!");
-            }
-
-            // 5. Build Schema
+            // ─────────────────────────────────────────────────────────────
+            // STEP 5: Build Schema from matrix data
+            // ─────────────────────────────────────────────────────────────
             const roomsPath = `${DB_PATHS.HOTELS}/${hotelId}/rooms`;
-            const rooms = await this._getCollectionData(roomsPath);
+            let rooms = null;
 
+            // Check cache for rooms data
+            if (cache.hotels && cache.hotels.length > 0) {
+                const hotelData = cache.hotels.find(h => h.id === hotelId);
+                if (hotelData && hotelData._cachedRooms) {
+                    rooms = hotelData._cachedRooms;
+                }
+            }
+
+            // Fetch if not in cache
+            if (!rooms) {
+                rooms = await this._getCollectionData(roomsPath);
+                // Cache rooms in hotel data if available
+                if (cache.hotels) {
+                    const hotelData = cache.hotels.find(h => h.id === hotelId);
+                    if (hotelData) {
+                        hotelData._cachedRooms = rooms;
+                    }
+                }
+            }
+
+            // ─────────────────────────────────────────────────────────────
+            // Format rooms with filtered rate types based on matrix
+            // ─────────────────────────────────────────────────────────────
             const formattedRooms = rooms.map(room => ({
                 id: room.id,
                 name: room.name,
@@ -618,8 +922,11 @@ export class HotelPriceController {
                     .map(t => ({ id: t.id, name: t.name }))
             }));
 
+            // ─────────────────────────────────────────────────────────────
+            // STEP 6: Build complete schema and render
+            // ─────────────────────────────────────────────────────────────
             const schema = {
-                info: { 
+                info: {
                     supplierId, hotelId, year: parseInt(year),
                     validFrom: `01/01/${year}`, validTo: `31/12/${year}`,
                     status: this.selStatus.value,
@@ -636,6 +943,7 @@ export class HotelPriceController {
                 rooms: formattedRooms
             };
 
+            // Render UI component with schema and existing data (if any)
             this.uiComponent.setData(schema, savedData);
 
         } catch (error) {
@@ -646,42 +954,52 @@ export class HotelPriceController {
         }
     }
     async saveMatrixData() {
-        // 1. Cập nhật lại status và viewConfig mới nhất từ UI vào Component trước khi get data
-        // (Phòng trường hợp user thay đổi status/checkbox mà không bấm Load lại)
+        // ─────────────────────────────────────────────────────────────
+        // STEP 1: Update only status (NOT config/checkboxes)
+        // Keep existing viewConfig from schema - DO NOT override
+        // ─────────────────────────────────────────────────────────────
         const currentStatus = this.selStatus.value;
-        const currentConfig = {
-            periodIds: this._getCheckedIds(this.chkPeriods, 'chk-period'),
-            packageIds: this._getCheckedIds(this.chkPackages, 'chk-package'),
-            rateTypeIds: this._getCheckedIds(this.chkTypes, 'chk-type')
-        };
 
-        // Hack nhẹ: Update trực tiếp vào _schema của component để khi getData nó lấy đúng cái mới nhất
+        // Update ONLY status in component schema before getData
         if (this.uiComponent._schema) {
             if (!this.uiComponent._schema.info) this.uiComponent._schema.info = {};
             this.uiComponent._schema.info.status = currentStatus;
-            this.uiComponent._schema.viewConfig = currentConfig;
-            console.log("Cập nhật schema trước khi lưu:", this.uiComponent._schema);
+            // ⚠️ DO NOT update viewConfig here - keep original filters
         }
 
         const dataToSave = this.uiComponent.getData();
         
         if (!dataToSave) {
-            // Cho phép lưu kể cả khi giá trống? Tùy nghiệp vụ. Ở đây tôi chặn.
-             if(!confirm("Bảng giá đang trống. Bạn có chắc muốn lưu cấu hình rỗng không?")) return;
+            if (!confirm("Bảng giá đang trống. Bạn có chắc muốn lưu không?")) return;
         }
 
         this.toggleLoading(true);
         try {
+            // ─────────────────────────────────────────────────────────────
+            // STEP 2: Save to Firestore
+            // ─────────────────────────────────────────────────────────────
             const docId = dataToSave._docId;
             const payload = { ...dataToSave };
             delete payload._docId;
+            
             await firebase.firestore().collection(DB_PATHS.PRICE_SCHEDULES)
                             .doc(docId)
                             .set(payload, { merge: true });
-            alert(`Đã lưu thành công (Trạng thái: ${currentStatus.toUpperCase()})`);
+
+            // ─────────────────────────────────────────────────────────────
+            // STEP 3: Update cache data after successful save
+            // ─────────────────────────────────────────────────────────────
+            const cache = HotelPriceController._cacheData;
+            cache.priceSchedules[docId] = {
+                ...payload,
+                _docId: docId
+            };
+
+            logA(`Đã lưu thành công (Trạng thái: ${currentStatus.toUpperCase()})`);
+
         } catch (error) {
             console.error("Lỗi lưu DB:", error);
-            alert("Lỗi hệ thống khi lưu: " + error.message);
+            logError("Lỗi hệ thống khi lưu: ", error.message);
         } finally {
             this.toggleLoading(false);
         }

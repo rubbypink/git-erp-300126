@@ -1,6 +1,8 @@
 
 
-import TableResizeManager from "./libs/table-resize-manager.js";
+import { DraggableSetup, TableResizeManager } from './libs/ui_helper.js';
+import {createFormBySchema} from "./db_schema_Ui.js";
+import A from "./app.js";
 
 const UI_RENDERER = {
 	renderedTemplates: {}, 
@@ -73,7 +75,6 @@ const UI_RENDERER = {
 
 		// 2. Guard Clause: Kiểm tra dựa trên FINAL PATH
 		if (this.renderedTemplates[finalSourcePath] && !force && mode === 'replace') {
-			console.log(`⚡ Skipped render: ${finalSourcePath} (Already exists)`);
 			return true; // Trả về true giả lập là đã xong
 		}
 
@@ -118,7 +119,6 @@ const UI_RENDERER = {
 		else {
 			const templateEl = document.getElementById(source); // ID thì dùng source gốc
 			if (!templateEl) {
-				console.error(`❌ Không tìm thấy Template ID: ${source}`);
 				return false;
 			}
 			contentFragment = templateEl.content.cloneNode(true);
@@ -163,11 +163,8 @@ const UI_RENDERER = {
 				container.appendChild(contentFragment);
 			}
 		}
-
 		// 5. Đánh dấu Flag (Sử dụng KEY ĐÃ CHUẨN HÓA)
-		this.renderedTemplates[finalSourcePath] = true;
-		console.log(`✅ Rendered: ${finalSourcePath} -> #${targetId}`);
-		
+		this.renderedTemplates[finalSourcePath] = true;		
 		return true;
 	},
 	// Hàm được gọi khi bấm chuyển Tab (Hoặc Init)
@@ -286,6 +283,13 @@ const UI_RENDERER = {
 			logError("Lỗi trong renderModal: ", e);
 		}
 	},
+	renderForm: async function(collection, formId) {
+		const html = await createFormBySchema(null, formId);
+		A.Modal.render(html, `Form Admin`); // Có thể tùy chỉnh title theo collection hoặc formId nếu muốn
+		A.Modal.show();
+		A.Modal.setFooter(false);
+		
+	},	
 	renderBtn(label, action = '', color = 'primary', icon = '', isSmall = true) {
 		const sizeClass = isSmall ? 'btn-sm' : '';
 		const iconHtml = icon ? `<i class="${icon}" aria-hidden="true"></i> ` : '';

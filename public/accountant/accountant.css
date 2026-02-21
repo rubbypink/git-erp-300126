@@ -16,6 +16,7 @@
 .acc-wrapper {
     background-color: var(--acc-bg);
     min-height: calc(100vh - var(--acc-action-bar-height));
+    padding: 1rem;
     padding-bottom: 80px !important; /* Space for Action Bar */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
@@ -24,7 +25,7 @@
 .acc-card {
     background: var(--acc-card-bg);
     border-radius: var(--acc-border-radius);
-    padding: 15px;
+    padding: 1rem;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     transition: transform 0.2s;
 }
@@ -37,7 +38,7 @@
 .acc-fund-list {
     max-height: 120px;
     overflow-y: auto;
-    padding-right: 5px;
+    padding: 0.25rem;
 }
 
 /* Scrollbar mỏng cho list quỹ */
@@ -193,22 +194,58 @@ select > option {
     width: fit-content;
 }
 
-/* 6. RESPONSIVE TWEAKS */
-@media (min-width: 992px) {
-    /* Desktop adjustments */
+/* 6. MOBILE OPTIMIZATIONS */
+@media (max-width: 576px) {
+    /* = iPhone 11-12 Standard = */
     .acc-wrapper {
-        padding-bottom: 20px !important;
-        padding-top: 20px;
+        padding: 0.5rem;
+        padding-bottom: calc(var(--acc-action-bar-height) + 20px) !important;
     }
     
-    .acc-action-bar {
-        position: sticky;
-        top: 10px;
-        bottom: auto;
-        border-radius: 12px;
-        border: none;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-        margin: 0 15px 20px 15px;
-        width: auto;
+    /* Reduce padding on mobile */
+    .acc-card {
+        padding: 1rem;
+    }
+    
+    /* Adjust table font size */
+    #acc-transaction-table th,
+    #acc-transaction-table td {
+        padding: 8px 4px;
+        font-size: 0.75rem;
+    }
+    
+    /* Form inputs full width */
+    .modal-body .form-control,
+    .modal-body .form-select,
+    .modal-body input {
+        font-size: 1rem; /* Prevent iOS zoom on input focus */
+        padding: 0.5rem;
     }
 }
+
+@media (max-width: 768px) {
+    /* = iPad Mini / iPhone Plus = */
+    
+    /* Modal form adjustments */
+    #acc-modal-form .row {
+        margin: -3px !important; /* Reduce Bootstrap gap */
+    }
+    
+    #acc-modal-form .col-6 {
+        padding: 3px !important; /* Tighter padding */
+    }
+    
+    /* Stack fields vertically on small mobile */
+    @media (max-width: 500px) {
+        #acc-modal-form [class*="col-"] {
+            flex: 0 0 100% !important;
+            max-width: 100% !important;
+        }
+        
+        #acc-modal-form .row.g-2 {
+            margin-right: -0.5rem !important;
+            margin-left: -0.5rem !important;
+        }
+    }
+}
+

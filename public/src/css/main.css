@@ -149,8 +149,6 @@
     /* ─── SCROLLABLE CONTAINERS: Allow scroll gestures ─── */
     .nav-tabs {
       border-bottom: 1px solid var(--border-color);
-      overflow: auto;  /* Shorthand for horizontal/vertical scroll */
-      -webkit-overflow-scrolling: touch;
     }
     .nav-tabs .nav-link {
         background-color: var(--tab-inactive-bg) !important;
@@ -194,10 +192,10 @@
     .dropdown-menu {
         background-color: var(--surface-color) !important;
         color: var(--text-color) !important;
-        border: 0.0625rem solid var(--border-color) !important;
+        border: 0.0625rem solid var(--border-color);
         border-radius: 0.375rem !important;
-        padding: 0.375rem 0 !important;
-        min-width: 10rem !important;
+        padding: 0.375rem 0 ;
+        min-width: 10rem ;
         max-width: 20rem !important;
         box-shadow: 0 0.375rem 0.75rem rgba(0, 0, 0, 0.15) !important;
         transition: all 0.2s ease;
@@ -205,8 +203,8 @@
 
     .dropdown-item {
         color: var(--text-color) !important;
-        padding: 0.375rem 0.75rem !important;
-        font-size: 0.8125rem !important;
+        padding: 0.375rem 0.75rem;
+        font-size: 0.8125rem ;
         font-weight: 500 !important;
         border-radius: 0.25rem !important;
         margin: 0 0.25rem !important;
@@ -807,6 +805,99 @@
         min-width: 25rem;
     }
 
+    .dragging {
+      opacity: 0.5;
+    }
+    .is-dragging { 
+      margin: 0 !important;           /* Loại bỏ auto margin để di chuyển tự do */
+      max-width: none;    
+      transition: none !important;    
+      touch-action: none;  /* Quan trọng cho Mobile: Ngăn trình duyệt cuộn trang khi đang kéo modal */    transition: none !important; 
+    }
+    /* Styling cho cục nắm kéo kích thước */
+    .erp-resize-handle {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 15px;
+        height: 15px;
+        cursor: nwse-resize; /* Trỏ chuột hình mũi tên chéo */
+        background: linear-gradient(135deg, transparent 50%, #6c757d 50%); /* Tạo hình tam giác nhỏ ở góc */
+        z-index: 10;
+    }
+
+    /* Tắt transition khi đang kéo để tránh giật lag */
+    .is-resizing {
+        transition: none !important;
+    }
+    /* TỐI ƯU CHO RESIZABLE MODAL */
+
+    /* 1. Đảm bảo vỏ ngoài là một cột Flex */
+    .modal-content {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    /* 2. Ép phần body tự động giãn nở (flex-grow: 1) lấp đầy khoảng trống */
+    .modal-content > .modal-body {
+        flex: 1 1 auto !important; 
+        overflow-y: auto; /* Tự động hiện thanh cuộn nếu bạn thu nhỏ quá */
+        min-height: 0;    /* Fix lỗi flexbox trên một số trình duyệt Safari/cũ */
+    }
+
+    /* 3. (Tùy chọn) Nếu bảng của bạn nằm trong body, ép nó cao 100% */
+    .modal-body .table-responsive {
+        height: 100%;
+    }
+    /* ERP TASKBAR (Chứa các cửa sổ thu nhỏ) */
+    .erp-taskbar {
+        position: fixed;
+        bottom: 15px;
+        left: 15px;
+        display: flex;
+        gap: 10px;
+        z-index: 9999; /* Luôn nổi trên cùng */
+        pointer-events: none; /* Xuyên qua phần rỗng */
+    }
+
+    /* Các nút thu nhỏ trên Taskbar */
+    .erp-task-item {
+        pointer-events: auto; /* Bắt sự kiện click */
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        padding: 8px 15px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    .erp-task-item:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+
+    @keyframes popIn {
+        0% { transform: scale(0); opacity: 0; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+
+
+
+    /* Thanh cuộn đẹp cho panel */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f1f1; 
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #c1c1c1; 
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8; 
+    }
+
     @keyframes iconSpin {
         from { transform: rotate(-180deg) scale(0.5); }
         to { transform: rotate(0) scale(1); }
@@ -831,7 +922,8 @@
     }
     
     .animate__bounceIn { animation-name: bounceIn; animation-duration: 1s; }
-
+    
+    
     /* CSS Riêng cho Admin Dashboard */
     /* Reset CSS cho vùng chứa này để tránh xung đột với style chung */
     #tab-admin-dashboard {
@@ -927,32 +1019,14 @@
     MOBILE TOUCH FIX - REVISED BY 9 TRIP ERP ASSISTANT
     ========================================================================= */
  
- @media screen and (max-width: 768px) {
-
-  
-  /* 1. KHÔI PHỤC QUYỀN CUỘN CHO BODY */
-  /*  html, body {
-  /*  overflow: auto !important; /* Cho phép cuộn tự nhiên trên Mobile */
-  /*height: auto !important;   /* Tránh việc ép cứng 100% gây mất nội dung */
-  /*touch-action: auto !important; 
-  /*-webkit-overflow-scrolling: touch;
-  /*}
-
-  /* 2. ĐIỀU CHỈNH APP-CONTAINER */
-  /*.app-container {
-  /*  display: block !important; /* Chuyển từ Flex/Grid sang Block để cuộn mượt hơn */
-  /*  overflow: visible !important;
-  /*  height: auto !important;
-  /* }
-
-  /* --- FIXED HEADER & SCROLLABLE CONTENT --- */
-
+ @media screen and (max-width: 991px) {
   /* 1. Đảm bảo container chiếm trọn màn hình và không cuộn body */
   html, body {
       overflow: hidden !important;
       height: auto !important;
       touch-action: auto !important; 
-      -webkit-overflow-scrolling: touch;      
+      -webkit-overflow-scrolling: touch;
+      font-size: smaller !important;      
   }
   
   .app-container {
@@ -966,9 +1040,6 @@
   /* 2. Cố định Header */
   .app-header {
       flex: 0 0 auto; /* Không cho phép co dãn */
-      /* position: sticky;
-      top: 0; */
-      z-index: 1000;
       background: var(--header-bg);
       box-shadow: var(--shadow-md);
       max-height: 8rem; /* Đảm bảo header không quá lớn chiếm chỗ content */
@@ -976,21 +1047,19 @@
   }
   
   /* 3. Vùng nội dung tự cuộn */
-  .app-content {
+  .app-content { 
       flex: 1 1 auto; /* Chiếm toàn bộ phần còn lại */
       overflow-y: auto !important;
       -webkit-overflow-scrolling: touch;
       display: flex;
       flex-direction: column;
-      max-height: 85vh;
+      max-height: 88vh;
   }  
 
   /* 5. FIX NAV-CONTAINER NGANG */
   .nav-container {
     display: flex !important;
     flex-wrap: nowrap !important;
-    overflow-x: auto !important; /* Cuộn ngang menu */
-    overflow-y: hidden !important;
     -webkit-overflow-scrolling: touch;
     white-space: nowrap;
     padding: 0.2rem !important;
@@ -1026,33 +1095,64 @@
 
   /* 3. FIX LỖI MODAL CHẶN THAO TÁC */
   .modal-fit-content .modal-dialog {
-    /* Thay vì absolute gây khó cuộn, dùng margin cho ổn định */
-    position: relative !important;
-    top: auto !important;
-    left: auto !important;
-    transform: none !important;
-    margin: 2rem 1.5rem !important;
-    width: 90vw !important;
-    max-width: 90vw !important;
+    /* Modal hiển thị ở giữa màn hình */
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+    
+    /* Responsive width */
+    width: 95vw !important;
+    max-width: 95vw !important;
+    
+    /* Safe area cho iPhone notch/Dynamic Island */
+    max-height: calc(100vh - 40px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left) !important;
+  }
+  
+  /* Modal body scrollable */
+  .modal-fit-content .modal-body {
+    max-height: calc(100vh - 200px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 0.5rem;
+  }
+  
+  /* Tablet: Tăng width */
+  @media (min-width: 768px) {
+    .modal-fit-content .modal-dialog {
+      width: 85vw !important;
+      max-width: 85vw !important;
+    }
+  }
+  
+  /* Desktop: Dùng max-width cố định */
+  @media (min-width: 992px) {
+    .modal-fit-content .modal-dialog {
+      width: auto !important;
+      height: auto !important;
+      max-height: 85vh !important;
+    }
   }
 
   /* 4. ĐẢM BẢO CÁC VÙNG NHẬP LIỆU LUÔN TƯƠNG TÁC ĐƯỢC */
   input, select, textarea, button, .btn {
     pointer-events: auto !important;
     touch-action: manipulation !important; /* Cho phép zoom nhấp nhưng không lag */
-    width: fit-content !important;
-    padding: 0.15rem !important;
-    margin: 0.15rem !important;
+    width: fit-content;
+    padding: 0.15rem;
+    margin: 0.15rem;
   }
     
   /* --- TỐI ƯU TOÀN BỘ BUTTON TRONG FOOTER (ANY DEPTH) --- */
   .footer-bar * .btn {
-      /* Ép các nút về cùng một tiêu chuẩn kích thước */
+
       flex: 0 0 auto !important; 
       min-width: 3rem !important; /* ~80px */
       height: 2.25rem !important;  /* ~44px - Chuẩn Touch Target của Apple */
       
-      /* Font và canh lề */
+
       font-size: 0.7rem !important;
       padding: 0 0.45rem !important;
       display: inline-flex !important;
@@ -1060,7 +1160,7 @@
       justify-content: center;
       white-space: nowrap !important; /* Không cho chữ xuống dòng trong nút */
       
-      /* Layout */
+
       margin: 0.1rem !important; /* Tạo khoảng cách an toàn xung quanh */
       border-radius: 0.5rem !important;
       vertical-align: middle;
@@ -1089,7 +1189,20 @@
     display: none !important;
   }
 
-    
+  #toast-container {
+    position: fixed !important;
+    bottom: auto !important;
+    top: 50% !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translate(-50%, -50%) !important;
+    max-width: 85vw !important;
+    max-height: 60vh !important;
+    padding: 1rem !important;
+  }
+  #toast-container .toast {
+    width: 100%;
+  }  
 
 
 

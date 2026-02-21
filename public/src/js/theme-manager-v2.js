@@ -97,11 +97,7 @@ const THEME_CONFIG = {
     fontFamily: "'Roboto', sans-serif",
     spacingScale: 1,
     classOverrides: {
-      'text-dark': { color: '#808080' },
-      'text-muted': { color: '#808285' },
-      'bg-light': { backgroundColor: '#dee4ee' },
-      'bg-white': { backgroundColor: '#ffffff' },
-      'bg-secondary': { backgroundColor: '#334155' }
+      'text-dark': { color: '#808080' }
     }
   },
 
@@ -237,6 +233,19 @@ class ThemeManager {
     if (!theme) {
       logError('Invalid theme: ' + themeName);
       return;
+    }
+
+    // Reset documentElement - xóa data-theme, data-bs-theme và inline styles cũ
+    const root = document.documentElement;
+    root.removeAttribute('data-theme');
+    root.removeAttribute('data-bs-theme');
+    root.style.cssText = '';
+
+    if (themeName === 'dark') {
+        root.setAttribute('data-bs-theme', themeName);
+        // 5. Dispatch custom event
+        window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: themeName } }));
+        return;
     }
 
     this.currentTheme = themeName;
@@ -563,8 +572,6 @@ class ThemeManager {
       this.currentTheme = 'light';
       this.applyTheme('light');
       this.fillSettingsForm();
-      
-      log('🔄 Theme reset to default (light)', 'success');
       window.dispatchEvent(new CustomEvent('theme-changed', { 
         detail: { theme: 'light', isDefault: true } 
       }));

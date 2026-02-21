@@ -17,7 +17,7 @@ async function saveForm(isConfirmed = false) {
       await A.DB.batchSave('operator_entries', operator_entries);
       const btnDashUpdate = getE('btn-dash-update');
       if (btnDashUpdate) {
-        btnDashUpdate.click();
+        trigger(btnDashUpdate, 'click');
       }
       
       const btnSelectDatalist = getE('btn-select-datalist');

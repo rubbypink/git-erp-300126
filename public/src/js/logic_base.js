@@ -376,6 +376,28 @@ function findBookingInLocal(bkId) {
     };
 }
 
+/**
+ * Helper: Lấy tất cả giá trị từ một hàng (dùng cho full-table search)
+ * @param {Object|Array} row - Dòng dữ liệu
+ * @returns {string} - Chuỗi chứa tất cả giá trị, cách nhau bởi khoảng trắng
+ */
+function getAllCellValues(row) {
+    if (typeof row === 'object' && !Array.isArray(row)) {
+        // Object format: lấy tất cả values
+        return Object.values(row)
+            .map(v => String(v ?? ''))
+            .join(' ')
+            .toLowerCase();
+    } else if (Array.isArray(row)) {
+        // Array format: lấy tất cả values
+        return row
+            .map(v => String(v ?? ''))
+            .join(' ')
+            .toLowerCase();
+    }
+    return String(row ?? '').toLowerCase();
+}
+
 function applyGridFilter() {
     try {
     // --- BƯỚC 1: LẤY DỮ LIỆU ĐẦU VÀO (INPUT) ---
@@ -511,9 +533,17 @@ function applyGridFilter() {
         // A. Lọc Keyword
         let matchKeyword = true;
         if (searchKey) {
-            const cellData = getCellValue(row, searchColKey);
-            const cellValue = (cellData === undefined || cellData === null) ? "" : String(cellData).toLowerCase();
-            matchKeyword = cellValue.includes(searchKey);
+            // ✅ FIX: Tìm kiếm toàn bảng nếu không chọn cột, hoặc tìm cột nếu có chọn
+            if (!searchColKey || searchColKey === '') {
+                // Không chọn cột → tìm kiếm trên toàn bảng
+                const allValues = getAllCellValues(row);
+                matchKeyword = allValues.includes(searchKey);
+            } else {
+                // Có chọn cột → tìm kiếm trên cột đó
+                const cellData = getCellValue(row, searchColKey);
+                const cellValue = (cellData === undefined || cellData === null) ? "" : String(cellData).toLowerCase();
+                matchKeyword = cellValue.includes(searchKey);
+            }
         }
 
         // B. Lọc Date
@@ -546,6 +576,70 @@ function applyGridFilter() {
 
     } catch (err) {
     log('❌ Lỗi applyGridFilter: ' + err.message, 'error');
+    }
+}
+
+/**
+ * =========================================================================
+ * THROTTLE WRAPPER - Giới hạn chạy filter 1 lần/giây
+ * =========================================================================
+ */
+
+// Throttle state
+window.FILTER_THROTTLE_STATE = window.FILTER_THROTTLE_STATE || {
+    lastTime: 0,
+    THROTTLE_MS: 1000 // 1 giây
+};
+
+/**
+ * Wrapper với Throttle - gọi từ event listener filter-val input
+ * Giới hạn applyGridFilter chạy tối đa 1 lần mỗi giây
+ */
+function applyGridFilterThrottled() {
+    const now = Date.now();
+    const state = window.FILTER_THROTTLE_STATE;
+    
+    if (now - state.lastTime >= state.THROTTLE_MS) {
+        state.lastTime = now;
+        applyGridFilter();
+    }
+}
+
+/**
+ * Khởi tạo Event Listeners cho Filter
+ * Tự động gắn event listener với throttle vào filter-val input
+ * Gọi hàm này 1 lần khi trang load (hoặc thêm vào main.js nếu cần)
+ */
+function initFilterEventListeners() {
+    const valInput = document.getElementById('filter-val');
+    if (valInput) {
+        // Xóa event listener cũ (nếu có) để tránh duplicate
+        valInput.removeEventListener('input', applyGridFilterThrottled);
+        // Gắn event listener mới với throttle
+        valInput.addEventListener('input', applyGridFilterThrottled);
+    }
+}
+
+/**
+ * =========================================================================
+ * AUTO-INITIALIZATION khi DOM Ready
+ * =========================================================================
+ * Khởi tạo filter event listeners tự động
+ */
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof initFilterEventListeners === 'function') {
+                initFilterEventListeners();
+                console.log('✅ Filter event listeners initialized');
+            }
+        });
+    } else {
+        // DOM đã ready rồi, gọi ngay lập tức
+        if (typeof initFilterEventListeners === 'function') {
+            initFilterEventListeners();
+            console.log('✅ Filter event listeners initialized immediately');
+        }
     }
 }
 /**
@@ -925,10 +1019,6 @@ async function openSettingsModal() {
             getE('st-logo-preview').src = mainLogo ? mainLogo.src : 'https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp';
         }
         
-        // Show modal and select theme tab
-        // selectTab('tab-theme-content');
-        
-        log('✅ Settings modal opened - Theme management delegated to THEME_MANAGER', 'info');
     } catch (e) {
         logError("Lỗi mở Cài Đặt:", e);
     }

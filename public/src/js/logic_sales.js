@@ -71,24 +71,29 @@
           }
         }
         if (!getE('main-form')) activateTab('tab-form');
+        if (isBkObj) HD.setFormData('sub-booking-form', bkData);
+        else {
+          log('Data booking ko phải object, sử dụng method setVal thủ công theo index');
+          setVal('BK_ID', bk(COL_INDEX.M_ID));
+          setVal('BK_Date', bk(COL_INDEX.M_CREATED));
+          setVal('Cust_Phone', bk(COL_INDEX.M_PHONE));
+          setVal('Cust_Name', bk(COL_INDEX.M_CUST));
+          setVal('Cust_Source', custSource);
+          setVal('BK_Start', bk(COL_INDEX.M_START));
+          setVal('BK_End', bk(COL_INDEX.M_END));
+          setVal('BK_Adult', bk(COL_INDEX.M_ADULT));
+          setVal('BK_Child', bk(COL_INDEX.M_CHILD));
+          // Tiền tệ & Trạng thái
+          setVal('BK_Status', bk(COL_INDEX.M_STATUS));
+          setVal('BK_PayType', bk(COL_INDEX.M_PAYTYPE));
+          setVal('BK_PayDue', bk(COL_INDEX.M_PAYDUE));
+          setNum('BK_Total', bk(COL_INDEX.M_TOTAL));
+          setNum('BK_Deposit', bk(COL_INDEX.M_DEPOSIT));
+          setVal('BK_Note', bk(COL_INDEX.M_NOTE));
+          setVal('BK_Staff', bk(COL_INDEX.M_STAFF));
+        }
 
-        setVal('BK_ID', bk(COL_INDEX.M_ID));
-        setVal('BK_Date', bk(COL_INDEX.M_CREATED));
-        setVal('Cust_Phone', bk(COL_INDEX.M_PHONE));
-        setVal('Cust_Name', bk(COL_INDEX.M_CUST));
-        setVal('Cust_Source', custSource);
-        setVal('BK_Start', bk(COL_INDEX.M_START));
-        setVal('BK_End', bk(COL_INDEX.M_END));
-        setVal('BK_Adult', bk(COL_INDEX.M_ADULT));
-        setVal('BK_Child', bk(COL_INDEX.M_CHILD));
-        // Tiền tệ & Trạng thái
-        setVal('BK_Status', bk(COL_INDEX.M_STATUS));
-        setVal('BK_PayType', bk(COL_INDEX.M_PAYTYPE));
-        setVal('BK_PayDue', bk(COL_INDEX.M_PAYDUE));
-        setNum('BK_Total', bk(COL_INDEX.M_TOTAL));
-        setNum('BK_Deposit', bk(COL_INDEX.M_DEPOSIT));
-        setVal('BK_Note', bk(COL_INDEX.M_NOTE));
-        setVal('BK_Staff', bk(COL_INDEX.M_STAFF));
+        
 
         let tbody = getE('detail-tbody');
         if(tbody) {
@@ -148,42 +153,46 @@
       // Lưu ý: Ta sẽ fill data vào Location sau khi tạo row xong để dễ xử lý logic
       const tr = document.createElement('tr');
       tr.id = `row-${idx}`;
+      tr.setAttribute('data-row', idx);
       tr.innerHTML = `
-        <td class="text-center text-muted align-middle">${idx} <input type="hidden" class="d-sid"></td>
+        <td class="text-center text-muted align-middle">${idx} <input type="hidden" class="d-sid" data-field="id"></td>
         <td>
-          <select class="form-select form-select-sm d-type" onchange="onTypeChange(${idx})">
+          <select class="form-select form-select-sm d-type" data-field="service_type" onchange="onTypeChange(${idx})">
             <option value="">-</option>${optsType}
           </select>
         </td>
         <td>
-          <select class="form-select form-select-sm d-loc" onchange="onLocationChange(${idx})">
+          <select class="form-select form-select-sm d-loc" data-field="hotel_name" onchange="onLocationChange(${idx})">
             <option value="">-</option>
           </select>
         </td>
         <td>
-          <select class="form-select form-select-sm d-name">
+          <select class="form-select form-select-sm d-name" data-field="service_name">
             <option value="">-</option>
           </select>
         </td>
-        <td><input type="date" class="form-control form-control-sm d-in" onchange="autoSetOrCalcDate(this.value, $('.d-out', $('#row-${idx}')))" style="cursor:pointer"></td>
-        <td><input type="date" class="form-control form-control-sm d-out" onchange="calcRow(${idx})"></td>
-        <td><input type="number" class="form-control form-control-sm d-night number bg-light text-center" readonly value="1"></td>
-        <td><input type="number" class="form-control form-control-sm d-qty number" value="1"></td>
-        <td><input type="number" class="form-control form-control-sm d-pri number" placeholder="-"></td>
-        <td><input type="number" class="form-control form-control-sm d-qtyC number" placeholder="-"></td>
-        <td><input type="number" class="form-control form-control-sm d-priC number" placeholder="-"></td>
-        <td><input type="number" class="form-control form-control-sm d-sur number" placeholder="-"></td>
-        <td><input type="number" class="form-control form-control-sm d-disc number" placeholder="-"></td>
-        <td><input type="text" class="form-control form-control-sm d-total number fw-bold text-end" readonly value="0" data-val="0"></td>
-        <td><input type="text" class="form-control form-control-sm d-code"></td>
-        <td><input type="text" class="form-control form-control-sm d-note"></td>
+        <td><input type="date" class="form-control form-control-sm d-in" data-field="check_in" onchange="autoSetOrCalcDate(this.value, $('.d-out', $('#row-${idx}')))" style="cursor:pointer"></td>
+        <td><input type="date" class="form-control form-control-sm d-out" data-field="check_out" onchange="calcRow(${idx})"></td>
+        <td><input type="number" class="form-control form-control-sm d-night number bg-light text-center" data-field="nights" readonly value="1"></td>
+        <td><input type="number" class="form-control form-control-sm d-qty number" data-field="quantity" value="1"></td>
+        <td><input type="number" class="form-control form-control-sm d-pri number" data-field="unit_price" placeholder="-"></td>
+        <td><input type="number" class="form-control form-control-sm d-qtyC number" data-field="child_qty" placeholder="-"></td>
+        <td><input type="number" class="form-control form-control-sm d-priC number" data-field="child_price" placeholder="-"></td>
+        <td><input type="number" class="form-control form-control-sm d-sur number" data-field="surcharge" placeholder="-"></td>
+        <td><input type="number" class="form-control form-control-sm d-disc number" data-field="discount" placeholder="-"></td>
+        <td><input type="text" class="form-control form-control-sm d-total number fw-bold text-end" data-field="total" readonly value="0" data-val="0"></td>
+        <td><input type="text" class="form-control form-control-sm d-code" data-field="ref_code"></td>
+        <td><input type="text" class="form-control form-control-sm d-note" data-field="note"></td>
         <td class="text-center align-middle"><i class="fa-solid fa-times text-danger" style="cursor:pointer" onclick="removeRow(${idx})"></i></td>
             `;
       getE('detail-tbody').appendChild(tr);
       // Init Data cho Row mới
       updateLocationList(idx); // Fill Location List ngay khi tạo
       if(data) {
-        setVal('.d-sid', data[FIELD_MAP.booking_details[COL_INDEX.D_SID]] || data[COL_INDEX.D_SID], tr);
+        const detailId = data[FIELD_MAP.booking_details[COL_INDEX.D_SID]] || data[COL_INDEX.D_SID] || '';
+        setVal('.d-sid', detailId, tr);
+        // Cập nhật data-item với ID thực của detail row
+        if(detailId) tr.setAttribute('data-item', detailId);
         setVal('.d-type', data[FIELD_MAP.booking_details[COL_INDEX.D_TYPE]] || data[COL_INDEX.D_TYPE], tr);
         // Trigger logic sau khi set Type
         onTypeChange(idx, false); // false = không reset con
@@ -624,7 +633,32 @@
       
     }
 
- 
+    async function updateDeposit() {
+      try {
+        const bkId = getVal('BK_ID');
+        if (!bkId) {
+          log('⚠️ Booking ID trống, không thể tải Deposit', 'warning');
+          return 0;
+        }
+        
+        // Firestore operator: '==' (không phải '=')
+        const result = await A.DB.runQuery('transactions', 'booking_id', '==', bkId);
+        
+        if (!result || !Array.isArray(result)) {
+          log('⚠️ Không tìm thấy giao dịch cho booking này', 'warning');
+          setVal('BK_Deposit', 0);
+          return 0;
+        }
+        
+        const total = result.reduce((sum, tx) => sum + (tx.amount || 0), 0) / 1000;
+        setVal('BK_Deposit', total);
+        trigger('BK_Deposit', 'change'); // Trigger event để cập nhật UI liên quan (nếu có)
+        return total;
+      } catch (e) {
+        log(`❌ Lỗi cập nhật Deposit: ${e.message}`, 'error');
+        return 0;
+      }
+    }
 
     function updateBkStatus () {
       // Auto Status
@@ -764,7 +798,7 @@
       try {
         // log("FillForm running");
         const bkData = res.bookings;
-        log(bkData);
+        log(Object.values(bkData));
         const detailsData = res.booking_details;
         const customerData = res.customer;
         // THÊM: Đồng bộ sang Tab Khách hàng
@@ -784,7 +818,7 @@
             loadBookingToUI(bkData, customerData, detailsData);
             // Log thông báo
             const sourceMsg = res.source === 'local' ? ' (⚡ Local)' : ' (🐢 Database)';
-            log(`Đã tải Booking: ${bkData[0]} - ${bkData[4]} ${sourceMsg}`, "success");
+            log(`Đã tải Booking: ${bkData[0]} - ${bkData.id} ${sourceMsg}`, "success");
         } else {
             logA("Lỗi hệ thống: Không thể hiển thị dữ liệu lên Form.", "error");
         }

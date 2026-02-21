@@ -27,7 +27,6 @@ function initShortcuts() {
     
     // Đăng ký sự kiện toàn trang
     document.addEventListener('keydown', handleGlobalShortcuts);
-    console.log("⌨️ Shortcuts loaded:", APP_SHORTCUTS);
 }
 
 // 2. Helper: Tạo chuỗi combo từ phím bấm

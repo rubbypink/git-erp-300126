@@ -15,7 +15,7 @@
  * - Maintain tổng kích thước table
  */
 
-export default class TableResizeManager {
+class TableResizeManager {
     constructor(tableId) {
         this.tableId = tableId;
         this.table = document.getElementById(tableId);
@@ -463,5 +463,325 @@ export default class TableResizeManager {
     }
 }
 
-// Export for use
+/**
+ * 9TRIP HELPER: UNIVERSAL DRAGGABLE SETUP
+ * Áp dụng cho: Bootstrap Modal, Card UI, Widget, Floating Elements
+ * Tối ưu: GPU Acceleration (translate3d), Dynamic Events, Mobile Support
+ */
+class DraggableSetup {
+    /**
+     * @param {string} elementId - ID của phần tử gốc chứa đối tượng cần kéo
+     * @param {Object} options - Cấu hình linh hoạt (targetSelector, handleSelector)
+     */
+    constructor(elementId, options = {targetSelector: '.modal-dialog', handleSelector: '.modal-header'}) {
+        try {
+            this.wrapper = $(elementId);
+            if (!this.wrapper) return;
+
+            // 1. Xác định CÁI GÌ SẼ DI CHUYỂN (Target)
+            // Nếu là Modal thì truyền vào '.modal-dialog', nếu là Widget thì không cần truyền (tự lấy wrapper)
+            this.target = options.targetSelector ? this.wrapper.querySelector(options.targetSelector) : this.wrapper;
+            
+            // 2. Xác định NẮM VÀO ĐÂU ĐỂ KÉO (Handle)
+            // Thường là '.modal-header' hoặc '.card-header'. Mặc định là cầm vào đâu cũng kéo được.
+            this.handle = options.handleSelector ? this.wrapper.querySelector(options.handleSelector) : this.target;
+
+            if (!this.target || !this.handle) {
+                console.warn(`DraggableSetup: Không tìm thấy target hoặc handle cho #${elementId}`);
+                return;
+            }
+
+            // State quản lý tọa độ
+            this.isDragging = false;
+            this.currentX = 0; this.currentY = 0;
+            this.initialX = 0; this.initialY = 0;
+            this.xOffset = 0;  this.yOffset = 0;
+
+            // Bind context
+            this.dragStart = this.dragStart.bind(this);
+            this.dragMove = this.dragMove.bind(this);
+            this.dragEnd = this.dragEnd.bind(this);
+
+            this.init();
+        } catch (error) {
+            console.error(`DraggableSetup: Lỗi khởi tạo cho #${elementId}`, error);
+        }
+    }
+
+    init() {
+        // Chỉ gắn sự kiện vào vùng tay cầm (handle)
+        this.handle.addEventListener("mousedown", this.dragStart);
+        this.handle.addEventListener("touchstart", this.dragStart, { passive: false });
+        
+        // CSS báo hiệu cho người dùng
+        this.handle.style.cursor = "move";
+        this.target.style.willChange = "transform"; // Gợi ý trình duyệt tối ưu GPU trước
+    }
+
+    dragStart(e) {
+        if (e.type === "touchstart") {
+            this.initialX = e.touches[0].clientX - this.xOffset;
+            this.initialY = e.touches[0].clientY - this.yOffset;
+        } else {
+            this.initialX = e.clientX - this.xOffset;
+            this.initialY = e.clientY - this.yOffset;
+        }
+
+        // Kiểm tra xem có đúng là click vào handle không (tránh click vào input bên trong)
+        if (e.target === this.handle || this.handle.contains(e.target)) {
+            // Không chặn sự kiện mặc định ở đây để user vẫn click được input/button nếu có
+            
+            this.isDragging = true;
+            this.target.classList.add('is-moving');
+            
+            // Lưu lại transition cũ để khôi phục sau khi kéo xong
+            this.oldTransition = window.getComputedStyle(this.target).transition;
+            this.target.style.transition = "none";
+
+            document.addEventListener("mousemove", this.dragMove);
+            document.addEventListener("touchmove", this.dragMove, { passive: false });
+            document.addEventListener("mouseup", this.dragEnd);
+            document.addEventListener("touchend", this.dragEnd);
+        }
+    }
+
+    dragMove(e) {
+        if (!this.isDragging) return;
+        
+        // Chặn cuộn trang (scroll) trên điện thoại khi đang kéo
+        e.preventDefault();
+
+        if (e.type === "touchmove") {
+            this.currentX = e.touches[0].clientX - this.initialX;
+            this.currentY = e.touches[0].clientY - this.initialY;
+        } else {
+            this.currentX = e.clientX - this.initialX;
+            this.currentY = e.clientY - this.initialY;
+        }
+
+        this.xOffset = this.currentX;
+        this.yOffset = this.currentY;
+
+        requestAnimationFrame(() => {
+            this.target.style.transform = `translate3d(${this.currentX}px, ${this.currentY}px, 0)`;
+        });
+    }
+
+    dragEnd() {
+        if (!this.isDragging) return;
+        
+        this.initialX = this.currentX;
+        this.initialY = this.currentY;
+        this.isDragging = false;
+        
+        this.target.classList.remove('is-moving');
+        
+        // Khôi phục lại transition mặc định của Bootstrap/CSS
+        this.target.style.transition = this.oldTransition;
+
+        document.removeEventListener("mousemove", this.dragMove);
+        document.removeEventListener("touchmove", this.dragMove);
+        document.removeEventListener("mouseup", this.dragEnd);
+        document.removeEventListener("touchend", this.dragEnd);
+    }
+}
+
+/**
+ * 9TRIP HELPER: UNIVERSAL RESIZABLE
+ * Tương thích hoàn hảo với FreeMover và Bootstrap
+ */
+class Resizable {
+    constructor(elementId, options = {targetSelector: '.modal-dialog', handleSelector: '.modal-header'}) {
+        try {
+            this.wrapper = $(elementId);
+            if (!this.wrapper) return;
+            log(`Resizable: Đang khởi tạo cho #${elementId}`);
+
+            // Target thực sự cần thay đổi kích thước (Ví dụ: .modal-content thay vì cả cái modal)
+            this.target = options.targetSelector ? this.wrapper.querySelector(options.targetSelector) : this.wrapper;
+            if (!this.target) return;
+
+            // Cấu hình giới hạn kích thước
+            this.minWidth = options.minWidth || 250;
+            this.minHeight = options.minHeight || 150;
+
+            // State
+            this.isResizing = false;
+            this.initialWidth = 0;
+            this.initialHeight = 0;
+            this.startX = 0;
+            this.startY = 0;
+
+            // Bind context
+            this.resizeStart = this.resizeStart.bind(this);
+            this.resizeMove = this.resizeMove.bind(this);
+            this.resizeEnd = this.resizeEnd.bind(this);
+
+            this.init();
+        } catch (error) {
+            console.error(`Resizable: Lỗi khởi tạo cho #${elementId}`, error);
+        }
+    }
+
+    init() {
+        // Tự động tạo một cái "tay cầm" (handle) ở góc dưới cùng bên phải nếu chưa có
+        this.resizeHandle = document.createElement('div');
+        this.resizeHandle.className = 'erp-resize-handle';
+        this.target.appendChild(this.resizeHandle);
+        this.target.style.position = 'relative'; // Cần thiết để handle bám vào góc
+
+        // Gắn sự kiện mousedown / touchstart
+        this.resizeHandle.addEventListener('mousedown', this.resizeStart);
+        this.resizeHandle.addEventListener('touchstart', this.resizeStart, { passive: false });
+    }
+
+    resizeStart(e) {
+        e.preventDefault(); // Ngăn hành vi kéo text mặc định
+        e.stopPropagation(); // Ngăn sự kiện lan lên FreeMover (nếu có)
+
+        this.isResizing = true;
+
+        // Lấy kích thước hiện tại của phần tử
+        const rect = this.target.getBoundingClientRect();
+        this.initialWidth = rect.width;
+        this.initialHeight = rect.height;
+
+        if (e.type === "touchstart") {
+            this.startX = e.touches[0].clientX;
+            this.startY = e.touches[0].clientY;
+        } else {
+            this.startX = e.clientX;
+            this.startY = e.clientY;
+        }
+
+        // Linh hoạt gắn sự kiện vào document (Giống FreeMover)
+        document.addEventListener("mousemove", this.resizeMove);
+        document.addEventListener("touchmove", this.resizeMove, { passive: false });
+        document.addEventListener("mouseup", this.resizeEnd);
+        document.addEventListener("touchend", this.resizeEnd);
+
+        this.target.classList.add('is-resizing');
+    }
+
+    resizeMove(e) {
+        if (!this.isResizing) return;
+        e.preventDefault();
+
+        let currentX, currentY;
+        if (e.type === "touchmove") {
+            currentX = e.touches[0].clientX;
+            currentY = e.touches[0].clientY;
+        } else {
+            currentX = e.clientX;
+            currentY = e.clientY;
+        }
+
+        // Tính toán độ lệch
+        const dx = currentX - this.startX;
+        const dy = currentY - this.startY;
+
+        // Tính toán kích thước mới với giới hạn (minWidth, minHeight)
+        const newWidth = Math.max(this.initialWidth + dx, this.minWidth);
+        const newHeight = Math.max(this.initialHeight + dy, this.minHeight);
+
+        // Tối ưu render
+        requestAnimationFrame(() => {
+            this.target.style.width = `${newWidth}px`;
+            this.target.style.height = `${newHeight}px`;
+            this.target.style.flex = 'none'; // Ghi đè flex của bootstrap nếu có
+        });
+    }
+
+    resizeEnd() {
+        if (!this.isResizing) return;
+        this.isResizing = false;
+        this.target.classList.remove('is-resizing');
+
+        // Dọn dẹp sự kiện
+        document.removeEventListener("mousemove", this.resizeMove);
+        document.removeEventListener("touchmove", this.resizeMove);
+        document.removeEventListener("mouseup", this.resizeEnd);
+        document.removeEventListener("touchend", this.resizeEnd);
+    }
+}
+
+/**
+ * 9TRIP HELPER: UNIVERSAL WINDOW MINIMIZER
+ * Tạo hiệu ứng thu nhỏ cửa sổ xuống Taskbar ảo
+ */
+class WindowMinimizer {
+    constructor(elementId, options = {}) {
+        try {
+            this.target = document.getElementById(elementId);
+            if (!this.target) return;
+
+            // Tên hiển thị dưới Taskbar
+            this.title = options.title || 'Cửa sổ làm việc';
+            
+            // Tìm nút thu nhỏ trong header
+            this.minimizeBtn = this.target.querySelector(options.btnSelector || '.btn-minimize');
+            
+            this.initTaskbar();
+
+            if (this.minimizeBtn) {
+                this.minimizeBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.minimize();
+                });
+            }
+        } catch (error) {
+            console.error(`WindowMinimizer: Lỗi khởi tạo cho #${elementId}`, error);
+        }
+    }
+
+    initTaskbar() {
+        // Tạo thanh Taskbar nếu chưa tồn tại
+        this.taskbarId = 'erp-global-taskbar';
+        this.taskbar = document.getElementById(this.taskbarId);
+        
+        if (!this.taskbar) {
+            this.taskbar = document.createElement('div');
+            this.taskbar.id = this.taskbarId;
+            this.taskbar.className = 'erp-taskbar';
+            document.body.appendChild(this.taskbar);
+        }
+    }
+
+    minimize() {
+        // 1. Ẩn cửa sổ (Dùng display none để không chặn thao tác click ở dưới)
+        // Lưu lại thuộc tính display cũ để khi bật lên không bị lỗi Flexbox
+        this.oldDisplay = window.getComputedStyle(this.target).display;
+        this.target.style.display = 'none';
+
+        // 2. Tạo nút đại diện dưới Taskbar
+        this.taskItem = document.createElement('button');
+        this.taskItem.className = 'btn btn-primary btn-sm erp-task-item';
+        // Thêm icon FontAwesome cho đẹp mắt (bạn có thể đổi icon tùy ý)
+        this.taskItem.innerHTML = `<i class="fa-solid fa-window-restore me-2"></i>${this.title}`;
+        
+        // 3. Sự kiện: Khi bấm vào nút ở Taskbar -> Bật lại cửa sổ
+        this.taskItem.addEventListener('click', () => this.restore());
+        
+        this.taskbar.appendChild(this.taskItem);
+    }
+
+    restore() {
+        // 1. Hiện lại cửa sổ (Phục hồi display cũ)
+        this.target.style.display = this.oldDisplay;
+        
+        // 2. Tùy chọn: Nhấn nháy cửa sổ 1 xíu để user chú ý
+        this.target.style.animation = 'none'; // Reset
+        setTimeout(() => this.target.style.animation = 'popIn 0.3s ease forwards', 10);
+
+        // 3. Xóa nút ở Taskbar
+        if (this.taskItem) {
+            this.taskItem.remove();
+        }
+    }
+}
+
+export { DraggableSetup, TableResizeManager, Resizable, WindowMinimizer };
+window.DraggableSetup = DraggableSetup;
 window.TableResizeManager = TableResizeManager;
+window.Resizable = Resizable;
+window.WindowMinimizer = WindowMinimizer;

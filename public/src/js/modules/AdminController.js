@@ -77,10 +77,10 @@ class FirestoreDataTable extends HTMLElement {
                 table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
                 th { background: #f8f9fa; padding: 8px; border: 1px solid #dee2e6; position: sticky; top: 0; z-index: 10; text-transform: uppercase; font-size: 11px; color: #666; }
                 td { border: 1px solid #dee2e6; padding: 0; }
-                input { width: 100%; padding: 8px; border: none; outline: none; font-family: inherit; font-size: 13px; }
-                input:focus { background: #e7f1ff; box-shadow: inset 0 0 0 2px #0d6efd; }
+                input { background: #e7f1ff; width: -webkit-fill-available; padding: 8px; border: none; outline: none; font-family: inherit; font-size: 13px; color: #1f1e1e; text-align: center; }
+                input:focus { background: #c9cacc; box-shadow: inset 0 0 0 2px #0d6efd; width: -webkit-fill-available; }
                 .inp-sub { background: #fff3cd; color: #856404; font-weight: bold; }
-                .btn-del { border: none; background: transparent; color: #dc3545; cursor: pointer; font-weight: bold; }
+                .btn-del { border: none; background: transparent; color: #dc3545; cursor: pointer; font-weight: bold; width: 100%; height: 100%; }
                 .resizer { position: absolute; top: 0; right: 0; width: 5px; cursor: col-resize; height: 100%; user-select: none; }
                 .toolbar { margin-top: 8px; display: flex; justify-content: space-between; align-items: center; }
             </style>`;
@@ -99,8 +99,8 @@ class FirestoreDataTable extends HTMLElement {
                     
                     // Tuyệt đối KHÔNG ĐỂ value="${...}" ở đây
                     return `<td><input type="text" class="inp-${h} ${isSub?'inp-sub':''}" data-ridx="${idx}" data-key="${h}"></td>`;
-                }).join('')}
-                <td class="text-center"><button class="btn-del" data-index="${idx}">×</button></td>
+                }).join('')} 
+                <td class="text-center"><button class="btn-del" data-index="${idx}">X</button></td>
             </tr>
         `).join('');
 
@@ -152,18 +152,6 @@ class FirestoreDataTable extends HTMLElement {
     }
 }
 if (!customElements.get('table-db-data')) customElements.define('table-db-data', FirestoreDataTable);
-
-
-// =============================================================================
-// PHẦN 1.5: CẤU HÌNH SCHEMA (FIELD_MAP)
-// =============================================================================
-const FIELD_MAP = {
-    'hotels': ['id', 'name', 'address', 'phone', 'rooms'], 
-    'sales/booking/products': ['id', 'name', 'code', 'price', 'cost', 'unit', 'category'],
-    'customers': ['id', 'fullname', 'phone', 'email', 'address', 'source'],
-    'service_price_schedules': ['id', 'name', 'start_date', 'end_date', 'services']
-};
-
 
 // =============================================================================
 // PHẦN 2: LOGIC XỬ LÝ (Matrix Logic & Form Logic)
@@ -222,7 +210,7 @@ class MatrixLogic {
             }
             
             // Debug: In ra console để kiểm tra dữ liệu gốc có bị lỗi không
-            console.log(`✅ Loaded ${data.length} rows from [${path}]`, data);
+            // console.log(`✅ Loaded ${data.length} rows from [${path}]`, data);
 
         } catch (e) {
             console.error(e);
@@ -319,7 +307,7 @@ class FormLogic {
             Object.keys(data).forEach(key => {
                 const val = data[key]; const isObj = typeof val === 'object' && val !== null;
                 const displayVal = isObj ? JSON.stringify(val, null, 4) : val;
-                fieldsHtml += `<div class="mb-3"><label class="fw-bold">${key}</label>${isObj ? `<textarea class="form-control font-monospace adm-input" data-key="${key}" rows="8" style="background:#f8f9fa">${displayVal}</textarea>` : `<input type="text" class="form-control adm-input" data-key="${key}" value="${displayVal}">`}</div>`;
+                fieldsHtml += `<div class="mb-3"><label class="fw-bold">${key}</label>${isObj ? `<textarea class="form-control font-monospace adm-input" data-key="${key}" rows="8" style="background: #f8f9fa">${displayVal}</textarea>` : `<input type="text" class="form-control adm-input" data-key="${key}" value="${displayVal}">`}</div>`;
             });
             container.innerHTML = `<div class="card shadow-sm mx-auto" style="max-width: 800px;"><div class="card-header bg-warning">Chỉnh sửa: ${docId}</div><div class="card-body"><form id="adm-form-editor" data-doc-id="${docId}">${fieldsHtml}</form></div></div>`;
         } catch (e) { container.innerHTML = `<div class="alert alert-danger">Lỗi: ${e.message}</div>`; }
@@ -361,15 +349,17 @@ class AdminController {
         ];
         this.currentStrategy = null;
         this.currentPath = '';
+        this.currentData = [];
+        this.isFilterMode = false;
+        this.selectedCollectionIndex = null;
     }
 
     init() {
         const modal = document.querySelector('at-modal-full');
         if (!modal) return console.error("Missing <at-modal-full>");
-        modal.render(this._getLayout(), 'Admin Console (v3.2 Full Fix)');
+        modal.show(this._getLayout(), 'Admin Console (v3.2 Full Fix)');
         modal.setFooter(false);
         this._bindEvents();
-        modal.show();
     }
 
     _getLayout() {
@@ -394,6 +384,9 @@ class AdminController {
                         <button id="adm-btn-save" class="btn btn-sm btn-success fw-bold px-3" disabled>
                             <i class="fas fa-save"></i> LƯU
                         </button>
+                        <button id="adm-btn-delete" class="btn btn-sm btn-danger fw-bold px-3">
+                            <i class="fas fa-trash"></i> XÓA
+                        </button>
                     </div>
                 </div>
 
@@ -414,11 +407,15 @@ class AdminController {
         const btnFetch = document.getElementById('adm-btn-fetch');
         const btnDecode = document.getElementById('adm-btn-decode');
         const btnSave = document.getElementById('adm-btn-save');
+        const btnDelete = document.getElementById('adm-btn-delete');
         const workspace = document.getElementById('adm-workspace');
 
         const loadView = (path, type) => {
             this.currentPath = path;
-            inputPath.value = path; 
+            inputPath.value = path;
+            inputPath.placeholder = "Nhập path collection...";
+            this.isFilterMode = false;
+            
             if (type === 'FORM') {
                 this.currentStrategy = new FormLogic(db);
                 btnDecode.disabled = true; 
@@ -430,17 +427,145 @@ class AdminController {
             this.currentStrategy.render(workspace, path);
         };
 
+        const applyFilter = (filterValue) => {
+            if (!this.currentData.length || !this.currentStrategy) return;
+            
+            // Lọc dữ liệu từ currentData dựa vào filter value
+            const filtered = this.currentData.filter(row => {
+                // Kiểm tra nếu bất kỳ field nào chứa filter value
+                return Object.values(row).some(val => 
+                    String(val).toLowerCase().includes(filterValue.toLowerCase())
+                );
+            });
+            
+            // Update table với dữ liệu đã lọc
+            const table = document.querySelector('#adm-matrix-table');
+            if (table) {
+                table.setSchema(table._headers, filtered);
+            }
+        };
+
         select.addEventListener('change', (e) => {
-            if(e.target.value === "") return;
-            const config = this.collections[e.target.value];
-            loadView(config.path, config.type);
+            if(e.target.value === "") {
+                inputPath.value = '';
+                inputPath.placeholder = "Nhập path collection...";
+                this.selectedCollectionIndex = null;
+                const table = document.querySelector('#adm-matrix-table');
+                if (table) {
+                    table.setSchema(table._headers, {});
+                }
+                return;
+            }
+            this.selectedCollectionIndex = parseInt(e.target.value);
+            const config = this.collections[this.selectedCollectionIndex];
+            
+            // Set placeholder thành filter input
+            inputPath.value = '';
+            inputPath.placeholder = `Lọc danh sách: ${config.name}`;
+            this.isFilterMode = false;
+            
+            // Load dữ liệu của collection được select
+            this.currentPath = config.path;
+            if (config.type === 'FORM') {
+                this.currentStrategy = new FormLogic(db);
+                btnDecode.disabled = true;
+            } else {
+                this.currentStrategy = new MatrixLogic(db);
+                btnDecode.disabled = false;
+            }
+            btnSave.disabled = false;
+            
+            // Ghi lại chiến lược để load dữ liệu
+            const strategyToUse = this.currentStrategy;
+            const pathToLoad = config.path;
+            
+            // Nếu là MATRIX, load dữ liệu và lưu vào currentData
+            if (config.type === 'MATRIX') {
+                db.collection(pathToLoad).limit(300).get().then(snapshot => {
+                    this.currentData = [];
+                    snapshot.forEach(doc => {
+                        let row = { id: doc.id, ...doc.data() };
+                        this.currentData.push(row);
+                    });
+                    
+                    // Render dữ liệu đã load
+                    strategyToUse.render(workspace, pathToLoad);
+                }).catch(e => {
+                    console.error(e);
+                    workspace.innerHTML = `<div class="alert alert-danger">Lỗi tải dữ liệu: ${e.message}</div>`;
+                });
+            } else {
+                // Cho FORM, load bình thường
+                strategyToUse.render(workspace, pathToLoad);
+            }
         });
 
         btnFetch.addEventListener('click', () => {
-            const path = inputPath.value.trim();
-            if(!path) return alert("Vui lòng nhập Path!");
-            const type = path.includes('settings') ? 'FORM' : 'MATRIX';
-            loadView(path, type);
+            // Kiểm tra nếu đang ở chế độ select collection (filter mode)
+            if (this.selectedCollectionIndex !== null && this.isFilterMode === false) {
+                // Chế độ filter: apply filter khi click Load
+                this.isFilterMode = true;
+                const filterValue = inputPath.value.trim();
+                if (!filterValue) {
+                    // Nếu input trống, hiển thị toàn bộ dữ liệu
+                    const table = document.querySelector('#adm-matrix-table');
+                    if (table) {
+                        table.setSchema(table._headers, this.currentData);
+                    }
+                } else {
+                    // Apply filter
+                    applyFilter(filterValue);
+                }
+            } else if (!this.selectedCollectionIndex) {
+                // Chế độ input path trực tiếp
+                const path = inputPath.value.trim();
+                if(!path) return alert("Vui lòng nhập Path!");
+                const type = path.includes('settings') ? 'FORM' : 'MATRIX';
+                this.isFilterMode = false;
+                
+                // Load dữ liệu
+                this.currentPath = path;
+                if (type === 'MATRIX') {
+                    db.collection(path).limit(300).get().then(snapshot => {
+                        this.currentData = [];
+                        snapshot.forEach(doc => {
+                            let row = { id: doc.id, ...doc.data() };
+                            this.currentData.push(row);
+                        });
+                        
+                        if (type === 'FORM') {
+                            this.currentStrategy = new FormLogic(db);
+                            btnDecode.disabled = true;
+                        } else {
+                            this.currentStrategy = new MatrixLogic(db);
+                            btnDecode.disabled = false;
+                        }
+                        btnSave.disabled = false;
+                        this.currentStrategy.render(workspace, path);
+                    }).catch(e => {
+                        console.error(e);
+                        workspace.innerHTML = `<div class="alert alert-danger">Lỗi tải dữ liệu: ${e.message}</div>`;
+                    });
+                } else {
+                    loadView(path, type);
+                }
+            }
+        });
+
+        // Input path change event - apply filter in real-time
+        inputPath.addEventListener('input', (e) => {
+            if (this.selectedCollectionIndex !== null && this.isFilterMode) {
+                const filterValue = e.target.value.trim();
+                if (filterValue) {
+                    applyFilter(filterValue);
+                } else {
+                    // Reset về toàn bộ dữ liệu
+                    const table = document.querySelector('#adm-matrix-table');
+                    if (table) {
+                        table.setSchema(table._headers, this.currentData);
+                    }
+                }
+            }
         });
 
         btnDecode.addEventListener('click', () => {
@@ -452,6 +577,62 @@ class AdminController {
 
         btnSave.addEventListener('click', () => {
             if (this.currentStrategy) this.currentStrategy.save(this.currentPath);
+        });
+
+        btnDelete.addEventListener('click', () => {
+            const table = document.querySelector('#adm-matrix-table');
+            if (!table) return alert("Không tìm thấy bảng!");
+            
+            const tableData = table.getData();
+            if (tableData.length === 0) return alert("Bảng không có dữ liệu!");
+            
+            // Lấy danh sách ID từ bảng
+            const listId = tableData.map(row => row.id).filter(id => id);
+            
+            if (listId.length === 0) return alert("Không tìm thấy ID để xóa!");
+            
+            // Xác nhận xóa
+            const confirmMsg = listId.length === 1 
+                ? `Bạn có chắc chắn muốn xóa ID: ${listId[0]}?`
+                : `Bạn có chắc chắn muốn xóa ${listId.length} bản ghi?`;
+            
+            if (confirm(confirmMsg)) {
+                if (typeof A === 'undefined' || !A.DB) {
+                    return alert("❌ A.DB không khả dụng!");
+                }
+                
+                // Nếu 1 hàng: gọi deleteRecord
+                if (listId.length === 1) {
+                    if (A.DB.deleteRecord) {
+                        A.DB.deleteRecord(this.currentPath, listId[0]).then(() => {
+                            alert("✅ Đã xóa thành công!");
+                            // Reload dữ liệu
+                            if (this.selectedCollectionIndex !== null) {
+                                select.dispatchEvent(new Event('change'));
+                            }
+                        }).catch((e) => {
+                            alert("❌ Lỗi xóa: " + e.message);
+                        });
+                    } else {
+                        alert("❌ A.DB.deleteRecord không khả dụng!");
+                    }
+                } else {
+                    // Nếu nhiều hàng: gọi batchDelete
+                    if (A.DB.batchDelete) {
+                        A.DB.batchDelete(this.currentPath, listId).then(() => {
+                            alert("✅ Đã xóa " + listId.length + " bản ghi thành công!");
+                            // Reload dữ liệu
+                            if (this.selectedCollectionIndex !== null) {
+                                select.dispatchEvent(new Event('change'));
+                            }
+                        }).catch((e) => {
+                            alert("❌ Lỗi xóa: " + e.message);
+                        });
+                    } else {
+                        alert("❌ A.DB.batchDelete không khả dụng!");
+                    }
+                }
+            }
         });
     }
 }

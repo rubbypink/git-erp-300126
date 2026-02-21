@@ -1,32 +1,100 @@
 /**
- * Import function triggers from their respective submodules:
+ * ═════════════════════════════════════════════════════════════════════════
+ * 9 TRIP ERP - Firebase Cloud Functions (Modular v2)
+ * ═════════════════════════════════════════════════════════════════════════
+ * Entry point for Cloud Functions
  *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
+ * Architecture:
+ *   config/        - System-wide configuration & constants
+ *   utils/         - Utility functions (Firebase Admin init, helpers)
+ *   services/      - Business logic (Messaging, User, etc.)
+ *   api/           - Cloud Function handlers (public endpoints)
+ *   index.js       - Main entry point (imports & exports)
+ * ═════════════════════════════════════════════════════════════════════════
  */
 
-const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
-const logger = require("firebase-functions/logger");
+// ─── Step 1: Initialize Firebase Admin SDK ───
+const {initializeFirebaseAdmin} =
+  require("./utils/firebase-admin.util");
+initializeFirebaseAdmin();
 
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10 });
+// ─── Step 2: Import all Cloud Function handlers ───
+const {sendTopicMessage} = require("./api/messaging.api");
+const {subscribeToTopics, unsubscribeFromTopics} =
+  require("./api/subscription.api");
+const {getNotificationHistory, getNotificationStats} =
+  require("./api/analytics.api");
+const {
+  syncUserToAuthOnWrite,
+  syncUserAuthDeleteOnDelete,
+  runSyncUserToAuth,
+  runBatchSyncUsers,
+} = require("./api/user-sync.api");
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+// ─── Step 3: Export Cloud Functions (public API) ───
+module.exports = {
+  // Messaging APIs
+  sendTopicMessage,
+  subscribeToTopics,
+  unsubscribeFromTopics,
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+  // Analytics & Admin APIs
+  getNotificationHistory,
+  getNotificationStats,
+
+  // User Sync APIs (Firestore ↔ Auth Synchronization)
+  syncUserToAuthOnWrite,
+  syncUserAuthDeleteOnDelete,
+  runSyncUserToAuth,
+  runBatchSyncUsers,
+
+  // Future: Add more Cloud Functions here as you expand
+  // Example:
+  // getUserData,
+  // createNotification,
+  // etc.
+};
+
+/**
+ * ═════════════════════════════════════════════════════════════════════════
+ * HOW TO CALL THESE FUNCTIONS FROM CLIENT
+ * ═════════════════════════════════════════════════════════════════════════
+ *
+ * 1. SEND MESSAGE TO TOPIC (Authenticated Users)
+ *    ─────────────────────────────────────────────
+ *    const functions = getFunctions();
+ *    const sendMsg = httpsCallable(functions,
+ *                                   'sendTopicMessage');
+ *
+ *      // Optional: Additional data
+ *      data: {
+ *        orderId: '001',
+ *        url: '/order/001'
+ *      }
+ *        orderId: '001',
+ *        customUrl: '/order/001'
+ *      }
+ *    });
+ *
+ * 2. SUBSCRIBE TOKEN TO TOPICS
+ *    ──────────────────────────
+ *    const functions = getFunctions();
+ *    const subscribe = httpsCallable(functions, 'subscribeToTopics');
+ *
+ *    const result = await subscribe({
+ *      token: 'FCM_TOKEN_HERE',           // Required: Device FCM token
+ *      topics: ['Sales', 'All']           // Required: Array of topics
+ *    });
+ *
+ * 3. UNSUBSCRIBE TOKEN FROM TOPICS
+ *    ──────────────────────────────
+ *    const functions = getFunctions();
+ *    const unsubscribe = httpsCallable(functions, 'unsubscribeFromTopics');
+ *
+ *    const result = await unsubscribe({
+ *      token: 'FCM_TOKEN_HERE',           // Required: Device FCM token
+ *      topics: ['Sales']                  // Required: Topics to unsubscribe
+ *    });
+ *
+ * ═════════════════════════════════════════════════════════════════════════
+ */

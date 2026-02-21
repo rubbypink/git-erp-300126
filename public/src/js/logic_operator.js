@@ -110,10 +110,13 @@ window.loadBookingToUI = function(bkData, detailsData) {
     }
     
     detailRowCount = 0;
-    
+
     if (Array.isArray(detailsData)) {
-      detailsData.forEach(row => {
-        addDetailRow(row);
+      // Sắp xếp chi tiết theo thứ tự service_type và check_in
+      const sortedDetails = sortDetailsData(detailsData);
+      sortedDetails.forEach(row => {
+          // Gọi hàm thêm dòng
+          addDetailRow(row);
       });
     }
 
@@ -135,6 +138,62 @@ window.loadBookingToUI = function(bkData, detailsData) {
 }
 
 
+
+/**
+ * sortDetailsData: Sắp xếp dữ liệu chi tiết theo thứ tự service_type và check_in
+ * Thứ tự ưu tiên: Vé MB -> Vé Tàu -> Phòng -> Xe -> Các loại khác
+ * Nếu cùng type, sắp xếp theo check_in (ngày sớm trước)
+ * @param {Array} detailsData - Dữ liệu chi tiết cần sắp xếp
+ * @returns {Array} Mảng đã sắp xếp
+ */
+function sortDetailsData(detailsData) {
+  if (!Array.isArray(detailsData) || detailsData.length === 0) return detailsData;
+
+  const typeOrder = ['Vé MB', 'Vé Tàu', 'Phòng', 'Xe'];
+
+  // Helper: Lấy service_type (hỗ trợ cả array và object format)
+  const getServiceType = (row) => {
+    if (!row) return '';
+    if (typeof row === 'object' && !Array.isArray(row)) {
+      return row.service_type || row[COL_INDEX.D_TYPE] || '';
+    }
+    return row[COL_INDEX.D_TYPE] || '';
+  };
+
+  // Helper: Lấy check_in date (hỗ trợ cả array và object format)
+  const getCheckInDate = (row) => {
+    if (!row) return 0;
+    let checkIn = '';
+    if (typeof row === 'object' && !Array.isArray(row)) {
+      checkIn = row.check_in || row[COL_INDEX.D_IN] || '';
+    } else {
+      checkIn = row[COL_INDEX.D_IN] || '';
+    }
+    return checkIn ? new Date(checkIn).getTime() : 0;
+  };
+
+  // Helper: Lấy priority của service_type
+  const getTypePriority = (serviceType) => {
+    const idx = typeOrder.indexOf(serviceType);
+    return idx >= 0 ? idx : typeOrder.length; // Các loại khác được priority cao nhất
+  };
+
+  return detailsData.sort((a, b) => {
+    // 1. Sắp xếp theo type priority
+    const aPriority = getTypePriority(getServiceType(a));
+    const bPriority = getTypePriority(getServiceType(b));
+
+    if (aPriority !== bPriority) {
+      return aPriority - bPriority;
+    }
+
+    // 2. Nếu cùng type, sắp xếp theo check_in date (sớm trước)
+    const aDate = getCheckInDate(a);
+    const bDate = getCheckInDate(b);
+
+    return aDate - bDate;
+  });
+}
 /**
  * Called by search form when server returns results
  * @param {Object} res - Server response { success, bookings, operator_entries, ... }

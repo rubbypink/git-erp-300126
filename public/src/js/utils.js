@@ -162,32 +162,6 @@
       return items[0];
   }
 
-  /**
-   * Get field value from row (works with both array and object)
-   * Usage: getRowValue(row, 'customer_name') or getRowValue(row, 4)
-   */
-  function getRowValue(row, fieldOrIndex) {
-      if (!row) return null;
-      
-      // Object format
-      if (typeof row === 'object' && !Array.isArray(row)) {
-          return row[fieldOrIndex];
-      }
-      
-      // Array format
-      return row[fieldOrIndex];
-  }
-
-  /**
-   * Set field value in row (works with both array and object)
-   * Usage: setRowValue(row, 'customer_name', 'Nguyễn Văn A') or setRowValue(row, 4, 'Nguyễn Văn A')
-   */
-  function setRowValue(row, fieldOrIndex, value) {
-      if (!row) return row;
-      row[fieldOrIndex] = value;
-      return row;
-  }
-
   const warn = (prefix, msg, data) => {
     if (LOG_CFG.DEBUG_MODE) {
       console.warn(`%c[${prefix}] ⚠️ ${msg}`, 'color:orange; font-weight:bold;', data || '');
@@ -298,6 +272,104 @@
   /* =========================
   * 3. FORMATTING UTILITIES (ĐÃ TỐI ƯU NGÀY THÁNG)
   * ========================= */
+
+  /**
+   * 9 TRIP ERP HELPER: SMART DATE PARSER
+   * Chức năng: Nhận diện ngôn ngữ tự nhiên để trả về khoảng thời gian
+   * @param {string} textInput - "Tháng 1", "Tuần trước", "Quý 3", "Hôm qua"...
+   */
+  function getDateRange(textInput) {
+      if (!textInput) return null;
+      
+      // 1. Chuẩn hóa đầu vào: chữ thường, bỏ khoảng trắng thừa
+      const text = textInput.toLowerCase().trim();
+      const now = new Date();
+      
+      // Mặc định start, end là hôm nay
+      let start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      let end = new Date(start);
+  
+      // Helper: Lấy số từ chuỗi (VD: "Tháng 12" -> 12)
+      const getNum = () => parseInt(text.match(/\d+/)?.[0] || 0);
+  
+      // --- LOGIC XỬ LÝ ---
+  
+      // A. NHÓM NGÀY (Hôm qua, Hôm nay, Ngày mai)
+      if (text.includes('qua')) { // Hôm qua
+          start.setDate(now.getDate() - 1);
+          end.setDate(now.getDate() - 1);
+      } 
+      else if (text.includes('mai')) { // Ngày mai
+          start.setDate(now.getDate() + 1);
+          end.setDate(now.getDate() + 1);
+      }
+      // B. NHÓM THÁNG (Tháng 1 -> 12)
+      else if (text.startsWith('tháng')) {
+          const month = getNum() - 1; // JS tính tháng từ 0
+          start = new Date(now.getFullYear(), month, 1);
+          end = new Date(now.getFullYear(), month + 1, 0); // Ngày cuối tháng
+      }
+      // C. NHÓM QUÝ (Quý 1 -> 4)
+      else if (text.startsWith('quý')) {
+          const q = getNum();
+          const startMonth = (q - 1) * 3;
+          start = new Date(now.getFullYear(), startMonth, 1);
+          end = new Date(now.getFullYear(), startMonth + 3, 0);
+      }
+      // D. NHÓM TUẦN (Tuần này, Tuần trước, Tuần tới)
+      else if (text.includes('tuần')) {
+          const day = now.getDay(); // 0 (CN) -> 6 (T7)
+          const diffToMon = (day === 0 ? -6 : 1) - day; // Tìm thứ 2
+          
+          // Xác định offset tuần
+          let weekOffset = 0;
+          if (text.includes('trước') || text.includes('ngoái')) weekOffset = -7;
+          if (text.includes('tới') || text.includes('sau')) weekOffset = 7;
+  
+          start.setDate(now.getDate() + diffToMon + weekOffset); // Thứ 2
+          end = new Date(start);
+          end.setDate(start.getDate() + 6); // Chủ nhật
+      }
+      // E. NHÓM NĂM (Năm nay, Năm ngoái, Năm tới)
+      else if (text.includes('năm')) {
+          let year = now.getFullYear();
+          if (text.includes('trước') || text.includes('ngoái')) year -= 1;
+          if (text.includes('tới') || text.includes('sau')) year += 1;
+          
+          start = new Date(year, 0, 1);
+          end = new Date(year, 11, 31);
+      }
+  
+      // F. CHỐT HẠ: Ép giờ cho đúng chuẩn Database (00:00:00 -> 23:59:59)
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+  
+      return { start, end };
+  }
+  /**
+   * 9 TRIP ERP HELPER: DATE CHECKER
+   * Chức năng: Kiểm tra 1 ngày có nằm trong khoảng Start-End không
+   * @param {Date|Object|string} dateCheck - Ngày cần kiểm tra (nhận cả Timestamp Firebase)
+   * @param {Object} range - { start: Date, end: Date } lấy từ hàm getDateRange
+   */
+  const isDateInRange = (dateCheck, range) => {
+      if (!dateCheck || !range) return false;
+
+      let target = dateCheck;
+
+      // 1. Xử lý Firebase Timestamp (có thuộc tính .toDate())
+      if (typeof dateCheck.toDate === 'function') {
+          target = dateCheck.toDate();
+      } 
+      // 2. Xử lý chuỗi (String) hoặc Timestamp số
+      else if (!(dateCheck instanceof Date)) {
+          target = new Date(dateCheck);
+      }
+
+      // 3. So sánh (Dùng getTime để chính xác tuyệt đối từng milisecond)
+      return target.getTime() >= range.start.getTime() && 
+            target.getTime() <= range.end.getTime();
+  };
 
   function pad2(n) { return String(n).padStart(2, '0'); }
 
@@ -456,6 +528,111 @@
     });
     return els.length;
   }
+
+  /**
+   * 9 TRIP ERP HELPER: ELASTIC ELEMENT
+   * Chức năng: Ép element co lại để luôn nằm trong Viewport, tự sinh scroll nội bộ.
+   * @param {string|HTMLElement} target - ID hoặc Element cần xử lý
+   * @param {number} padding - Khoảng cách an toàn đáy (mặc định 20px cho Mobile)
+   */
+  const fitToViewport = (target, padding = 20) => {
+    try {
+      const el = typeof target === 'string' ? document.getElementById(target) : target;
+      if (!el) return;
+
+      // --- BƯỚC 1: FIT SIZE (Giữ nguyên logic Resize tối ưu) ---
+      const vH = window.innerHeight || document.documentElement.clientHeight;
+      const vW = window.innerWidth || document.documentElement.clientWidth;
+
+      // Reset để đo kích thước thực
+      el.style.maxHeight = 'none';
+      el.style.maxWidth = 'none';
+      
+      // Lấy kích thước hiện tại
+      let rect = el.getBoundingClientRect();
+
+      // Xử lý quá khổ chiều cao
+      if (rect.height > (vH - padding * 2)) {
+          el.style.maxHeight = `${vH - padding * 2}px`;
+          el.style.overflowY = 'auto';
+      }
+      
+      // Xử lý quá khổ chiều rộng
+      if (rect.width > (vW - padding * 2)) {
+          el.style.maxWidth = `${vW - padding * 2}px`;
+          el.style.overflowX = 'auto';
+      }
+
+      // Đo lại sau khi resize
+      rect = el.getBoundingClientRect();
+      
+      // --- BƯỚC 2: TÍNH TOÁN ĐỘ LỆCH (DELTA CALCULATION) ---
+      
+      let deltaX = 0;
+      let deltaY = 0;
+
+      // Kiểm tra trục dọc (Y)
+      if (rect.top < padding) {
+          // Lệch lên trên -> Cần dịch xuống
+          deltaY = padding - rect.top; 
+      } else if (rect.bottom > vH - padding) {
+          // Lệch xuống dưới -> Cần dịch lên (số âm)
+          deltaY = (vH - padding) - rect.bottom;
+      }
+
+      // Kiểm tra trục ngang (X)
+      if (rect.left < padding) {
+          // Lệch sang trái -> Cần dịch phải
+          deltaX = padding - rect.left;
+      } else if (rect.right > vW - padding) {
+          // Lệch sang phải -> Cần dịch trái
+          deltaX = (vW - padding) - rect.right;
+      }
+
+      // Nếu không lệch gì cả thì thoát
+      if (deltaX === 0 && deltaY === 0) return;
+
+      console.log(`9 Trip UI: Điều chỉnh vị trí element. X: ${deltaX}, Y: ${deltaY}`);
+
+      // --- BƯỚC 3: DI CHUYỂN ELEMENT (APPLY MOVEMENT) ---
+      
+      const computedStyle = window.getComputedStyle(el);
+      const position = computedStyle.position;
+
+      if (position === 'fixed' || position === 'absolute') {
+          // Trường hợp 1: Element có định vị (Modal, Tooltip, Dropdown)
+          // Ta cộng độ lệch vào tọa độ hiện tại
+          
+          // Lấy giá trị top/left hiện tại (lưu ý trường hợp 'auto')
+          const currentTop = parseFloat(computedStyle.top) || 0;
+          const currentLeft = parseFloat(computedStyle.left) || 0;
+
+          el.style.top = `${currentTop + deltaY}px`;
+          el.style.left = `${currentLeft + deltaX}px`;
+          
+          // Xóa bottom/right để tránh xung đột CSS
+          el.style.bottom = 'auto';
+          el.style.right = 'auto';
+
+      } else {
+          // Trường hợp 2: Element tĩnh (Static)
+          // Dùng Transform để dịch chuyển hình ảnh mà không làm vỡ layout xung quanh
+          // Lưu ý: Cách này chỉ dịch chuyển hình ảnh hiển thị (Visual), vị trí DOM vẫn giữ nguyên.
+          
+          // Lấy giá trị transform hiện tại (nếu có)
+          const currentTransform = new WebKitCSSMatrix(computedStyle.transform);
+          const currentX = currentTransform.m41;
+          const currentY = currentTransform.m42;
+
+          el.style.transform = `translate3d(${currentX + deltaX}px, ${currentY + deltaY}px, 0)`;
+      }
+
+    } catch (error) {
+        console.error("9 Trip Critical Error [moveElementIntoView]:", error);
+    }
+  };
+
+  window.fitToViewport = fitToViewport; // Export ra toàn cục để tiện sử dụng
 
   /* =================================================================
   * DOM HELPERS V3: FINAL & FLEXIBLE
@@ -1068,6 +1245,11 @@
     return () => {
       Array.from(els).forEach(el => events.forEach(evt => el.removeEventListener(evt, finalHandler, nativeOpts)));
     };
+  }
+
+  function trigger(selector, eventName) {
+    const el = $(selector);
+    if(el) el.dispatchEvent(new Event(eventName));
   }
 
   // Cache cấu hình để không phải gọi Firestore nhiều lần
@@ -1865,6 +2047,7 @@
               // 1. Tạo thẻ template
               const template = document.createElement('template');
               template.id = tmplId;
+              const htmlString = activeElement.outerHTML; // Lấy HTML của element (bao gồm chính nó)
 
               // 2. Chèn template vào ngay trước element để giữ vị trí
               activeElement.parentNode.insertBefore(template, activeElement);
@@ -1874,7 +2057,7 @@
               template.content.appendChild(activeElement);
 
               log(`[Utils] Đã ẩn element #${targetId} vào template #${tmplId}`);
-              return null;
+              return htmlString;
           }
 
           // Trường hợp 2: Element đang "Ngủ" trong Template -> Cần đánh thức dậy
@@ -2048,3 +2231,150 @@
 
 
 
+  /**
+   * Module: DataUtils
+   * Chuyên trách xử lý Form/Table cho ERP ngành du lịch
+   */
+  const HD = {
+  
+      /**
+       * setFormData: Đổ dữ liệu vào giao diện
+       * @param {string|HTMLElement} root - Element cha (ID hoặc Node)
+       * @param {Object|Array} data - Dữ liệu nguồn
+       * @param {boolean} isNew - Mặc định true (Lưu giá trị vào data-initial)
+       * @param {Object} options - { prefix }
+       */
+      setFormData(root, data, isNew = true, options = {}) {
+          if (!data) return 0;
+          const rootEl = $(root);
+          if (!rootEl) return 0;
+  
+          const { prefix = '' } = options;
+  
+          try {
+              // Trường hợp Mảng: Đổ vào Table/List
+              if (Array.isArray(data)) {
+                  return this._handleArraySet(rootEl, data, isNew, prefix);
+              }
+  
+              // Trường hợp Object: Đổ vào Form fields
+              return this._handleObjectSet(rootEl, data, isNew, prefix);
+          } catch (e) {
+              logError("Lỗi setFormData: ", e);
+              return 0;
+          }
+      },
+  
+      /**
+       * getFormData: Thu thập dữ liệu từ giao diện
+       * @param {string|HTMLElement} root - Element cha
+       * @param {string} collection - Tên bộ data trong FIELD_MAP
+       * @param {boolean} onlyNew - Mặc định false (true: chỉ lấy data đã thay đổi)
+       * @param {Object} options - { prefix }
+       */
+      getFormData(root, collection, onlyNew = false, options = {}) {
+          const rootEl = typeof root === 'string' ? document.querySelector(root) : root;
+          if (!rootEl || !collection) return {};
+  
+          const { prefix = '' } = options;
+          const results = {};
+          
+          // Truy xuất danh sách field từ Mapping hệ thống
+          const fields = (window.FIELD_MAP && FIELD_MAP[collection]) 
+                         ? Object.values(FIELD_MAP[collection]) 
+                         : [];
+
+          log(`🔍 [getFormData] Thu thập dữ liệu từ collection: ${collection} (fields: ${fields.join(', ')})`, 'info');
+  
+          if (fields.length === 0) return results;
+  
+          fields.forEach(fieldName => {
+              const selector = `[data-field="${prefix}${fieldName}"], #${prefix}${fieldName}`;
+              const el = rootEl.querySelector(selector);
+              if (!el) return;
+  
+              const currentValue = typeof getFromEl === 'function' ? getFromEl(el) : el.value;
+              const initialValue = el.dataset.initial;
+              
+              const isPrimaryKey = (fieldName === 'id' || fieldName === 'uid');
+              const isChanged = String(currentValue) !== String(initialValue);
+  
+              if (!onlyNew || isPrimaryKey || isChanged) {
+                  results[fieldName] = currentValue;
+              }
+          });
+  
+          return results;
+      },
+  
+      // --- Private Methods ---
+  
+      /**
+       * _handleArraySet: Xử lý đổ dữ liệu mảng vào Table/List
+       * @private
+       */
+      _handleArraySet(rootEl, data, isNew, prefix) {
+          const container = rootEl.tagName === 'TABLE' ? rootEl.querySelector('tbody') || rootEl : rootEl;
+          
+          // Tìm các dòng mẫu bằng thuộc tính [data-row]
+          let rows = container.querySelectorAll('[data-row]');
+          if (rows.length === 0) return 0;
+      
+          const templateRow = rows[0];
+          const targetCount = data.length;
+          const currentCount = rows.length;
+      
+          // 1. Đồng bộ số lượng dòng
+          if (currentCount < targetCount) {
+              const fragment = document.createDocumentFragment();
+              for (let i = currentCount; i < targetCount; i++) {
+                  const newRow = templateRow.cloneNode(true);
+                  // Làm sạch data-initial và data-item của dòng mới clone
+                  newRow.removeAttribute('data-item');
+                  newRow.querySelectorAll('[data-field]').forEach(el => delete el.dataset.initial);
+                  fragment.appendChild(newRow);
+              }
+              container.appendChild(fragment);
+          } else if (currentCount > targetCount) {
+              for (let i = currentCount - 1; i >= targetCount; i--) {
+                  rows[i].remove();
+              }
+          }
+      
+          // 2. Đổ dữ liệu và gán định danh (Mấu chốt ở đây)
+          const finalRows = container.querySelectorAll('[data-row]');
+          finalRows.forEach((row, index) => {
+              const itemData = data[index];
+              
+              // Gán Index vào data-row thay vì dùng ID
+              row.setAttribute('data-row', index);
+              
+              // Gán ID của object vào data-item (nếu có)
+              if (itemData && (itemData.id || itemData.uid)) {
+                  row.setAttribute('data-item', itemData.id || itemData.uid);
+              }
+      
+              // Đệ quy đổ dữ liệu vào các field trong dòng
+              this.setFormData(row, itemData, isNew, { prefix });
+          });
+      
+          return targetCount;
+      },
+  
+      _handleObjectSet(rootEl, data, isNew, prefix) {
+          let count = 0;
+          for (const [key, value] of Object.entries(data)) {
+              const selector = `[data-field="${prefix}${key}"], #${prefix}${key}`;
+              const els = rootEl.querySelectorAll(selector);
+  
+              els.forEach(el => {
+                  if (typeof setToEl === 'function' && setToEl(el, value)) {
+                      if (isNew) el.dataset.initial = (value ?? '');
+                      count++;
+                  }
+              });
+          }
+          return count;
+      },
+  
+  };

@@ -1,7 +1,6 @@
 // =========================================================================
 // MODAL FULL COMPONENT
 // =========================================================================
-
 class ModalFull extends HTMLElement {
     constructor() {
         super();
@@ -13,6 +12,7 @@ class ModalFull extends HTMLElement {
     connectedCallback() {
         this.init();
         this.setupModal();
+        this._setupUI();
     }
 
     init() {
@@ -26,6 +26,7 @@ class ModalFull extends HTMLElement {
                         <div class="modal-header border-bottom" style="max-height: max-content;">
                             <h5 class="modal-title" style="font-weight: bold; justify-self: center;">${title}</h5>
                             <div style="display: flex; gap: 0.6rem; align-items: center;">
+                                <button class="btn btn-sm btn-link text-dark btn-minimize px-1"><i class="fa-solid fa-minus"></i></button>
                                 <button type="button" class="btn-resize-modal" id="btnResizeModal" title="Chuyển đổi kích thước" style="border: none; background: none; font-size: 1.2rem; color: #999; cursor: pointer; padding: 0.5rem; display: flex; align-items: center; justify-content: center;">
                                     <i class="fas fa-expand"></i>
                                 </button>
@@ -66,6 +67,19 @@ class ModalFull extends HTMLElement {
         }
     }
 
+    _setupUI() {
+        if (window.DraggableSetup) {
+            new window.DraggableSetup('dynamic-modal-full', { targetSelector: '.modal-dialog', handleSelector: '.modal-header' });
+        }
+        if (window.Resizable) {
+            new Resizable('dynamic-modal-full', { targetSelector: '.modal-content',
+                minWidth: 400, minHeight: 300 });
+        }
+        if (window.WindowMinimizer) {
+            new WindowMinimizer('dynamic-modal-full', {title: 'Data', btnSelector: '.btn-minimize'});
+        }
+    }
+
     _loadContent(dataLoad) {
         let content = '';
 
@@ -85,14 +99,57 @@ class ModalFull extends HTMLElement {
         }
     }
 
-    render(htmlContent, title = "9 Trip MD Full") {
-        const bodyEl = this.querySelector('.modal-body');
+    /**
+     * Reset modal về trạng thái nguyên bản
+     * Xoá nội dung, reset title, clear styles
+     * @public
+     */
+    reset() {
+        const bodyEl = this.querySelector('#dynamic-modal-full-body');
+        if (bodyEl) {
+            bodyEl.innerHTML = '';
+            bodyEl.className = 'modal-body pt-0 overflow-auto';
+        }
+        
         const titleEl = this.querySelector('.modal-title');
         if (titleEl) {
+            titleEl.textContent = this.getAttribute('title') || 'Modal Title';
+        }
+        
+        console.log('[ModalFull] 🔄 Modal reset to default state');
+    }
+
+    /**
+     * Render nội dung vào modal
+     * @param {*} htmlContent - HTML content (string, Element, hoặc DocumentFragment)
+     * @param {string} [title='9 Trip Dynamic Form'] - Modal title
+     * 
+     * ★ FLOW CHỦ YẾU:
+     * 1. Controller render: new A.HotelPriceController('dynamic-modal-full-body')
+     *    └─ Controller thêm HTML vào #dynamic-modal-full-body
+     * 2. Gọi show(): modal.show(null, 'Title')
+     *    └─ show() KHÔNG reset (DOM đã sạch từ hide())
+     *    └─ show() KHÔNG render nếu htmlContent = null
+     *    └─ Chỉ update title → display modal
+     * 3. Khi close: hide() → reset() xóa sạch DOM cho lần mở tiếp
+     */
+    render(htmlContent, title = "9 Trip Dynamic Form") {
+        if (!this.modal) {
+            this.connectedCallback();
+        }
+
+        const bodyEl = this.querySelector('.modal-body');
+        const titleEl = this.querySelector('.modal-title');
+        
+        if (titleEl) {
             titleEl.textContent = title;
-        }   
-        // 3. Check và xử lý content type
-        // ✅ Xử lý thẻ <template> - extract nội dung từ template.content
+        }
+        if (!htmlContent) {
+            bodyEl.innerHTML = '';
+            return;
+        }
+        
+        // Xử lý content type
         let processedContent = htmlContent;
         if (htmlContent instanceof HTMLElement && htmlContent.tagName === 'TEMPLATE') {
             processedContent = htmlContent.content;
@@ -104,33 +161,50 @@ class ModalFull extends HTMLElement {
 
         try {
             if (isString) {
-                // String HTML - dùng innerHTML
                 bodyEl.innerHTML = processedContent;
             } else if (isFragment) {
-                // DocumentFragment - clone và append
+                bodyEl.innerHTML = '';
                 bodyEl.appendChild(processedContent.cloneNode(true));
             } else if (isElement) {
-                // HTMLElement - clone và append
+                bodyEl.innerHTML = '';
                 bodyEl.appendChild(processedContent.cloneNode(true));
             } else if (processedContent) {
-                // Fallback: convert to string
                 bodyEl.innerHTML = String(processedContent);
-            }
+            }     
+            console.log(`[ModalFull] ✏️ Content rendered with title: ${title}`);
         } catch (error) {
             console.error("Error setting modal content:", error);
         }
+        this.addEventListener('hidden.bs.modal', () => {
+            log('[ModalFull] Modal hidden, disposing instance and cleaning up DOM');
+            this.reset();
+        }, { once: true });
     }
 
+    /**
+     * Show modal với nội dung mới
+     * @param {*} [htmlContent=null] - HTML content để render
+     * @param {string} [title=null] - Modal title
+     * @param {Function} [saveHandler=null] - Save button handler
+     * @param {Function} [resetHandler=null] - Reset button handler
+     * 
+     * ★ FLOW: show() được gọi SAU khi controller đã inject content
+     * - Không gọi reset() (vì DOM đã sạch từ hide() lần trước)
+     * - Chỉ render nếu htmlContent được truyền
+     * - Render title lúc nào cũng cập nhật
+     */
     show(htmlContent = null, title = null, saveHandler = null, resetHandler = null) {
-        if (!this.modal) {alert('Modal not initialized!'); return;}
-        if (htmlContent) this.render(htmlContent, title);
+        // Render content nếu có (modal đã sạch từ hide())
+        if (htmlContent || title || !this.modal) {
+            this.render(htmlContent, title);
+        } 
         if (saveHandler) this.setSaveHandler(saveHandler);
         if (resetHandler) this.setResetHandler(resetHandler);
         this.modal.show();
     }
 
     hide() {
-        this.modal?.hide();
+        this.modal?.hide();        
     }
 
     getSaveBtn() {
@@ -231,10 +305,37 @@ class ModalFull extends HTMLElement {
             btnResize.title = 'Thu nhỏ modal';
         } else {
             modalDialog.className = 'modal-dialog modal-xl';
+            modalDialog.style.draggable = true; // Enable dragging when not fullscreen
             btnResize.innerHTML = '<i class="fas fa-compress"></i>';
             btnResize.title = 'Phóng to modal';
         }
     }
+    // Function to make the modal draggable
+    // enableDrag(modalId) {
+    //     const modal = this.querySelector('#dynamic-modal-full');
+    //     const header = modal.querySelector(".modal-header");
+    //     let isDragging = false, currentX, currentY, initialX, initialY;
+
+    //     header.addEventListener("mousedown", (e) => {
+    //         isDragging = true;
+    //         initialX = e.clientX - modal.offsetLeft;
+    //         initialY = e.clientY - modal.offsetTop;
+    //     });
+
+    //     document.addEventListener("mousemove", (e) => {
+    //         if (isDragging) {
+    //         e.preventDefault();
+    //         currentX = e.clientX - initialX;
+    //         currentY = e.clientY - initialY;
+    //         modal.style.left = `${currentX}px`;
+    //         modal.style.top = `${currentY}px`;
+    //         modal.style.margin = "0"; // Override Bootstrap margin
+    //         }
+    //     });
+
+    //     document.addEventListener("mouseup", () => isDragging = false);
+    // }
+
 }
 
 customElements.define('at-modal-full', ModalFull);
@@ -249,7 +350,7 @@ class OffcanvasMenu extends HTMLElement {
             selectedStages: new Set(['all']),
             searchQuery: '',
             isHoverEnabled: true,
-            triggerWidth: 15,
+            triggerWidth: 20,
             isPinned: false,
             isRightSide: false,
             menuWidth: 340,
@@ -343,11 +444,13 @@ class OffcanvasMenu extends HTMLElement {
                             <span>Báo cáo</span>
                         </button>
                         ${this._renderFuncBtn('openSettingsModal', 'Cấu hình', 'cog', '#6c757d')}
+
                     </div>
                 </div>
               </div>
 
               <div class="footer-controls">
+              
                 <button class="control-btn" id="btn-toggle-side" title="Đổi vị trí sidebar">
                   <i class="fas fa-arrow-left"></i>
                 </button>
@@ -667,8 +770,8 @@ class OffcanvasMenu extends HTMLElement {
             /* FUNCTION GRID */
             .function-grid { 
                 display: grid; 
-                grid-template-columns: 1fr 1fr; 
-                gap: 8px;
+                grid-template-columns: repeat(auto-fit, minmax(65px, 1fr));
+                gap: 6px;
             }
 
             .func-btn { 
@@ -676,14 +779,15 @@ class OffcanvasMenu extends HTMLElement {
                 flex-direction: column; 
                 align-items: center; 
                 justify-content: center; 
-                gap: 6px; 
-                padding: 12px; 
+                gap: 5px; 
+                padding: 8px 6px; 
                 background: #f8f9fa; 
                 border: 1px solid var(--border); 
-                border-radius: 6px; 
+                border-radius: 5px; 
                 cursor: pointer; 
                 transition: all 0.2s;
                 text-align: center;
+                min-height: 70px;
             }
 
             .func-btn:hover { 
@@ -694,13 +798,15 @@ class OffcanvasMenu extends HTMLElement {
             }
 
             .func-btn i { 
-                font-size: 16px;
+                font-size: 13px;
             }
 
             .func-btn span { 
-                font-size: 11px; 
+                font-size: 10px; 
                 font-weight: 500; 
                 color: var(--text);
+                line-height: 1.2;
+                word-break: break-word;
             }
 
             .btn-reset { 
@@ -1187,6 +1293,7 @@ class OffcanvasMenu extends HTMLElement {
                 if (!this._hoverTriggerTime) {
                     // Record time when cursor first enters
                     this._hoverTriggerTime = Date.now();
+                    if (this._isClosing) this._isClosing = false; // Cancel any pending close
                 } else if (Date.now() - this._hoverTriggerTime >= 1000) {
                     // Cursor has been in zone for at least 1 second
                     this.open();
@@ -1212,10 +1319,13 @@ class OffcanvasMenu extends HTMLElement {
         
         // Reset hover trigger timer khi chuột rời menu
         this._hoverTriggerTime = null;
+        this._isClosing = true;
         
         setTimeout(() => {
-            this.close();
-        }, 1000);
+            if (this._isClosing) {
+                this.close();
+            }
+        }, 1500);
     }
     
     // =========================================================================
@@ -1331,6 +1441,7 @@ if (!customElements.get('offcanvas-menu')) {
         if (!document.querySelector('at-modal-full')) {
             document.body.appendChild(document.createElement('at-modal-full'));
         }
+        
     });
 
     function _updateMenuState(updates) {
