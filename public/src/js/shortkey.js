@@ -13,7 +13,9 @@ let APP_SHORTCUTS = {
     'openSettingsModal': 'Ctrl+Alt+M',
     'actionCreateBooking': 'Ctrl+Alt+B',
     'openCalculator': 'Ctrl+Shift+C',
-    'openAdminConsole': 'Ctrl+Alt+A',
+    'openAdminConsole': 'Ctrl+Shift+A',
+    
+
 };
 
 // 1. Khởi tạo (Gọi hàm này trong initApp)

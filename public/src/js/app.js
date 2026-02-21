@@ -928,6 +928,8 @@ class Application {
                         renderRoleBasedFooterButtons(userRoleFromFirebase, mainErpFooter);
                     });
                 }
+
+                MenuController.init();
                 
                 // ★ IMPORTANT: Initialize Notification module NOW that CURRENT_USER is available
                 // (Lazy init on first access via getter, or explicit init here)

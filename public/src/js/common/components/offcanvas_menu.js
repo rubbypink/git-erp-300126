@@ -48,7 +48,7 @@ class ModalFull extends HTMLElement {
 
     setupModal() {
         const modalEl = this.querySelector('#dynamic-modal-full');
-        this.modal = new bootstrap.Modal(modalEl);
+        this.modal = new bootstrap.Modal(modalEl, { backdrop: false, keyboard: false });
 
         const dataLoad = this.getAttribute('data-body');
         if (dataLoad) {
@@ -1436,12 +1436,7 @@ if (!customElements.get('offcanvas-menu')) {
                 _updateMenuState({ menuWidth: e.detail.width });
             });
             // menu.toggleSide();
-        }
-
-        if (!document.querySelector('at-modal-full')) {
-            document.body.appendChild(document.createElement('at-modal-full'));
-        }
-        
+        }        
     });
 
     function _updateMenuState(updates) {

@@ -194,7 +194,8 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
             // -- ADMIN --
             {
                 id: 'btn-admin-tools', label: '', iconClass: 'fas fa-tools', btnClass: 'btn-secondary admin-only',
-                callback: () => { A.UI.renderForm(null, 'form-admin'); },
+                callback: () => { AdminConsole.openAdminSettings(); },
+                // callback: () => { A.UI.renderForm(null, 'form-admin'); },
                 attributes: { 'title': 'Công cụ Admin'},
             },
             // -- SALES --

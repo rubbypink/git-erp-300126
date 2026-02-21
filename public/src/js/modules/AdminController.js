@@ -635,6 +635,48 @@ class AdminController {
             }
         });
     }
+
+    /**
+ * 9TRIP HELPER: LAZY LOAD SETTINGS MODAL
+ * Tối ưu hiệu năng: Chỉ tải HTML qua mạng khi click lần đầu tiên
+ */
+async openAdminSettings() {
+    const modalId = 'modal-system-settings';
+    let modalEl = document.getElementById(modalId);
+
+    try {
+        // Bước 1: KIỂM TRA DOM - Nếu chưa có thì mới tiến hành Fetch
+        if (!modalEl) {
+            console.log("⚙️ Đang tải giao diện Settings lần đầu...");
+            
+            // Tùy chọn: Bạn có thể bật 1 cái icon xoay xoay (loading) ở đây
+
+            // Gọi Fetch lấy file HTML
+            const response = await fetch('/public/src/components/tpl_settings.html');
+            
+            // Kiểm tra nếu đường dẫn sai (báo lỗi 404)
+            if (!response.ok) {
+                throw new Error(`Lỗi mạng: ${response.status} - Không tìm thấy file template!`);
+            }
+
+            // GIẢI MÃ: Biến response thành chuỗi Text HTML
+            const htmlText = await response.text();
+
+            // Nhúng thẳng vào thẻ <body>
+            A.Modal.show(htmlText, 'Cài đặt hệ thống');
+            
+            console.log("✅ Đã render giao diện Settings thành công!");
+            
+            // [Quan trọng] Gọi hàm bind sự kiện cho các nút bên trong Modal ở đây
+            // initSettingsEvents(); 
+        }
+
+    } catch (error) {
+        console.error("❌ Lỗi khi mở Modal Settings:", error);
+        // Tích hợp thông báo Toast/Alert của hệ thống vào đây
+        alert("Không thể tải giao diện cài đặt. Vui lòng kiểm tra lại đường dẫn file!");
+    }
+}
 }
 
 export const AdminConsole = new AdminController();

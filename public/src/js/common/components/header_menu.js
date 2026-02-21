@@ -161,7 +161,6 @@ export default class ErpHeaderMenu {
                             ${this._getSearchAndFiltersHTML()}
                         </div>
 
-                        ${this._getUserMenuHTML()}
                         
                         ${this._getSettingsMenuHTML()}
                         
@@ -249,52 +248,204 @@ export default class ErpHeaderMenu {
         `;
     }
 
-    _getUserMenuHTML() {
-        return `
-            <div class="user-menu dropdown">
-                <button class="btn btn-light btn-sm dropdown-toggle d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" style="width: 32px; height: 32px; border-radius: 50%;">
-                    <i class="fa-solid fa-user text-primary"></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-sm mt-2" id="user-menu">
-                    <li id="user-info-card" class="px-3 py-2 border-bottom bg-light">
-                        <div class="text-dark small">
-                            <div><strong id="user-menu-name">Guest</strong></div>
-                            <div id="user-menu-email" class="text-muted" style="font-size: 0.85rem;"></div>
-                        </div>
-                    </li>
-                    <li><button class="dropdown-item btn-sm py-2" id="btn-login-menu" onclick="A.Auth.showChoiceScreen()"><i class="fa-solid fa-sign-in-alt text-primary w-20px"></i> Đăng Nhập</button></li>
-                    <li><button class="dropdown-item btn-sm py-2" id="btn-logout-menu" onclick="A.Auth.signOut()" style="display:none;"><i class="fa-solid fa-sign-out-alt text-danger w-20px"></i> Đăng Xuất</button></li>
-                    <li class="manager-only">
-                        <hr class="dropdown-divider">
-                        <div class="px-3 py-1">
-                            <select id="btn-select-masked-role" class="form-select form-select-sm fw-bold text-primary" onchange="if(typeof reloadSystemMode === 'function') reloadSystemMode(this.value);">
-                                <option id="user-menu-role" value="" selected>-- Chọn Role --</option>
-                                <option value="sale">Sales Mode</option>
-                                <option value="op">Operator Mode</option>
-                            </select>
-                        </div>
-                    </li>
-                </ul>
-            </div>
-        `;
-    }
+    // _getUserMenuHTML() {
+    //     return `
+    //         <div class="user-menu dropdown">
+    //             <button class="btn btn-light btn-sm dropdown-toggle d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" style="width: 32px; height: 32px; border-radius: 50%;">
+    //                 <i class="fa-solid fa-user text-primary"></i>
+    //             </button>
+    //             <ul class="dropdown-menu dropdown-menu-end shadow-sm mt-2" id="user-menu">
+    //                 <li id="user-info-card" class="px-3 py-2 border-bottom bg-light">
+    //                     <div class="text-dark small">
+    //                         <div><strong id="user-menu-name">Guest</strong></div>
+    //                         <div id="user-menu-email" class="text-muted" style="font-size: 0.85rem;"></div>
+    //                     </div>
+    //                 </li>
+    //                 <li><button class="dropdown-item btn-sm py-2" id="btn-login-menu" onclick="A.Auth.showChoiceScreen()"><i class="fa-solid fa-sign-in-alt text-primary w-20px"></i> Đăng Nhập</button></li>
+    //                 <li><button class="dropdown-item btn-sm py-2" id="btn-logout-menu" onclick="A.Auth.signOut()" style="display:none;"><i class="fa-solid fa-sign-out-alt text-danger w-20px"></i> Đăng Xuất</button></li>
+    //                 <li class="manager-only">
+    //                     <hr class="dropdown-divider">
+    //                     <div class="px-3 py-1">
+    //                         <select id="btn-select-masked-role" class="form-select form-select-sm fw-bold text-primary" onchange="if(typeof reloadSystemMode === 'function') reloadSystemMode(this.value);">
+    //                             <option id="user-menu-role" value="" selected>-- Chọn Role --</option>
+    //                             <option value="sale">Sales Mode</option>
+    //                             <option value="op">Operator Mode</option>
+    //                         </select>
+    //                     </div>
+    //                 </li>
+    //             </ul>
+    //         </div>
+    //     `;
+    // }
 
     _getSettingsMenuHTML() {
         return `
-            <div class="dropdown">
-                <button class="btn btn-light btn-sm d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" style="width: 32px; height: 32px; border-radius: 50%;">
-                    <i class="fa-solid fa-gear text-secondary"></i>
+            <div class="erp-header d-flex justify-content-end p-2 bg-light rounded-circle shadow-sm">
+                <button id="erp-menu-trigger" class="chrome-trigger-btn" aria-label="Menu">
+                <i class="fa-solid fa-ellipsis-vertical"></i>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-sm mt-2">
-                    <li><button class="dropdown-item btn-sm py-2" onclick="reloadPage()"><i class="fa-solid fa-rotate text-primary w-20px"></i> Reload ERP</button></li>
-                    <li><button class="dropdown-item btn-sm py-2" onclick="if(typeof A.DB.syncDelta === 'function') A.DB.syncDelta()"><i class="fa-solid fa-cloud-arrow-down text-info w-20px"></i> Cập Nhật Dữ Liệu</button></li>
-                    <li><button class="dropdown-item btn-sm py-2" onclick="if(typeof toggleFullScreen === 'function') toggleFullScreen()"><i class="fa-solid fa-expand text-secondary w-20px"></i> Toàn Màn Hình</button></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li class="admin-only"><button class="dropdown-item btn-sm py-2 text-success fw-bold bg-light" onclick="if(typeof openSettingsModal === 'function') openSettingsModal()"><i class="fa-solid fa-sliders w-20px"></i> Cài Đặt</button></li>
-                    <li class="admin-only"><a class="dropdown-item btn-sm py-2" href="#" target="_blank"><i class="fa-solid fa-database text-primary w-20px"></i> Operator DB</a></li>
-                    <li class="admin-only border-top mt-1 pt-1"><button class="dropdown-item btn-sm py-2 text-warning" onclick="if(typeof clearLocalCache === 'function') clearLocalCache()"><i class="fa-solid fa-trash w-20px"></i> Xóa Cache</button></li>
-                </ul>
+                
+                <div id="erp-menu-container" class="erp-menu-dropdown d-none">
+                    </div>
             </div>
+            <style>
+            /* ==========================================
+            2. CSS: CHROME UI, DARK THEME & MOBILE RESPONSIVE
+             ========================================== */
+             :root {
+                 --erp-menu-bg: #ffffff;
+                 --erp-menu-text: #333333;
+                 --erp-menu-hover: #f1f3f4;
+                 --erp-menu-divider: #e8eaed;
+                 --erp-icon-color: #5f6368;
+             }
+             
+             body.dark-theme {
+                 --erp-menu-bg: #282a2d;
+                 --erp-menu-text: #e8eaed;
+                 --erp-menu-hover: #3c4043;
+                 --erp-menu-divider: #4a4d51;
+                 --erp-icon-color: #9aa0a6;
+             }
+             
+             /* Nút Trigger 3 chấm */
+             .chrome-trigger-btn {
+                 background-color: transparent;
+                 border: none;
+                 width: 36px;
+                 height: 36px;
+                 border-radius: 50%;
+                 display: flex;
+                 align-items: center;
+                 justify-content: center;
+                 color: var(--erp-icon-color);
+                 font-size: 18px;
+                 cursor: pointer;
+                 transition: background-color 0.2s ease;
+             }
+             .chrome-trigger-btn:hover, .chrome-trigger-btn:focus {
+                 background-color: var(--erp-menu-hover); 
+                 outline: none;
+             }
+             body.dark-theme .chrome-trigger-btn:hover {
+                 background-color: rgba(255, 255, 255, 0.1); 
+             }
+             
+             /* Khung Menu Chính */
+             .erp-menu-dropdown {
+                 position: absolute;
+                 top: 50px;
+                 right: 15px;
+                 background-color: var(--erp-menu-bg);
+                 border: 1px solid var(--erp-menu-divider);
+                 border-radius: 8px;
+                 box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                 width: 320px;
+                 padding: 8px 0;
+                 z-index: 1000;
+                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                 color: var(--erp-menu-text);
+             }
+             
+             /* Item cơ bản */
+             .erp-menu-item {
+                 display: flex;
+                 align-items: center;
+                 padding: 6px 16px;
+                 font-size: 0.85rem;
+                 cursor: pointer;
+                 transition: background-color 0.2s;
+                 text-decoration: none;
+                 color: inherit;
+             }
+             .erp-menu-item:hover {
+                 background-color: var(--erp-menu-hover);
+             }
+             .erp-menu-item i.menu-icon {
+                 font-size: 0.85rem;
+                 width: 24px; 
+                 text-align: center;
+                 margin-right: 12px;
+                 color: var(--erp-icon-color);
+             }
+             .erp-menu-divider {
+                 height: 1px;
+                 background-color: var(--erp-menu-divider);
+                 margin: 6px 0;
+             }
+             
+             /* Box điều khiển Zoom */
+             .chrome-zoom-controls {
+                 display: flex;
+                 align-items: center;
+                 border: 1px solid var(--erp-menu-divider);
+                 border-radius: 4px;
+                 overflow: hidden;
+             }
+             .chrome-zoom-controls button {
+                 background: transparent;
+                 border: none;
+                 color: var(--erp-menu-text);
+                 padding: 2px 10px;
+                 cursor: pointer;
+             }
+             .chrome-zoom-controls button:hover {
+                 background-color: var(--erp-menu-hover);
+             }
+             .chrome-zoom-controls span {
+                 padding: 0 8px;
+                 font-weight: 500;
+             }
+             
+             /* Submenu & Hiệu ứng mũi tên */
+             .erp-submenu {
+                 position: relative;
+             }
+             .submenu-arrow {
+                 transition: transform 0.2s ease;
+             }
+             
+             /* Màn hình lớn: Desktop Hover sang trái */
+             @media (min-width: 769px) {
+                 .erp-submenu-content {
+                     display: none;
+                     position: absolute;
+                     top: -8px;
+                     right: 100%;
+                     background-color: var(--erp-menu-bg);
+                     border: 1px solid var(--erp-menu-divider);
+                     border-radius: 8px;
+                     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                     width: 250px;
+                     padding: 8px 0;
+                     z-index: 1001;
+                 }
+                 .erp-submenu:hover > .erp-submenu-content {
+                     display: block;
+                 }
+             }
+             
+             /* Màn hình nhỏ: Mobile Accordion xổ dọc */
+             @media (max-width: 768px) {
+                 .erp-submenu-content {
+                     display: none;
+                     position: static;
+                     width: 100%;
+                     box-shadow: inset 0 3px 6px rgba(0,0,0,0.04);
+                     border: none;
+                     border-radius: 0;
+                     background-color: var(--erp-menu-hover);
+                     padding-left: 15px;
+                     margin-top: 4px;
+                 }
+                 .erp-submenu.active > .erp-submenu-content {
+                     display: block;
+                 }
+                 .erp-submenu.active > .erp-menu-item .submenu-arrow {
+                     transform: rotate(90deg);
+                 }
+             }
+            </style>
         `;
     }
 

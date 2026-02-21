@@ -805,6 +805,38 @@
         min-width: 25rem;
     }
 
+      /* ==========================================
+      CSS: CHROME MENU TRIGGER BUTTON
+    ========================================== */
+    .chrome-trigger-btn {
+        background-color: transparent; /* Nền trong suốt hoàn toàn */
+        border: none;                  /* Xóa viền mặc định */
+        width: 36px;                   /* Kích thước vuông để tạo hình tròn chuẩn */
+        height: 36px;
+        border-radius: 50%;            /* Bo tròn 100% */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--erp-icon-color, #000000); /* Dùng biến màu để hợp chuẩn Dark Mode */
+        font-size: 18px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    /* Hiệu ứng khi người dùng di chuột hoặc chạm (Mobile) */
+    .chrome-trigger-btn:hover,
+    .chrome-trigger-btn:focus,
+    .chrome-trigger-btn:active {
+        background-color: var(--erp-menu-hover, rgba(0, 0, 0, 0.08)); 
+        outline: none; /* Bỏ viền xanh mặc định của trình duyệt khi click */
+    }
+
+    /* Tinh chỉnh cho Dark Mode */
+    body.dark-theme .chrome-trigger-btn:hover,
+    body.dark-theme .chrome-trigger-btn:focus {
+        background-color: rgba(236, 227, 227, 0.1); 
+    }
+
     .dragging {
       opacity: 0.5;
     }
