@@ -5,6 +5,10 @@
    * "Clean Date" - Tập trung xử lý ngày tháng gọn gàng (YYYY-MM-DD).
    * =========================================================================
    */
+  
+  // ★ LOAD SEQUENCE LOGGING
+  console.log('%c[LOAD_SEQUENCE] utils.js executing...', 'color: #4CAF50; font-weight: bold; font-size: 11px;');
+  
   /**
    * =========================================================================
    * ERROR HANDLER UTILITY - Global Error Management
@@ -2272,7 +2276,7 @@
        * @param {boolean} onlyNew - Mặc định false (true: chỉ lấy data đã thay đổi)
        * @param {Object} options - { prefix }
        */
-      getFormData(root, collection, onlyNew = false, options = {}) {
+      getFormDataU(root, collection, onlyNew = false, options = {}) {
           const rootEl = typeof root === 'string' ? document.querySelector(root) : root;
           if (!rootEl || !collection) return {};
   

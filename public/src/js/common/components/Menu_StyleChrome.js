@@ -66,6 +66,7 @@ const MenuController = {
             this.normalizeConfig(this.config);
             await this.renderMenuAsync(this.config);
             this.bindEvents();
+            A.Auth.updateUserMenu(); // Cập nhật trạng thái đăng nhập ngay khi khởi tạo menu
         } catch (error) {
             console.error('[ERP Menu Error] Init failed:', error);
         }
@@ -251,5 +252,4 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
         }, 'Admin Tools' // Chỉ định chính xác tên (label) của Submenu đích
     );
-    MenuController.init();
 });

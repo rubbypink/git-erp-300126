@@ -140,13 +140,26 @@ export default class ErpHeaderMenu {
 
         container.innerHTML = `
             <nav class="navbar navbar-dark p-0 erp-header-wrapper">
-                <div class="erp-header-inner w-100 d-flex align-items-center">
-                    
                     <a class="navbar-brand m-0 p-0 me-auto" href="javascript:void(0);">
                         <img id="main-logo" src="https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp" 
                             class="bg-transparent rounded-circle main-logo" alt="9Trip Logo" onclick="reloadPage()" 
                             style="height: 40px; width: auto; object-fit: contain;">
                     </a>
+                    <div class="erp-header-inner w-100 d-flex align-items-center">
+                        <div class="dropdown d-lg-none ms-1">
+                        <button class="btn btn-light btn-sm d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" style="width: 36px; height: 36px; border-radius: 8px;">
+                            <i class="fa-solid fa-bars text-primary"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end mt-2 shadow-lg border-0">
+                            <li class="dropdown-header fw-bold text-primary">CHUYỂN TRANG</li>
+                            <li><button class="dropdown-item py-2" data-bs-target="#tab-dashboard" onclick="activateTab('tab-dashboard')"><i class="fa-solid fa-chart-line text-warning w-20px"></i> Dashboard</button></li>
+                            <li><button class="dropdown-item py-2" data-bs-target="#tab-form" onclick="activateTab('tab-form')"><i class="fa-solid fa-file-pen text-secondary w-20px"></i> Booking</button></li>
+                            <li><button class="dropdown-item py-2" data-bs-target="#tab-list" onclick="activateTab('tab-list')"><i class="fa-solid fa-list text-secondary w-20px"></i> Danh sách</button></li>
+                            <li class="d-none" data-ontabs="4"><button class="dropdown-item py-2 text-info" data-bs-target="#tab-sub-form" onclick="activateTab('tab-sub-form')"><i class="fa-solid fa-user-tag w-20px"></i> Khách hàng</button></li>
+                            <li class="admin-only"><button class="dropdown-item py-2" data-bs-target="#tab-log" onclick="activateTab('tab-log')"><i class="fa-solid fa-history text-secondary w-20px"></i> Admin Log</button></li>
+                            <li class="admin-only"><button class="dropdown-item py-2 text-danger fw-bold" data-bs-target="#tab-admin-dashboard" onclick="activateTab('tab-admin-dashboard')"><i class="fa-solid fa-user-shield w-20px"></i> Admin Dashboard</button></li>
+                        </ul>
+                    </div>
 
                     <div class="erp-desktop-tabs d-none d-lg-flex align-items-center flex-grow-1 px-3">
                         ${this._getNavTabsHTML()}
@@ -166,20 +179,6 @@ export default class ErpHeaderMenu {
                         
                         ${this._getNotificationWidgetHTML()}
 
-                        <div class="dropdown d-lg-none ms-1">
-                            <button class="btn btn-light btn-sm d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" style="width: 36px; height: 36px; border-radius: 8px;">
-                                <i class="fa-solid fa-bars text-primary"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end mt-2 shadow-lg border-0">
-                                <li class="dropdown-header fw-bold text-primary">CHUYỂN TRANG</li>
-                                <li><button class="dropdown-item py-2" data-bs-target="#tab-dashboard" onclick="activateTab('tab-dashboard')"><i class="fa-solid fa-chart-line text-warning w-20px"></i> Dashboard</button></li>
-                                <li><button class="dropdown-item py-2" data-bs-target="#tab-form" onclick="activateTab('tab-form')"><i class="fa-solid fa-file-pen text-secondary w-20px"></i> Booking</button></li>
-                                <li><button class="dropdown-item py-2" data-bs-target="#tab-list" onclick="activateTab('tab-list')"><i class="fa-solid fa-list text-secondary w-20px"></i> Danh sách</button></li>
-                                <li class="d-none" data-ontabs="4"><button class="dropdown-item py-2 text-info" data-bs-target="#tab-sub-form" onclick="activateTab('tab-sub-form')"><i class="fa-solid fa-user-tag w-20px"></i> Khách hàng</button></li>
-                                <li class="admin-only"><button class="dropdown-item py-2" data-bs-target="#tab-log" onclick="activateTab('tab-log')"><i class="fa-solid fa-history text-secondary w-20px"></i> Admin Log</button></li>
-                                <li class="admin-only"><button class="dropdown-item py-2 text-danger fw-bold" data-bs-target="#tab-admin-dashboard" onclick="activateTab('tab-admin-dashboard')"><i class="fa-solid fa-user-shield w-20px"></i> Admin Dashboard</button></li>
-                            </ul>
-                        </div>
                     </div>
                 </div>
             </nav>
@@ -247,36 +246,6 @@ export default class ErpHeaderMenu {
             </ul>
         `;
     }
-
-    // _getUserMenuHTML() {
-    //     return `
-    //         <div class="user-menu dropdown">
-    //             <button class="btn btn-light btn-sm dropdown-toggle d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" style="width: 32px; height: 32px; border-radius: 50%;">
-    //                 <i class="fa-solid fa-user text-primary"></i>
-    //             </button>
-    //             <ul class="dropdown-menu dropdown-menu-end shadow-sm mt-2" id="user-menu">
-    //                 <li id="user-info-card" class="px-3 py-2 border-bottom bg-light">
-    //                     <div class="text-dark small">
-    //                         <div><strong id="user-menu-name">Guest</strong></div>
-    //                         <div id="user-menu-email" class="text-muted" style="font-size: 0.85rem;"></div>
-    //                     </div>
-    //                 </li>
-    //                 <li><button class="dropdown-item btn-sm py-2" id="btn-login-menu" onclick="A.Auth.showChoiceScreen()"><i class="fa-solid fa-sign-in-alt text-primary w-20px"></i> Đăng Nhập</button></li>
-    //                 <li><button class="dropdown-item btn-sm py-2" id="btn-logout-menu" onclick="A.Auth.signOut()" style="display:none;"><i class="fa-solid fa-sign-out-alt text-danger w-20px"></i> Đăng Xuất</button></li>
-    //                 <li class="manager-only">
-    //                     <hr class="dropdown-divider">
-    //                     <div class="px-3 py-1">
-    //                         <select id="btn-select-masked-role" class="form-select form-select-sm fw-bold text-primary" onchange="if(typeof reloadSystemMode === 'function') reloadSystemMode(this.value);">
-    //                             <option id="user-menu-role" value="" selected>-- Chọn Role --</option>
-    //                             <option value="sale">Sales Mode</option>
-    //                             <option value="op">Operator Mode</option>
-    //                         </select>
-    //                     </div>
-    //                 </li>
-    //             </ul>
-    //         </div>
-    //     `;
-    // }
 
     _getSettingsMenuHTML() {
         return `

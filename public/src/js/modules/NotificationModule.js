@@ -40,6 +40,11 @@ class NotificationModule {
         this.storageKey = 'app_unread_notifications';
         this.tokenKey = 'app_fcm_token';
 
+        // ★ OPTIMIZATION: Track registration state to prevent redundant calls
+        this._lastRegisteredToken = null;
+        this._lastRegisteredTopics = null;
+        this._registrationInProgress = false;
+
         // ★ OPTIONS
         this.options = {
             enabled: true,
@@ -81,6 +86,52 @@ class NotificationModule {
     async waitForInitialization() {
         await this._initPromise;
         return this.isInitialized;
+    }
+
+    // =========================================================================
+    // STATIC METHODS (For direct class method calls)
+    // =========================================================================
+
+    /**
+     * Static: Send to Sales role
+     */
+    static async sendToSales(title, body) {
+        return NotificationModule.getInstance().sendToSales(title, body);
+    }
+
+    /**
+     * Static: Send to Operator role
+     */
+    static async sendToOperator(title, body) {
+        return NotificationModule.getInstance().sendToOperator(title, body);
+    }
+
+    /**
+     * Static: Send to Accountant role
+     */
+    static async sendToAccountant(title, body) {
+        return NotificationModule.getInstance().sendToAccountant(title, body);
+    }
+
+    /**
+     * Static: Send to All users
+     */
+    static async sendToAll(title, body) {
+        return NotificationModule.getInstance().sendToAll(title, body);
+    }
+
+    /**
+     * Static: Send to Admin
+     */
+    static async sendToAdmin(title, body) {
+        return NotificationModule.getInstance().sendToAdmin(title, body);
+    }
+
+    /**
+     * Static: Send to any topic
+     */
+    static async send(topic, title, body) {
+        return NotificationModule.getInstance().send(topic, title, body);
     }
 
     // =========================================================================
@@ -238,19 +289,26 @@ class NotificationModule {
 
             // Get token
             const registration = await navigator.serviceWorker.ready;
-            this.fcmToken = await this.messaging.getToken({
+            const newToken = await this.messaging.getToken({
                 vapidKey: NotificationModule.CONFIG.VAPID_KEY,
                 serviceWorkerRegistration: registration
             });
 
-            if (this.fcmToken) {
+            if (newToken) {
                 this._log('✅ FCM token obtained', 'success');
-                localStorage.setItem(this.tokenKey, this.fcmToken);
+                localStorage.setItem(this.tokenKey, newToken);
 
-                // Auto-register topics
-                await this._registerTopicsOnServer(this.fcmToken);
+                // ★ OPTIMIZATION: Only register if token changed
+                if (newToken !== this._lastRegisteredToken) {
+                    console.log('[NotificationModule] 💫 Token changed, registering with Firebase...');
+                    this.fcmToken = newToken;
+                    await this._registerTopicsOnServer(newToken);
+                } else {
+                    console.log('[NotificationModule] ✓ Token unchanged, skipping registration');
+                    this.fcmToken = newToken;
+                }
             }
-            return this.fcmToken;
+            return newToken;
 
         } catch (err) {
             console.warn('[NotificationModule] FCM token error:', err);
@@ -287,32 +345,59 @@ class NotificationModule {
 
     /**
      * Auto-register topics based on user role
+     * ★ OPTIMIZED: Skips redundant registrations
      */
     async _registerTopicsOnServer(token) {
+        // Prevent double registration request
+        if (this._registrationInProgress) {
+            console.log('[NotificationModule] 🔄 Registration already in progress, skipping...');
+            return;
+        }
+
         if (!this.currentUser) {
+            console.log('[NotificationModule] ⏳ CURRENT_USER not ready, retrying in 2s...');
             setTimeout(() => this._registerTopicsOnServer(token), 2000);
             return;
         }
 
-        const topics = ['All'];
-        const role = this.currentUser.role?.toLowerCase() || '';
-
-        if (role.includes('sale') || role === 'admin') topics.push('Sales');
-        if (role.includes('operator') || role.includes('op') || role === 'admin') topics.push('Operator');
-        if (role.includes('account') || role.includes('acc') || role === 'admin') topics.push('Accountant');
-        if (role === 'admin') topics.push('Admin');
-
-        this._log(`🔄 Registering topics: ${topics.join(', ')}...`);
+        this._registrationInProgress = true;
 
         try {
+            const topics = ['All'];
+            const role = this.currentUser.role?.toLowerCase() || '';
+
+            if (role.includes('sale') || role === 'admin') topics.push('Sales');
+            if (role.includes('operator') || role.includes('op') || role === 'admin') topics.push('Operator');
+            if (role.includes('account') || role.includes('acc') || role === 'admin') topics.push('Accountant');
+            if (role === 'admin') topics.push('Admin');
+
+            // ★ OPTIMIZATION: Check if topics unchanged
+            const topicsStr = topics.sort().join(',');
+            const lastTopicsStr = this._lastRegisteredTopics ? this._lastRegisteredTopics.sort().join(',') : '';
+            
+            if (token === this._lastRegisteredToken && topicsStr === lastTopicsStr) {
+                console.log('[NotificationModule] ✓ Topics & token already registered, skipping');
+                return;
+            }
+
+            this._log(`🔄 Registering topics: ${topics.join(', ')}...`);
+
             const app = window.firebase.app();
             const subscribeFn = app.functions(NotificationModule.CONFIG.REGION)
                                    .httpsCallable('subscribeToTopics');
 
             await subscribeFn({ token, topics });
+
+            // ★ TRACK: Update what was registered
+            this._lastRegisteredToken = token;
+            this._lastRegisteredTopics = [...topics];  // Clone array
+
             this._log('✅ Topics registered', 'success');
+
         } catch (err) {
             console.error('[NotificationModule] Topic registration error:', err);
+        } finally {
+            this._registrationInProgress = false;
         }
     }
 
@@ -322,8 +407,10 @@ class NotificationModule {
 
     _setupBroadcastListener() {
         const channel = new BroadcastChannel('erp_notification_channel');
+        console.log('[NotificationModule] 📻 BroadcastChannel listening on [erp_notification_channel]');
 
         channel.onmessage = (event) => {
+            console.log('[NotificationModule] 📨 BroadcastChannel message received:', event.data);
             if (event.data && event.data.type === 'BACKGROUND_MESSAGE') {
                 const payload = event.data.payload;
                 this._log('📻 Background message received', 'info');
@@ -339,6 +426,7 @@ class NotificationModule {
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.addEventListener('message', (event) => {
+                console.log('[NotificationModule] 📲 ServiceWorker message received:', event.data);
                 if (event.data && event.data.type === 'NOTIFICATION_CLICK') {
                     if (event.data.url && event.data.url !== '/') {
                         window.location.href = event.data.url;
@@ -369,11 +457,19 @@ class NotificationModule {
                 console.log(`[NotificationModule] 📤 Sending (attempt ${attempt})...`);
             }
 
-            const payload = { topic, title, body };
+            // ★ Add sender information
+            const senderName = this._getSenderName();
+            const payload = { 
+                topic, 
+                title, 
+                body,
+                sender: senderName  // Add sender name to payload
+            };
+            
             const result = await this.sendTopicMessage(payload);
             const responseData = result.data;
 
-            this._log(`✅ Sent! ID: ${responseData.messageId}`, 'success');
+            this._log(`✅ Sent! ID: ${responseData.messageId} (from: ${senderName})`, 'success');
 
             return {
                 success: true,
@@ -423,7 +519,9 @@ class NotificationModule {
             data: payload.data || {}
         };
 
+        console.log('[NotificationModule] 📬 Adding notification:', notification);
         this.unreadNotifications.unshift(notification);
+        console.log('[NotificationModule] 📊 Total unread:', this.unreadNotifications.length);
 
         if (this.options.persistOfflineMessages) {
             this._saveUnreadToStorage();
@@ -470,7 +568,9 @@ class NotificationModule {
      * @returns {Array} Notifications array
      */
     getAllNotifications(limit = 50) {
-        return this.unreadNotifications.slice(0, limit);
+        const result = this.unreadNotifications.slice(0, limit);
+        console.log('[NotificationModule] 📋 getAllNotifications() returning', result.length, 'items');
+        return result;
     }
 
     /**
@@ -544,8 +644,41 @@ class NotificationModule {
     // UTILITIES
     // =========================================================================
 
+    /**
+     * Set current user and re-register if role changed
+     */
     setCurrentUser(user) {
+        const oldRole = this.currentUser?.role;
+        const newRole = user?.role;
+        const roleChanged = oldRole && oldRole !== newRole;
+
         this.currentUser = user;
+
+        // ★ OPTIMIZATION: If role changed and we have token, re-register
+        if (roleChanged && this.fcmToken) {
+            console.log(`[NotificationModule] 🔄 Role changed: ${oldRole} → ${newRole}, updating topics...`);
+            this._registerTopicsOnServer(this.fcmToken);  // Fire and forget
+        }
+    }
+
+    /**
+     * Get sender name from current user
+     * ★ Multiple fallback options for different user object structures
+     */
+    _getSenderName() {
+        // Check various possible locations of user name
+        const name = 
+            this.currentUser?.userProfile?.user_name ||      // Preferred structure
+            this.currentUser?.profile?.user_name ||          // Alternative
+            this.currentUser?.user_name ||                   // Direct property
+            this.currentUser?.name ||                        // Generic name field
+            window.CURRENT_USER?.userProfile?.user_name ||   // Window global fallback
+            window.CURRENT_USER?.profile?.user_name ||       // Window global alternative
+            window.CURRENT_USER?.user_name ||                // Window global direct
+            window.CURRENT_USER?.name ||                     // Window global generic
+            'Unknown User';                                  // Default fallback
+        
+        return name;
     }
 
     _delay(ms) {
@@ -608,7 +741,6 @@ export default NotificationModule;
 
 // ★ GLOBAL EXPORTS
 window.NotificationModule = NotificationModule;
-window.Notification_ERP = NotificationModule;  // Alias for console testing
 
 // ★ GLOBAL FUNCTIONS (For UI Panel & Other Modules)
 // These are delegated to singleton instance

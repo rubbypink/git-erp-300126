@@ -467,23 +467,24 @@ class TableResizeManager {
  * 9TRIP HELPER: UNIVERSAL DRAGGABLE SETUP
  * Áp dụng cho: Bootstrap Modal, Card UI, Widget, Floating Elements
  * Tối ưu: GPU Acceleration (translate3d), Dynamic Events, Mobile Support
+ * 
+ * BẢO VỆ: Nếu header kéo ra khỏi viewport, cho phép drag fallback trên toàn bộ modal
+ * Double-click để reset vị trí mặc định
  */
 class DraggableSetup {
     /**
      * @param {string} elementId - ID của phần tử gốc chứa đối tượng cần kéo
-     * @param {Object} options - Cấu hình linh hoạt (targetSelector, handleSelector)
+     * @param {Object} options - Cấu hình linh hoạt (targetSelector, handleSelector, fallbackThreshold)
      */
-    constructor(elementId, options = {targetSelector: '.modal-dialog', handleSelector: '.modal-header'}) {
+    constructor(elementId, options = {targetSelector: '.modal-dialog', handleSelector: '.modal-header', fallbackThreshold: 30}) {
         try {
             this.wrapper = $(elementId);
             if (!this.wrapper) return;
 
             // 1. Xác định CÁI GÌ SẼ DI CHUYỂN (Target)
-            // Nếu là Modal thì truyền vào '.modal-dialog', nếu là Widget thì không cần truyền (tự lấy wrapper)
             this.target = options.targetSelector ? this.wrapper.querySelector(options.targetSelector) : this.wrapper;
             
             // 2. Xác định NẮM VÀO ĐÂU ĐỂ KÉO (Handle)
-            // Thường là '.modal-header' hoặc '.card-header'. Mặc định là cầm vào đâu cũng kéo được.
             this.handle = options.handleSelector ? this.wrapper.querySelector(options.handleSelector) : this.target;
 
             if (!this.target || !this.handle) {
@@ -491,16 +492,21 @@ class DraggableSetup {
                 return;
             }
 
+            // 3. Ngưỡng phát hiện header ẩn (pixel từ top viewport)
+            this.fallbackThreshold = options.fallbackThreshold || 30;
+
             // State quản lý tọa độ
             this.isDragging = false;
             this.currentX = 0; this.currentY = 0;
             this.initialX = 0; this.initialY = 0;
             this.xOffset = 0;  this.yOffset = 0;
+            this.isHeaderHidden = false; // Cờ báo header ẩn
 
             // Bind context
             this.dragStart = this.dragStart.bind(this);
             this.dragMove = this.dragMove.bind(this);
             this.dragEnd = this.dragEnd.bind(this);
+            this._checkHeaderVisibility = this._checkHeaderVisibility.bind(this);
 
             this.init();
         } catch (error) {
@@ -509,16 +515,95 @@ class DraggableSetup {
     }
 
     init() {
-        // Chỉ gắn sự kiện vào vùng tay cầm (handle)
+        // Gắn sự kiện vào CÁCH THỨ MỘT: Primary handle (header)
         this.handle.addEventListener("mousedown", this.dragStart);
         this.handle.addEventListener("touchstart", this.dragStart, { passive: false });
         
+        // Gắn sự kiện vào CÁCH THỨ HAI: Fallback handle (target khi header ẩn)
+        // Lưu reference để có thể removeEventListener sau
+        this._targetMouseDown = (e) => {
+            // Nếu header ẩn hoặc đang kéo từ cạnh trái (5px), cho phép drag
+            if (this.isHeaderHidden || e.clientX - this.target.getBoundingClientRect().left < 5) {
+                this.dragStart(e);
+            }
+        };
+        
+        this._targetDblClick = (e) => {
+            if (e.target === this.target || !this.handle.contains(e.target)) {
+                this._resetPosition();
+            }
+        };
+        
+        this.target.addEventListener("mousedown", this._targetMouseDown);
+        // ⭐ Ghi chú: dblclick listener được gắn KHI CẦN với { once: true }
+        // Chỉ gắn khi header ẩn, user reset 1 lần → event tự mất. Không cần xóa!
+        
         // CSS báo hiệu cho người dùng
         this.handle.style.cursor = "move";
-        this.target.style.willChange = "transform"; // Gợi ý trình duyệt tối ưu GPU trước
+        this.target.style.willChange = "transform"; // GPU acceleration
+        
+        // Add CSS styles cho fallback & reset visual
+        this._injectStyles();
+    }
+
+    /**
+     * Inject CSS styles cho drag states
+     * @private
+     */
+    _injectStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            .draggable-header-hidden::after {
+                content: "≡ Kéo để di chuyển";
+                position: absolute;
+                left: 2px;
+                top: 50%;
+                transform: translateY(-50%);
+                font-size: 8px;
+                color: rgba(255, 255, 255, 0.6);
+                white-space: nowrap;
+                pointer-events: none;
+                z-index: 1000;
+            }
+            
+            .draggable-reset-hint {
+                transition: transform 0.3s ease;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    /**
+     * Kiểm tra xem header có ẩn ra khỏi viewport không
+     * ⭐ ONE-TIME EVENT: Gắn dblclick với once: true khi header ẩn
+     * User reset 1 lần → event tự mất. Không cần xóa thủ công
+     * @private
+     */
+    _checkHeaderVisibility() {
+        const rect = this.handle.getBoundingClientRect();
+        const wasHidden = this.isHeaderHidden;
+        
+        // Nếu top <= fallbackThreshold, header ẩn
+        this.isHeaderHidden = rect.top <= -this.fallbackThreshold;
+        
+        // ⭐ ONE-TIME: Gắn dblclick với { once: true } khi header vừa ẩn
+        if (this.isHeaderHidden && !wasHidden) {
+            // Header vừa ẩn → gắn dblclick (chạy 1 lần)
+            this.target.addEventListener("dblclick", this._targetDblClick, { once: true });
+            this.handle.classList.add('draggable-header-hidden');
+        } 
+        else if (!this.isHeaderHidden && wasHidden) {
+            // Header vừa hiện → xóa visual indicator
+            // ⭐ Không cần removeEventListener vì listener of cũ đã mất rồi (nếu user reset)
+            // Hoặc nếu user kéo lại mà listener vẫn còn, chỉ chạy 1 lần khi user click
+            this.handle.classList.remove('draggable-header-hidden');
+        }
     }
 
     dragStart(e) {
+        // Cập nhật trạng thái visibility
+        this._checkHeaderVisibility();
+
         if (e.type === "touchstart") {
             this.initialX = e.touches[0].clientX - this.xOffset;
             this.initialY = e.touches[0].clientY - this.yOffset;
@@ -527,31 +612,37 @@ class DraggableSetup {
             this.initialY = e.clientY - this.yOffset;
         }
 
-        // Kiểm tra xem có đúng là click vào handle không (tránh click vào input bên trong)
+        // PRIMARY: Click trên handle - LUÔN được phép drag
         if (e.target === this.handle || this.handle.contains(e.target)) {
-            // Không chặn sự kiện mặc định ở đây để user vẫn click được input/button nếu có
-            
             this.isDragging = true;
-            this.target.classList.add('is-moving');
-            
-            // Lưu lại transition cũ để khôi phục sau khi kéo xong
-            this.oldTransition = window.getComputedStyle(this.target).transition;
-            this.target.style.transition = "none";
-
-            document.addEventListener("mousemove", this.dragMove);
-            document.addEventListener("touchmove", this.dragMove, { passive: false });
-            document.addEventListener("mouseup", this.dragEnd);
-            document.addEventListener("touchend", this.dragEnd);
         }
+        // FALLBACK: Click trên target (khi header ẩn) - Chỉ drag từ cạnh trái hoặc header ẩn
+        else if (e.target === this.target && (this.isHeaderHidden || e.clientX - this.target.getBoundingClientRect().left < 5)) {
+            this.isDragging = true;
+        } else {
+            return; // Không kéo nếu không đúng điều kiện
+        }
+
+        this.target.classList.add('is-moving');
+        
+        // Lưu lại transition cũ để khôi phục sau khi kéo xong
+        this.oldTransition = window.getComputedStyle(this.target).transition;
+        this.target.style.transition = "none";
+
+        document.addEventListener("mousemove", this.dragMove);
+        document.addEventListener("touchmove", this.dragMove, { passive: false });
+        document.addEventListener("mouseup", this.dragEnd);
+        document.addEventListener("touchend", this.dragEnd, { passive: true });
     }
 
-    dragMove(e) {
+    dragMove = (e) => {
         if (!this.isDragging) return;
         
-        // Chặn cuộn trang (scroll) trên điện thoại khi đang kéo
-        e.preventDefault();
+        // Chặn cuộn trang trên điện thoại khi đang kéo
+        // e.preventDefault();
 
         if (e.type === "touchmove") {
+            e.preventDefault();
             this.currentX = e.touches[0].clientX - this.initialX;
             this.currentY = e.touches[0].clientY - this.initialY;
         } else {
@@ -562,12 +653,21 @@ class DraggableSetup {
         this.xOffset = this.currentX;
         this.yOffset = this.currentY;
 
+        // Defer visibility check để tránh reflow spam
+        if (!this._visibilityCheckScheduled) {
+            this._visibilityCheckScheduled = true;
+            setTimeout(() => {
+                this._checkHeaderVisibility();
+                this._visibilityCheckScheduled = false;
+            }, 200);
+        }
+
         requestAnimationFrame(() => {
             this.target.style.transform = `translate3d(${this.currentX}px, ${this.currentY}px, 0)`;
         });
     }
 
-    dragEnd() {
+    dragEnd = (e) => {
         if (!this.isDragging) return;
         
         this.initialX = this.currentX;
@@ -576,13 +676,46 @@ class DraggableSetup {
         
         this.target.classList.remove('is-moving');
         
-        // Khôi phục lại transition mặc định của Bootstrap/CSS
+        // Khôi phục lại transition mặc định
         this.target.style.transition = this.oldTransition;
 
+        // Cleanup drag listeners
+        this._removeDragListeners();
+    }
+
+    /**
+     * Remove temporary drag listeners (mousemove, mouseup, etc)
+     * Được gọi ở dragEnd hoặc destroy
+     * @private
+     */
+    _removeDragListeners() {
         document.removeEventListener("mousemove", this.dragMove);
         document.removeEventListener("touchmove", this.dragMove);
         document.removeEventListener("mouseup", this.dragEnd);
         document.removeEventListener("touchend", this.dragEnd);
+    }
+
+    /**
+     * Reset vị trí về mặc định (0, 0)
+     * Activation: Double-click trên target khi header ẩn
+     * @private
+     */
+    _resetPosition() {
+        this.currentX = 0;
+        this.currentY = 0;
+        this.xOffset = 0;
+        this.yOffset = 0;
+        this.initialX = 0;
+        this.initialY = 0;
+
+        // Smooth animation transition
+        this.target.style.transition = "transform 0.3s ease";
+        this.target.style.transform = `translate3d(0, 0, 0)`;
+
+        // Khôi phục transition sau animation
+        setTimeout(() => {
+            this.target.style.transition = this.oldTransition || "";
+        }, 300);
     }
 }
 
@@ -712,14 +845,15 @@ class Resizable {
 class WindowMinimizer {
     constructor(elementId, options = {}) {
         try {
-            this.target = document.getElementById(elementId);
+            this.target = $(elementId);
             if (!this.target) return;
 
             // Tên hiển thị dưới Taskbar
-            this.title = options.title || 'Cửa sổ làm việc';
+            this.title = getVal(options.title) || options.title || 'Cửa sổ làm việc';
             
             // Tìm nút thu nhỏ trong header
             this.minimizeBtn = this.target.querySelector(options.btnSelector || '.btn-minimize');
+            this.minimizeBtn.classList.add('ms-auto'); // Thêm class để dễ dàng style
             
             this.initTaskbar();
 

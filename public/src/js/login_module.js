@@ -1,3 +1,5 @@
+
+    import { initSalesModule } from './modules/SalesModule.js';
     //  AUTH MODULE (FIRESTORE VERSION) ---
     const AUTH_MANAGER = {
         CFG_FB_RTDB: {
@@ -45,8 +47,6 @@
                     SECURITY_MANAGER.applySecurity(CURRENT_USER), 
                     loadDataFromFirebase()
                 ]);
-                
-                this.updateUserMenu();
                 log('✅ Chào mừng: ' + (CURRENT_USER.profile.user_name || firebaseUser.email), 'success');
                 
                 SECURITY_MANAGER.cleanDOM(document);
@@ -120,7 +120,7 @@
                         <div class="card-body p-3 p-md-5 d-flex flex-column align-items-center justify-content-center text-center">
                             <img src="https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp" class="mb-3 mb-md-4" style="height: 15vh; max-height: 100px;">
                             <h4 class="fw-bold mb-3 mb-md-4 text-dark" style="font-size: 1.1rem;">9 TRIP SYSTEM</h4>
-                            
+
                             <div style="width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                                 <div class="form-floating mb-3">
                                     <input type="text" class="form-control form-control-sm" id="login-email" placeholder="name@example.com" style="font-size: 0.9rem;">
@@ -135,7 +135,7 @@
                                     ĐĂNG NHẬP
                                 </button>
                             </div>
-    
+
                             <div class="mt-3 mt-md-4 small text-muted" style="max-width: 350px;">
                                 Hoặc đăng nhập bằng
                                 <div class="d-flex gap-2 justify-content-center mt-2">
@@ -183,6 +183,7 @@
         handleEmailLogin: async function() {
             let email = document.getElementById('login-email').value;
             const pass = document.getElementById('login-pass').value;
+            log(`Attempting email login with: ${email}`);
             
             if(!email || !pass) {showLoading(false); alert("Thiếu thông tin"); return; }
 
@@ -358,7 +359,7 @@
 
                 // CASE 2: Tạo user mới (Firestore TRƯỚC)
                 // Bước 1: Tạo UID dạng: role-ddmmyy
-                const newUid = this.generateUserUID(userData.role);
+                const newUid = await this.generateUserUID(userData.role);
                 log(`📝 Generated UID: ${newUid}`, 'info');
 
                 // Bước 2: Tạo mật khẩu mặc định
@@ -394,7 +395,7 @@
          * Tạo UID theo định dạng: ROLE-DDMMYY
          * Ví dụ: "OP-200226" (Operator, ngày 20/02/26)
          */
-        generateUserUID: function(role) {
+        generateUserUID: async function(role) {
             const today = new Date();
             const dd = String(today.getDate()).padStart(2, '0');
             const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -429,94 +430,106 @@
             const email = (userProfile.email || "").toLowerCase();
             const level = parseInt(userProfile.level || 0);
             const role = (userProfile.role || "").toLowerCase();
-
-            
-            // ✅ FIX: Use await for async loadJSForRole
-            if (role === 'op') {
-                await loadJSForRole('op');
-                await A.UI.renderTemplate('body', 'tpl_operator.html', false, '.app-container');
-                setVal('module-title', 'OPERATOR CENTER -QUẢN LÝ NCC - ĐIỀU HÀNH');
-            } else if (role === 'acc' || role === 'acc_thenice' || role === 'ketoan') {
-                if (!document.getElementById('css-accountant')) {
-                    const link = document.createElement('link');
-                    link.id = 'css-accountant';
-                    link.rel = 'stylesheet';
-                    link.href = '/accountant/accountant.css';
-                    document.head.appendChild(link);
-                }
-                
-                await A.UI.renderTemplate('body', '/accountant/tpl_accountant.html', false, '.app-container');
-                
-                await A.UI.renderTemplate('body', 'tmpl-acc-footer-bar', false, '#main-footer', 'prepend');
-                toggleTemplate('erp-main-footer');
-                setVal('module-title', 'ACCOUNTING CENTER - QUẢN LÝ KẾ TOÁN');
-                await loadJSFile('/accountant/controller_accountant.js', role); // Load JS riêng cho Kế toán
-            } else {
-                await loadJSForRole('sale');
-                await A.UI.renderTemplate('body', 'tpl_sales.html', false, '.app-container');
-                setVal('module-title', 'SALES CENTER - QUẢN LÝ BOOKING');
-            }
-            
-
-            // Reset class cũ
-            document.body.className = ''; 
-            // Giữ lại các class nền tảng nếu có (ví dụ: 'bg-light')
-
-            // --- 1. XÁC ĐỊNH CLASS CHO BODY ---
-            let permissionClass = '';
-            let maskedClass ='';
+            const isHardAdmin = ADMIN_EMAILS.includes(email);
             let maskedRole = userProfile.realRole ? userProfile.role : null;
-            const isHardAdmin = ADMIN_EMAILS.includes(email);           
-
-            if (isHardAdmin || level >= 50) {
-                permissionClass = 'is-admin';
-                
-                A.UI.lazyLoad('tab-log');
-                log('🛡️ Security: ADMIN MODE');
-                if (maskedRole) {
-                    maskedClass = `is-${maskedRole}`;
-                    document.body.classList.add(maskedClass);
-                    activateTab('tab-dashboard');
+        
+            console.log(`[SECURITY] applySecurity called for role=${role}, level=${level}`);
+        
+            // Đưa appTitle ra ngoài cùng để dùng chung cho toàn bộ function
+            let appTitle = '9 Trip Phu Quoc - Du lịch Dễ Dàng...';
+            let permissionClass = '';
+            let maskedClass = '';
+        
+            // --- BƯỚC 1: XÁC ĐỊNH QUYỀN HẠN (PERMISSION CLASSES) ---
+            try {
+                if (isHardAdmin || level >= 50) {
+                    permissionClass = 'is-admin';
+                    A.UI.lazyLoad('tab-log');
+                    log('🛡️ Security: ADMIN MODE');
+                    
+                    if (maskedRole) {
+                        maskedClass = `is-${maskedRole}`;
+                        activateTab('tab-dashboard');
+                    } else {
+                        activateTab('tab-admin-dashboard');
+                    }
                 } 
-                else activateTab('tab-admin-dashboard');
-            } 
-            else {
-                activateTab('tab-dashboard');
-                if (level >= 10) {
+                else if (level >= 10) {
                     permissionClass = 'is-manager';
+                    activateTab('tab-dashboard');
                     log('🛡️ Security: MANAGER MODE');
                 } 
                 else if (level >= 5) {
                     permissionClass = 'is-sup';
+                    activateTab('tab-dashboard');
                     log('🛡️ Security: SUPERVISOR MODE');
                 } 
                 else {
-                    // Level thấp: Check Role cụ thể
-                    if (role === 'ketoan' || role === 'acc') {
-                        permissionClass = 'is-acc';
-                        // A.UI.renderTemplate('body', '/accountant/tpl_accountant.html');
-                        // window.AccountantCtrl?.init();
-                    }
-                    else if (role === 'acc_thenice') {
-                        permissionClass = 'is-acc-thenice';
-                        A.UI.renderTemplate('body', '/accountant/tpl_accountant.html', false, '.app-container');
-                    }
-                    else if (role === 'op' || role === 'operator' || maskedRole === 'op') {
-                        permissionClass = 'is-op';
-                        A.UI.renderTemplate('body', 'tpl_operator.html');
-                    }
-                    else {
-                        permissionClass = 'is-sale';
-                        A.UI.renderTemplate('body', 'tpl_sales.html');
-                    }                
-
+                    activateTab('tab-dashboard');
+                    // Cấp class theo Role cho Level thấp
+                    if (role === 'ketoan' || role === 'acc') permissionClass = 'is-acc';
+                    else if (role === 'acc_thenice') permissionClass = 'is-acc-thenice';
+                    else if (role === 'op' || role === 'operator') permissionClass = 'is-op';
+                    else permissionClass = 'is-sale';
                     
                     log(`🛡️ Security: STAFF MODE (${role})`);
                 }
+            } catch (secError) {
+                console.error('[SECURITY] ❌ Error defining permissions:', secError);
             }
-
-            // Apply vào Body ngay lập tức
-            if (permissionClass && permissionClass !== maskedClass) document.body.classList.add(permissionClass);
+        
+            // --- BƯỚC 2: RENDER GIAO DIỆN (Duy nhất 1 lần) ---
+            try {
+                // Reset body class và apply class mới ngay
+                document.body.className = '';
+                if (maskedClass) document.body.classList.add(maskedClass);
+                if (permissionClass && permissionClass !== maskedClass) {
+                    document.body.classList.add(permissionClass);
+                }
+        
+                const effectiveRole = maskedRole || role; // Nếu admin mask role, ưu tiên render UI theo maskedRole
+        
+                if (effectiveRole === 'op' || effectiveRole === 'operator') {
+                    console.log('[SECURITY] Loading Operator role...');
+                    appTitle = '9 Trip Phu Quoc - Operator Center';
+                    await loadJSForRole('op');
+                    await A.UI.renderTemplate('body', 'tpl_operator.html', false, '.app-container');
+                    setVal('module-title', 'OPERATOR CENTER - QUẢN LÝ NCC - ĐIỀU HÀNH');
+                } 
+                else if (['acc', 'acc_thenice', 'ketoan'].includes(effectiveRole)) {
+                    console.log('[SECURITY] Loading Accountant role...');
+                    appTitle = effectiveRole === 'acc_thenice' ? 'The Nice Hotel - Kế Toán' : '9 Trip Phu Quoc - Accountant Department';
+                    
+                    if (!document.getElementById('css-accountant')) {
+                        const link = document.createElement('link');
+                        link.id = 'css-accountant';
+                        link.rel = 'stylesheet';
+                        link.href = '/accountant/accountant.css';
+                        document.head.appendChild(link);
+                    }
+                    
+                    await A.UI.renderTemplate('body', '/accountant/tpl_accountant.html', false, '.app-container');
+                    await A.UI.renderTemplate('body', 'tmpl-acc-footer-bar', false, '#main-footer', 'prepend');
+                    toggleTemplate('erp-main-footer');
+                    setVal('module-title', 'ACCOUNTING CENTER - QUẢN LÝ KẾ TOÁN');
+                    await loadJSFile('/accountant/controller_accountant.js', effectiveRole);
+                } 
+                else {
+                    console.log('[SECURITY] Loading Sales role...');
+                    appTitle = '9 Trip Phu Quoc - Sales Department';
+                    initSalesModule(); 
+                    await A.UI.renderTemplate('body', 'tpl_sales.html', false, '.app-container');
+                    setVal('module-title', 'SALES CENTER - QUẢN LÝ BOOKING');
+                }
+        
+                // Tùy chọn: Gán appTitle vào document.title nếu bạn đang cần đổi tên thẻ tab trình duyệt
+                document.title = appTitle;
+                console.log(`[SECURITY] ✅ applySecurity completed successfully`);
+        
+            } catch (templateError) {
+                console.error('[SECURITY] ❌ Template rendering error:', templateError);
+                throw new Error(`UI Setup failed: ${templateError.message}`);
+            }
         },
 
         /**

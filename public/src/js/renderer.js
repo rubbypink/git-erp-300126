@@ -303,7 +303,7 @@ function selectTab(targetTabId) {
 		setClass($('#tab-theme-content'), 'd-none', true);
 		setClass($('#tab-shortcut-content'), 'd-none', true);              
 		A.Auth.renderUsersConfig();
-		A.Modal.setSaveHandler(A.Auth.saveUser, 'Lưu User');
+		A.Modal.setSaveHandler(() => A.Auth.saveUser(), 'Lưu User');
 		A.Modal.setResetHandler(() => {
 			document.getElementById('users-form').reset();
 			document.getElementById('form-created-at').valueAsDate = new Date();                    

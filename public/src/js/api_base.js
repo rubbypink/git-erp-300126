@@ -209,7 +209,7 @@
                 CURRENT_CTX_ID = null;
             }    
             // Tính lại tổng tiền nếu có hàm tính toán
-            if(typeof calcGrandTotal === 'function') calcGrandTotal();
+            if(typeof Sales.calcGrandTotal === 'function' && dataSource === 'booking_details') Sales.calcGrandTotal();
         }          
       });
   }
