@@ -21,62 +21,62 @@ const DEPT_COLLS = {
 
 class DBManager {
     // ─── Private state ────────────────────────────────────────────────
-    #db                  = null;
-    #networkEnabled      = false;
-    #persistenceEnabled  = false;
-    #listeners           = {};      // chỉ dùng cho notifications listener
-    #config              = {};
-    #initPromise         = null;    // đảm bảo init chỉ chạy 1 lần
-    #resolveInit         = null;    // để init() thủ công resolve promise
-    #idbReady            = null;    // Promise<IDBDatabase> — IndexedDB instance
+    #db = null;
+    #networkEnabled = false;
+    #persistenceEnabled = false;
+    #listeners = {};      // chỉ dùng cho notifications listener
+    #config = {};
+    #initPromise = null;    // đảm bảo init chỉ chạy 1 lần
+    #resolveInit = null;    // để init() thủ công resolve promise
+    #idbReady = null;    // Promise<IDBDatabase> — IndexedDB instance
 
     // ─── Public State ────────────────────────────────────────────────
     batchCounterUpdates = {};
-    currentCustomer     = null;
-    _initialized        = false;    // true sau khi #bootInit hoàn tất
+    currentCustomer = null;
+    _initialized = false;    // true sau khi #bootInit hoàn tất
 
     // ─── Static keys ─────────────────────────────────────────────────
-    static #OPTIONS_KEY  = 'DBManager_OPTIONS';
-    static #IDB_NAME     = 'DBManager_IDB';
-    static #IDB_STORE    = 'app_cache';
-    static #IDB_VERSION  = 1;
+    static #OPTIONS_KEY = 'DBManager_OPTIONS';
+    static #IDB_NAME = 'DBManager_IDB';
+    static #IDB_STORE = 'app_cache';
+    static #IDB_VERSION = 1;
 
     // ─── Collection Name Aliases ──────────────────────────────────────
     COLL = {
-        BOOKINGS:             'bookings',
-        DETAILS:              'booking_details',
-        OPERATORS:            'operator_entries',
-        CUSTOMERS:            'customers',
-        TRANSACTIONS:         'transactions',
+        BOOKINGS: 'bookings',
+        DETAILS: 'booking_details',
+        OPERATORS: 'operator_entries',
+        CUSTOMERS: 'customers',
+        TRANSACTIONS: 'transactions',
         TRANSACTIONS_THENICE: 'transactions_thenice',
-        FUNDS:                'fund_accounts',
-        FUNDS_THENICE:        'fund_accounts_thenice',
-        USERS:                'users',
-        CONFIG:               'app_config'
+        FUNDS: 'fund_accounts',
+        FUNDS_THENICE: 'fund_accounts_thenice',
+        USERS: 'users',
+        CONFIG: 'app_config'
     };
 
     static #QUERY_CONFIG = {
-        bookings:                { orderBy: 'created_at', limit: 1000 },
-        booking_details:         { orderBy: 'created_at',  limit: 2000 },
-        operator_entries:        { orderBy: 'created_at',  limit: 2000 },
-        customers:               { orderBy: 'created_at',  limit: 2000 },
-        transactions:            { orderBy: 'created_at', limit: 2000 },
-        suppliers:               { orderBy: 'created_at', limit: 1000 },
-        fund_accounts:           { orderBy: 'created_at', limit: 20 },
-        transactions_thenice:    { orderBy: 'created_at', limit: 2000 },
-        fund_accounts_thenice:   { orderBy: 'created_at', limit: 20 },
-        hotels:                  { orderBy: 'name', limit: 1000 },
-        hotel_price_schedules:   { orderBy: 'created_at', limit: 500 },
+        bookings: { orderBy: 'created_at', limit: 1000 },
+        booking_details: { orderBy: 'created_at', limit: 2000 },
+        operator_entries: { orderBy: 'created_at', limit: 2000 },
+        customers: { orderBy: 'created_at', limit: 2000 },
+        transactions: { orderBy: 'created_at', limit: 2000 },
+        suppliers: { orderBy: 'created_at', limit: 1000 },
+        fund_accounts: { orderBy: 'created_at', limit: 20 },
+        transactions_thenice: { orderBy: 'created_at', limit: 2000 },
+        fund_accounts_thenice: { orderBy: 'created_at', limit: 20 },
+        hotels: { orderBy: 'name', limit: 1000 },
+        hotel_price_schedules: { orderBy: 'created_at', limit: 500 },
         service_price_schedules: { orderBy: 'created_at', limit: 500 },
     };
 
     // ─── Cấu hình secondary indexes ──────────────────────────────────────
     // Khai báo tập trung — dễ thêm index mới sau này
     static #INDEX_CONFIG = [
-        { index: 'booking_details_by_booking',      source: 'booking_details',      groupBy: 'booking_id'    },
-        { index: 'operator_entries_by_booking',    source: 'operator_entries',     groupBy: 'booking_id'    },
-        { index: 'transactions_by_booking', source: 'transactions',         groupBy: 'booking_id'    },
-        { index: 'transactions_by_fund',    source: 'transactions',         groupBy: 'fund_source'       },
+        { index: 'booking_details_by_booking', source: 'booking_details', groupBy: 'booking_id' },
+        { index: 'operator_entries_by_booking', source: 'operator_entries', groupBy: 'booking_id' },
+        { index: 'transactions_by_booking', source: 'transactions', groupBy: 'booking_id' },
+        { index: 'transactions_by_fund', source: 'transactions', groupBy: 'fund_source' },
     ];
 
     /**
@@ -92,14 +92,14 @@ class DBManager {
         const HR72 = 72 * 60 * 60 * 1000;
 
         // Kiểm tra config đã lưu từ trước
-        const savedCfg           = this.#loadOptions('config');
-        const hasSaved           = savedCfg?.persistence !== undefined || savedCfg?.networkEnabled !== undefined;
+        const savedCfg = this.#loadOptions('config');
+        const hasSaved = savedCfg?.persistence !== undefined || savedCfg?.networkEnabled !== undefined;
         const hasExplicitOptions = Object.keys(options).length > 0;
 
         this.#config = {
-            persistence:           options.persistence           ?? savedCfg?.persistence           ?? true,
-            networkEnabled:        options.networkEnabled        ?? savedCfg?.networkEnabled        ?? true,
-            cacheMaxAgeMs:         options.cacheMaxAgeMs         ?? HR72,
+            persistence: options.persistence ?? savedCfg?.persistence ?? true,
+            networkEnabled: options.networkEnabled ?? savedCfg?.networkEnabled ?? true,
+            cacheMaxAgeMs: options.cacheMaxAgeMs ?? HR72,
             notificationsWindowMs: options.notificationsWindowMs ?? HR72,
         };
 
@@ -186,7 +186,7 @@ class DBManager {
             this.#config = {
                 ...this.#config,
                 ...Object.fromEntries(Object.entries(options).filter(([, v]) => v !== undefined)),
-                cacheMaxAgeMs:         options.cacheMaxAgeMs         ?? this.#config.cacheMaxAgeMs         ?? HR72,
+                cacheMaxAgeMs: options.cacheMaxAgeMs ?? this.#config.cacheMaxAgeMs ?? HR72,
             };
             await this.#bootInit().catch(e => console.error('❌ bootInit thất bại:', e));
             this.#resolveInit?.();
@@ -245,7 +245,7 @@ class DBManager {
                     db.createObjectStore(DBManager.#IDB_STORE);
             };
             req.onsuccess = e => resolve(e.target.result);
-            req.onerror   = e => { console.error('❌ IDB open failed:', e.target.error); reject(e.target.error); };
+            req.onerror = e => { console.error('❌ IDB open failed:', e.target.error); reject(e.target.error); };
         });
         return this.#idbReady;
     }
@@ -260,10 +260,10 @@ class DBManager {
         try {
             const db = await this.#openIDB();
             return new Promise((resolve, reject) => {
-                const tx  = db.transaction(DBManager.#IDB_STORE, 'readwrite');
+                const tx = db.transaction(DBManager.#IDB_STORE, 'readwrite');
                 const req = tx.objectStore(DBManager.#IDB_STORE).put(value, key);
                 req.onsuccess = () => resolve(true);
-                req.onerror   = e => { console.warn('⚠️ IDB set failed:', e.target.error); reject(e.target.error); };
+                req.onerror = e => { console.warn('⚠️ IDB set failed:', e.target.error); reject(e.target.error); };
             });
         } catch (e) { console.warn('⚠️ #idbSet error:', e); return false; }
     }
@@ -277,10 +277,10 @@ class DBManager {
         try {
             const db = await this.#openIDB();
             return new Promise((resolve, reject) => {
-                const tx  = db.transaction(DBManager.#IDB_STORE, 'readonly');
+                const tx = db.transaction(DBManager.#IDB_STORE, 'readonly');
                 const req = tx.objectStore(DBManager.#IDB_STORE).get(key);
                 req.onsuccess = () => resolve(req.result ?? null);
-                req.onerror   = e => { console.warn('⚠️ IDB get failed:', e.target.error); reject(e.target.error); };
+                req.onerror = e => { console.warn('⚠️ IDB get failed:', e.target.error); reject(e.target.error); };
             });
         } catch (e) { console.warn('⚠️ #idbGet error:', e); return null; }
     }
@@ -365,14 +365,14 @@ class DBManager {
     #startNotificationsListener() {
         if (this.#listeners['notifications']) return; // đã chạy
 
-        const windowMs   = this.#config.notificationsWindowMs;
+        const windowMs = this.#config.notificationsWindowMs;
         let lastSyncMs = localStorage.getItem('LAST_SYNC');
         lastSyncMs = lastSyncMs ? parseInt(lastSyncMs, 10) : 0;
 
-        const now        = Date.now();
+        const now = Date.now();
 
         // Lấy mốc quá khứ gần nhất giữa lastSync và (now - 72h)
-        const cutoffMs   = Math.max(lastSyncMs, now - windowMs);
+        const cutoffMs = Math.max(lastSyncMs, now - windowMs);
         const cutoffDate = new Date(cutoffMs);
 
         log(`🔔 Notifications listener: query từ ${cutoffDate.toLocaleString()}`);
@@ -386,17 +386,17 @@ class DBManager {
                 if (snapshot.empty) return;
 
                 const dataChangeDocs = [];
-                const notifDocs      = [];
+                const notifDocs = [];
 
                 snapshot.docChanges().forEach(change => {
                     if (change.type === 'removed') return;
                     const doc = { id: change.doc.id, ...change.doc.data() };
                     if (doc.type === 'data-change') dataChangeDocs.push(doc);
-                    else                            notifDocs.push(doc);
+                    else notifDocs.push(doc);
                 });
 
                 if (dataChangeDocs.length > 0) this.#autoSyncData(dataChangeDocs);
-                if (notifDocs.length      > 0) {
+                if (notifDocs.length > 0) {
                     let notifications = localStorage.getItem('NotificationModule.9trip_notifications_logs');
                     notifications = notifications ? JSON.parse(notifications) : [];
                     notifications.unshift(...notifDocs);
@@ -453,9 +453,9 @@ class DBManager {
 
             const key = `${change.coll}::${change.id}`;
             // created_at có thể là Firebase Timestamp hoặc số milliseconds
-            const ts  = notif.created_at?.toMillis?.()
-                     ?? (notif.created_at?.seconds ? notif.created_at.seconds * 1000 : 0)
-                     ?? 0;
+            const ts = notif.created_at?.toMillis?.()
+                ?? (notif.created_at?.seconds ? notif.created_at.seconds * 1000 : 0)
+                ?? 0;
 
             const existing = deduped.get(key);
             if (!existing || ts > existing._ts) {
@@ -533,12 +533,12 @@ class DBManager {
      */
     async #reloadCollection(collName, batchId) {
         const cfg = DBManager.#QUERY_CONFIG[collName];
-        if (!cfg) { console.warn(`⚠️ #reloadCollection: không có config cho '${collName}'`);}
+        if (!cfg) { console.warn(`⚠️ #reloadCollection: không có config cho '${collName}'`); }
         try {
             let query = this.#db.collection(collName);
             if (cfg.orderBy) query = query.orderBy(cfg.orderBy, 'desc');
-            if (cfg.limit)   query = query.limit(cfg.limit);
-            if (batchId)     query = query.where('batchId', '==', batchId);
+            if (cfg.limit) query = query.limit(cfg.limit);
+            if (batchId) query = query.where('batchId', '==', batchId);
 
             const snap = await query.get({ source: 'server' });
             if (!APP_DATA) APP_DATA = {};
@@ -568,13 +568,13 @@ class DBManager {
      */
     async loadAllData(forceNew = false) {
         await this.#initPromise; // đảm bảo #bootInit xong
-        if (!this.#db)                    { console.error('❌ DB chưa init'); return null; }
+        if (!this.#db) { console.error('❌ DB chưa init'); return null; }
         if (!firebase.auth().currentUser) { console.error('❌ Chưa đăng nhập'); return null; }
 
         // ── 1. Ưu tiên IndexedDB cache ────────────────────────────────────
         const cachedData = await this.#idbGet('APP_DATA');
-        const lastSync   = localStorage.getItem('LAST_SYNC');
-        const cacheAge   = this.#config.cacheMaxAgeMs;
+        const lastSync = localStorage.getItem('LAST_SYNC');
+        const cacheAge = this.#config.cacheMaxAgeMs;
 
         if (!forceNew && cachedData && lastSync && (Date.now() - parseInt(lastSync, 10) < cacheAge)) {
             APP_DATA = cachedData;
@@ -587,7 +587,7 @@ class DBManager {
         const result = this.#buildEmptyResult();
 
         const userRole = window.CURRENT_USER?.role ?? null;
-        const allowed  = (userRole && window.COLL_MANIFEST?.[userRole])
+        const allowed = (userRole && window.COLL_MANIFEST?.[userRole])
             ? window.COLL_MANIFEST[userRole]
             : ['bookings', 'booking_details', 'operator_entries', 'customers'];
 
@@ -633,9 +633,9 @@ class DBManager {
             try {
                 let query = this.#db.collection(collName);
                 if (cfg.orderBy) query = query.orderBy(cfg.orderBy, 'desc');
-                if (cfg.limit)   query = query.limit(cfg.limit);
+                if (cfg.limit) query = query.limit(cfg.limit);
 
-                const snap   = await this.loadCollectionWithCache(query);
+                const snap = await this.loadCollectionWithCache(query);
                 const source = snap.metadata?.fromCache ? '📦 cache' : '🌐 server';
                 this.#hydrateCollection(result, collName, snap);
                 log(`✅ [${collName}] ${snap.size} docs — ${source}`);
@@ -694,7 +694,7 @@ class DBManager {
             .forEach(({ index, groupBy }) => {
                 const groupKey = data[groupBy];
                 if (!groupKey) return;
-                if (!result[index])           result[index] = {};
+                if (!result[index]) result[index] = {};
                 if (!result[index][groupKey]) result[index][groupKey] = {};
                 result[index][groupKey][data.id] = data;
             });
@@ -745,14 +745,14 @@ class DBManager {
         try {
             // Ưu tiên lấy từ IndexDB (Firestore Persistence)
             const snap = await query.get({ source: 'cache' });
-            
+
             // Nếu cache rỗng (size === 0), bắt buộc phải lên server
             if (snap.empty) {
                 log('📦 Cache empty, fetching from server...');
                 return await query.get({ source: 'server' });
             }
             log(`loadCollectionWithCache: 📦 Cache hit: ${snap.size} docs`);
-            
+
             return snap;
         } catch (e) {
             log('⚠️ Cache load failed, fetching from server...', e);
@@ -765,7 +765,7 @@ class DBManager {
     syncDelta = async (collection, forceFullLoad = false) => {
         try {
             showLoading(true);
-            const lastSync     = localStorage.getItem('LAST_SYNC');
+            const lastSync = localStorage.getItem('LAST_SYNC');
             const lastSyncDate = lastSync ? new Date(parseInt(lastSync)) : null;
             let collectionsToSync = [];
 
@@ -774,13 +774,22 @@ class DBManager {
             } else {
                 const role = window.CURRENT_USER?.role;
                 const roleMap = {
-                    'sale':        ['bookings', 'booking_details', 'customers', 'transactions', 'fund_accounts', 'users'],
-                    'op':          ['bookings', 'operator_entries', 'transactions'],
-                    'acc':         ['transactions', 'fund_accounts'],
+                    'sale': ['bookings', 'booking_details', 'customers', 'transactions', 'fund_accounts', 'users'],
+                    'op': ['bookings', 'operator_entries', 'transactions'],
+                    'acc': ['transactions', 'fund_accounts'],
                     'acc_thenice': ['transactions_thenice', 'fund_accounts_thenice'],
-                    'admin':       ['bookings', 'booking_details', 'operator_entries', 'customers', 'transactions', 'users']
+                    'admin': ['bookings', 'booking_details', 'operator_entries', 'customers', 'transactions', 'users']
                 };
+
                 collectionsToSync = roleMap[role] || [];
+                const dataListSelect = document.getElementById('btn-select-datalist');
+                const selectedColls = dataListSelect
+                    ? Array.from(dataListSelect.querySelectorAll('option')).map(opt => opt.value).filter(Boolean)
+                    : [];
+                if (selectedColls.length > 0) {
+                    collectionsToSync = collectionsToSync.filter(c => !selectedColls.includes(c));
+                }
+
             }
 
             if (collectionsToSync.length === 0) return 0;
@@ -845,45 +854,45 @@ class DBManager {
         let d_id, d_bkid, d_type, d_hotel, d_service, d_in, d_out, d_night, d_qty, d_child, d_total;
 
         if (Array.isArray(detailRow)) {
-            d_id     = detailRow[COL_INDEX.D_SID];
-            d_bkid   = detailRow[COL_INDEX.D_BKID];
-            d_type   = detailRow[COL_INDEX.D_TYPE];
-            d_hotel  = detailRow[COL_INDEX.D_HOTEL];
+            d_id = detailRow[COL_INDEX.D_SID];
+            d_bkid = detailRow[COL_INDEX.D_BKID];
+            d_type = detailRow[COL_INDEX.D_TYPE];
+            d_hotel = detailRow[COL_INDEX.D_HOTEL];
             d_service = detailRow[COL_INDEX.D_SERVICE];
-            d_in     = detailRow[COL_INDEX.D_IN];
-            d_out    = detailRow[COL_INDEX.D_OUT];
-            d_night  = detailRow[COL_INDEX.D_NIGHT];
-            d_qty    = detailRow[COL_INDEX.D_QTY];
-            d_child  = detailRow[COL_INDEX.D_CHILD];
-            d_total  = detailRow[COL_INDEX.D_TOTAL];
+            d_in = detailRow[COL_INDEX.D_IN];
+            d_out = detailRow[COL_INDEX.D_OUT];
+            d_night = detailRow[COL_INDEX.D_NIGHT];
+            d_qty = detailRow[COL_INDEX.D_QTY];
+            d_child = detailRow[COL_INDEX.D_CHILD];
+            d_total = detailRow[COL_INDEX.D_TOTAL];
         } else {
-            d_id     = detailRow.id;
-            d_bkid   = detailRow.booking_id;
-            d_type   = detailRow.service_type;
-            d_hotel  = detailRow.hotel_name;
+            d_id = detailRow.id;
+            d_bkid = detailRow.booking_id;
+            d_type = detailRow.service_type;
+            d_hotel = detailRow.hotel_name;
             d_service = detailRow.service_name;
-            d_in     = detailRow.check_in;
-            d_out    = detailRow.check_out;
-            d_night  = detailRow.nights;
-            d_qty    = detailRow.quantity;
-            d_child  = detailRow.child_qty;
-            d_total  = detailRow.total;
+            d_in = detailRow.check_in;
+            d_out = detailRow.check_out;
+            d_night = detailRow.nights;
+            d_qty = detailRow.quantity;
+            d_child = detailRow.child_qty;
+            d_total = detailRow.total;
         }
 
         const syncData = {
-            id:                 d_id     || "",
-            booking_id:         d_bkid   || "",
+            id: d_id || "",
+            booking_id: d_bkid || "",
             customer_full_name: detailRow.customer_full_name || detailRow[COL_INDEX.M_CUST] || "",
-            service_type:       d_type   || "",
-            hotel_name:         d_hotel  || "",
-            service_name:       d_service || "",
-            check_in:           d_in  ? formatDateISO(d_in)  : "",
-            check_out:          d_out ? formatDateISO(d_out) : "",
-            nights:             d_night  || 0,
-            adults:             d_qty    || 0,
-            children:           d_child  || 0,
-            total_sale:         d_total  || 0,
-            updated_at:         firebase.firestore.FieldValue.serverTimestamp()
+            service_type: d_type || "",
+            hotel_name: d_hotel || "",
+            service_name: d_service || "",
+            check_in: d_in ? formatDateISO(d_in) : "",
+            check_out: d_out ? formatDateISO(d_out) : "",
+            nights: d_night || 0,
+            adults: d_qty || 0,
+            children: d_child || 0,
+            total_sale: d_total || 0,
+            updated_at: firebase.firestore.FieldValue.serverTimestamp()
         };
 
         const res = await this.#firestoreCRUD(this.COLL.OPERATORS, 'set', String(d_id), syncData);
@@ -928,11 +937,11 @@ class DBManager {
      * await batch.commit(); // Caller tự commit
      */
     async #firestoreCRUD(collection, action, id = null, data = null, options = {}) {
-        if (!this.#db)   return { success: false, error: 'DB chưa init' };
+        if (!this.#db) return { success: false, error: 'DB chưa init' };
         if (!collection) return { success: false, error: 'Thiếu collection' };
 
         // ── Logging / Audit hook ────────────────────────────────────────────
-        const actor  = window.CURRENT_USER?.account ?? 'system';
+        const actor = window.CURRENT_USER?.account ?? 'system';
         const target = id ? `${collection}/${id}` : collection;
         log(`[CRUD] ${actor} | ${action.toUpperCase()} | ${target}`);
 
@@ -946,7 +955,7 @@ class DBManager {
             if (options.batchRef) {
                 if (!id) return { success: false, error: 'Cần id khi dùng batchRef' };
                 const ref = this.#db.collection(collection).doc(String(id));
-                if      (action === 'set')    options.batchRef.set(ref, data, { merge: options.merge ?? true });
+                if (action === 'set') options.batchRef.set(ref, data, { merge: options.merge ?? true });
                 else if (action === 'update') options.batchRef.update(ref, data);
                 else if (action === 'delete') options.batchRef.delete(ref);
                 else return { success: false, error: `batchRef không hỗ trợ action: ${action}` };
@@ -985,7 +994,7 @@ class DBManager {
 
                 // ── Tăng/giảm giá trị một field ──────────────────────────────
                 case 'increment': {
-                    if (!id)               return { success: false, error: 'Cần id cho action increment' };
+                    if (!id) return { success: false, error: 'Cần id cho action increment' };
                     if (!options.fieldName) return { success: false, error: 'Thiếu options.fieldName' };
                     const ref = this.#db.collection(collection).doc(String(id));
                     await ref.update({
@@ -1010,18 +1019,18 @@ class DBManager {
 
                     const BATCH_LIMIT = 499;
                     let firestoreBatch = this.#db.batch();
-                    let opCount        = 0;
+                    let opCount = 0;
                     let totalCommitted = 0;
 
                     for (const item of items) {
                         const ref = this.#db.collection(collection).doc(String(item.docId));
-                        const op  = item.op ?? 'set';
+                        const op = item.op ?? 'set';
                         // Nhúng batch_id vào các doc được ghi (không phải delete) khi batch lớn
                         const docData = (isLargeBatch && op !== 'delete' && item.docData)
                             ? { ...item.docData, batch_id: batchId }
                             : item.docData;
 
-                        if      (op === 'set')    firestoreBatch.set(ref, docData, { merge: options.merge ?? true });
+                        if (op === 'set') firestoreBatch.set(ref, docData, { merge: options.merge ?? true });
                         else if (op === 'update') firestoreBatch.update(ref, docData);
                         else if (op === 'delete') firestoreBatch.delete(ref);
                         opCount++;
@@ -1049,12 +1058,12 @@ class DBManager {
                             : items.map(it => ({ id: it.docId, action: it.op ?? 'set', data: it.docData }));
 
                         const batchNotif = {
-                            id:         notifId,
-                            type:       'data-change',
+                            id: notifId,
+                            type: 'data-change',
                             collection: collection,
-                            action:     'b',
-                            data:       JSON.stringify({ coll: collection, id: null, action: 'b', payload: batchPayload }),
-                            payload:    batchPayload,
+                            action: 'b',
+                            data: JSON.stringify({ coll: collection, id: null, action: 'b', payload: batchPayload }),
+                            payload: batchPayload,
                             created_at: firebase.firestore.FieldValue.serverTimestamp(),
                             created_by: actor,
                         };
@@ -1077,15 +1086,15 @@ class DBManager {
             //             hoặc action='batch' (đã xử lý notification ngay trong case 'batch')
             if (collection !== 'notifications' && action !== 'batch') {
                 const actionCode = { set: 's', update: 'u', delete: 'd', increment: 'i' }[action] ?? action;
-                const notifId    = `${collection}_${id ?? 'x'}_${Date.now()}`;
+                const notifId = `${collection}_${id ?? 'x'}_${Date.now()}`;
 
                 const notifDoc = {
-                    id:         notifId,
-                    type:       'data-change',
+                    id: notifId,
+                    type: 'data-change',
                     collection: collection,
-                    action:     actionCode,
-                    data:       JSON.stringify({ coll: collection, id, action: actionCode, payload: data }),
-                    payload:    data,
+                    action: actionCode,
+                    data: JSON.stringify({ coll: collection, id, action: actionCode, payload: data }),
+                    payload: data,
                     created_at: firebase.firestore.FieldValue.serverTimestamp(),
                     created_by: actor,
                 };
@@ -1140,10 +1149,10 @@ class DBManager {
                     if (!newCustomerId) return { success: false, message: "Failed to create customer ID" };
 
                     const newCustomer = {
-                        id:         newCustomerId.newId,
-                        full_name:  dataObj.customer_full_name || "",
-                        phone:      String(customerPhone).trim(),
-                        source:     'Fanpage',
+                        id: newCustomerId.newId,
+                        full_name: dataObj.customer_full_name || "",
+                        phone: String(customerPhone).trim(),
+                        source: 'Fanpage',
                         created_at: firebase.firestore.FieldValue.serverTimestamp()
                     };
 
@@ -1225,21 +1234,21 @@ class DBManager {
         if (!dataArrayList || dataArrayList.length === 0) return;
 
         let customerName = "";
-        const bkId  = Array.isArray(dataArrayList[0]) ? dataArrayList[0][1] : dataArrayList[0].booking_id;
+        const bkId = Array.isArray(dataArrayList[0]) ? dataArrayList[0][1] : dataArrayList[0].booking_id;
         const bkRef = this.#db.collection('bookings').doc(String(bkId));
         const bkSnap = await bkRef.get();
         if (bkSnap.exists) customerName = bkSnap.data().customer_full_name || "null";
         else log("Booking not found " + bkId);
 
         const batchSize = 450;
-        const chunks    = [];
+        const chunks = [];
         for (let i = 0; i < dataArrayList.length; i += batchSize)
             chunks.push(dataArrayList.slice(i, i + batchSize));
 
         let totalSuccess = 0;
         this.batchCounterUpdates = {};
         const detailsForTrigger = [];
-        const processedData     = [];
+        const processedData = [];
 
         // Giai đoạn 1: Pre-generate IDs
         for (const chunk of chunks) {
@@ -1384,9 +1393,9 @@ class DBManager {
             const collSnap = await this.#db.collection(collectionName).get();
             console.log(`📦 Tìm thấy ${collSnap.size} documents.`);
 
-            const batchItems  = [];
-            let totalUpdated  = 0;
-            let totalSkipped  = 0;
+            const batchItems = [];
+            let totalUpdated = 0;
+            let totalSkipped = 0;
             const idsSet = ids && Array.isArray(ids) ? new Set(ids.map(id => String(id))) : null;
 
             for (const doc of collSnap.docs) {
@@ -1399,7 +1408,7 @@ class DBManager {
                 if (isMatch || forceNew) {
                     const updateObj = {
                         [fieldName]: newValue,
-                        updated_at:  firebase.firestore.FieldValue.serverTimestamp()
+                        updated_at: firebase.firestore.FieldValue.serverTimestamp()
                     };
                     batchItems.push({ docId: doc.id, docData: updateObj, op: 'update' });
                     totalUpdated++;
@@ -1478,13 +1487,13 @@ class DBManager {
                         .orderBy('id', 'desc').limit(1).get();
 
                     if (!latestSnap.empty) {
-                        const latestDoc  = latestSnap.docs[0].data() || {};
-                        const latestId   = String(latestDoc.id || latestSnap.docs[0].id || '').trim();
+                        const latestDoc = latestSnap.docs[0].data() || {};
+                        const latestId = String(latestDoc.id || latestSnap.docs[0].id || '').trim();
 
                         if (/^\d+$/.test(latestId)) {
                             lastNo = parseInt(latestId, 10); prefix = '';
                         } else if (latestId.includes('-')) {
-                            const parts    = latestId.split('-').filter(Boolean);
+                            const parts = latestId.split('-').filter(Boolean);
                             const lastPart = parts[parts.length - 1] || '';
                             if (/^\d+$/.test(lastPart)) {
                                 lastNo = parseInt(lastPart, 10);
@@ -1545,7 +1554,7 @@ class DBManager {
                 const groupKey = dataObj[groupBy];
                 if (!groupKey) return;
 
-                if (!APP_DATA[index])           APP_DATA[index] = {};
+                if (!APP_DATA[index]) APP_DATA[index] = {};
                 if (!APP_DATA[index][groupKey]) APP_DATA[index][groupKey] = {};
 
                 APP_DATA[index][groupKey][dataObj.id] = APP_DATA[collectionName][dataObj.id];
@@ -1607,14 +1616,14 @@ class DBManager {
 
             for (const doc of snapshot.docs) {
                 try {
-                    const data     = doc.data();
+                    const data = doc.data();
                     const oldValue = data[oldFieldName];
                     if (oldValue === undefined || oldValue === null) continue;
 
-                    const newValue   = transformFn ? transformFn(oldValue) : oldValue;
+                    const newValue = transformFn ? transformFn(oldValue) : oldValue;
                     const updateData = {
-                        [newFieldName]:   newValue,
-                        _migrated_at:     new Date(),
+                        [newFieldName]: newValue,
+                        _migrated_at: new Date(),
                         _migration_field: `${oldFieldName}→${newFieldName}`
                     };
                     if (strategy === 'move')

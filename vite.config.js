@@ -33,15 +33,12 @@ export default defineConfig({
   plugins: [
     viteStaticCopy({
       targets: [
-        // Service Worker - phải ở root domain, không được bundle
-        { src: 'firebase-messaging-sw.js', dest: '.' },
-
         // HTML Templates - load động bởi renderer.js
         { src: 'src/components', dest: 'src' },
 
         // Chỉ copy các file .js trực tiếp, KHÔNG copy thư mục con modules/
         { src: 'src/js/*.js', dest: 'src/js' },
-    
+
         // Common components (nếu vẫn là classic scripts)
         { src: 'src/js/common', dest: 'src/js' },
 
