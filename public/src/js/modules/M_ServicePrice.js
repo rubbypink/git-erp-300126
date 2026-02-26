@@ -602,10 +602,9 @@ export default class ServicePriceController {
             };
 
             try {
-                await firebase.firestore().collection(DB_PATHS.SERVICE_SCHEDULES)
-                    .doc(docId)
-                    .set(payload, { merge: true });
-                
+                // ✅ Route qua DBManager để đồng bộ notification thay vì gọi Firestore trực tiếp
+                await A.DB.saveRecord(DB_PATHS.SERVICE_SCHEDULES, { ...payload, id: docId });
+
                 // ─────────────────────────────────────────────────────────────
                 // Update cache after successful save
                 // ─────────────────────────────────────────────────────────────

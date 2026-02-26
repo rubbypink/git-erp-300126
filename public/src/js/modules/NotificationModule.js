@@ -190,8 +190,10 @@ class NotificationModule {
                 created_at: firebase.firestore.FieldValue.serverTimestamp()
             };
 
-            const docRef = await this.db.collection('notifications').add(newDoc);
-            return docRef.id;
+            // ✅ Tạo ID trước rồi dùng saveRecord để đồng bộ qua DBManager
+            const notifId = this.db.collection('notifications').doc().id;
+            await A.DB.saveRecord('notifications', { ...newDoc, id: notifId });
+            return notifId;
         } catch (e) {
             console.error("❌ Gửi thông báo thất bại:", e);
             return null;

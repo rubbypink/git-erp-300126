@@ -553,14 +553,14 @@ class Application {
                 throw new Error('Firestore DB not initialized');
             }
 
-            const docRef = db.collection('app_config').doc('app_secrets');
             const timestamp = new Date().toISOString();
-            
-            await docRef.set({
+            // ✅ Route qua DBManager để đồng bộ notification
+            await A.DB.updateSingle('app_config', 'app_secrets', {
+                id:           'app_secrets',
                 admin_config: formConfig,
                 last_updated: timestamp,
-                updated_by: this.#state.user?.email || 'unknown'
-            }, { merge: true });
+                updated_by:   this.#state.user?.email || 'unknown',
+            });
 
             console.log('[App.saveAppConfig] ✅ Config saved successfully!');
             log('✅ Cài đặt đã được lưu thành công!', 'success');

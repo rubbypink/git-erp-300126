@@ -318,7 +318,8 @@ class FormLogic {
         const form = document.querySelector('#adm-form-editor'); if (!form) return;
         const payload = {}; const inputs = form.querySelectorAll('.adm-input');
         inputs.forEach(inp => { let val = inp.value; if (val.trim().startsWith('{')||val.trim().startsWith('[')) try{val=JSON.parse(val)}catch(e){} payload[inp.dataset.key] = val; });
-        await this.db.collection(path).doc(form.dataset.docId).update(payload); alert("✅ Đã cập nhật Form!");
+        // ✅ Route qua DBManager để đồng bộ notification
+        await A.DB.updateSingle(path, form.dataset.docId, { id: form.dataset.docId, ...payload }); alert("✅ Đã cập nhật Form!");
     }
 }
 

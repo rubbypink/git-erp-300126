@@ -955,9 +955,11 @@ async function _fixErrorSyncSalesAccounting() {
             
             // Lưu transaction vào Firestore
             if (typeof A !== 'undefined' && A.DB && A.DB.db) {
-                const docRef = await A.DB.db.collection('transactions').add(transactionData);
+                // ✅ Tạo ID trước, route qua DBManager để đồng bộ notification
+                transactionData.id = A.DB.db.collection('transactions').doc().id;
+                await A.DB.saveRecord('transactions', transactionData);
                 successCount++;
-                console.log(`✓ Created transaction ${docRef.id} for booking ${syncErr.id}`);
+                console.log(`✓ Created transaction ${transactionData.id} for booking ${syncErr.id}`);
             } else {
                 throw new Error('Firestore chưa khởi tạo');
             }

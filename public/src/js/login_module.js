@@ -576,8 +576,8 @@ const AUTH_MANAGER = {
         if (!confirm('Chắc chắn xóa user này?\n⚠️ Trigger sẽ tự động xóa Auth account')) return;
         try {
             showLoading(true);
-            // ✅ FIRESTORE DELETE → Trigger xóa Auth
-            await this.db.collection('users').doc(uid).delete();
+            // ✅ FIRESTORE DELETE → Trigger xóa Auth (route qua DBManager để đồng bộ notification)
+            await A.DB.deleteRecord('users', uid);
             log(`✅ User ${uid} deleted from Firestore`, 'success');
             log('💡 Trigger sẽ tự động xóa Firebase Auth account', 'info');
             this.loadUsersData();
