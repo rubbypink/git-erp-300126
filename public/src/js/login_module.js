@@ -392,7 +392,7 @@ const AUTH_MANAGER = {
     loadUsersData: async function() {
         try {
             // ✅ FIRESTORE: Lấy toàn bộ collection users
-            const snapshot = await this.db.collection('users').get();
+            const snapshot = await A.DB.db.collection('users').get();
             
             if (snapshot.empty) {
                 document.getElementById('users-table-body').innerHTML = '<tr><td colspan="10">Chưa có user nào</td></tr>';
@@ -437,7 +437,7 @@ const AUTH_MANAGER = {
     loadUserToForm: async function(uid) {
         try {
             // ✅ FIRESTORE: Lấy dữ liệu user
-            const doc = await this.db.collection('users').doc(uid).get();
+            const doc = await A.DB.db.collection('users').doc(uid).get();
             if (!doc.exists) return;
             
             const user = doc.data();

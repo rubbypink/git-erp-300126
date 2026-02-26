@@ -291,7 +291,7 @@ export default class ErpHeaderMenu {
 
     _getSettingsMenuHTML() {
         return `
-            <div class="erp-header d-flex justify-content-end rounded-circle shadow-sm">
+            <div class="erp-header d-flex justify-content-end shadow-sm">
                 <button id="erp-menu-trigger" class="chrome-trigger-btn" aria-label="Menu" title="Menu">
                 <i class="fa-solid fa-ellipsis-vertical"></i>
                 </button>
@@ -324,6 +324,7 @@ export default class ErpHeaderMenu {
                  background-color: var(--erp-menu-bg);
                  border: 1px solid var(--erp-menu-divider);
                  width: 36px;
+                 height: 36px;
                  border-radius: 8px;
                  display: flex;
                  align-items: center;

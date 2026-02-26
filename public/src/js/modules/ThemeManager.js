@@ -245,16 +245,17 @@ export default class ThemeManager {
     
     root.style.cssText = '';
 
-    if (themeName === 'dark') {
+    if (themeName === 'dark' && !document.body.classList.contains('dark-theme')) {
         root.setAttribute('data-bs-theme', themeName);
         const themeClass = `${themeName}-theme`;
         document.body.classList.add(themeClass);
         // 5. Dispatch custom event
         window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: themeName } }));
         return;
-    } else {
-      document.body.classList.remove('dark-theme');
     }
+    if (themeName === 'dark') this.toggleTheme('next');
+
+    document.body.classList.remove('dark-theme');
 
     this.currentTheme = themeName;
 

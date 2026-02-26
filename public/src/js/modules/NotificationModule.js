@@ -47,59 +47,27 @@ class NotificationModule {
         try {
             // ★ Tải cache từ Storage trước để hiển thị ngay lập tức
             this._initialized = true; // Đảm bảo trạng thái chưa initialized khi load cache
-            log('🔄 Loading notifications from storage...');
+            this._log('🔄 Loading notifications from storage...');
             const cached = this.#loadFromStorage();
             this.notifications = cached.items;
             this.#unreadCount = cached.unreadCount;
 
-            // Xác định Role & Group
-            const userRole = CURRENT_USER.realrole || CURRENT_USER.role;
-            const userGroup = CURRENT_USER.group || 'new';
-
-            // Lấy mốc thời gian load (mặc định 24h qua)
-            let lastSync = localStorage.getItem(NotificationModule.#LAST_SYNC_KEY);
-            const sinceTime = lastSync ? new Date(parseInt(lastSync)) : new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-            // Query tối ưu: theo thời gian, filter Role/Group tại Client
-            const query = this.db.collection('notifications')
-                .where('created_at', '>', sinceTime);
-
-            this.listener = query.onSnapshot(snapshot => {
-                if (snapshot.metadata.fromCache && snapshot.docChanges().length === 0) return;
-
-                snapshot.docChanges().forEach(change => {
-                    if (change.type === 'added') {
-                        const data = { id: change.doc.id, ...change.doc.data() };
-
-                        // Filter Role hoặc Group (Logic OR)
-                        const isForMe = (data.role === userRole) || (data.group === userGroup) || (data.group === 'All');
-
-                        if (isForMe) {
-                            this.#handleIncoming(data);
-                        }
-                    }
+            // ★ Sau snapshot ĐẦU TIÊN: sort lại, tính unread, render toàn bộ
+            if (!this.#firstRenderDone) {
+                this.#firstRenderDone = true;
+                const toDate = v => v?.seconds ? new Date(v.seconds * 1000) : new Date(v || 0);
+                this.notifications.sort((a, b) => {
+                    if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+                    return toDate(b.created_at) - toDate(a.created_at);
                 });
+                this.#unreadCount = this.notifications.filter(n => !n.isRead).length;
+                this.render();
+            }
 
-                // ★ Sau snapshot ĐẦU TIÊN: sort lại, tính unread, render toàn bộ
-                if (!this.#firstRenderDone) {
-                    this.#firstRenderDone = true;
-                    const toDate = v => v?.seconds ? new Date(v.seconds * 1000) : new Date(v || 0);
-                    this.notifications.sort((a, b) => {
-                        if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
-                        return toDate(b.created_at) - toDate(a.created_at);
-                    });
-                    this.#unreadCount = this.notifications.filter(n => !n.isRead).length;
-                    this.render();
-                }
-
-                // Cập nhật mốc thời gian đồng bộ cuối cùng
-                localStorage.setItem(NotificationModule.#LAST_SYNC_KEY, Date.now().toString());
-            }, error => {
-                console.error('❌ Notification Listener Error:', error);
-            });
+            // Cập nhật mốc thời gian đồng bộ cuối cùng
+            localStorage.setItem(NotificationModule.#LAST_SYNC_KEY, Date.now().toString());
             this._setupEventListeners();
-            this.initialized = true;
-            log('✅ NotificationModule initialized and listening for changes');
+            this._log('✅ NotificationModule initialized and listening for changes');
 
         } catch (e) {
             console.error('❌ Notification Init Failed:', e);
@@ -166,6 +134,12 @@ class NotificationModule {
                 }
             });
         }
+
+        window.addEventListener('new-notifications-arrived', (e) => {
+            const newNotifs = e.detail || [];
+            this._log(`📢 ${newNotifs.length} new notification(s) arrived via event`);
+            newNotifs.forEach(notif => this.#handleIncoming(notif));
+        });
     }
 
     _log(msg, type = 'info') {

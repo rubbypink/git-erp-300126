@@ -303,7 +303,7 @@ class Application {
 
         const modalHTML = `
             <div id="dynamic-modal" class="modal fade" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
-                <div class="modal-dialog modal-dialog-centered" style="width: auto; max-width: 85vw; max-height: 90vh; min-width: 300px;">
+                <div class="modal-dialog modal-dialog-centered" style="width: auto; max-width: max-content; min-width: 300px; padding-bottom: 5rem; max-height: fit-content;">
                     <div class="modal-content shadow-lg border-0">
                         <div class="modal-header bg-gradient py-2">
                             <h6 class="modal-title fw-bold text-uppercase" style="letter-spacing: 1px; justify-self: center;">
@@ -353,8 +353,12 @@ class Application {
     #createProxy(moduleName) {
         return new Proxy({}, {
             get: (target, prop) => {
-                if (prop === 'raw') return this.#modules[moduleName];
-                return this.#modules[moduleName][prop] ?? ((...args) => this._call(moduleName, prop, ...args));
+                const module = this.#modules[moduleName];
+                if (prop === 'raw') return module;
+                const value = module?.[prop];
+                // Bind method về đúng instance để private fields (#) hoạt động đúng
+                if (typeof value === 'function') return value.bind(module);
+                return value ?? ((...args) => this._call(moduleName, prop, ...args));
             },
             set: (target, prop, value) => {
                 this.#modules[moduleName][prop] = value;
@@ -437,7 +441,7 @@ class Application {
             });
 
             // ✅ Kiểm tra: Nếu constructor không gọi init() thì gọi
-            if (initialized && typeof moduleOrClass.init === 'function' && !moduleOrClass._initialized) {
+            if (initialized && typeof moduleOrClass?.init === 'function' && !moduleOrClass?._initialized) {
                 moduleOrClass.init();
                 moduleOrClass._initialized = true;
             }
@@ -546,16 +550,10 @@ class Application {
             // 2. Cập nhật A.#config thông qua setConfig
             this.setConfig(formConfig);
             
-            // 3. Lưu vào Firestore
-            const db = this.#modules['Database']?.db || (window.firebase?.firestore && window.firebase.firestore());
-            
-            if (!db) {
-                throw new Error('Firestore DB not initialized');
-            }
-
+            // 3. Lưu vào Firestore qua DBManager
             const timestamp = new Date().toISOString();
             // ✅ Route qua DBManager để đồng bộ notification
-            await A.DB.updateSingle('app_config', 'app_secrets', {
+            await this.#modules['Database'].updateSingle('app_config', 'app_secrets', {
                 id:           'app_secrets',
                 admin_config: formConfig,
                 last_updated: timestamp,
@@ -764,11 +762,6 @@ class Application {
                 if (launcher) launcher.remove();
                 if (app) app.classList.remove('d-none');               
                 showLoading(false);
-
-                if (!this.#modules['Notifications'] && typeof NotificationManager !== 'undefined') {
-                    this.#modules['Notifications'] = NotificationManager.getInstance();
-                    this.#modules['Notifications'].setCurrentUser(this.#state.user);
-                }
                   
                 const eventManager = new this.#modules['Events']();
                 eventManager.init();
@@ -815,7 +808,7 @@ class MODULELOADER {
             
             'Lang': () => import('./modules/TranslationModule.js').then(m => m.Lang),
             'NotificationManager': () => import('./modules/NotificationModule.js').then(m => m.default),
-            'CalculatorWidget': () => import('./common/components/calculator_widget.js').then(m => m.default),
+            'CalculatorWidget': () => import('./common/components/calculator_widget.js').then(m => m.CalculatorWidget),
             'ErpHeaderMenu': () => import('./common/components/header_menu.js').then(m => m.default),
             'ErpFooterMenu': () => import('./common/components/footer_menu.js').then(m => m.default),
             'ChromeMenuController': () => import('./common/components/Menu_StyleChrome.js').then(m => m.ChromeMenuController)

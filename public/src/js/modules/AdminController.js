@@ -3,6 +3,7 @@
  * Path: public/src/js/modules/AdminController.js
  * Fix: JSON Display Error using DOM Property injection
  */
+import A from '../app.js';
 import { migrationHelper } from './migration-helper.js';
 // =============================================================================
 // PHẦN 1: WEB COMPONENT (UPDATED RENDER LOGIC)
@@ -158,7 +159,7 @@ if (!customElements.get('table-db-data')) customElements.define('table-db-data',
 // =============================================================================
 class MatrixLogic {
     constructor(db) { 
-        this.db = db;
+        this.db = db || A.DB.db || firebase.firestore();
     }
 
     async getHeaders(path, fetchedData = []) {

@@ -10,15 +10,16 @@ const CalculatorWidget = {
         containerId: 'erp-calculator-widget',
         lastFocusedInput: null, // Lưu vết ô input người dùng đang gõ
         animationDuration: 300 // ms
+        
     },
-
+    _initialized: true, // Cờ để tránh khởi tạo nhiều lần
     // 2. INIT
     init: function() {
-        if (this._initialized) {
+        if (this._autoInitDone) {
             console.warn('[Calculator Widget] Đã khởi tạo rồi, bỏ qua...');
             return;
         }
-        this._initialized = true;
+        this._autoInitDone = true;
         // Render giao diện ngay khi khởi tạo
         if (!document.getElementById(this.config.containerId)) {
             this.renderUI();

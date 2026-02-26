@@ -1129,6 +1129,24 @@
       display: none !important;
     }
 
+
+
+  @media screen and (max-width: 1200px) {
+    fieldset {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      padding: 0 1rem;
+      margin: 0;
+      border-bottom: 0.5rem solid #ccc;
+      border-radius: 8px;
+      background-color: #f9f9f9;
+      align-items: start;
+      align-content: start;
+      grid-auto-flow: row;
+    }
+
+  }
     /* =========================================================================
     MOBILE TOUCH FIX - REVISED BY 9 TRIP ERP ASSISTANT
     ========================================================================= */

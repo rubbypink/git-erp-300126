@@ -87,7 +87,6 @@ class DBManager {
      * @param {boolean} [options.persistence=true]         - Bật IndexedDB persistence
      * @param {boolean} [options.networkEnabled=true]      - Bật network ngay từ đầu
      * @param {number}  [options.cacheMaxAgeMs]            - Tuổi tối đa của cache (ms), mặc định 72h
-     * @param {number}  [options.notificationsWindowMs]    - Cửa sổ thời gian query notifications, mặc định 72h
      */
     constructor(options = {}) {
         const HR72 = 72 * 60 * 60 * 1000;
@@ -106,11 +105,22 @@ class DBManager {
 
         if (hasExplicitOptions || hasSaved) {
             // ── Auto-init: có config rõ ràng hoặc đã lưu → tự khởi chạy khi auth ready ──
+            // ⚠️ QUAN TRỌNG: Constructor chạy lúc module được import (trước DOMContentLoaded),
+            // tức là trước khi AUTH_MANAGER.initFirebase() gọi firebase.initializeApp().
+            // Nếu gọi firebase.auth() ngay lập tức sẽ throw "No Firebase App '[DEFAULT]'".
+            // → Dùng polling để chờ Firebase được khởi tạo trước khi subscribe.
             this.#initPromise = new Promise(resolve => {
                 this.#resolveInit = resolve;
-                const unsub = firebase.auth().onAuthStateChanged(user => {
-                    if (user) { unsub(); this.#bootInit().then(resolve); }
-                });
+                const trySubscribe = () => {
+                    if (!firebase.apps?.length) {
+                        setTimeout(trySubscribe, 200);
+                        return;
+                    }
+                    const unsub = firebase.auth().onAuthStateChanged(user => {
+                        if (user) { unsub(); this.#bootInit().then(resolve); }
+                    });
+                };
+                trySubscribe();
             });
         } else {
             // ── Manual-init: không có config → chờ gọi init() thủ công từ bên ngoài ──
@@ -177,7 +187,6 @@ class DBManager {
                 ...this.#config,
                 ...Object.fromEntries(Object.entries(options).filter(([, v]) => v !== undefined)),
                 cacheMaxAgeMs:         options.cacheMaxAgeMs         ?? this.#config.cacheMaxAgeMs         ?? HR72,
-                notificationsWindowMs: options.notificationsWindowMs ?? this.#config.notificationsWindowMs ?? HR72,
             };
             await this.#bootInit().catch(e => console.error('❌ bootInit thất bại:', e));
             this.#resolveInit?.();
@@ -357,7 +366,9 @@ class DBManager {
         if (this.#listeners['notifications']) return; // đã chạy
 
         const windowMs   = this.#config.notificationsWindowMs;
-        const lastSyncMs = parseInt(localStorage.getItem('LAST_SYNC') ?? '0', 10);
+        let lastSyncMs = localStorage.getItem('LAST_SYNC');
+        lastSyncMs = lastSyncMs ? parseInt(lastSyncMs, 10) : 0;
+
         const now        = Date.now();
 
         // Lấy mốc quá khứ gần nhất giữa lastSync và (now - 72h)
@@ -385,7 +396,13 @@ class DBManager {
                 });
 
                 if (dataChangeDocs.length > 0) this.#autoSyncData(dataChangeDocs);
-                if (notifDocs.length      > 0) window.A?.NotificationManager?.receive?.(notifDocs);
+                if (notifDocs.length      > 0) {
+                    let notifications = localStorage.getItem('NotificationModule.9trip_notifications_logs');
+                    notifications = notifications ? JSON.parse(notifications) : [];
+                    notifications.unshift(...notifDocs);
+                    localStorage.setItem('NotificationModule.9trip_notifications_logs', JSON.stringify(notifications));
+                    window.dispatchEvent(new CustomEvent('new-notifications-arrived', { detail: notifDocs }));
+                }
             },
             err => console.error('❌ Notifications listener error:', err)
         );
