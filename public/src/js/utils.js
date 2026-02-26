@@ -785,6 +785,7 @@
       }
 
       const classList = el.classList;
+      if (el.dataset && !el.dataset.initial) el.dataset.initial = String(vRaw); // Lưu giá trị gốc để có thể reset sau này nếu cần
 
       // --- CASE A: NUMBER (Trigger setNum) ---
       if (classList.contains('number') || classList.contains('number-only') || el.type === 'number') {
@@ -1223,18 +1224,33 @@
 
     // 4. MAIN HANDLER (Logic xử lý sự kiện)
     const finalHandler = (e) => {
-      if (delegateSelector) {
-        // --- LOGIC DELEGATION (Lazy hoặc options.delegate) ---
-        // Tìm xem element được click (hoặc cha nó) có khớp selector không
-        const matched = e.target.closest(delegateSelector);
-        
-        // Quan trọng: Element tìm thấy phải nằm trong vùng sự kiện (currentTarget)
-        if (matched && e.currentTarget.contains(matched)) {
-          handler.call(matched, e, matched);
+      try {
+        if (delegateSelector) {
+          let matched = null;
+  
+          // Xử lý an toàn cho closest: Chỉ dùng nếu là string
+          if (typeof delegateSelector === 'string') {
+            matched = e.target.closest(delegateSelector);
+          } 
+          // Nếu truyền vào là 1 Element object, kiểm tra xem click có nằm trong nó không
+          else if (delegateSelector.nodeType && delegateSelector.contains(e.target)) {
+            matched = delegateSelector;
+          }
+  
+          // Thực thi handler nếu khớp
+          if (matched && e.currentTarget.contains(matched)) {
+            handler.call(matched, e, matched);
+          }
+        } else {
+          handler.call(e.currentTarget, e, e.currentTarget);
         }
-      } else {
-        // --- LOGIC TRỰC TIẾP (Cách cũ) ---
-        handler.call(e.currentTarget, e, e.currentTarget);
+      } catch (handlerErr) {
+        // Rule số 7: Centralized logging
+        if (typeof ErrorLogger !== 'undefined') {
+          ErrorLogger.log(handlerErr, 'onEvent_Handler', { data: { eventNames, target } });
+        } else {
+          console.error("onEvent Handler Error:", handlerErr);
+        }
       }
     };
 
@@ -1597,9 +1613,12 @@
           }
           if (btnCancel) btnCancel.onclick = () => close(false);
         } else {
-          alert(message);
-          if (typeof callback === 'function') callback(...args);
-          resolve(true);
+          if(window.confirm(message)) {
+            if (typeof callback === 'function') callback(...args);
+            resolve(true);
+          } else {
+            resolve(false);
+          }
         }
       });
     } else {
@@ -2042,6 +2061,10 @@
           
           // Trường hợp 1: Element đang "Sống" trên DOM -> Cần đưa vào Template
           const activeElement = getE(targetId);
+          if (!activeElement) {
+              log(`⚠️ Element #${targetId} không tồn tại trên DOM. Kiểm tra lại ID hoặc trạng thái hiện tại.`);
+              return null;
+          }
           
           if (activeElement) {
               // 1. Tạo thẻ template
@@ -2089,30 +2112,94 @@
       }
   }
 
-  function getHtmlContent(url) {
+  // ✅ Cache để tránh fetch lặp lại
+  const _htmlCache = {};
+
+  /**
+   * Tải nội dung HTML từ file tĩnh (local/Firebase Hosting)
+   * ✅ Optimized: Cache, timeout, path validation, retry
+   * 
+   * @param {string} url - Tên file (vd: 'tpl_all.html') hoặc đường dẫn đầy đủ
+   * @param {Object} options - { useCache: true, timeout: 5000, retry: 1 }
+   * @returns {Promise<string>} - HTML content
+   */
+  function getHtmlContent(url, options = {}) {
+    const { useCache = true, timeout = 5000, retry = 1 } = options;
+    
     return new Promise((resolve, reject) => {
       let finalSourcePath = url;
 
-      // Nếu là file HTML ngắn gọn (vd: 'tpl_all.html'), tự động thêm path
+      // 1. ✅ PATH VALIDATION: Chặn path traversal & absolute path
+      // Bỏ các ký tự nguy hiểm để tránh injection
+      if (url.includes('..') || url.startsWith('/')) {
+        reject(new Error(`❌ Invalid path: ${url} (Path traversal detected)`));
+        return;
+      }
+
+      // 2. Nếu là file HTML ngắn gọn (vd: 'tpl_all.html'), tự động thêm path
       if (url.endsWith('.html') && !url.includes('/')) {
         finalSourcePath = './src/components/' + url;
       }
-      fetch(finalSourcePath)
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          return response.text();
-        })
-        .then(html => {
-          log(`✅ HTML content loaded from: ${finalSourcePath}`, 'success');
-          resolve(html);
-        })
-        .catch(err => {
-          logError(`❌ Failed to load HTML content from: ${finalSourcePath}`, err);
-          reject(err);
-        });
+
+      // 3. ✅ CHECK CACHE TRƯỚC
+      if (useCache && _htmlCache[finalSourcePath]) {
+        log(`⚡ HTML cached (from: ${finalSourcePath})`, 'info');
+        resolve(_htmlCache[finalSourcePath]);
+        return;
+      }
+
+      // 4. ✅ FETCH WITH TIMEOUT + RETRY LOGIC
+      const fetchWithTimeout = (path, attempt = 1) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        fetch(path, { signal: controller.signal })
+          .then(response => {
+            clearTimeout(timeoutId);
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.text();
+          })
+          .then(html => {
+            // ✅ CACHE RESULT
+            if (useCache) {
+              _htmlCache[finalSourcePath] = html;
+            }
+            log(`✅ HTML loaded from: ${finalSourcePath}`, 'success');
+            resolve(html);
+          })
+          .catch(err => {
+            clearTimeout(timeoutId);
+            
+            // ✅ RETRY LOGIC
+            if (attempt < retry) {
+              log(`⚠️ HTML fetch failed (attempt ${attempt}/${retry}), retrying...`, 'warning');
+              setTimeout(() => fetchWithTimeout(path, attempt + 1), 500);
+            } else {
+              logError(`❌ Failed to load HTML from: ${finalSourcePath} (${err.message})`);
+              reject(err);
+            }
+          });
+      };
+
+      fetchWithTimeout(finalSourcePath);
     });
+  }
+
+  /**
+   * Clear HTML cache (nếu cần reload)
+   */
+  function clearHtmlCache(urlPattern = null) {
+    if (!urlPattern) {
+      Object.keys(_htmlCache).forEach(key => delete _htmlCache[key]);
+      log('🗑️ HTML cache cleared', 'info');
+    } else {
+      if (_htmlCache[urlPattern]) {
+        delete _htmlCache[urlPattern];
+        log(`🗑️ HTML cache cleared for: ${urlPattern}`, 'info');
+      }
+    }
   }
   
 
@@ -2378,3 +2465,57 @@
       },
   
   };
+
+  /**
+   * =========================================================================
+   * FILTER UPDATED DATA - So sánh giá trị input và data-initial
+   * =========================================================================
+   */
+  /**
+   * So sánh giá trị hiện tại (value) với giá trị ban đầu (data-initial)
+   * và trả về object chứa các field đã thay đổi.
+   * 
+   * @param {string} containerId - ID của container chứa các input
+   * @returns {object} - Object chứa các field có giá trị khác nhau
+   *                     Format: { fieldName: newValue, ... }
+   * 
+   * @example
+   * // HTML:
+   * // <div id="form-container">
+   * //   <input data-field="full_name" value="Nguyễn A" data-initial="Nguyễn A">
+   * //   <input data-field="phone" value="0909123456" data-initial="0909000000">
+   * // </div>
+   * 
+   * // JavaScript:
+   * const changes = filterUpdatedData('form-container');
+   * // Returns: { phone: "0909123456" } (chỉ field phone thay đổi)
+   */
+  async function filterUpdatedData(containerId) {
+    const container = getE(containerId);
+    if (!container) {
+      log(`⚠️ Container với ID "${containerId}" không tìm thấy`, 'warning');
+      return {};
+    }
+
+    const updatedData = {};
+    
+    // Tìm tất cả input, select, textarea trong container
+    const inputs = container.querySelectorAll('input, select, textarea');
+    
+    inputs.forEach(el => {
+      const currentValue = el.value;
+      const initialValue = el.getAttribute('data-initial') || '';
+      
+      // So sánh: nếu value khác data-initial thì thêm vào object kết quả
+      if (currentValue !== initialValue) {
+        // Ưu tiên lấy data-field, nếu không có thì lấy id
+        const fieldName = el.getAttribute('data-field') || el.id;
+        
+        if (fieldName) {
+          updatedData[fieldName] = currentValue;
+        }
+      }
+    });
+    
+    return updatedData;
+  }

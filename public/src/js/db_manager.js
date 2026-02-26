@@ -14,6 +14,7 @@ const DB_MANAGER = {
     db: null,
     batchCounterUpdates: {}, // Lưu counter updates cho batch processing
     currentCustomer: null,
+    cache: 'unset',
     
     // --- COLLECTION NAME ALIASES ---
     COLL: {
@@ -29,175 +30,20 @@ const DB_MANAGER = {
         CONFIG: 'app_config'
     },
     
-    /**
-     * HÀM NỘI BỘ: Tạo ID mới cho các collection
-     * @param {string} collectionName - Tên collection (bookings, booking_details, customers, users)
-     * @param {string} bookingId - (Optional) Dùng cho booking_details: giá trị booking_id để làm prefix
-     * @returns {Promise<{newId: string, newNo: number}>}
-     */
-    generateIds: async function(collectionName, bookingId = null) {
-        if (!this.db) {
-            console.error("❌ DB chưa init");
-            return null;
-        }
+    loadAllData: async function(forceNew = false) {
 
-        const counterRef = this.db.collection('counters_id').doc(collectionName);
-
-        try {
-            const counterSnap = await counterRef.get();
-            let lastNo = 0;
-            let prefix = '';
-            let useRandomId = false;
-
-            // Lấy số hiện tại từ counters_id
-            if (counterSnap.exists) {
-                if (collectionName === this.COLL.DETAILS) prefix = bookingId ? `${bookingId}_` : 'SID_';
-                else prefix = counterSnap.data().prefix || '';
-                lastNo = counterSnap.data().last_no;
-                if(lastNo && lastNo > 0) await this._updateCounter(collectionName, lastNo + 1);
-            }
-
-            // Nếu counters_id không có thì lấy id mới nhất trong collection để suy ra lastNo/prefix
-            if (!counterSnap.exists) {
-                try {
-                    const latestSnap = await this.db.collection(collectionName)
-                        .orderBy('id', 'desc')
-                        .limit(1)
-                        .get();
-
-                    if (!latestSnap.empty) {
-                        const latestDoc = latestSnap.docs[0].data() || {};
-                        const latestId = String(latestDoc.id || latestSnap.docs[0].id || '').trim();
-
-                        if (/^\d+$/.test(latestId)) {
-                            lastNo = parseInt(latestId, 10);
-                            prefix = '';
-                        } else if (latestId.includes('-')) {
-                            const parts = latestId.split('-').filter(Boolean);
-                            const lastPart = parts[parts.length - 1] || '';
-                            if (/^\d+$/.test(lastPart)) {
-                                lastNo = parseInt(lastPart, 10);
-                                prefix = parts.slice(0, -1).join('-');
-                                prefix = prefix ? `${prefix}-` : '';
-                            } else if (!/\d/.test(latestId)) {
-                                useRandomId = true;
-                            }
-                        } else if (!/\d/.test(latestId)) {
-                            useRandomId = true;
-                        }
-                    } else {
-                        useRandomId = true;
-                    }
-                } catch (e) {
-                    console.warn(`⚠️ Cannot derive lastNo from latest ${collectionName} id:`, e);
-                }
-            }
-
-            let newNo = lastNo + 1;
-            let newId;
-
-            if (useRandomId) {
-                newId = `${prefix}${Math.random().toString(36).slice(2, 8).toUpperCase()}`.trim();
-                console.log(`🆔 Generated RANDOM ID for ${collectionName}: ${newId}`);
-                return { newId, newNo };
-            }
-
-            // Tạo ID cuối cùng
-            newId = `${prefix}${newNo}`.trim(); // trim để xóa khoảng trắng thừa nếu có
-
-            console.log(
-                `🆔 Generated ID for ${collectionName}: ${newId} (lastNo: ${lastNo} -> ${newNo})`
-            );
-
-            return { newId, newNo };
-        } catch (e) {
-            console.error(`❌ Error generating ID for ${collectionName}:`, e);
-            return null;
-        }
-    },
-
-    /**
-     * HÀM NỘI BỘ: Cập nhật counter sau khi save batch
-     * Chỉ cập nhật counter cuối cùng của batch
-     * @param {string} collectionName
-     * @param {number} newNo
-     */
-    _updateCounter: async function(collectionName, newNo) {
-        const counterRef = this.db.collection('counters_id').doc(collectionName);
-        try {
-            await counterRef.set({ last_no: newNo }, { merge: true });
-            if (!this.batchCounterUpdates[collectionName] || this.batchCounterUpdates[collectionName]  <= newNo) this.batchCounterUpdates[collectionName] = newNo;
-        } catch (e) {
-            console.error(`❌ Error updating counter for ${collectionName}:`, e);
-        }
-    },
-    
-    /**
-     * HÀM NỘI BỘ: Cập nhật APP_DATA.collectionName_obj sau khi save thành công
-     * @param {string} collectionName - Tên collection (bookings, booking_details, ...)
-     * @param {object} dataObj - Object dữ liệu vừa save
-     */
-    _updateAppDataObj: function(collectionName, dataObj) {
-        if (!APP_DATA) return; // An toàn nếu APP_DATA chưa init
-        
-        const objKey = `${collectionName}_obj`;
-        
-        // ✅ Kiểm tra xem collection_obj có tồn tại không
-        if (!Array.isArray(APP_DATA[objKey])) {
-            APP_DATA[objKey] = [];
-        }
-        
-        // ✅ Tìm index của object trong array dựa trên ID
-        const existingIndex = APP_DATA[objKey].findIndex(item => item.id === dataObj.id);
-        
-        if (existingIndex !== -1) {
-            // ✅ Cập nhật object cũ (merge với dữ liệu mới)
-            APP_DATA[objKey][existingIndex] = { ...APP_DATA[objKey][existingIndex], ...dataObj };
-            console.log(`✏️ Updated ${collectionName}_obj[${existingIndex}]: ${dataObj.id}`);
-        } else {
-            // ✅ Thêm object mới vào đầu array (hoặc cuối tùy preference)
-            APP_DATA[objKey].unshift(dataObj);
-            console.log(`➕ Added new ${collectionName}_obj: ${dataObj.id}`);
-        }
-    },
-    
-    /**
-     * HÀM NỘI BỘ: Xóa object khỏi APP_DATA.collectionName_obj sau khi delete thành công
-     * @param {string} collectionName - Tên collection (bookings, booking_details, ...)
-     * @param {string} id - ID của object cần xóa
-     */
-    _removeFromAppDataObj: function(collectionName, id) {
-        if (!APP_DATA) return; // An toàn nếu APP_DATA chưa init
-        
-        const objKey = `${collectionName}_obj`;
-        
-        // ✅ Kiểm tra xem collection_obj có tồn tại không
-        if (!Array.isArray(APP_DATA[objKey])) {
-            return;
-        }
-        
-        // ✅ Tìm index của object trong array dựa trên ID
-        const existingIndex = APP_DATA[objKey].findIndex(item => item.id === id);
-        
-        if (existingIndex !== -1) {
-            // ✅ Xóa object khỏi array
-            APP_DATA[objKey].splice(existingIndex, 1);
-            console.log(`🗑️ Removed ${collectionName}_obj[${existingIndex}]: ${id}`);
-        }
-    },
-    
-    loadAllData: async function() {
+        let result = {};
 
         /** * KIỂM TRA BỘ NHỚ ĐỆM (CACHE CHECK)
          * Điều kiện: Có data, có mốc thời gian và chưa quá 24h
          */
         const cachedData = localStorage.getItem('APP_DATA');
         const lastSync = localStorage.getItem('LAST_SYNC');
-        const limitTime = 24 * 60 * 60 * 1000; // 24 giờ tính bằng miliseconds
+        const cachedLists = localStorage.getItem('DATA_LISTS');
+        const limitTime = 24 * 60 * 60 * 1000; 
 
-        let result = {}; // Biến chứa dữ liệu cuối cùng
-
-        if (cachedData && lastSync && (Date.now() - parseInt(lastSync) < limitTime)) {
+        
+        if (!forceNew && cachedData && lastSync && (Date.now() - parseInt(lastSync) < limitTime)) {
             try {
                 result = JSON.parse(cachedData);
                 log("Tải dữ liệu thành công từ Cache (Tiết kiệm 1 Read)");
@@ -231,20 +77,8 @@ const DB_MANAGER = {
             if (!userRole) console.log(`⚠️ CURRENT_USER.role chưa set, dùng danh sách mặc định:`, allowedCollections);
             else console.log(`⚠️ COLL_MANIFEST[${userRole}] không tìm thấy, dùng danh sách mặc định`);
         }
-
-        // 1. CHUẨN BỊ HEADER (Tên cột) - Giữ tham chiếu, không push vào data nữa
-        // Chỉ tạo header cho collections được filter
-        const headers = {};
-        if (allowedCollections.includes('bookings')) headers.bookings = getHeader(FIELD_MAP.bookings);
-        if (allowedCollections.includes('booking_details')) headers.booking_details = getHeader(FIELD_MAP.booking_details);
-        if (allowedCollections.includes('operator_entries')) headers.operator_entries = getHeader(FIELD_MAP.operator_entries);
-        if (allowedCollections.includes('customers')) headers.customers = getHeader(FIELD_MAP.customers);
-        if (allowedCollections.includes('users')) headers.users = getHeader(FIELD_MAP.users);
-
         // Cấu trúc dữ liệu trả về (Khởi tạo tất cả collections)
-        result = {
-            header: headers, 
-            
+        result = {            
             // Legacy Arrays (Empty init)
             bookings: [], 
             booking_details: [],
@@ -448,12 +282,12 @@ const DB_MANAGER = {
             return null;
         }
     },
-
     /**
      * syncDelta: Đồng bộ dữ liệu linh hoạt (Full Load nếu thiếu, Delta Sync nếu đã có)
      */
-    syncDelta: async function (collection) {
+    syncDelta: async function (collection, forceFullLoad = false) {
         try {
+            showLoading(true);
             const lastSync = localStorage.getItem('LAST_SYNC');
             const lastSyncDate = lastSync ? new Date(parseInt(lastSync)) : null;
             let collectionsToSync = [];
@@ -464,11 +298,11 @@ const DB_MANAGER = {
             } else {
                 const role = window.CURRENT_USER?.role;
                 const roleMap = {
-                    'sale': ['bookings', 'booking_details'],
-                    'op': ['bookings', 'operator_entries'],
+                    'sale': ['bookings', 'booking_details', 'customers', 'transactions' , 'fund_accounts', 'users'],
+                    'op': ['bookings', 'operator_entries', 'transactions'],
                     'acc': ['transactions', 'fund_accounts'],
                     'acc_thenice': ['transactions_thenice', 'fund_accounts_thenice'],
-                    'admin': ['bookings', 'booking_details', 'operator_entries']
+                    'admin': ['bookings', 'booking_details', 'operator_entries', 'customers', 'transactions', 'users']
                 };
                 collectionsToSync = roleMap[role] || [];
             }
@@ -481,13 +315,13 @@ const DB_MANAGER = {
                 const isMissingData = !window.APP_DATA[`${colName}_obj`] || !Array.isArray(window.APP_DATA[colName]);
 
                 let query;
-                if (isMissingData || !lastSyncDate) {
-                    // TRƯỜNG HỢP A: Load toàn bộ vì chưa có dữ liệu gốc
-                    log(`[${colName}] Chưa có dữ liệu trong APP_DATA. Đang tải toàn bộ...`);
-                    query = db.collection(colName);
+                if (isMissingData || !lastSyncDate || forceFullLoad) {
+                    // TRƯỜNG HỢP A: Load toàn bộ vì chưa có dữ liệu gốc hoặc được yêu cầu tải lại toàn bộ
+                    log(`[${colName}] Chưa có dữ liệu trong APP_DATA hoặc yêu cầu tải lại toàn bộ. Đang tải toàn bộ...`);
+                    query = this.db.collection(colName);
                 } else {
                     // TRƯỜNG HỢP B: Delta Sync vì đã có dữ liệu gốc
-                    query = db.collection(colName).where("updated_at", ">", lastSyncDate);
+                    query = this.db.collection(colName).where("updated_at", ">", lastSyncDate);
                 }
 
                 const querySnapshot = await query.get();
@@ -495,7 +329,7 @@ const DB_MANAGER = {
                 if (!querySnapshot.empty) {
                     log(`[${colName}] Đang xử lý ${querySnapshot.size} bản ghi.`);
                     
-                    if (isMissingData) {
+                    if (isMissingData || forceFullLoad) {
                         // Nếu là load mới hoàn toàn, khởi tạo mảng mới
                         window.APP_DATA[`${colName}_obj`] = querySnapshot.docs.map(doc => ({
                             id: doc.id, ...doc.data()
@@ -522,12 +356,14 @@ const DB_MANAGER = {
             
             // Luôn cập nhật mốc sync mới nhất
             localStorage.setItem('LAST_SYNC', Date.now().toString());
-
+            logA(`✅ Sync Delta hoàn tất. Tổng bản ghi thay đổi: ${totalChanges}`);
             return totalChanges;
 
         } catch (e) {
             log(`Lỗi syncDelta (Hybrid): `, e);
             return 0;
+        } finally {
+            showLoading(false);
         }
     },
 
@@ -589,6 +425,164 @@ const DB_MANAGER = {
         }
     },
 
+    /**
+     * HÀM NỘI BỘ: Tạo ID mới cho các collection
+     * @param {string} collectionName - Tên collection (bookings, booking_details, customers, users)
+     * @param {string} bookingId - (Optional) Dùng cho booking_details: giá trị booking_id để làm prefix
+     * @returns {Promise<{newId: string, newNo: number}>}
+     */
+    generateIds: async function(collectionName, bookingId = null) {
+        if (!this.db) {
+            console.error("❌ DB chưa init");
+            return null;
+        }
+
+        const counterRef = this.db.collection('counters_id').doc(collectionName);
+
+        try {
+            const counterSnap = await counterRef.get();
+            let lastNo = 0;
+            let prefix = '';
+            let useRandomId = false;
+
+            // Lấy số hiện tại từ counters_id
+            if (counterSnap.exists) {
+                if (collectionName === this.COLL.DETAILS) prefix = bookingId ? `${bookingId}_` : 'SID_';
+                else prefix = counterSnap.data().prefix || '';
+                lastNo = counterSnap.data().last_no;
+                if(lastNo && lastNo > 0) await this._updateCounter(collectionName, lastNo + 1);
+            }
+
+            // Nếu counters_id không có thì lấy id mới nhất trong collection để suy ra lastNo/prefix
+            if (!counterSnap.exists) {
+                try {
+                    const latestSnap = await this.db.collection(collectionName)
+                        .orderBy('id', 'desc')
+                        .limit(1)
+                        .get();
+
+                    if (!latestSnap.empty) {
+                        const latestDoc = latestSnap.docs[0].data() || {};
+                        const latestId = String(latestDoc.id || latestSnap.docs[0].id || '').trim();
+
+                        if (/^\d+$/.test(latestId)) {
+                            lastNo = parseInt(latestId, 10);
+                            prefix = '';
+                        } else if (latestId.includes('-')) {
+                            const parts = latestId.split('-').filter(Boolean);
+                            const lastPart = parts[parts.length - 1] || '';
+                            if (/^\d+$/.test(lastPart)) {
+                                lastNo = parseInt(lastPart, 10);
+                                prefix = parts.slice(0, -1).join('-');
+                                prefix = prefix ? `${prefix}-` : '';
+                            } else if (!/\d/.test(latestId)) {
+                                useRandomId = true;
+                            }
+                        } else if (!/\d/.test(latestId)) {
+                            useRandomId = true;
+                        }
+                    } else {
+                        useRandomId = true;
+                    }
+                } catch (e) {
+                    console.warn(`⚠️ Cannot derive lastNo from latest ${collectionName} id:`, e);
+                }
+            }
+
+            let newNo = lastNo + 1;
+            let newId;
+
+            if (useRandomId) {
+                newId = `${prefix}${Math.random().toString(36).slice(2, 8).toUpperCase()}`.trim();
+                console.log(`🆔 Generated RANDOM ID for ${collectionName}: ${newId}`);
+                return { newId, newNo };
+            }
+
+            // Tạo ID cuối cùng
+            newId = `${prefix}${newNo}`.trim(); // trim để xóa khoảng trắng thừa nếu có
+
+            console.log(
+                `🆔 Generated ID for ${collectionName}: ${newId} (lastNo: ${lastNo} -> ${newNo})`
+            );
+
+            return { newId, newNo };
+        } catch (e) {
+            console.error(`❌ Error generating ID for ${collectionName}:`, e);
+            return null;
+        }
+    },
+
+    /**
+     * HÀM NỘI BỘ: Cập nhật counter sau khi save batch
+     * Chỉ cập nhật counter cuối cùng của batch
+     * @param {string} collectionName
+     * @param {number} newNo
+     */
+    _updateCounter: async function(collectionName, newNo) {
+        const counterRef = this.db.collection('counters_id').doc(collectionName);
+        try {
+            await counterRef.set({ last_no: newNo }, { merge: true });
+            if (!this.batchCounterUpdates[collectionName] || this.batchCounterUpdates[collectionName]  <= newNo) this.batchCounterUpdates[collectionName] = newNo;
+        } catch (e) {
+            console.error(`❌ Error updating counter for ${collectionName}:`, e);
+        }
+    },
+    
+    /**
+     * HÀM NỘI BỘ: Cập nhật APP_DATA.collectionName_obj sau khi save thành công
+     * @param {string} collectionName - Tên collection (bookings, booking_details, ...)
+     * @param {object} dataObj - Object dữ liệu vừa save
+     */
+    _updateAppDataObj: function(collectionName, dataObj) {
+        if (!APP_DATA) return; // An toàn nếu APP_DATA chưa init
+        
+        const objKey = `${collectionName}_obj`;
+        
+        // ✅ Kiểm tra xem collection_obj có tồn tại không
+        if (!Array.isArray(APP_DATA[objKey])) {
+            APP_DATA[objKey] = [];
+        }
+        
+        // ✅ Tìm index của object trong array dựa trên ID
+        const existingIndex = APP_DATA[objKey].findIndex(item => item.id === dataObj.id);
+        
+        if (existingIndex !== -1) {
+            // ✅ Cập nhật object cũ (merge với dữ liệu mới)
+            APP_DATA[objKey][existingIndex] = { ...APP_DATA[objKey][existingIndex], ...dataObj };
+            console.log(`✏️ Updated ${collectionName}_obj[${existingIndex}]: ${dataObj.id}`);
+        } else {
+            // ✅ Thêm object mới vào đầu array (hoặc cuối tùy preference)
+            APP_DATA[objKey].unshift(dataObj);
+            console.log(`➕ Added new ${collectionName}_obj: ${dataObj.id}`);
+        }
+    },
+    
+    /**
+     * HÀM NỘI BỘ: Xóa object khỏi APP_DATA.collectionName_obj sau khi delete thành công
+     * @param {string} collectionName - Tên collection (bookings, booking_details, ...)
+     * @param {string} id - ID của object cần xóa
+     */
+    _removeFromAppDataObj: function(collectionName, id) {
+        if (!APP_DATA) return; // An toàn nếu APP_DATA chưa init
+        
+        const objKey = `${collectionName}_obj`;
+        
+        // ✅ Kiểm tra xem collection_obj có tồn tại không
+        if (!Array.isArray(APP_DATA[objKey])) {
+            return;
+        }
+        
+        // ✅ Tìm index của object trong array dựa trên ID
+        const existingIndex = APP_DATA[objKey].findIndex(item => item.id === id);
+        
+        if (existingIndex !== -1) {
+            // ✅ Xóa object khỏi array
+            APP_DATA[objKey].splice(existingIndex, 1);
+            console.log(`🗑️ Removed ${collectionName}_obj[${existingIndex}]: ${id}`);
+        }
+    },
+    
+
     incrementField: async function(collectionName, docId, fieldName, incrementBy) {
         if (!this.db) { console.error("❌ DB chưa init"); return false; };
         console.log(`🔼 Incrementing ${collectionName}/${docId} field ${fieldName} by ${incrementBy}`);
@@ -611,7 +605,7 @@ const DB_MANAGER = {
 
     /**
      * Trigger: Cập nhật Operator Entry từ Booking Details (Synchronous - không dùng batch)
-     * Các trường: id, booking_id, customer_name, supplier_name, service_type, 
+     * Các trường: id, booking_id, customer_full_name, supplier_name, service_type, 
      * check_in, check_out, nights, adults, children, total_sale
      * 
      * ⚠️ Hàm này tạo batch riêng để cập nhật operator_entries
@@ -653,7 +647,7 @@ const DB_MANAGER = {
         const syncData = {
             id: d_id || "",
             booking_id: d_bkid || "",
-            customer_name: detailRow.customer_name || detailRow[COL_INDEX.M_CUST] || "",
+            customer_full_name: detailRow.customer_full_name || detailRow[COL_INDEX.M_CUST] || "",
             service_type: d_type || "",
             hotel_name: d_hotel || "",
             service_name: d_service || "",
@@ -696,7 +690,7 @@ const DB_MANAGER = {
             log(`Converting array to object for ${collectionName} saving...`);
             dataObj = arrayToObject(dataArray, collectionName);
         }
-        if (collectionName === this.COLL.BOOKINGS) this.currentCustomer = dataObj.customer_name || dataArray[COL_INDEX.M_CUST];
+        if (collectionName === this.COLL.BOOKINGS) this.currentCustomer = dataObj.customer_full_name || dataArray[COL_INDEX.M_CUST];
         // ✅ GIAI ĐOẠN 0: NẾU BOOKINGS VÀ customer_id TRỐNG - TÌM HOẶC TẠO CUSTOMER
         if (collectionName === this.COLL.BOOKINGS && (!dataObj.customer_id || dataObj.customer_id === "")) {
             let customerPhone = dataObj.customer_phone || dataArray[COL_INDEX.M_PHONE];
@@ -732,7 +726,7 @@ const DB_MANAGER = {
                     // Xây dựng object customer mới với 3 field cần thiết
                     const newCustomer = {
                         id: newCustomerId.newId,
-                        full_name: dataObj.customer_name || "",
+                        full_name: dataObj.customer_full_name || "",
                         phone: String(customerPhone).trim(),
                         source: 'Fanpage',
                         created_at: firebase.firestore.FieldValue.serverTimestamp()
@@ -820,10 +814,10 @@ const DB_MANAGER = {
                 if (collectionName === this.COLL.DETAILS) {
                     await this._syncOperatorEntry(dataArray);
                     if (!isNew) {
-                        NotificationModule.sendToOperator(`Booking Detail ${dataObj.id} cập nhật!`, `Khách: ${dataObj.customer_name || dataArray[COL_INDEX.M_CUST] || "Unknown"} cập nhật DV ${dataObj.service_name || dataArray[COL_INDEX.D_SERVICE] || "Unknown"}`);
+                        NotificationModule.sendToOperator(`Booking Detail ${dataObj.id} cập nhật!`, `Khách: ${dataObj.customer_full_name || dataArray[COL_INDEX.M_CUST] || "Unknown"} cập nhật DV ${dataObj.service_name || dataArray[COL_INDEX.D_SERVICE] || "Unknown"}`);
                     }
                 } else if (collectionName === this.COLL.BOOKINGS) {
-                    if(isNew) NotificationModule.sendToOperator(`Booking ${dataObj.id} mới!`, `Khách: ${dataObj.customer_name || dataArray[COL_INDEX.M_CUST] || "Unknown"}`);
+                    if(isNew) NotificationModule.sendToOperator(`Booking ${dataObj.id} mới!`, `Khách: ${dataObj.customer_full_name || dataArray[COL_INDEX.M_CUST] || "Unknown"}`);
                 }
                 return { success: true, id: docId };
             } catch (e) {
@@ -846,7 +840,7 @@ const DB_MANAGER = {
         const bkRef = this.db.collection('bookings').doc(String(bkId));
         const bkSnap = await bkRef.get();
         if (bkSnap.exists) {
-            customerName = bkSnap.data().customer_name || "null";
+            customerName = bkSnap.data().customer_full_name || "null";
         } else log("Booking not found "+ bkId);
 
         const batchSize = 450; // Để dư chỗ cho Trigger (mỗi detail đẻ thêm 1 operator update)
@@ -927,7 +921,7 @@ const DB_MANAGER = {
         if (collectionName === this.COLL.DETAILS && detailsForTrigger.length > 0) {
 
             for (const detailRow of detailsForTrigger) {
-                if(typeof detailRow === 'object') detailRow.customer_name = customerName; else detailRow[COL_INDEX.M_CUST] = customerName;
+                if(typeof detailRow === 'object') detailRow.customer_full_name = customerName; else detailRow[COL_INDEX.M_CUST] = customerName;
                 await this._syncOperatorEntry(detailRow);
             }
             
@@ -1003,11 +997,16 @@ const DB_MANAGER = {
      * @param {string} fieldName - Tên field cần cập nhật (VD: status, payment_method)
      * @param {*} oldValue - Giá trị cũ để tìm (VD: "pending", "unpaid")
      * @param {*} newValue - Giá trị mới để cập nhật (VD: "completed", "paid")
+     * @param {Array|null} [ids=null] - Danh sách ID cụ thể để cập nhật (nếu null = cập nhật tất cả)
+     * @param {boolean} [forceNew=false] - Bộ qua kiểm tra oldValue, cập nhật toàn bộ
      * @returns {Promise<{success: boolean, count: number, message: string}>}
      */
-    batchUpdateFieldData: async function(collectionName, fieldName, oldValue, newValue) {
+    batchUpdateFieldData: async function(collectionName, fieldName, oldValue, newValue, ids = null, forceNew = false) {
         console.time("⏱ Thời gian cập nhật");
         console.log(`🚀 Bắt đầu cập nhật ${collectionName}.${fieldName}: "${oldValue}" → "${newValue}"`);
+        if (ids && ids.length > 0) {
+            console.log(`📍 Chỉ cập nhật ${ids.length} documents có ID: ${ids.slice(0, 5).join(', ')}${ids.length > 5 ? '...' : ''}`);
+        }
     
         try {
             // --- GIAI ĐOẠN 1: KIỂM TRA INPUT ---
@@ -1031,17 +1030,26 @@ const DB_MANAGER = {
             let operationCount = 0;     // Đếm số lệnh trong batch hiện tại
             let totalUpdated = 0;       // Đếm tổng số đã cập nhật
             let totalSkipped = 0;       // Đếm số bỏ qua (không match)
+            
+            // Chuyển ids array thành Set để O(1) lookup
+            const idsSet = ids && Array.isArray(ids) ? new Set(ids.map(id => String(id))) : null;
     
             for (const doc of collSnap.docs) {
                 const data = doc.data();
                 const currentValue = data[fieldName];
+        
+                // ✅ BƯỚC 1: Nếu ids được cung cấp, bỏ qua documents không có trong danh sách
+                if (idsSet && !idsSet.has(String(doc.id))) {
+                    totalSkipped++;
+                    continue;
+                }
     
                 // So sánh giá trị (chuẩn hóa để tránh lỗi kiểu dữ liệu)
                 const isMatch = (
-                    String(currentValue).trim() === String(oldValue).trim()
+                    String(currentValue).trim() === String(oldValue).trim() 
                 );
     
-                if (isMatch) {
+                if (isMatch || forceNew) {
                     // ==> TÌM THẤY KHỚP!
                     const docRef = db.collection(collectionName).doc(doc.id);
                     const updateObj = {};
@@ -1062,8 +1070,12 @@ const DB_MANAGER = {
                         batch = db.batch();
                         operationCount = 0;
                     }
+                    this._updateAppDataObj(collectionName, { id: doc.id, ...data, ...updateObj });
                 } else {
-                    totalSkipped++;
+                    if (!idsSet) {
+                        // Chỉ đếm skipped nếu không dùng filter ids
+                        totalSkipped++;
+                    }
                 }
             }
     
@@ -1077,7 +1089,9 @@ const DB_MANAGER = {
                 success: true,
                 count: totalUpdated,
                 skipped: totalSkipped,
-                message: `✅ Hoàn tất! Cập nhật ${totalUpdated} documents, bỏ qua ${totalSkipped}`
+                message: idsSet 
+                    ? `✅ Hoàn tất! Cập nhật ${totalUpdated}/${ids.length} documents trong danh sách`
+                    : `✅ Hoàn tất! Cập nhật ${totalUpdated} documents, bỏ qua ${totalSkipped}`
             };
     
             console.log(`🎉 ${result.message}`);
@@ -1104,7 +1118,7 @@ const DB_MANAGER = {
      */
     updateSingle: async function (collectionName, id, objData) {
         // Kiểm tra input
-        if (!collectionName || !id || !objData) {
+        if (!collectionName || !objData) {
             console.warn("⚠️ updateDocument: Thiếu tham số (collectionName, id, objData)");
             return { success: false, message: "Missing required parameters" };
         }
@@ -1224,6 +1238,287 @@ async function fixMissingCustomerIds() {
 
 
 window.fixMissingCustomerIds = fixMissingCustomerIds;
+
+/**
+ * ═════════════════════════════════════════════════════════════════════════
+ * MIGRATION UTILITIES - Client-side field migration (Alternative)
+ * ═════════════════════════════════════════════════════════════════════════
+ * 
+ * 🚀 RECOMMENDED: Sử dụng Cloud Functions trong /functions/
+ * 💡 ALTERNATIVE: Sử dụng các hàm dưới đây để migrate client-side
+ * 
+ * Ưu điểm Cloud Function:
+ *   ✅ Xử lý nhanh hơn (server-side)
+ *   ✅ Tối ưu quota Firestore
+ *   ✅ Tự động backup & rollback
+ *   ✅ An toàn hơn (có admin access)
+ * 
+ * Khi nào dùng client-side:
+ *   - Migrate dữ liệu nhỏ
+ *   - Cần kiểm soát quá trình real-time
+ *   - Testing trước khi deploy
+ */
+
+/**
+ * Client-side: Migrate một field trong collection (dùng Firestore client SDK)
+ * 
+ * @example
+ * // Cách 1: COPY - Giữ field cũ
+ * await DB_MANAGER.migrateFieldClientSide('bookings', 'customer_name', 'customer_full_name', 'copy');
+ * 
+ * // Cách 2: MOVE - Copy và xóa field cũ (RECOMMENDED)
+ * await DB_MANAGER.migrateFieldClientSide('bookings', 'customer_name', 'customer_full_name', 'move');
+ * 
+ * // Cách 3: TRANSFORM - Copy với hàm transform
+ * await DB_MANAGER.migrateFieldClientSide(
+ *   'bookings', 'customer_name', 'customer_full_name', 'transform',
+ *   (val) => val ? val.trim().toUpperCase() : ''
+ * );
+ * 
+ * @param {string} collectionName - 'bookings', 'customers', etc.
+ * @param {string} oldFieldName - Field cũ: 'customer_name'
+ * @param {string} newFieldName - Field mới: 'customer_full_name'
+ * @param {string} strategy - 'copy' | 'move' (default) | 'transform'
+ * @param {Function} transformFn - (optional) Hàm transform value
+ * @param {number} limitDocs - Giới hạn documents (default: 1000, dùng 0 để lấy tất cả)
+ * @returns {Promise<{success: boolean, migratedCount: number, errors: Array, duration: string}>}
+ */
+DB_MANAGER.migrateFieldClientSide = async function(
+    collectionName,
+    oldFieldName,
+    newFieldName,
+    strategy = 'move',
+    transformFn = null,
+    limitDocs = 1000
+) {
+    if (!this.db) {
+        console.error("❌ DB chưa init");
+        return { success: false, error: 'DB not initialized' };
+    }
+
+    const startTime = Date.now();
+    let migratedCount = 0;
+    const errors = [];
+
+    try {
+        log(`🔄 Bắt đầu migrate client-side: [${oldFieldName}] → [${newFieldName}]`);
+        
+        // Lấy documents có field cũ
+        let query = this.db.collection(collectionName)
+            .where(oldFieldName, '!=', null);
+
+        if (limitDocs > 0) {
+            query = query.limit(limitDocs);
+        }
+
+        const snapshot = await query.get();
+
+        if (snapshot.empty) {
+            log('⚠️ Không tìm thấy documents với field: ' + oldFieldName, 'warning');
+            return { 
+                success: true, 
+                migratedCount: 0, 
+                message: 'Không có dữ liệu để migrate' 
+            };
+        }
+
+        log(`📥 Tìm thấy ${snapshot.size} documents`);
+
+        // Batch update (Firestore limit 500 writes per batch)
+        const batchSize = 500;
+        let batch = this.db.batch();
+        let batchCount = 0;
+
+        for (const doc of snapshot.docs) {
+            try {
+                const data = doc.data();
+                const oldValue = data[oldFieldName];
+
+                if (oldValue === undefined || oldValue === null) {
+                    continue;
+                }
+
+                // Transform nếu có
+                const newValue = transformFn ? transformFn(oldValue) : oldValue;
+
+                // Update
+                const updateData = {
+                    [newFieldName]: newValue,
+                    _migrated_at: new Date(),
+                    _migration_field: `${oldFieldName}→${newFieldName}`
+                };
+
+                // Nếu strategy là move, xóa field cũ
+                if (strategy === 'move') {
+                    updateData[oldFieldName] = firebase.firestore.FieldValue.delete();
+                }
+
+                batch.update(doc.ref, updateData);
+                migratedCount++;
+                batchCount++;
+
+                // Commit batch khi đạt 500
+                if (batchCount >= batchSize) {
+                    await batch.commit();
+                    log(`📦 Hoàn thành batch (${migratedCount}/${snapshot.size})`);
+                    batch = this.db.batch();
+                    batchCount = 0;
+                }
+            } catch (err) {
+                errors.push({ docId: doc.id, error: err.message });
+            }
+        }
+
+        // Commit batch cuối cùng
+        if (batchCount > 0) {
+            await batch.commit();
+        }
+
+        const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+        log(`✅ Migration hoàn thành (${migratedCount} docs, ${duration}s)`, 'success');
+
+        return {
+            success: true,
+            migratedCount,
+            errors,
+            duration: `${duration}s`,
+            strategy,
+            message: `Migrate thành công ${migratedCount} documents`
+        };
+    } catch (err) {
+        console.error('❌ Migration error:', err);
+        log(`❌ Migration thất bại: ${err.message}`, 'error');
+        return {
+            success: false,
+            migratedCount,
+            errors: [...errors, { error: err.message }],
+            duration: `${((Date.now() - startTime) / 1000).toFixed(2)}s`
+        };
+    }
+};
+
+/**
+ * Client-side: Batch migrate nhiều fields cùng lúc
+ * 
+ * @example
+ * const result = await DB_MANAGER.migrateBatchFieldsClientSide('bookings', [
+ *   { old: 'customer_name', new: 'customer_full_name' },
+ *   { old: 'booking_date', new: 'created_at' }
+ * ]);
+ * 
+ * @param {string} collectionName
+ * @param {Array<{old: string, new: string, transform?: Function}>} fieldMappings
+ * @param {string} strategy - 'copy' | 'move'
+ * @param {number} limitDocs - Giới hạn documents
+ * @returns {Promise<Object>}
+ */
+DB_MANAGER.migrateBatchFieldsClientSide = async function(
+    collectionName,
+    fieldMappings,
+    strategy = 'move',
+    limitDocs = 1000
+) {
+    const results = {
+        success: true,
+        collectionName,
+        migrations: [],
+        startTime: new Date().toLocaleString()
+    };
+
+    for (const mapping of fieldMappings) {
+        try {
+            const result = await this.migrateFieldClientSide(
+                collectionName,
+                mapping.old,
+                mapping.new,
+                strategy,
+                mapping.transform,
+                limitDocs
+            );
+
+            results.migrations.push({
+                field: `${mapping.old} → ${mapping.new}`,
+                ...result
+            });
+
+            if (!result.success) {
+                results.success = false;
+            }
+        } catch (err) {
+            results.success = false;
+            results.migrations.push({
+                field: `${mapping.old} → ${mapping.new}`,
+                error: err.message,
+                success: false
+            });
+        }
+    }
+
+    results.endTime = new Date().toLocaleString();
+    return results;
+};
+
+/**
+ * Kiểm tra trạng thái migration
+ * 
+ * @example
+ * const status = await DB_MANAGER.checkMigrationStatus('bookings', 'customer_name', 'customer_full_name');
+ * console.log(status);
+ * // {
+ * //   success: true,
+ * //   total: 100,
+ * //   migrated: 98,
+ * //   remaining: 2,
+ * //   status: 'PENDING'
+ * // }
+ */
+DB_MANAGER.checkMigrationStatus = async function(
+    collectionName,
+    oldFieldName,
+    newFieldName
+) {
+    try {
+        const snapshot = await this.db
+            .collection(collectionName)
+            .where(oldFieldName, '!=', null)
+            .get();
+
+        const total = snapshot.size;
+        let migrated = 0;
+        let remaining = 0;
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data[newFieldName] !== undefined && data[newFieldName] !== null) {
+                migrated++;
+            } else {
+                remaining++;
+            }
+        });
+
+        const percentage = total > 0 ? Math.round((migrated / total) * 100) : 0;
+        const status = remaining === 0 ? '✅ COMPLETE' : 
+                      percentage > 50 ? '⏳ IN PROGRESS' : 
+                      '⚠️ PENDING';
+
+        return {
+            success: true,
+            collectionName,
+            oldFieldName,
+            newFieldName,
+            total,
+            migrated,
+            remaining,
+            percentage,
+            status
+        };
+    } catch (err) {
+        return {
+            success: false,
+            error: err.message
+        };
+    }
+};
 
 export default DB_MANAGER;
 

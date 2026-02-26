@@ -3,7 +3,7 @@
  * Path: public/src/js/modules/AdminController.js
  * Fix: JSON Display Error using DOM Property injection
  */
-
+import { migrationHelper } from './migration-helper.js';
 // =============================================================================
 // PHẦN 1: WEB COMPONENT (UPDATED RENDER LOGIC)
 // =============================================================================
@@ -157,7 +157,9 @@ if (!customElements.get('table-db-data')) customElements.define('table-db-data',
 // PHẦN 2: LOGIC XỬ LÝ (Matrix Logic & Form Logic)
 // =============================================================================
 class MatrixLogic {
-    constructor(db) { this.db = db; }
+    constructor(db) { 
+        this.db = db;
+    }
 
     async getHeaders(path, fetchedData = []) {
         let headers = [];
@@ -325,6 +327,7 @@ class FormLogic {
 // PHẦN 3: MAIN CONTROLLER (Updated v3.2)
 // =============================================================================
 class AdminController {
+    _initialized = false;
     constructor() {
         this.collections = [
             { name: '⚙️ Cấu hình Ngôn ngữ (Settings)', path: 'app_config/general/settings', type: 'FORM' },
@@ -352,52 +355,41 @@ class AdminController {
         this.currentData = [];
         this.isFilterMode = false;
         this.selectedCollectionIndex = null;
+        this.migration = migrationHelper;
     }
 
-    init() {
+    async init() {
+        if (this._initialized) {
+            console.warn('[AdminController] Đã khởi tạo rồi, bỏ qua...');
+            return;
+        }
+        this._initialized = true;
+
         const modal = document.querySelector('at-modal-full');
         if (!modal) return console.error("Missing <at-modal-full>");
-        modal.show(this._getLayout(), 'Admin Console (v3.2 Full Fix)');
+        
+        modal.render(await this._getLayout(), 'Admin Console (v3.2 Full Fix)');
         modal.setFooter(false);
         this._bindEvents();
+        this.modal = modal;
     }
 
-    _getLayout() {
+    async _getLayout() {
         const opts = this.collections.map((c, i) => `<option value="${i}">${c.name}</option>`).join('');
-        return `
-            <div class="container-fluid h-100 d-flex flex-column p-0">
-                <div class="d-flex align-items-center bg-light p-2 border-bottom gap-2 flex-wrap">
-                    <select id="adm-select" class="form-select form-select-sm fw-bold" style="width:250px">
-                        <option value="">-- Chọn danh mục --</option>
-                        ${opts}
-                    </select>
-                    
-                    <div class="input-group input-group-sm" style="width: 300px;">
-                        <input type="text" id="adm-input-path" class="form-control" placeholder="Nhập path collection...">
-                        <button class="btn btn-outline-secondary" id="adm-btn-fetch"><i class="fas fa-arrow-right"></i> Load</button>
-                    </div>
+        console.log("⚙️ Đang tải giao diện Settings lần đầu...");
+                
+        // Gọi Fetch lấy file HTML
+        const response = await fetch('./src/components/tpl_settings.html');
+        
+        // Kiểm tra nếu đường dẫn sai (báo lỗi 404)
+        if (!response.ok) {
+            throw new Error(`Lỗi mạng: ${response?.status} - Không tìm thấy file template!`);
+        }
 
-                    <div class="ms-auto d-flex gap-2">
-                        <button id="adm-btn-decode" class="btn btn-sm btn-info text-white fw-bold" disabled>
-                            <i class="fas fa-network-wired"></i> Decode Sub (rooms)
-                        </button>
-                        <button id="adm-btn-save" class="btn btn-sm btn-success fw-bold px-3" disabled>
-                            <i class="fas fa-save"></i> LƯU
-                        </button>
-                        <button id="adm-btn-delete" class="btn btn-sm btn-danger fw-bold px-3">
-                            <i class="fas fa-trash"></i> XÓA
-                        </button>
-                    </div>
-                </div>
+        // GIẢI MÃ: Biến response thành chuỗi Text HTML
+        const htmlText = await response.text();
 
-                <div id="adm-workspace" class="flex-grow-1 p-3 bg-white" style="overflow-y:auto">
-                    <div class="text-center mt-5 text-secondary">
-                        <i class="fas fa-cubes fa-4x mb-3"></i>
-                        <p>Chọn collection hoặc nhập Path để bắt đầu.</p>
-                    </div>
-                </div>
-            </div>
-        `;
+        return htmlText.replace('<!-- SELECT_COLLECTION_OPTIONS_PLACEHOLDER -->', opts);
     }
 
     _bindEvents() {
@@ -634,50 +626,129 @@ class AdminController {
                 }
             }
         });
+
+        // =====================================================================
+        // 🔧 APP CONFIG MANAGEMENT (Database Control Tab)
+        // =====================================================================
+        
+        const saveCfgBtn = document.getElementById('save-config-btn');
+        const resetCfgBtn = document.getElementById('reset-config-btn');
+        
+        if (saveCfgBtn) {
+            saveCfgBtn.addEventListener('click', async () => {
+                saveCfgBtn.disabled = true;
+                saveCfgBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
+                
+                const success = await A.saveAppConfig();
+                
+                saveCfgBtn.disabled = false;
+                saveCfgBtn.innerHTML = '<i class="fas fa-save"></i> Lưu cài đặt';
+                
+                if (success) {
+                    // Reload lần nữa để confirm
+                    await A.loadAppConfig();
+                }
+            });
+        }
+        
+        if (resetCfgBtn) {
+            resetCfgBtn.addEventListener('click', () => {
+                if (confirm('🔄 Reset tất cả cài đặt về mặc định?')) {
+                    // Xóa tất cả giá trị input
+                    document.querySelectorAll('.erp-config-input').forEach(input => {
+                        if (input.type === 'checkbox') {
+                            input.checked = false;
+                        } else {
+                            input.value = '';
+                        }
+                    });
+                    log('✅ Form cài đặt đã được reset', 'success');
+                }
+            });
+        }
     }
 
     /**
- * 9TRIP HELPER: LAZY LOAD SETTINGS MODAL
- * Tối ưu hiệu năng: Chỉ tải HTML qua mạng khi click lần đầu tiên
- */
-async openAdminSettings() {
-    const modalId = 'modal-system-settings';
-    let modalEl = document.getElementById(modalId);
+     * 9TRIP HELPER: LAZY LOAD SETTINGS MODAL
+     * Tối ưu hiệu năng: Chỉ tải HTML qua mạng khi click lần đầu tiên
+     */
+    async openAdminSettings() {
+        try {
+            if (this._initialized) {
+                // Nếu đã khởi tạo rồi, chỉ cần mở modal và reload config
+                if (this.modal) {
+                    this.modal.show();
+                    // Reload config từ Firestore lên form
+                    await A._syncConfigToForm();
+                }
+                return;
+            } else {
+                // Chưa khởi tạo, gọi init để tải HTML và bind sự kiện
+                await this.init();
+                if (this.modal) {
+                    this.modal.show();
+                    // Tải config từ Firestore lên form
+                    await A._syncConfigToForm();
+                }
+            }   
 
-    try {
-        // Bước 1: KIỂM TRA DOM - Nếu chưa có thì mới tiến hành Fetch
-        if (!modalEl) {
-            console.log("⚙️ Đang tải giao diện Settings lần đầu...");
-            
-            // Tùy chọn: Bạn có thể bật 1 cái icon xoay xoay (loading) ở đây
-
-            // Gọi Fetch lấy file HTML
-            const response = await fetch('/public/src/components/tpl_settings.html');
-            
-            // Kiểm tra nếu đường dẫn sai (báo lỗi 404)
-            if (!response.ok) {
-                throw new Error(`Lỗi mạng: ${response.status} - Không tìm thấy file template!`);
-            }
-
-            // GIẢI MÃ: Biến response thành chuỗi Text HTML
-            const htmlText = await response.text();
-
-            // Nhúng thẳng vào thẻ <body>
-            A.Modal.show(htmlText, 'Cài đặt hệ thống');
-            
-            console.log("✅ Đã render giao diện Settings thành công!");
-            
-            // [Quan trọng] Gọi hàm bind sự kiện cho các nút bên trong Modal ở đây
-            // initSettingsEvents(); 
+        } catch (error) {
+            console.error("❌ Lỗi khi mở Modal Settings:", error);
+            // Tích hợp thông báo Toast/Alert của hệ thống vào đây
+            alert("Không thể tải giao diện cài đặt. Vui lòng kiểm tra lại đường dẫn file!");
         }
+    }
 
-    } catch (error) {
-        console.error("❌ Lỗi khi mở Modal Settings:", error);
-        // Tích hợp thông báo Toast/Alert của hệ thống vào đây
-        alert("Không thể tải giao diện cài đặt. Vui lòng kiểm tra lại đường dẫn file!");
+    async changeFieldName(path, oldName, newName) {
+        try {
+
+            const result = await migrationHelper.migrateField(path, oldName, newName);
+            
+
+            console.log('✅ Field migrated successfully:', result.data);
+            alert('✅ Đã migrate field thành công!');
+            return result.data;
+        } catch (error) {
+            console.error('❌ Error migrating field:', error);
+            
+            // Chi tiết lỗi
+            let errorMsg = 'Lỗi không xác định';
+            if (error.code === 'functions/unauthenticated') {
+                errorMsg = '❌ Bạn chưa đăng nhập hoặc hết phiên đăng nhập';
+            } else if (error.code === 'functions/permission-denied') {
+                errorMsg = '❌ Bạn không có quyền thực hiện hành động này';
+            } else if (error.code === 'functions/not-found') {
+                errorMsg = '❌ Cloud Function không tồn tại hoặc chưa được deploy';
+            } else if (error.code === 'functions/unavailable') {
+                errorMsg = '❌ Cloud Function tạm thời không khả dụng';
+            } else {
+                errorMsg = `❌ Lỗi: ${error.message}`;
+            }
+            
+            alert(errorMsg);
+            throw error;
+        }
+    }
+    async runFieldMigration(collection = 'operator_entries', oldField = 'customer_name', newField = 'customer_full_name', type = 'move') {
+        console.log(`[AdminController] Starting migration...`);
+        const result = await this.changeFieldName(collection, oldField, newField);
+        console.log(`[AdminController] Migration complete:`, result);
+        return result;
     }
 }
-}
+
+/**
+ * ═════════════════════════════════════════════════════════════════════════
+ * MIGRATION HELPER - Client-side Utility
+ * ═════════════════════════════════════════════════════════════════════════
+ * Helper functions to call the migrateField Cloud Function from the client
+ * 
+ * Usage:
+ *   1. Ensure user is logged in
+ *   2. Call: migrationHelper.migrateField(...)
+ *   3. Monitor progress in console
+ * ═════════════════════════════════════════════════════════════════════════
+ */
 
 export const AdminConsole = new AdminController();
 window.AdminConsole = AdminConsole;

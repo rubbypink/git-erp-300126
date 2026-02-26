@@ -11,9 +11,33 @@ const UI_RENDERER = {
 	htmlCache: {},
 
 	// Render Dashboard & Load Data
-	init: async function() {
-		await this.renderMainLayout();
-		await this.renderTemplate('body', 'tpl_all.html', false, '.app-container');
+	init: async function(moduleManager) {
+		await Promise.all([
+			this.renderMainLayout(),
+			this.renderTemplate('body', 'tpl_all.html', true, '.app-container')
+		]);
+		const role = CURRENT_USER.realrole ? CURRENT_USER.realrole : CURRENT_USER.role;
+		log("UI: User Role:", role);
+		if (!['acc', 'acc_thenice', 'ketoan'].includes(role)) {
+			const [headerModule, chromeMenu, footerModule] = await Promise.all([
+				moduleManager.loadModule('ErpHeaderMenu'),
+				moduleManager.loadModule('ChromeMenuController', false),
+				moduleManager.loadModule('ErpFooterMenu')
+			]);
+			if(headerModule) new headerModule();
+			A.call('ChromeMenuController', 'init', role);
+			const mainErpFooter = new footerModule('erp-main-footer');
+			mainErpFooter.init();
+		} else {
+			const [headerModule, chromeMenu] = await Promise.all([
+				moduleManager.loadModule('ErpHeaderMenu'),
+				moduleManager.loadModule('ChromeMenuController', false)
+			]);
+			if(headerModule) new headerModule();
+			A.call('ChromeMenuController', 'init', role);
+		}
+
+		log("[UI MODULE]✅ UI Initialization completed.");
 	},
 	renderMainLayout: async function(source = 'main_layout.html', containerSelector = '#main-app') {
 		let finalSourcePath = source;
@@ -90,28 +114,57 @@ const UI_RENDERER = {
 				if (this.htmlCache[finalSourcePath]) {
 					htmlString = this.htmlCache[finalSourcePath];
 				} else {
-					// Fetch Network
+					// 1. Fetch Network với validations
 					const response = await fetch(finalSourcePath);
-					if (!response.ok) throw new Error(`HTTP ${response.status}`);
+					
+					// 1a. Kiểm tra HTTP Status
+					if (!response.ok) {
+						throw new Error(`HTTP ${response.status} - Không tìm thấy file: ${finalSourcePath}`);
+					}
+					
+					// 1b. Kiểm tra Content-Type (phải là HTML)
+					const contentType = response.headers.get('content-type') || '';
+					if (!contentType.includes('text/html') && !contentType.includes('text/plain')) {
+						console.warn(`⚠️ Content-Type không phải HTML: ${contentType} cho file ${finalSourcePath}`);
+					}
+					
 					htmlString = await response.text();
+					
+					// 1c. Xác nhận không phải fallback index.html
+					// Note: SPA thường return index.html với status 200 để xử lý routing
+					const isIndexFallback = htmlString.includes('id="app-launcher"') || 
+					                        htmlString.includes('id="main-app"') ||
+					                        htmlString.includes('<!DOCTYPE html>') && 
+					                        !htmlString.includes('<template') && 
+					                        !htmlString.includes('tpl-');
+					
+					if (isIndexFallback) {
+						throw new Error(`Fallback index.html (SPA) thay vì template component: ${finalSourcePath}`);
+					}
+					
+					// 1d. Xác nhận nội dung không rỗng
+					if (!htmlString.trim()) {
+						throw new Error(`File trống: ${finalSourcePath}`);
+					}
+					
 					this.htmlCache[finalSourcePath] = htmlString; // Lưu cache nội dung
 				}
 
-				// 1. Tạo div ảo để chứa HTML
+				// 2. Tạo div ảo để chứa HTML
 				const tempDiv = document.createElement('div');
 				tempDiv.innerHTML = htmlString;
 
-				// 2. Tạo Fragment để chứa kết quả
+				// 3. Tạo Fragment để chứa kết quả
 				contentFragment = document.createDocumentFragment();
 
-				// 3. Chuyển TOÀN BỘ nội dung từ tempDiv sang Fragment
+				// 4. Chuyển TOÀN BỘ nội dung từ tempDiv sang Fragment
 				// Cách này sẽ giữ nguyên mọi thứ: div, span, và cả thẻ <template>
 				while (tempDiv.firstChild) {
 					contentFragment.appendChild(tempDiv.firstChild);
 				}
 
 			} catch (e) {
-				console.error(`❌ Lỗi tải file ${finalSourcePath}:`, e);
+				console.error(`❌ Lỗi tải file ${finalSourcePath}:`, e.message);
 				return false;
 			}
 		} 
@@ -174,7 +227,7 @@ const UI_RENDERER = {
 			log(`Không tìm thấy Tab ID: ${tabId}`, 'error');
 			return;
 		}
-		if (tabEl.dataset.isLoaded === 'true') {
+		if (tabEl.dataset.isLoaded === 'true' && tabEl.innerHTML.trim() !== "") {
 			log(`Tab ${tabId} đã được load trước đó. Bỏ qua.`, 'info');
 			return;
 		}
@@ -198,15 +251,11 @@ const UI_RENDERER = {
 		if (tabId === 'tab-list') {
 				// Vào tab list thì check xem có data chưa để vẽ bảng
 				const tbody = document.getElementById('grid-body');
-				if (APP_DATA && APP_DATA.bookings && tbody && tbody.innerHTML.trim() === "") {
+				if (APP_DATA && Object.values(APP_DATA.bookings) && tbody && tbody.innerHTML.trim() === "") {
 					renderTableByKey('bookings'); 
           const resizer = new TableResizeManager('grid-table');
           resizer.init();
 				}
-		} else if (tabId === 'tab-sub-form') {
-			// Khi tab log vừa được render xong -> Lấy dữ liệu từ LS đắp vào
-			const list = APP_DATA.lists.source;
-			if (list) fillSelect('Ext_CustSource', list);
 		} else if (tabId === 'tab-log') {
 			// Khi tab log vừa được render xong -> Lấy dữ liệu từ LS đắp vào
 			if (typeof restoreLogsFromStorage === 'function') {
@@ -284,11 +333,10 @@ const UI_RENDERER = {
 		}
 	},
 	renderForm: async function(collection, formId) {
-		const html = await createFormBySchema(null, formId);
+		const html = await createFormBySchema(collection, formId);
 		A.Modal.render(html, `Form Admin`); // Có thể tùy chỉnh title theo collection hoặc formId nếu muốn
 		A.Modal.show();
 		A.Modal.setFooter(false);
-		
 	},	
 	renderBtn(label, action = '', color = 'primary', icon = '', isSmall = true) {
 		const sizeClass = isSmall ? 'btn-sm' : '';

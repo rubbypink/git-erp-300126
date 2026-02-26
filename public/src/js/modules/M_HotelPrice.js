@@ -427,6 +427,7 @@ export class HotelPriceController {
     };
     
     constructor(containerId) {
+        this._initialized = false;
         this.container = document.getElementById(containerId);
         if (!this.container) throw new Error(`Không tìm thấy container: #${containerId}`);
         
@@ -459,7 +460,10 @@ export class HotelPriceController {
      */
     static init(containerId, isForce = false) {
         let instance;
-        
+        if (this._initialized) {
+            console.warn('[EventManager] Đã khởi tạo rồi, bỏ qua...');
+            return;
+        }
         // ─────────────────────────────────────────────────────────────
         // STEP 1: Determine instance (reuse old or create new)
         // ─────────────────────────────────────────────────────────────
@@ -476,7 +480,7 @@ export class HotelPriceController {
         // STEP 2: ALWAYS reinitialize layout (restore DOM)
         // ─────────────────────────────────────────────────────────────
         instance.initLayout();
-        
+        this._initialized = true;
         return instance;
     }
 

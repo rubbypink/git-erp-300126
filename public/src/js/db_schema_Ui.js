@@ -10,7 +10,7 @@
  * Usage:
  *   DB_SCHEMA['bookings'] → Collection with field definitions
  *   DB_SCHEMA['bookings'].fields → Array of field objects
- *   Accessing single field: DB_SCHEMA['bookings'].fields.find(f => f.name === 'customer_name')
+ *   Accessing single field: DB_SCHEMA['bookings'].fields.find(f => f.name === 'customer_full_name')
  * =========================================================================
  */
 
@@ -19,15 +19,15 @@ const DB_SCHEMA = {
   // 1. BOOKINGS COLLECTION
   // =========================================================================
   bookings: {
-    displayName: 'Booking',
-    displayNameVN: 'Đặt Tour',
+    displayNameEng: 'Booking',
+    displayName: 'Đặt Tour',
     primaryKey: 'id',
     fields: [
       {
         index: 0,
         name: 'id',
-        displayName: 'Booking ID',
-        displayNameVN: 'Mã Booking',
+        displayNameEng: 'Booking ID',
+        displayName: 'Mã Booking',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -41,8 +41,8 @@ const DB_SCHEMA = {
       {
         index: 16,
         name: 'created_at',
-        displayName: 'Created Date',
-        displayNameVN: 'Ngày Đặt',
+        displayNameEng: 'Created Date',
+        displayName: 'Ngày Đặt',
         type: 'date',
         tag: 'input',
         attrs: ['readonly'],
@@ -52,8 +52,8 @@ const DB_SCHEMA = {
       {
         index: 1,
         name: 'customer_id',
-        displayName: 'Customer ID',
-        displayNameVN: 'Mã Khách',
+        displayNameEng: 'Customer ID',
+        displayName: 'Mã Khách',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -62,9 +62,9 @@ const DB_SCHEMA = {
       },
       {
         index: 2,
-        name: 'customer_name',
-        displayName: 'Customer Name',
-        displayNameVN: 'Khách Hàng',
+        name: 'customer_full_name',
+        displayNameEng: 'Customer Name',
+        displayName: 'Khách Hàng',
         type: 'text',
         tag: 'input',
         attrs: ['required'],
@@ -79,8 +79,8 @@ const DB_SCHEMA = {
       {
         index: 3,
         name: 'customer_phone',
-        displayName: 'Customer Phone',
-        displayNameVN: 'Số Điện Thoại',
+        displayNameEng: 'Customer Phone',
+        displayName: 'Số Điện Thoại',
         type: 'phone',
         tag: 'input',
         attrs: ['required'],
@@ -96,8 +96,8 @@ const DB_SCHEMA = {
       {
         index: 4,
         name: 'start_date',
-        displayName: 'Start Date',
-        displayNameVN: 'Ngày Đi',
+        displayNameEng: 'Start Date',
+        displayName: 'Ngày Đi',
         type: 'date',
         tag: 'input',
         attrs: [],
@@ -109,8 +109,8 @@ const DB_SCHEMA = {
       {
         index: 5,
         name: 'end_date',
-        displayName: 'End Date',
-        displayNameVN: 'Ngày Về',
+        displayNameEng: 'End Date',
+        displayName: 'Ngày Về',
         type: 'date',
         tag: 'input',
         attrs: [],
@@ -122,8 +122,8 @@ const DB_SCHEMA = {
       {
         index: 6,
         name: 'adults',
-        displayName: 'Adult Quantity',
-        displayNameVN: 'Ng Lớn',
+        displayNameEng: 'Adult Quantity',
+        displayName: 'Ng Lớn',
         type: 'number',
         tag: 'input',
         attrs: [],
@@ -138,8 +138,8 @@ const DB_SCHEMA = {
       {
         index: 7,
         name: 'children',
-        displayName: 'Child Quantity',
-        displayNameVN: 'Trẻ Em',
+        displayNameEng: 'Child Quantity',
+        displayName: 'Trẻ Em',
         type: 'number',
         tag: 'input',
         attrs: [],
@@ -153,8 +153,8 @@ const DB_SCHEMA = {
       {
         index: 8,
         name: 'total_amount',
-        displayName: 'Total Booking Amount',
-        displayNameVN: 'Tổng Booking',
+        displayNameEng: 'Total Booking Amount',
+        displayName: 'Tổng Booking',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -167,8 +167,8 @@ const DB_SCHEMA = {
       {
         index: 9,
         name: 'deposit_amount',
-        displayName: 'Deposit Amount',
-        displayNameVN: 'Đặt Cọc',
+        displayNameEng: 'Deposit Amount',
+        displayName: 'Đặt Cọc',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -181,8 +181,8 @@ const DB_SCHEMA = {
       {
         index: 10,
         name: 'balance_amount',
-        displayName: 'Balance Amount',
-        displayNameVN: 'Còn Lại',
+        displayNameEng: 'Balance Amount',
+        displayName: 'Còn Lại',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -195,8 +195,8 @@ const DB_SCHEMA = {
       {
         index: 11,
         name: 'payment_method',
-        displayName: 'Payment Method',
-        displayNameVN: 'Loại TT',
+        displayNameEng: 'Payment Method',
+        displayName: 'Loại TT',
         type: 'select',
         tag: 'select',
         attrs: [],
@@ -207,8 +207,8 @@ const DB_SCHEMA = {
       {
         index: 12,
         name: 'payment_due_date',
-        displayName: 'Payment Due Date',
-        displayNameVN: 'Hạn TT',
+        displayNameEng: 'Payment Due Date',
+        displayName: 'Hạn TT',
         type: 'date',
         tag: 'input',
         attrs: [],
@@ -218,8 +218,8 @@ const DB_SCHEMA = {
       {
         index: 13,
         name: 'note',
-        displayName: 'Booking Note',
-        displayNameVN: 'Ghi chú',
+        displayNameEng: 'Booking Note',
+        displayName: 'Ghi chú',
         type: 'textarea',
         tag: 'textarea',
         attrs: [],
@@ -232,8 +232,8 @@ const DB_SCHEMA = {
       {
         index: 14,
         name: 'staff_id',
-        displayName: 'Staff ID',
-        displayNameVN: 'Nhân viên',
+        displayNameEng: 'Staff ID',
+        displayName: 'Nhân viên',
         type: 'select',
         tag: 'select',
         attrs: [],
@@ -243,8 +243,8 @@ const DB_SCHEMA = {
       {
         index: 15,
         name: 'status',
-        displayName: 'Status',
-        displayNameVN: 'Trạng thái',
+        displayNameEng: 'Status',
+        displayName: 'Trạng thái',
         type: 'select',
         tag: 'input',
         attrs: ['readonly'],
@@ -260,15 +260,15 @@ const DB_SCHEMA = {
   // 2. BOOKING_DETAILS COLLECTION
   // =========================================================================
   booking_details: {
-    displayName: 'Booking Detail',
-    displayNameVN: 'Chi tiết dịch vụ',
+    displayNameEng: 'Booking Detail',
+    displayName: 'Chi tiết dịch vụ',
     primaryKey: 'id',
     fields: [
       {
         index: 0,
         name: 'id',
-        displayName: 'Detail ID',
-        displayNameVN: 'ID DV',
+        displayNameEng: 'Detail ID',
+        displayName: 'ID DV',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -278,8 +278,8 @@ const DB_SCHEMA = {
       {
         index: 1,
         name: 'booking_id',
-        displayName: 'Booking ID',
-        displayNameVN: 'Mã Booking',
+        displayNameEng: 'Booking ID',
+        displayName: 'Mã Booking',
         type: 'text',
         tag: 'input',
         attrs: ['hidden'],
@@ -289,8 +289,8 @@ const DB_SCHEMA = {
       {
         index: 2,
         name: 'service_type',
-        displayName: 'Service Type',
-        displayNameVN: 'Loại DV',
+        displayNameEng: 'Service Type',
+        displayName: 'Loại DV',
         type: 'select',
         tag: 'select',
         attrs: [],
@@ -304,8 +304,8 @@ const DB_SCHEMA = {
       {
         index: 3,
         name: 'hotel_name',
-        displayName: 'Hotel/Location',
-        displayNameVN: 'Khách sạn',
+        displayNameEng: 'Hotel/Location',
+        displayName: 'Khách sạn',
         type: 'select',
         tag: 'select',
         attrs: [],
@@ -319,8 +319,8 @@ const DB_SCHEMA = {
       {
         index: 4,
         name: 'service_name',
-        displayName: 'Service Name',
-        displayNameVN: 'Tên DV/Phòng',
+        displayNameEng: 'Service Name',
+        displayName: 'Tên DV/Phòng',
         type: 'select',
         tag: 'select',
         attrs: [],
@@ -335,8 +335,8 @@ const DB_SCHEMA = {
       {
         index: 5,
         name: 'check_in',
-        displayName: 'Check-in',
-        displayNameVN: 'Ngày Đi',
+        displayNameEng: 'Check-in',
+        displayName: 'Ngày Đi',
         type: 'date',
         tag: 'input',
         attrs: [],
@@ -345,8 +345,8 @@ const DB_SCHEMA = {
       {
         index: 6,
         name: 'check_out',
-        displayName: 'Check-out',
-        displayNameVN: 'Ngày Về',
+        displayNameEng: 'Check-out',
+        displayName: 'Ngày Về',
         type: 'date',
         tag: 'input',
         attrs: [],
@@ -355,8 +355,8 @@ const DB_SCHEMA = {
       {
         index: 7,
         name: 'nights',
-        displayName: 'Number of Nights',
-        displayNameVN: 'Đêm',
+        displayNameEng: 'Number of Nights',
+        displayName: 'Đêm',
         type: 'number',
         tag: 'input',
         attrs: ['readonly'],
@@ -368,8 +368,8 @@ const DB_SCHEMA = {
       {
         index: 8,
         name: 'quantity',
-        displayName: 'Quantity',
-        displayNameVN: 'SL',
+        displayNameEng: 'Quantity',
+        displayName: 'SL',
         type: 'number',
         tag: 'input',
         attrs: [],
@@ -381,8 +381,8 @@ const DB_SCHEMA = {
       {
         index: 9,
         name: 'unit_price',
-        displayName: 'Unit Price',
-        displayNameVN: 'Đơn Giá',
+        displayNameEng: 'Unit Price',
+        displayName: 'Đơn Giá',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -391,8 +391,8 @@ const DB_SCHEMA = {
       {
         index: 10,
         name: 'child_qty',
-        displayName: 'Child Quantity',
-        displayNameVN: 'SL TE',
+        displayNameEng: 'Child Quantity',
+        displayName: 'SL TE',
         type: 'number',
         tag: 'input',
         attrs: [],
@@ -401,8 +401,8 @@ const DB_SCHEMA = {
       {
         index: 11,
         name: 'child_price',
-        displayName: 'Child Price',
-        displayNameVN: 'Giá TE',
+        displayNameEng: 'Child Price',
+        displayName: 'Giá TE',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -411,8 +411,8 @@ const DB_SCHEMA = {
       {
         index: 12,
         name: 'surcharge',
-        displayName: 'Surcharge',
-        displayNameVN: 'Phụ thu',
+        displayNameEng: 'Surcharge',
+        displayName: 'Phụ thu',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -422,8 +422,8 @@ const DB_SCHEMA = {
       {
         index: 13,
         name: 'discount',
-        displayName: 'Discount',
-        displayNameVN: 'Giảm',
+        displayNameEng: 'Discount',
+        displayName: 'Giảm',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -433,8 +433,8 @@ const DB_SCHEMA = {
       {
         index: 14,
         name: 'total',
-        displayName: 'Total Amount',
-        displayNameVN: 'Thành Tiền',
+        displayNameEng: 'Total Amount',
+        displayName: 'Thành Tiền',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -444,8 +444,8 @@ const DB_SCHEMA = {
       {
         index: 15,
         name: 'ref_code',
-        displayName: 'Reference Code',
-        displayNameVN: 'Mã Code',
+        displayNameEng: 'Reference Code',
+        displayName: 'Mã Code',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -454,8 +454,8 @@ const DB_SCHEMA = {
       {
         index: 16,
         name: 'note',
-        displayName: 'Note',
-        displayNameVN: 'Ghi chú',
+        displayNameEng: 'Note',
+        displayName: 'Ghi chú',
         type: 'textarea',
         tag: 'textarea',
         attrs: [],
@@ -468,15 +468,15 @@ const DB_SCHEMA = {
   // 3. OPERATOR_ENTRIES COLLECTION
   // =========================================================================
   operator_entries: {
-    displayName: 'Operator Entry',
-    displayNameVN: 'Chi phí Giá Vốn',
+    displayNameEng: 'Operator Entry',
+    displayName: 'Chi phí Giá Vốn',
     primaryKey: 'id',
     fields: [
       {
         index: 0,
         name: 'id',
-        displayName: 'Entry ID',
-        displayNameVN: 'Mã SP',
+        displayNameEng: 'Entry ID',
+        displayName: 'Mã SP',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -486,8 +486,8 @@ const DB_SCHEMA = {
       {
         index: 1,
         name: 'booking_id',
-        displayName: 'Booking ID',
-        displayNameVN: 'Mã Booking',
+        displayNameEng: 'Booking ID',
+        displayName: 'Mã Booking',
         type: 'text',
         tag: 'input',
         attrs: ['hidden'],
@@ -495,9 +495,9 @@ const DB_SCHEMA = {
       },
       {
         index: 2,
-        name: 'customer_name',
-        displayName: 'Customer Name',
-        displayNameVN: 'Khách hàng',
+        name: 'customer_full_name',
+        displayNameEng: 'Customer Name',
+        displayName: 'Khách hàng',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -506,8 +506,8 @@ const DB_SCHEMA = {
       {
         index: 3,
         name: 'service_type',
-        displayName: 'Service Type',
-        displayNameVN: 'Loại DV',
+        displayNameEng: 'Service Type',
+        displayName: 'Loại DV',
         type: 'select',
         tag: 'select',
         attrs: ['readonly'],
@@ -520,8 +520,8 @@ const DB_SCHEMA = {
       {
         index: 4,
         name: 'hotel_name',
-        displayName: 'Hotel/Location',
-        displayNameVN: 'Khách sạn',
+        displayNameEng: 'Hotel/Location',
+        displayName: 'Khách sạn',
         type: 'select',
         tag: 'select',
         attrs: ['readonly'],
@@ -532,8 +532,8 @@ const DB_SCHEMA = {
       {
         index: 5,
         name: 'service_name',
-        displayName: 'Service Name',
-        displayNameVN: 'Tên DV',
+        displayNameEng: 'Service Name',
+        displayName: 'Tên DV',
         type: 'select',
         tag: 'select',
         attrs: ['readonly'],
@@ -545,8 +545,8 @@ const DB_SCHEMA = {
       {
         index: 6,
         name: 'check_in',
-        displayName: 'Check-in Date',
-        displayNameVN: 'Check In',
+        displayNameEng: 'Check-in Date',
+        displayName: 'Check In',
         type: 'date',
         tag: 'input',
         attrs: ['readonly'],
@@ -555,8 +555,8 @@ const DB_SCHEMA = {
       {
         index: 7,
         name: 'check_out',
-        displayName: 'Check-out Date',
-        displayNameVN: 'Check Out',
+        displayNameEng: 'Check-out Date',
+        displayName: 'Check Out',
         type: 'date',
         tag: 'input',
         attrs: ['readonly'],
@@ -565,8 +565,8 @@ const DB_SCHEMA = {
       {
         index: 8,
         name: 'nights',
-        displayName: 'Number of Nights',
-        displayNameVN: 'Đêm',
+        displayNameEng: 'Number of Nights',
+        displayName: 'Đêm',
         type: 'number',
         tag: 'input',
         attrs: ['readonly'],
@@ -578,8 +578,8 @@ const DB_SCHEMA = {
       {
         index: 9,
         name: 'adults',
-        displayName: 'Adult Quantity',
-        displayNameVN: 'SL',
+        displayNameEng: 'Adult Quantity',
+        displayName: 'SL',
         type: 'number',
         tag: 'input',
         attrs: [],
@@ -591,8 +591,8 @@ const DB_SCHEMA = {
       {
         index: 10,
         name: 'cost_adult',
-        displayName: 'Adult Cost',
-        displayNameVN: 'Giá Vốn',
+        displayNameEng: 'Adult Cost',
+        displayName: 'Giá Vốn',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -604,8 +604,8 @@ const DB_SCHEMA = {
       {
         index: 11,
         name: 'children',
-        displayName: 'Child Quantity',
-        displayNameVN: 'SL TE',
+        displayNameEng: 'Child Quantity',
+        displayName: 'SL TE',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -617,8 +617,8 @@ const DB_SCHEMA = {
       {
         index: 12,
         name: 'cost_child',
-        displayName: 'Child Cost',
-        displayNameVN: 'Giá Vốn TE',
+        displayNameEng: 'Child Cost',
+        displayName: 'Giá Vốn TE',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -627,8 +627,8 @@ const DB_SCHEMA = {
       {
         index: 13,
         name: 'surcharge',
-        displayName: 'Surcharge',
-        displayNameVN: 'Phụ thu',
+        displayNameEng: 'Surcharge',
+        displayName: 'Phụ thu',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -638,8 +638,8 @@ const DB_SCHEMA = {
       {
         index: 14,
         name: 'discount',
-        displayName: 'Discount',
-        displayNameVN: 'Giảm Giá',
+        displayNameEng: 'Discount',
+        displayName: 'Giảm Giá',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -649,8 +649,8 @@ const DB_SCHEMA = {
       {
         index: 15,
         name: 'total_sale',
-        displayName: 'Total Sale',
-        displayNameVN: 'Doanh Thu',
+        displayNameEng: 'Total Sale',
+        displayName: 'Doanh Thu',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -659,8 +659,8 @@ const DB_SCHEMA = {
       {
         index: 16,
         name: 'ref_code',
-        displayName: 'Reference Code',
-        displayNameVN: 'Code DV',
+        displayNameEng: 'Reference Code',
+        displayName: 'Code DV',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -669,8 +669,8 @@ const DB_SCHEMA = {
       {
         index: 17,
         name: 'total_cost',
-        displayName: 'Total Cost',
-        displayNameVN: 'Tổng Chi Phí',
+        displayNameEng: 'Total Cost',
+        displayName: 'Tổng Chi Phí',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -679,8 +679,8 @@ const DB_SCHEMA = {
       {
         index: 18,
         name: 'paid_amount',
-        displayName: 'Paid Amount',
-        displayNameVN: 'Đã TT',
+        displayNameEng: 'Paid Amount',
+        displayName: 'Đã TT',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -689,8 +689,8 @@ const DB_SCHEMA = {
       {
         index: 19,
         name: 'debt_balance',
-        displayName: 'Debt Balance',
-        displayNameVN: 'Còn Lại',
+        displayNameEng: 'Debt Balance',
+        displayName: 'Còn Lại',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -699,8 +699,8 @@ const DB_SCHEMA = {
       {
         index: 20,
         name: 'supplier',
-        displayName: 'Supplier',
-        displayNameVN: 'NCC',
+        displayNameEng: 'Supplier',
+        displayName: 'NCC',
         type: 'select',
         tag: 'select',
         attrs: [],
@@ -710,8 +710,8 @@ const DB_SCHEMA = {
       {
         index: 21,
         name: 'operator_note',
-        displayName: 'Operator Note',
-        displayNameVN: 'Ghi chú',
+        displayNameEng: 'Operator Note',
+        displayName: 'Ghi chú',
         type: 'textarea',
         tag: 'textarea',
         attrs: [],
@@ -724,15 +724,15 @@ const DB_SCHEMA = {
   // 4. CUSTOMERS COLLECTION
   // =========================================================================
   customers: {
-    displayName: 'Customer',
-    displayNameVN: 'Khách hàng',
+    displayNameEng: 'Customer',
+    displayName: 'Khách hàng',
     primaryKey: 'id',
     fields: [
       {
         index: 0,
         name: 'id',
-        displayName: 'Customer ID',
-        displayNameVN: 'ID Khách',
+        displayNameEng: 'Customer ID',
+        displayName: 'ID Khách',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -742,8 +742,8 @@ const DB_SCHEMA = {
       {
         index: 1,
         name: 'full_name',
-        displayName: 'Full Name',
-        displayNameVN: 'Họ và Tên',
+        displayNameEng: 'Full Name',
+        displayName: 'Họ và Tên',
         type: 'text',
         tag: 'input',
         attrs: ['required'],
@@ -758,8 +758,8 @@ const DB_SCHEMA = {
       {
         index: 2,
         name: 'dob',
-        displayName: 'Date of Birth',
-        displayNameVN: 'Ngày Sinh',
+        displayNameEng: 'Date of Birth',
+        displayName: 'Ngày Sinh',
         type: 'date',
         tag: 'input',
         attrs: [],
@@ -768,8 +768,8 @@ const DB_SCHEMA = {
       {
         index: 3,
         name: 'id_card',
-        displayName: 'ID Card Number',
-        displayNameVN: 'Số CCCD/Passport',
+        displayNameEng: 'ID Card Number',
+        displayName: 'Số CCCD/Passport',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -779,8 +779,8 @@ const DB_SCHEMA = {
       {
         index: 4,
         name: 'id_card_date',
-        displayName: 'ID Card Issue Date',
-        displayNameVN: 'Ngày Cấp',
+        displayNameEng: 'ID Card Issue Date',
+        displayName: 'Ngày Cấp',
         type: 'date',
         tag: 'input',
         attrs: [],
@@ -789,8 +789,8 @@ const DB_SCHEMA = {
       {
         index: 5,
         name: 'address',
-        displayName: 'Address',
-        displayNameVN: 'Địa chỉ',
+        displayNameEng: 'Address',
+        displayName: 'Địa chỉ',
         type: 'textarea',
         tag: 'textarea',
         attrs: [],
@@ -803,8 +803,8 @@ const DB_SCHEMA = {
       {
         index: 6,
         name: 'phone',
-        displayName: 'Phone Number',
-        displayNameVN: 'Số Điện Thoại',
+        displayNameEng: 'Phone Number',
+        displayName: 'Số Điện Thoại',
         type: 'phone',
         tag: 'input',
         attrs: ['required'],
@@ -818,8 +818,8 @@ const DB_SCHEMA = {
       {
         index: 7,
         name: 'email',
+        displayNameEng: 'Email',
         displayName: 'Email',
-        displayNameVN: 'Email',
         type: 'email',
         tag: 'input',
         attrs: [],
@@ -832,8 +832,8 @@ const DB_SCHEMA = {
       {
         index: 8,
         name: 'source',
-        displayName: 'Customer Source',
-        displayNameVN: 'Nguồn khách',
+        displayNameEng: 'Customer Source',
+        displayName: 'Nguồn khách',
         type: 'select',
         tag: 'select',
         attrs: [],
@@ -843,8 +843,8 @@ const DB_SCHEMA = {
       {
         index: 9,
         name: 'total_spend',
-        displayName: 'Total Spend',
-        displayNameVN: 'Tổng Chi Tiêu',
+        displayNameEng: 'Total Spend',
+        displayName: 'Tổng Chi Tiêu',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -854,8 +854,8 @@ const DB_SCHEMA = {
       {
         index: 10,
         name: 'created_at',
-        displayName: 'Created Date',
-        displayNameVN: 'Ngày Tạo',
+        displayNameEng: 'Created Date',
+        displayName: 'Ngày Tạo',
         type: 'date',
         tag: 'input',
         attrs: ['readonly'],
@@ -869,15 +869,15 @@ const DB_SCHEMA = {
   // 5. USERS COLLECTION
   // =========================================================================
   users: {
-    displayName: 'User',
-    displayNameVN: 'Người dùng',
+    displayNameEng: 'User',
+    displayName: 'Người dùng',
     primaryKey: 'uid',
     fields: [
       {
         index: 0,
         name: 'uid',
-        displayName: 'User ID',
-        displayNameVN: 'ID Người dùng',
+        displayNameEng: 'User ID',
+        displayName: 'ID Người dùng',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -887,8 +887,8 @@ const DB_SCHEMA = {
       {
         index: 1,
         name: 'account',
-        displayName: 'Account/Username',
-        displayNameVN: 'Tài khoản',
+        displayNameEng: 'Account/Username',
+        displayName: 'Tài khoản',
         type: 'text',
         tag: 'input',
         attrs: ['required'],
@@ -903,8 +903,8 @@ const DB_SCHEMA = {
       {
         index: 2,
         name: 'user_name',
-        displayName: 'Display Name',
-        displayNameVN: 'Tên Hiển Thị',
+        displayNameEng: 'Display Name',
+        displayName: 'Tên Hiển Thị',
         type: 'text',
         tag: 'input',
         attrs: ['required'],
@@ -919,8 +919,8 @@ const DB_SCHEMA = {
       {
         index: 3,
         name: 'user_phone',
-        displayName: 'Phone Number',
-        displayNameVN: 'Số Điện Thoại',
+        displayNameEng: 'Phone Number',
+        displayName: 'Số Điện Thoại',
         type: 'phone',
         tag: 'input',
         attrs: [],
@@ -930,8 +930,8 @@ const DB_SCHEMA = {
       {
         index: 4,
         name: 'email',
-        displayName: 'Email Address',
-        displayNameVN: 'Email',
+        displayNameEng: 'Email Address',
+        displayName: 'Email',
         type: 'email',
         tag: 'input',
         attrs: ['required'],
@@ -945,8 +945,8 @@ const DB_SCHEMA = {
       {
         index: 5,
         name: 'role',
-        displayName: 'User Role',
-        displayNameVN: 'Vai trò',
+        displayNameEng: 'User Role',
+        displayName: 'Vai trò',
         type: 'select',
         tag: 'select',
         attrs: ['required'],
@@ -959,8 +959,8 @@ const DB_SCHEMA = {
       {
         index: 6,
         name: 'level',
-        displayName: 'User Level',
-        displayNameVN: 'Cấp độ',
+        displayNameEng: 'User Level',
+        displayName: 'Cấp độ',
         type: 'number',
         tag: 'input',
         attrs: [],
@@ -973,8 +973,8 @@ const DB_SCHEMA = {
       {
         index: 7,
         name: 'group',
-        displayName: 'User Group',
-        displayNameVN: 'Nhóm',
+        displayNameEng: 'User Group',
+        displayName: 'Nhóm',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -984,8 +984,8 @@ const DB_SCHEMA = {
       {
         index: 8,
         name: 'created_at',
-        displayName: 'Created Date',
-        displayNameVN: 'Ngày Tạo',
+        displayNameEng: 'Created Date',
+        displayName: 'Ngày Tạo',
         type: 'date',
         tag: 'input',
         attrs: ['readonly'],
@@ -999,15 +999,15 @@ const DB_SCHEMA = {
   // 6. HOTELS COLLECTION
   // =========================================================================
   hotels: {
-    displayName: 'Hotel',
-    displayNameVN: 'Khách sạn',
+    displayNameEng: 'Hotel',
+    displayName: 'Khách sạn',
     primaryKey: 'id',
     fields: [
       {
         index: 0,
         name: 'id',
-        displayName: 'Hotel ID',
-        displayNameVN: 'Mã Khách sạn',
+        displayNameEng: 'Hotel ID',
+        displayName: 'Mã Khách sạn',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -1016,8 +1016,8 @@ const DB_SCHEMA = {
       {
         index: 1,
         name: 'name',
-        displayName: 'Hotel Name',
-        displayNameVN: 'Tên Khách sạn',
+        displayNameEng: 'Hotel Name',
+        displayName: 'Tên Khách sạn',
         type: 'text',
         tag: 'input',
         attrs: ['required'],
@@ -1031,8 +1031,8 @@ const DB_SCHEMA = {
       {
         index: 2,
         name: 'address',
-        displayName: 'Address',
-        displayNameVN: 'Địa chỉ',
+        displayNameEng: 'Address',
+        displayName: 'Địa chỉ',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -1041,8 +1041,8 @@ const DB_SCHEMA = {
       {
         index: 3,
         name: 'phone',
-        displayName: 'Phone Number',
-        displayNameVN: 'Số Điện Thoại',
+        displayNameEng: 'Phone Number',
+        displayName: 'Số Điện Thoại',
         type: 'phone',
         tag: 'input',
         attrs: [],
@@ -1051,8 +1051,8 @@ const DB_SCHEMA = {
       {
         index: 4,
         name: 'email',
-        displayName: 'Email Address',
-        displayNameVN: 'Email',
+        displayNameEng: 'Email Address',
+        displayName: 'Email',
         type: 'email',
         tag: 'input',
         attrs: [],
@@ -1061,8 +1061,8 @@ const DB_SCHEMA = {
       {
         index: 5,
         name: 'website',
-        displayName: 'Website URL',
-        displayNameVN: 'Website',
+        displayNameEng: 'Website URL',
+        displayName: 'Website',
         type: 'url',
         tag: 'input',
         attrs: [],
@@ -1071,8 +1071,8 @@ const DB_SCHEMA = {
       {
         index: 6,
         name: 'star',
-        displayName: 'Star Rating',
-        displayNameVN: 'Sao',
+        displayNameEng: 'Star Rating',
+        displayName: 'Sao',
         type: 'select',
         tag: 'select',
         attrs: [],
@@ -1082,8 +1082,8 @@ const DB_SCHEMA = {
       {
         index: 7,
         name: 'pictures',
-        displayName: 'Pictures',
-        displayNameVN: 'Ảnh',
+        displayNameEng: 'Pictures',
+        displayName: 'Ảnh',
         type: 'file',
         tag: 'input',
         attrs: [],
@@ -1092,8 +1092,8 @@ const DB_SCHEMA = {
       {
         index: 8,
         name: 'rooms',
-        displayName: 'Room Types',
-        displayNameVN: 'Loại Phòng',
+        displayNameEng: 'Room Types',
+        displayName: 'Loại Phòng',
         type: 'text',
         tag: 'textarea',
         attrs: [],
@@ -1106,15 +1106,15 @@ const DB_SCHEMA = {
   // 7. SUPPLIERS COLLECTION
   // =========================================================================
   suppliers: {
-    displayName: 'Supplier',
-    displayNameVN: 'Nhà cung cấp',
+    displayNameEng: 'Supplier',
+    displayName: 'Nhà cung cấp',
     primaryKey: 'id',
     fields: [
       {
         index: 0,
         name: 'id',
-        displayName: 'Supplier ID',
-        displayNameVN: 'Mã NCC',
+        displayNameEng: 'Supplier ID',
+        displayName: 'Mã NCC',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -1123,8 +1123,8 @@ const DB_SCHEMA = {
       {
         index: 1,
         name: 'name',
-        displayName: 'Supplier Name',
-        displayNameVN: 'Tên NCC',
+        displayNameEng: 'Supplier Name',
+        displayName: 'Tên NCC',
         type: 'text',
         tag: 'input',
         attrs: ['required'],
@@ -1138,8 +1138,8 @@ const DB_SCHEMA = {
       {
         index: 2,
         name: 'phone',
-        displayName: 'Phone Number',
-        displayNameVN: 'Số Điện Thoại',
+        displayNameEng: 'Phone Number',
+        displayName: 'Số Điện Thoại',
         type: 'phone',
         tag: 'input',
         attrs: [],
@@ -1148,8 +1148,8 @@ const DB_SCHEMA = {
       {
         index: 3,
         name: 'email',
-        displayName: 'Email Address',
-        displayNameVN: 'Email',
+        displayNameEng: 'Email Address',
+        displayName: 'Email',
         type: 'email',
         tag: 'input',
         attrs: [],
@@ -1158,8 +1158,8 @@ const DB_SCHEMA = {
       {
         index: 4,
         name: 'address',
-        displayName: 'Address',
-        displayNameVN: 'Địa chỉ',
+        displayNameEng: 'Address',
+        displayName: 'Địa chỉ',
         type: 'textarea',
         tag: 'textarea',
         attrs: [],
@@ -1168,8 +1168,8 @@ const DB_SCHEMA = {
       {
         index: 5,
         name: 'VAT_code',
-        displayName: 'VAT Code',
-        displayNameVN: 'Mã VAT',
+        displayNameEng: 'VAT Code',
+        displayName: 'Mã VAT',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -1178,8 +1178,8 @@ const DB_SCHEMA = {
       {
         index: 6,
         name: 'bank_account',
-        displayName: 'Bank Account',
-        displayNameVN: 'Tài khoản Ngân hàng',
+        displayNameEng: 'Bank Account',
+        displayName: 'Tài khoản Ngân hàng',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -1188,8 +1188,8 @@ const DB_SCHEMA = {
       {
         index: 7,
         name: 'bank_name',
-        displayName: 'Bank Name',
-        displayNameVN: 'Tên Ngân hàng',
+        displayNameEng: 'Bank Name',
+        displayName: 'Tên Ngân hàng',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -1198,8 +1198,8 @@ const DB_SCHEMA = {
       {
         index: 8,
         name: 'contact_person',
-        displayName: 'Contact Person',
-        displayNameVN: 'Người Liên hệ',
+        displayNameEng: 'Contact Person',
+        displayName: 'Người Liên hệ',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -1208,8 +1208,8 @@ const DB_SCHEMA = {
       {
         index: 9,
         name: 'dept_balance',
-        displayName: 'Debt Balance',
-        displayNameVN: 'Nợ Còn Lại',
+        displayNameEng: 'Debt Balance',
+        displayName: 'Nợ Còn Lại',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -1223,15 +1223,15 @@ const DB_SCHEMA = {
   // 8. TRANSACTIONS COLLECTION
   // =========================================================================
   transactions: {
-    displayName: 'Transaction',
-    displayNameVN: 'Giao dịch',
+    displayNameEng: 'Transaction',
+    displayName: 'Giao dịch',
     primaryKey: 'id',
     fields: [
       {
         index: 0,
         name: 'id',
-        displayName: 'Transaction ID',
-        displayNameVN: 'Mã GD',
+        displayNameEng: 'Transaction ID',
+        displayName: 'Mã GD',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -1240,21 +1240,22 @@ const DB_SCHEMA = {
       {
         index: 1,
         name: 'transaction_date',
-        displayName: 'Transaction Date',
-        displayNameVN: 'Ngày GD',
+        displayNameEng: 'Transaction Date',
+        displayName: 'Ngày GD',
         type: 'date',
         tag: 'input',
         attrs: ['required'],
         class: '',
         validation: {
           required: true
-        }
+        },
+        initial: 'today'
       },
       {
         index: 2,
         name: 'type',
-        displayName: 'Transaction Type',
-        displayNameVN: 'Loại GD',
+        displayNameEng: 'Transaction Type',
+        displayName: 'Loại GD',
         type: 'select',
         tag: 'select',
         attrs: ['required'],
@@ -1267,8 +1268,8 @@ const DB_SCHEMA = {
       {
         index: 3,
         name: 'amount',
-        displayName: 'Amount',
-        displayNameVN: 'Số tiền',
+        displayNameEng: 'Amount',
+        displayName: 'Số tiền',
         type: 'text',
         tag: 'input',
         attrs: ['required'],
@@ -1281,8 +1282,8 @@ const DB_SCHEMA = {
       {
         index: 4,
         name: 'category',
-        displayName: 'Category',
-        displayNameVN: 'Hạng mục',
+        displayNameEng: 'Category',
+        displayName: 'Hạng mục',
         type: 'select',
         tag: 'select',
         attrs: [],
@@ -1291,8 +1292,8 @@ const DB_SCHEMA = {
       {
         index: 5,
         name: 'description',
-        displayName: 'Description',
-        displayNameVN: 'Mô tả',
+        displayNameEng: 'Description',
+        displayName: 'Mô tả',
         type: 'textarea',
         tag: 'textarea',
         attrs: [],
@@ -1301,8 +1302,8 @@ const DB_SCHEMA = {
       {
         index: 6,
         name: 'booking_id',
-        displayName: 'Related Booking',
-        displayNameVN: 'Booking liên quan',
+        displayNameEng: 'Related Booking',
+        displayName: 'Booking liên quan',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -1311,8 +1312,8 @@ const DB_SCHEMA = {
       {
         index: 7,
         name: 'fund_source',
-        displayName: 'Fund Source',
-        displayNameVN: 'Nguồn tiền',
+        displayNameEng: 'Fund Source',
+        displayName: 'Nguồn tiền',
         type: 'select',
         tag: 'select',
         attrs: [],
@@ -1322,8 +1323,8 @@ const DB_SCHEMA = {
       {
         index: 8,
         name: 'status',
-        displayName: 'Status',
-        displayNameVN: 'Trạng thái',
+        displayNameEng: 'Status',
+        displayName: 'Trạng thái',
         type: 'select',
         tag: 'select',
         attrs: [],
@@ -1333,8 +1334,8 @@ const DB_SCHEMA = {
       {
         index: 9,
         name: 'created_at',
-        displayName: 'Created Date',
-        displayNameVN: 'Ngày tạo',
+        displayNameEng: 'Created Date',
+        displayName: 'Ngày tạo',
         type: 'date',
         tag: 'input',
         attrs: ['readonly'],
@@ -1344,8 +1345,8 @@ const DB_SCHEMA = {
       {
         index: 10,
         name: 'created_by',
-        displayName: 'Created By',
-        displayNameVN: 'Tạo bởi',
+        displayNameEng: 'Created By',
+        displayName: 'Tạo bởi',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -1358,15 +1359,15 @@ const DB_SCHEMA = {
   // 9. FUND_ACCOUNTS COLLECTION
   // =========================================================================
   fund_accounts: {
-    displayName: 'Fund Account',
-    displayNameVN: 'Tài khoản quỹ',
+    displayNameEng: 'Fund Account',
+    displayName: 'Tài khoản quỹ',
     primaryKey: 'id',
     fields: [
       {
         index: 0,
         name: 'id',
-        displayName: 'Account ID',
-        displayNameVN: 'Mã Tài khoản',
+        displayNameEng: 'Account ID',
+        displayName: 'Mã Tài khoản',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -1375,8 +1376,8 @@ const DB_SCHEMA = {
       {
         index: 1,
         name: 'type',
-        displayName: 'Account Type',
-        displayNameVN: 'Loại TK',
+        displayNameEng: 'Account Type',
+        displayName: 'Loại TK',
         type: 'select',
         tag: 'select',
         attrs: ['required'],
@@ -1389,8 +1390,8 @@ const DB_SCHEMA = {
       {
         index: 2,
         name: 'name',
-        displayName: 'Account Name',
-        displayNameVN: 'Tên TK',
+        displayNameEng: 'Account Name',
+        displayName: 'Tên TK',
         type: 'text',
         tag: 'input',
         attrs: ['required'],
@@ -1404,8 +1405,8 @@ const DB_SCHEMA = {
       {
         index: 3,
         name: 'code',
-        displayName: 'Account Code',
-        displayNameVN: 'Mã TK',
+        displayNameEng: 'Account Code',
+        displayName: 'Mã TK',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -1414,8 +1415,8 @@ const DB_SCHEMA = {
       {
         index: 4,
         name: 'account_no',
-        displayName: 'Account Number',
-        displayNameVN: 'Số TK',
+        displayNameEng: 'Account Number',
+        displayName: 'Số TK',
         type: 'text',
         tag: 'input',
         attrs: [],
@@ -1424,8 +1425,8 @@ const DB_SCHEMA = {
       {
         index: 5,
         name: 'balance',
-        displayName: 'Current Balance',
-        displayNameVN: 'Số dư',
+        displayNameEng: 'Current Balance',
+        displayName: 'Số dư',
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
@@ -1435,8 +1436,8 @@ const DB_SCHEMA = {
       {
         index: 6,
         name: 'created_at',
-        displayName: 'Created Date',
-        displayNameVN: 'Ngày tạo',
+        displayNameEng: 'Created Date',
+        displayName: 'Ngày tạo',
         type: 'date',
         tag: 'input',
         attrs: ['readonly'],
@@ -1502,22 +1503,25 @@ export function createFormBySchema(collectionName, formId) {
   const hiddenFields = fields.filter(f => f.attrs?.includes('hidden') || f.class?.includes('d-none'));
 
   // Start building form HTML
-  let html = `<form id="${formId}" class="db-schema-form" data-collection="${collectionName}" style="max-width: 800px; margin: auto; padding: 16px; min-height: 400px;">`;
+  let html = `<form id="${formId}" class="db-schema-form" data-collection="${A.Lang?.t(collectionName) || collectionName}" style="max-width: 800px; margin: auto; padding: 16px; min-height: 400px;">`;
 
   // ===== MAIN EDITABLE FIELDS SECTION =====
   // Mobile-first responsive grid: 2 cols mobile, auto-fit desktop
-  html += `<div class="form-fields-grid" style="
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 12px;
-    margin-bottom: 16px;
-  ">`;
+  // html += `<div class="form-fields-grid" style="
+  //   display: grid;
+  //   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  //   gap: 12px;
+  //   margin-bottom: 16px;
+  // ">`;
+  html += `<fieldset class="border p-3 mb-3">
+    <legend class="w-auto px-2" style="font-size: 1.1em;">${A.Lang?.t(collectionName) || collectionName}</legend>
+    `
 
   editableFields.forEach(field => {
     html += _createFieldGroup(field, collectionName);
   });
 
-  html += `</div>`;
+  html += `</fieldset>`;
 
   // ===== HIDDEN FIELDS SECTION =====
   hiddenFields.forEach(field => {
@@ -1963,7 +1967,7 @@ function _createFieldGroup(field, collectionName) {
   if (!isHidden) {
     fieldHtml += `
     <label for="${field.name}" class="form-label small fw-bold mb-1" style="white-space: normal;">
-      ${field.displayNameVN || field.displayName}
+      ${field.displayName || field.displayNameEng}
       ${isRequired ? '<span class="text-danger">*</span>' : ''}
     </label>`;
   }
@@ -2007,8 +2011,8 @@ function _createFieldGroup(field, collectionName) {
         optText = opt.user_name || 
                  opt.full_name || 
                  opt.name || 
+                 opt.displayNameEng || 
                  opt.displayName || 
-                 opt.displayNameVN || 
                  opt.account || 
                  opt.value || 
                  optValue || 
@@ -2100,7 +2104,6 @@ function saveFormDataSchema(formId) {
   console.log(`Form Data from '${formId}':`, data);
   console.log('JSON:', JSON.stringify(data, null, 2));
   A.DB.saveRecord(form.dataset.collection, data);
-
 }
 window.saveFormDataSchema = saveFormDataSchema; // Expose to global scope for button onclick
 /**
@@ -2119,7 +2122,7 @@ window.saveFormDataSchema = saveFormDataSchema; // Expose to global scope for bu
  * // Load from object directly
  * loadFormDataSchema('booking-form', { 
  *   id: 'BK0001', 
- *   customer_name: 'Nguyễn A',
+ *   customer_full_name: 'Nguyễn A',
  *   ... 
  * });
  */
@@ -2281,12 +2284,12 @@ window.toggleCollapse = toggleCollapse; // Expose to global scope for header onc
  * @example
  * // For users collection
  * populateSelectFromSource('staff_id', 'users');
- * // Will populate from APP_DATA.users_obj or APP_DATA.users
+ * // Will populate from Object.values(APP_DATA.users)_obj or Object.values(APP_DATA.users)
  * 
  * @example
  * // For hotels collection
  * populateSelectFromSource('hotel_name', 'hotels');
- * // Will populate from APP_DATA.hotels_obj or APP_DATA.hotels
+ * // Will populate from Object.values(APP_DATA.hotels)_obj or Object.values(APP_DATA.hotels)
  */
 function populateSelectFromSource(fieldName, dataSourceName) {
   const selectEl = document.getElementById(fieldName);
@@ -2323,8 +2326,8 @@ function populateSelectFromSource(fieldName, dataSourceName) {
       itemText = item.user_name || 
                 item.full_name || 
                 item.name || 
-                item.displayName || 
-                item.displayNameVN ||
+                item.displayNameEng || 
+                item.displayName ||
                 item.account ||
                 item.value || 
                 itemId || 

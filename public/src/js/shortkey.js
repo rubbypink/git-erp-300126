@@ -449,8 +449,8 @@ function actionCreateBooking() {
     }
 }
 function openCalculator() {
-    if (CalculatorWidget && typeof CalculatorWidget.toggle === 'function') {
-        CalculatorWidget.toggle();
+    if (A.CalculatorWidget && typeof A.CalculatorWidget.toggle === 'function') {
+        A.CalculatorWidget.toggle();
     }
 }
 

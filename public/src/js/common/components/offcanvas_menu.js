@@ -65,6 +65,7 @@ class ModalFull extends HTMLElement {
         if (btnResize) {
             btnResize.addEventListener('click', () => this._toggleModalSize());
         }
+        
     }
 
     _setupUI() {
@@ -310,32 +311,6 @@ class ModalFull extends HTMLElement {
             btnResize.title = 'Phóng to modal';
         }
     }
-    // Function to make the modal draggable
-    // enableDrag(modalId) {
-    //     const modal = this.querySelector('#dynamic-modal-full');
-    //     const header = modal.querySelector(".modal-header");
-    //     let isDragging = false, currentX, currentY, initialX, initialY;
-
-    //     header.addEventListener("mousedown", (e) => {
-    //         isDragging = true;
-    //         initialX = e.clientX - modal.offsetLeft;
-    //         initialY = e.clientY - modal.offsetTop;
-    //     });
-
-    //     document.addEventListener("mousemove", (e) => {
-    //         if (isDragging) {
-    //         e.preventDefault();
-    //         currentX = e.clientX - initialX;
-    //         currentY = e.clientY - initialY;
-    //         modal.style.left = `${currentX}px`;
-    //         modal.style.top = `${currentY}px`;
-    //         modal.style.margin = "0"; // Override Bootstrap margin
-    //         }
-    //     });
-
-    //     document.addEventListener("mouseup", () => isDragging = false);
-    // }
-
 }
 
 customElements.define('at-modal-full', ModalFull);
@@ -344,7 +319,7 @@ class OffcanvasMenu extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
-        
+        this._initialized = false;
         // State Management
         this.state = {
             selectedStages: new Set(['all']),
@@ -368,6 +343,12 @@ class OffcanvasMenu extends HTMLElement {
     }
 
     connectedCallback() {
+        if (this._initialized) {
+            console.warn('[OffcanvasMenu] Đã khởi tạo rồi, bỏ qua...');
+            return;
+        }
+        this._initialized = true;
+
         if (this.shadowRoot.querySelector('.offcanvas-wrapper')) return;
 
         this._render();

@@ -44,9 +44,9 @@
 
   /**
    * ✨ TỐI ƯU: Tìm kiếm bookings và hiển thị datalist
-   * - Tìm trong APP_DATA.bookings_obj (3 field: id, customer_name, customer_phone)
+   * - Tìm trong Object.values(APP_DATA.bookings) (3 field: id, customer_full_name, customer_phone)
    * - Trả về max 10 hàng mới nhất (sắp xếp theo start_date)
-   * - Hiển thị datalist với format "id - customer_name"
+   * - Hiển thị datalist với format "id - customer_full_name"
    * - Gọi onGridRowClick khi chọn item
    * ⏱️ Giới hạn: Chỉ chạy 1 lần mỗi 1 giây (throttle)
    */
@@ -68,9 +68,9 @@
     }
 
     try {
-        // Lấy dữ liệu bookings_obj
-        const bookingsObj = (window.APP_DATA && Array.isArray(APP_DATA.bookings_obj)) 
-            ? APP_DATA.bookings_obj 
+        // Lấy dữ liệu bookings
+        const bookingsObj = (window.APP_DATA && Array.isArray(Object.values(APP_DATA.bookings))) 
+            ? Object.values(APP_DATA.bookings) 
             : [];
         
         if (!bookingsObj || bookingsObj.length === 0) {
@@ -84,12 +84,12 @@
         const kText = normText(k);
         const kPhone = normPhone(k);
 
-        // Tìm kiếm trong 3 field: id, customer_name, customer_phone
+        // Tìm kiếm trong 3 field: id, customer_full_name, customer_phone
         const results = bookingsObj.filter(row => {
             if (!row) return false;
             
             const id = normText(row.id || '');
-            const name = normText(row.customer_name || '');
+            const name = normText(row.customer_full_name || '');
             const phone = normPhone(row.customer_phone || '');
             
             return id.includes(kText) || 
@@ -115,7 +115,7 @@
         // ✨ TỐI ƯU: Nếu chỉ có 1 kết quả -> Hỏi người dùng có load luôn không
         if (topResults.length === 1) {
             const result = topResults[0];
-            const confirmMsg = `Tìm thấy 1 kết quả:\n\nID: ${result.id}\nTên: ${result.customer_name || 'N/A'}\n\nLoad dữ liệu booking này không?`;
+            const confirmMsg = `Tìm thấy 1 kết quả:\n\nID: ${result.id}\nTên: ${result.customer_full_name || 'N/A'}\n\nLoad dữ liệu booking này không?`;
             
             logA(confirmMsg, 'info', async () => {
                 if (typeof onGridRowClick === 'function') {
@@ -158,11 +158,11 @@
     // Xóa danh sách cũ
     datalist.innerHTML = '';
 
-    // Populate với kết quả (dạng "id - customer_name")
+    // Populate với kết quả (dạng "id - customer_full_name")
     results.forEach(row => {
         const option = document.createElement('option');
         option.value = row.id;
-        option.textContent = `${row.id} - ${row.customer_name || 'N/A'}`;
+        option.textContent = `${row.id} - ${row.customer_full_name || 'N/A'}`;
         datalist.appendChild(option);
     });
 
@@ -235,28 +235,6 @@
           // Init Dropdown Lists
           if (typeof initBtnSelectDataList === 'function') {
               initBtnSelectDataList(data); 
-          }       
-          
-          // --- XỬ LÝ SỰ KIỆN CHUYỂN BẢNG ---
-          const selectElem = getE('btn-select-datalist');
-          if (selectElem) {
-              // Clone Node để xóa event cũ tránh gán chồng
-              const newSelect = selectElem.cloneNode(true); 
-              selectElem.parentNode.replaceChild(newSelect, selectElem);
-              
-              newSelect.addEventListener('change', function() {
-                  const selectedKey = this.value;
-                  CURRENT_TABLE_KEY = selectedKey; 
-                  // renderTableByKey là hàm cũ của bạn, nó sẽ tự switch case 
-                  // để chọn APP_DATA.booking_details hay APP_DATA.bookings
-                  renderTableByKey(selectedKey); 
-              });
-
-              // Render mặc định: Ưu tiên hiển thị bảng Bookings
-              renderTableByKey(newSelect.value || 'bookings');
-          } else {
-              // Fallback nếu không có nút chọn
-              renderTableByKey('bookings');
           }
 
       } catch(e) { 
@@ -292,39 +270,7 @@
             return; 
         }
 
-        // ============================================================
-        // 🛡️ STEP 4: DATA CLEANING (LỌC BỎ TRẠNG THÁI HỦY NGAY TẠI ĐÂY)
-        // ✅ Support both array and object formats
-        // ============================================================
-        
-        // A. Lọc Bookings (Giả định cột trạng thái là Index 11)
-        // let validIdSet = new Set();
-        
-        // // Check if we have object format
-        // if (APP_DATA.bookings_obj && APP_DATA.bookings_obj.length > 0) {
-        //     // Object format
-        //     const validBookingsRows = APP_DATA.bookings_obj.filter(row => {
-        //         const status = String(row.status || "").trim().toLowerCase();
-        //         return status !== 'hủy' && status !== 'cancelled';
-        //     });
-        //     APP_DATA.bookings_obj = validBookingsRows;
-        //     validIdSet = new Set(validBookingsRows.map(row => String(row.id)));
-        //     log(`🧹 Data Cleaned (object): Giữ lại ${validBookingsRows.length} booking.`);
-        // }
-        // // Fallback to array format
-        // else if (APP_DATA.bookings && APP_DATA.bookings.length > 1) {
-        //     const mHeader = APP_DATA.bookings[0];
-        //     const mRows = APP_DATA.bookings.slice(1);
 
-        //     const validBookingsRows = mRows.filter(row => {
-        //         const status = String(row[11] || "").trim().toLowerCase();
-        //         return status !== 'hủy' && status !== 'cancelled';
-        //     });
-
-        //     APP_DATA.bookings = [mHeader, ...validBookingsRows];
-        //     validIdSet = new Set(validBookingsRows.map(row => String(row[0])));
-        //     log(`🧹 Data Cleaned (array): Giữ lại ${validBookingsRows.length}/${mRows.length} booking.`);
-        // }
 
         // C. Mapping Details theo Role
         const userRole = role;
@@ -332,8 +278,8 @@
         
         // [OPTIONAL] Vẫn tạo Alias activeDetails để code mới sau này dùng cho tiện
         APP_DATA.activeDetails = (userRole === 'op') ? 
-            (APP_DATA.operator_entries_obj || APP_DATA.operator_entries) : 
-            (APP_DATA.details_obj || APP_DATA.booking_details);
+            Object.values(APP_DATA.operator_entries) : 
+            Object.values(APP_DATA.booking_details);
 
         log(`👤 User: ${userRole} - Data Loaded: ${APP_DATA.activeDetails.length} rows`);
         log(`✅ Tải xong sau: ${Date.now() - startTime}ms`, "success");
@@ -384,7 +330,7 @@ async function loadModule_Accountant() {
 
         // BƯỚC 4: IMPORT CONTROLLER & INIT
         // Import động (Dynamic Import)
-        const module = await import('/accountant/controller_accountant.js');
+        const module = await import('./accountant/controller_accountant.js');
         
         // Lấy instance từ default export
         const ctrl = module.default;

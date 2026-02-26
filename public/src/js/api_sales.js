@@ -4,41 +4,20 @@
     async function saveForm(isConfirmed = false) {
       try {
         setBtnLoading("btn-save-form", true, "Saving...");
-        var data = getFormData();
-        // 2. Lấy dữ liệu mở rộng từ Tab Customer
-        let extendedCust = { email: "", cccd: "", address: "", cccdDate: "", dob: "" };
-
-        if (typeof window.getExtendedCustomerData === 'function') {
-            extendedCust = window.getExtendedCustomerData();
-            if (extendedCust) {
-              const custData = {
-                ...extendedCust
-              };
-              data.customer = custData;
-            }
+        
+        const custContainer = document.querySelector('fieldset[name="customers"]') || document.getElementById('fs_customer_info');
+        const changedData = await filterUpdatedData(custContainer);
+        if (Object.keys(changedData).length > 0) {
+          saveCustomer();
+          log("Customer data has changes, saving customer first...", "info");
         }
-
-        // --- VALIDATION FRONT-END ---
-        // 1. Check Bookings
-        // if (!data.customer.full_name) { logA("Vui lòng nhập Tên khách hàng!"); return; }
-        // if (!data.customer.phone) { logA("Vui lòng nhập SĐT khách hàng!"); return; }
-        // if (!data.bookings.startDate || !data.bookings.endDate) { logA("Vui lòng chọn ngày đi/về!"); return; }
-        // 2. Check Details
-        // if (data.booking_details.length === 0) { logA("Vui lòng nhập ít nhất 1 dòng dịch vụ!"); return; }
-        // for (let i=0; i<data.booking_details.length; i++) {
-        //   const d = data.booking_details[i];
-        //   if(!d.type || !d.name || !d.qtyA) {
-        //       logA(`Dòng thứ ${i+1} thiếu thông tin (Loại, Tên, SL).`);
-        //       return;
-        //   }
-        // }
-
+        var data = getFormData();
         var booking = Object.values(data.bookings);
         var bookingId = data.bookings.id;
         try {          
           const newBk = await A.DB.saveRecord('bookings', booking);
           if (newBk && !bookingId) { 
-            window.notifyToAll('NEW BOOKING', `Booking mới đã được tạo với ID: ${newBk.id} - ${newBk.staff_id}`);
+            A.NotificationManager.sendToAll('NEW BOOKING', `Booking mới đã được tạo với ID: ${newBk.id} - ${newBk.staff_id}`);
           }
           
           // =========================================================================
@@ -68,7 +47,7 @@
           return;
         }
       } catch (e) {
-        showNotify("Lỗi hàm try: " + e, false);
+        logError("Lỗi hàm try: ", e);
       } finally {
         setBtnLoading("btn-save-form", false);
       }
@@ -117,6 +96,67 @@
         }
       }
     }
+
+    async function saveCustomer() {
+      try {
+        const data = window.getCustomerData();
+
+        // 4. Lưu vào Firebase
+        showLoading(true, "Đang lưu thông tin khách hàng...");
+        
+        const res = await A.DB.saveRecord('customers', data);
+
+        if (res && res.id) {
+          const oldId = getE('BK_CustID')?.value;
+          if (!oldId || oldId != res.id) {
+            logA("New Customer ID: " + res.id, 'success');
+            const bkCustIdEl = getE('BK_CustID');
+            if (bkCustIdEl) {
+              bkCustIdEl.value = res.id;
+            }
+          }
+        } else {
+          logA("Lỗi khi lưu khách hàng: " + (res?.message || "Vui lòng thử lại"), "error");
+        }
+      } catch (e) {
+        logError(e);
+        logA("Lỗi: " + e.message, "error");
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    // =========================================================================
+    // HELPER: Tính tổng chi tiêu của khách hàng (từ các booking không bị hủy)
+    // =========================================================================
+    /**
+     * Tính tổng chi tiêu của khách hàng từ tất cả booking không bị hủy.
+     * 
+     * @param {string} custId - ID của khách hàng cần kiểm tra
+     * @returns {number} - Tổng giá trị (total) của các booking, trả về 0 nếu không có
+     * 
+     * @example
+     * const spend = loadCustSpend('CUST_001'); // Returns 2500000
+     */
+    function loadCustSpend(custId) {
+      if (!custId) custId = $("[data-field='customer_id']", getE('main-form'))?.value || getVal('Cust_Id');
+      
+      const bookings = window.Object.values(APP_DATA.bookings) || [];
+      let totalSpend = 0;
+      
+      bookings.forEach(booking => {
+        if (booking && booking.customer_id === custId && booking.status !== "Hủy") {
+          const total = booking.total_amount || 0;
+          // Xử lý cả string (formatted) và number
+          const numValue = typeof total === 'string' ? getRawVal(total) : Number(total);
+          totalSpend += numValue;
+        }
+      });
+      setVal('Cust_Total', totalSpend);
+      
+      return totalSpend;
+    }
+    
     // =========================================================================
     // EXPORT FORM HANDLER
     async function createContract() {
@@ -128,102 +168,14 @@
       // 2. Lấy dữ liệu mở rộng từ Tab Customer
       let extendedCust = { email: "", id_card: "", address: "", id_card_date: "", dob: ""};
 
-      if (typeof getExtendedCustomerData === 'function') {
-          extendedCust = getExtendedCustomerData();
+      if (typeof getCustomerData === 'function') {
+          extendedCust = getCustomerData();
       }
       // 3. Xác định Tab hiện tại
       // Tìm nút Tab đang có class 'active' để biết người dùng đang đứng ở đâu
       const activeTabEl = document.querySelector('#mainTabs button.nav-link.active');
       const activeTarget = activeTabEl ? activeTabEl.getAttribute('data-bs-target') : '';
-      // Kiểm tra: Có phải đang đứng ở Tab Customer (#tab-sub-form) không?
-      const isAtCustomerTab = (activeTarget === '#tab-sub-form');
-      // 4. LOGIC KIỂM TRA (VALIDATION)
-      // Điều kiện cần kiểm tra: Nếu KHÔNG PHẢI đang ở Tab Customer
-      if (!isAtCustomerTab) {
-        // Danh sách các trường cần thiết cho việc in ấn
-        const missingFields = [];
-        if (!extendedCust.email) missingFields.push("Email");
-        if (!extendedCust.id_card) missingFields.push("CCCD/Passport");
-        if (!extendedCust.address) missingFields.push("Địa chỉ");
-        // Nếu thiếu thông tin -> Chuyển Tab & Cảnh báo
-        if (missingFields.length > 0) {
-            const msg = `Thiếu thông tin khách hàng: ${missingFields.join(', ')}.\n` +
-                        `Hệ thống sẽ chuyển sang Tab "Hồ sơ Khách" để bạn nhập liệu.\n\n` +
-                        `(Nếu khách không cung cấp, bạn hãy bấm nút "In Booking" một lần nữa tại Tab đó để bỏ qua kiểm tra).`;
-            logA(msg);
-            // Tự động chuyển sang Tab Customer
-            try {
-              activateTab('tab-sub-form');
-              const phoneInput = getVal('Ext_CustPhone') || getVal('Cust_Phone');
-              const customers = window.APP_DATA ? window.APP_DATA.customers_obj : [];
       
-              let found = null;
-              
-              if (phoneInput.length >= 3) {
-                found = customers.find(c => {
-                  if (!c) return false;
-                  
-                  // Object format: c.phone hoặc c.customer_phone
-                  if (typeof c === 'object' && !Array.isArray(c)) {
-                  const phone = c.phone || c.customer_phone || '';
-                  return String(phone).includes(phoneInput);
-                  }
-                  
-                  // Array format: c[6] là phone index
-                  if (Array.isArray(c)) {
-                  return c[6] && String(c[6]).includes(phoneInput);
-                  }
-                  
-                  return false;
-                });
-                
-                // =========================================================================
-                // CẬP NHẬT FORM NẾU TÌM THẤY KHÁCH HÀNG (Đảm bảo found trả về dữ liệu nguyên hàng)
-                // =========================================================================
-                if (found && (typeof found === 'object')) {
-                  log(`✅ Tìm thấy khách hàng`, 'info');
-                  console.log('Found customer full data:', found); // Debug: để kiểm tra cấu trúc
-                  
-                  // Xử lý cả Object và Array format
-                  const isObj = !Array.isArray(found);
-                  
-                  // Trích xuất dữ liệu từ full row
-                  const cccd = isObj 
-                    ? (found.cccd || found.id_card || '') 
-                    : (found[3] || ''); // Index 3 cho array format
-                  
-                  const cccdDate = isObj 
-                    ? (found.cccd_date || found.id_card_date || '') 
-                    : (found[4] || ''); // Index 4 cho array format
-                  
-                  const email = isObj 
-                    ? (found.email || '') 
-                    : (found[7] || ''); // Index 7 cho array format (hoặc điều chỉnh theo cấu trúc thực tế)
-                  
-                  const address = isObj 
-                    ? (found.address || '') 
-                    : (found[5] || ''); // Index 5 cho array format
-                  
-                  const dob = isObj 
-                    ? (found.dob || found.date_of_birth || '') 
-                    : (found[2] || ''); // Index 2 cho array format
-                  
-                  // Cập nhật form fields - chỉ nếu có dữ liệu
-                  if (cccd) setVal('Ext_CustCCCD', cccd);
-                  if (cccdDate) setVal('Ext_CustCCCDDate', cccdDate);
-                  if (email) setVal('Ext_CustEmail', email);
-                  if (address) setVal('Ext_CustAddress', address);
-                  if (dob) setVal('Ext_CustDOB', dob);
-                  
-                  log('✅ Tải thông tin khách hàng từ DB thành công', 'success');
-                } else if (!found) {
-                  log('⚠️ Không tìm thấy khách hàng với số điện thoại: ' + phoneInput, 'warning');
-                }
-              }
-            } catch(e) { logError(e); }
-            return; // DỪNG LẠI, không export
-        }
-      }
       // 5. HỢP NHẤT DỮ LIỆU & GỬI ĐI
       // (Nếu chạy đến đây nghĩa là: Hoặc dữ liệu đủ, Hoặc user đang đứng ở Tab Customer và cố tình export)
       // const finalCustomer = {
@@ -407,7 +359,7 @@
     window.handleSaveCustomer = async function() {
       try {
         log("Run SaveCustomer");
-        const data = window.getExtendedCustomerData();
+        const data = window.getCustomerData();
 
         // Validate Front-end
         if(!data.full_name || !data.phone) {
@@ -421,7 +373,7 @@
           const newCust = res.customer;
           if(APP_DATA.customer) {
             // Cập nhật APP_DATA.customer ngay lập tức
-            const custIndex = APP_DATA.customer.findIndex(r => r?.[COL_INDEX.C_PHONE] && r[COL_INDEX.C_PHONE] === newCust.phone);
+            const custIndex = Object.values(Object.values(Object.values(Object.values(Object.values(Object.values(APP_DATA.customer)))))).findIndex(r => r?.[COL_INDEX.C_PHONE] && r[COL_INDEX.C_PHONE] === newCust.phone);
             if (custIndex !== -1) {
               APP_DATA.customer[custIndex] = Object.values(newCust);
               log("Cập nhật KH vào APP_DATA:" + Object.values(newCust));

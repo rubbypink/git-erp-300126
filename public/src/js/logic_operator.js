@@ -29,8 +29,8 @@ window.loadBookingToUI = function(bkData, detailsData) {
     const phoneStr = phone ? String(phone).replace(/^'/, "").trim() : "";
 
     // Find customer by phone to get source
-    if (phoneStr !== "" && window.APP_DATA && Array.isArray(window.APP_DATA.customers_obj)) {
-      const custRow = window.APP_DATA.customers_obj.find(c => 
+    if (phoneStr !== "" && window.APP_DATA) {
+      const custRow = window.Object.values(Object.values(APP_DATA.customers)).find(c => 
         c && c.phone && String(c.phone).includes(phoneStr)
       );
       if (custRow) {
@@ -49,7 +49,7 @@ window.loadBookingToUI = function(bkData, detailsData) {
       ? bkData.created_at 
       : bkData[16];
     const custName = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.customer_name 
+      ? bkData.customer_full_name 
       : bkData[2];
     const custPhone = typeof bkData === 'object' && !Array.isArray(bkData) 
       ? bkData.customer_phone 
@@ -216,7 +216,7 @@ window.fillFormFromSearch = function(res) {
       ? bkData.id 
       : bkData[0];
     const custName = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.customer_name 
+      ? bkData.customer_full_name 
       : bkData[2];
     log(`Loaded Booking: ${bookingId} - ${custName}${sourceMsg}`, "success");
   } else {
@@ -254,7 +254,7 @@ function addDetailRow(data = null) {
     <td class="text-center text-muted small">${idx} <input type="hidden" class="d-sid" data-field="id"></td>
     
     <td style="display: none;"><input type="text" class="d-idbk" data-field="booking_id" readonly tabindex="-1"></td>
-    <td style="display: none;"><input type="text" class="d-cust" data-field="customer_name" readonly tabindex="-1"></td>
+    <td style="display: none;"><input type="text" class="d-cust" data-field="customer_full_name" readonly tabindex="-1"></td>
     
     
     <td style="width:75px"><select class="form-select form-select-sm d-type text-wrap" data-field="service_type"><option value="">-</option>${optsType}</select></td>
@@ -301,7 +301,7 @@ function addDetailRow(data = null) {
     // Extract values using object fields
     const id = isObject ? data.id : data[0];
     const bookingId = isObject ? data.booking_id : data[1];
-    const customerName = isObject ? data.customer_name : data[2];
+    const customerName = isObject ? data.customer_full_name : data[2];
 
     const serviceType = isObject ? data.service_type : data[3];
     const hotelName = isObject ? data.hotel_name : data[4];    
@@ -778,7 +778,7 @@ function findCustByPhone(e) {
     return;
   }
 
-  const customers = window.APP_DATA ? window.APP_DATA.customers_obj || [] : [];
+  const customers = window.APP_DATA ? window.Object.values(APP_DATA.customers) || [] : [];
   
   let found = null;
   
@@ -818,7 +818,7 @@ window.getFormData = function() {
     const bookings = {
       id: getVal('BK_ID'),
       customer_id: getVal('BK_CustID') || '',
-      customer_name: getVal('Cust_Name'),
+      customer_full_name: getVal('Cust_Name'),
       customer_phone: getVal('Cust_Phone'),
       created_at: getVal('BK_Date'),
       start_date: getVal('BK_Start'),
@@ -859,7 +859,7 @@ window.getFormData = function() {
       const entry = {
         id: getRowVal('d-sid'),
         booking_id: getRowVal('d-idbk'),
-        customer_name: getRowVal('d-cust'),
+        customer_full_name: getRowVal('d-cust'),
         hotel_name: getRowVal('d-loc'),
         service_type: getRowVal('d-type'),
         service_name: getRowVal('d-name'),
@@ -913,7 +913,7 @@ function handleAggClick(key, filterType) {
   const dTo = new Date(getVal('dash-filter-to'));
   dTo.setHours(23, 59, 59, 999);
   
-  const source = window.APP_DATA.operator_entries_obj || [];
+  const source = window.Object.values(APP_DATA.operator_entries) || [];
   
   const batchData = source.filter(row => {
     if (!row) return false;

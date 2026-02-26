@@ -25,10 +25,10 @@
       /* ─── LAYOUT GRID CONSTANTS ─── */
       --grid-cols: 13;                   /* 13 columns for flexibility */
       --grid-col-7-width: fit-content;   /* Column 7 special handling */
-      --header-height: 3rem;             /* Total header (top-bar + nav-bar) */
+      --header-height: 5rem;             /* Total header (top-bar + nav-bar) */
       --header-top-bar-height: 0.9rem;   /* 30% of header */
       --header-nav-bar-height: 2.1rem;   /* 70% of header */
-      --footer-height: 3rem;             /* Footer height */
+      --footer-height: 4rem;             /* Footer height */
       --content-height: calc(100vh - var(--header-height) - var(--footer-height));
       
       /* ─── THEME: LIGHT MODE (Mặc định) ─── */
@@ -131,6 +131,143 @@
         transition: background-color 0.3s ease, color 0.3s ease;
     }
 
+    fieldset {
+      display: grid;
+      grid-template-columns: repeat(var(--row-items, 4), 1fr);
+      gap: 0.75rem;
+      padding: 0 1rem;
+      margin: 0 1rem;
+      border: 0.5rem solid #ccc;
+      border-radius: 8px;
+      align-items: start;
+      align-content: start;
+      grid-auto-flow: row;
+    }
+    
+    fieldset > * {
+      width: 100%;
+    }
+
+    legend {
+      font-size: inherit; /* Tăng kích thước chữ */
+      width: unset; /* Đặt lại width mặc định */
+      float:initial !important; /* Đặt legend ở giữa */
+      font-weight: 600; /* In đậm */
+      padding: 0 0.5rem; /* Khoảng cách ngang */
+      color: var(--secondary-color); /* Màu chính */
+    }
+
+    /* ==========================================================================
+    ERP CUSTOM GRID LAYOUT (13 Columns x 5 Rows)
+    ========================================================================== */
+    .g-layout {
+        display: grid;
+        /* Chia 13 cột bằng nhau, 1fr = 1 phân số (fraction) của không gian trống */
+        grid-template-columns: repeat(13, 1fr); 
+        /* Chia 5 hàng bằng nhau */
+        grid-template-rows: repeat(5, 1fr); 
+        
+        /* Thiết lập kích thước Full-size */
+        width: 100%;
+        height: 85vh; /* Fallback cho các trình duyệt cũ */
+        height: 85dvh; /* Tối ưu cho Mobile: Dynamic Viewport Height tránh bị che bởi thanh cuộn */
+        
+        /* Khoảng cách giữa các ô (Grid Gap) - Bạn có thể chỉnh về 0 nếu muốn các ô dính sát vào nhau */
+        gap: 0; 
+        
+        /* Padding an toàn xung quanh để nội dung không chạm sát mép màn hình */
+        padding: 8px;
+        
+        /* Ngăn chặn scroll tổng thể nếu nội dung bên trong vô tình phình to */
+        overflow: hidden;
+        background-color: #f8f9fa; /* Màu nền nhẹ nhàng, đồng bộ bootstrap (tùy chọn) */
+    }
+
+    /* Các ô bên trong grid (Card UI) để đảm bảo nội dung không làm vỡ cấu trúc */
+    .g-layout > div {
+        background: #ffffff;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        overflow: auto; /* Nếu nội dung trong 1 ô quá dài, chỉ cuộn riêng ô đó */
+        padding: 10px;
+    }
+
+
+    /* ─── CUSTOM GRID UTILITY CLASSES ─── */
+    /* Grid Left: Columns 1-6 (left side, items inline) */
+    .g-left {
+      grid-column: 1 / 6;
+      /* display: flex;
+      flex-direction: row; */
+      align-items: center;
+      /* justify-content: flex-start; */
+    }
+
+    /* Grid Center: Column 7 (center, fit-content, items inline, centered) */
+    .g-center {
+      grid-column: 6 / 9;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.5rem;
+      width: fit-content;
+      justify-content: start;
+      justify-self: center;
+    }
+
+    /* Grid Right: Columns 9-13 (right side, items inline) */
+    .g-right {
+      grid-column: 9 / -1;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.5rem;
+      justify-content: start;
+    }
+
+    .g-r-100 {
+      grid-column: 1 / -1;
+    }
+    .g-r-2 {
+      grid-row: span 2;
+    }
+    .g-r-3 {
+      grid-row: span 3;
+    }
+    .g-r-4 {
+      grid-row: span 4;
+    }
+    .g-c-100 {
+      grid-row: 1 / -1;
+      display: flex;
+      flex-direction: column;
+    }
+    .g-c-2 {
+      grid-column: span 2;
+      display: flex;
+      flex-direction: column;
+    }
+    .g-c-3 {
+      grid-column: span 3;
+      display: flex;
+      flex-direction: column;
+    }
+    .g-c-4 {
+      grid-column: span 4;
+      display: flex;
+      flex-direction: column;
+    }
+    .g-c-5 {
+      grid-column: span 5;
+      display: flex;
+      flex-direction: column;
+    }    
+    .g-r-last {
+      grid-row: -1;
+    }
+    .g-c-last {
+      grid-column: -1;
+    }
     /* Fix Header/Footer Contrast */
     .app-header {
         background: var(--header-bg) !important;
@@ -139,12 +276,6 @@
         transition: background-color 0.3s ease, color 0.3s ease;
     }
 
-    .footer-bar {
-        background: var(--footer-bg) !important;
-        border-color: var(--border-color) !important;
-        color: var(--text-color) !important;
-        transition: background-color 0.3s ease, color 0.3s ease;
-    }
 
     /* ─── SCROLLABLE CONTAINERS: Allow scroll gestures ─── */
     .nav-tabs {
@@ -231,9 +362,9 @@
     /* --- FORM CONTROLS --- */
     /* Input form cũng cần đồng bộ nền để dễ đọc */
     .form-control, .form-select {
-        background-color: var(--input-bg) !important;
-        color: var(--text-color) !important;
-        border-color: var(--border-color) !important;
+        background-color: var(--input-bg);
+        color: var(--text-color);
+        border-color: var(--border-color);
         transition: all 0.2s ease;
         text-align: center;
         -webkit-user-select: text;    /* Allow text selection in inputs */
@@ -531,56 +662,8 @@
       pointer-events: auto;
     }
 
-    /* FOOTER-BAR: Spans row 3, all columns */
-    .footer-bar {
-      grid-area: f1 / f1 / auto / -1;
-      max-height: var(--footer-height);
-      min-height: 2rem;
-      flex: 0 0 auto;
-      border-top: 1px solid var(--border-color);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: var(--footer-bg) !important;
-      border-color: var(--border-color) !important;
-      color: var(--text-color) !important;
-      transition: background-color 0.3s ease, color 0.3s ease;
-      padding: 0.9rem;
-      z-index: 100;
-    }
 
-    /* ─── CUSTOM GRID UTILITY CLASSES ─── */
-    /* Grid Left: Columns 1-6 (left side, items inline) */
-    .grid-left {
-      grid-column: 1 / 7;
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: 0.5rem;
-      justify-content: flex-start;
-    }
 
-    /* Grid Center: Column 7 (center, fit-content, items inline, centered) */
-    .grid-center {
-      grid-column: 7 / 8;
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: 0.5rem;
-      width: fit-content;
-      justify-content: center;
-      justify-self: center;
-    }
-
-    /* Grid Right: Columns 8-13 (right side, items inline) */
-    .grid-right {
-      grid-column: 8 / -1;
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: 0.5rem;
-      justify-content: flex-end;
-    }
 
     /* Form Elements siêu nhỏ */
     .form-control-sm, .form-select-sm, .btn-sm, .input-group-sm, .input-group-append-sm, .input-group-prepend-sm {
@@ -613,10 +696,8 @@
     .app-content,
     .tab-content,
     #tbl-container-tab2,
-    .footer-bar {
-      touch-action: manipulation;  /* ✅ Allow pan but block double-tap zoom */
-      pointer-events: auto;        /* ✅ Ensure interactive */
-    }
+    
+
 
     table.table-bordered thead {
       border: var(--tbl-border);
@@ -689,6 +770,20 @@
       align-items: center;
       justify-content: start;
     }
+
+    #tab-dashboard .card-body {
+      max-height: 0;         /* <== ĐÂY CHÍNH LÀ LỆNH ẨN */
+      overflow: hidden;      /* <== Đảm bảo nội dung thừa không tràn ra ngoài */
+      padding: 0 1rem;
+    }
+
+    #tab-dashboard .card.active .card-body {
+      max-height: 38vh;   /* <== Giá trị lớn để đảm bảo hiển thị đầy đủ khi active */
+      height: 38vh;
+      transition: max-height 0.5s ease-in-out; /* <== Hiệu ứng chuyển đổi mượt mà */
+    }
+
+
 
     /* --- 4. TAB LIST (DANH SÁCH DỮ LIỆU & PAGINATION) --- */
     #tab-list {
@@ -792,44 +887,31 @@
       text-overflow: ellipsis;
     }
     
-    /* Custom Class để Modal tự co giãn theo nội dung */
-    .modal-fit-content .modal-dialog {
-        align-self: center;
-        justify-self: center;
-        max-width: 100%;
-        top: 8%;
-        left: 50%;
-        margin-bottom: 6.25rem;
-        width: fit-content;
-        height: fit-content;
-        min-width: 25rem;
-    }
-
-      /* ==========================================
-      CSS: CHROME MENU TRIGGER BUTTON
+    /* ==========================================
+    CSS: CHROME MENU TRIGGER BUTTON
     ========================================== */
-    .chrome-trigger-btn {
-        background-color: transparent; /* Nền trong suốt hoàn toàn */
-        border: none;                  /* Xóa viền mặc định */
-        width: 36px;                   /* Kích thước vuông để tạo hình tròn chuẩn */
+    /* .chrome-trigger-btn {
+        background-color: transparent;
+        border: none;  
+        width: 36px;                  
         height: 36px;
-        border-radius: 50%;            /* Bo tròn 100% */
+        border-radius: 50%;   
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--erp-icon-color, #000000); /* Dùng biến màu để hợp chuẩn Dark Mode */
+        color: var(--erp-icon-color, #000000); 
         font-size: 18px;
         cursor: pointer;
         transition: background-color 0.2s ease;
     }
 
-    /* Hiệu ứng khi người dùng di chuột hoặc chạm (Mobile) */
+
     .chrome-trigger-btn:hover,
     .chrome-trigger-btn:focus,
     .chrome-trigger-btn:active {
         background-color: var(--erp-menu-hover, rgba(0, 0, 0, 0.08)); 
-        outline: none; /* Bỏ viền xanh mặc định của trình duyệt khi click */
-    }
+        outline: none; 
+    } */
 
     /* Tinh chỉnh cho Dark Mode */
     body.dark-theme .chrome-trigger-btn:hover,
@@ -896,7 +978,7 @@
     .erp-task-item {
         pointer-events: auto; /* Bắt sự kiện click */
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        border-radius: 8px;
+        border-radius: 50%;
         padding: 8px 15px;
         font-weight: 500;
         transition: all 0.2s ease;
@@ -965,13 +1047,13 @@
 
     /* Wrapper chính: Căn giữa tuyệt đối & Full màn hình */
     .admin-wrapper {
-      min-height: calc(100vh - 3.75rem);
+      min-height: calc(100vh - 10rem);
       width: 100%;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      background-color: #f4f6f8;
+      background-color: var(--app-bg);
       padding: 1.25rem;
     }
 
@@ -986,7 +1068,7 @@
     .module-card {
       border: none;
       border-radius: 1rem;
-      background: white;
+      background: var(--tab-inactive-bg);
       box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.05);
       transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
       cursor: pointer;
@@ -1058,35 +1140,45 @@
       height: auto !important;
       touch-action: auto !important; 
       -webkit-overflow-scrolling: touch;
-      font-size: smaller !important;      
+      height: 100dvh;   
   }
   
   .app-container {
       display: flex;
       flex-direction: column;
-      height: 100vh; /* Sử dụng biến --vh nếu bạn đã cài đặt ở bước trước */
+      height: 100dvh; /* Sử dụng biến --vh nếu bạn đã cài đặt ở bước trước */
       width: 100%;
       overflow: hidden;
   }
   
-  /* 2. Cố định Header */
   .app-header {
-      flex: 0 0 auto; /* Không cho phép co dãn */
-      background: var(--header-bg);
-      box-shadow: var(--shadow-md);
-      max-height: 8rem; /* Đảm bảo header không quá lớn chiếm chỗ content */
-      padding: 0.2rem;
+    flex: 0 0 auto;      /* Không cho phép co dãn */
+    background: var(--header-bg);
+    box-shadow: var(--shadow-md);
+    max-height: 8rem;
+    padding: 0.2rem;
+    position: sticky;    /* sticky thay absolute: vẫn ở top, không tách khỏi flex flow */
+    top: 0;
+    width: 100%;
+    z-index: 200;
+    touch-action: auto !important;
   }
-  
-  /* 3. Vùng nội dung tự cuộn */
-  .app-content { 
-      flex: 1 1 auto; /* Chiếm toàn bộ phần còn lại */
-      overflow-y: auto !important;
-      -webkit-overflow-scrolling: touch;
-      display: flex;
-      flex-direction: column;
-      max-height: 88vh;
-  }  
+
+
+    
+  .app-content {
+    flex: 1 1 0;           /* 0 thay vì auto */
+    min-height: 0;         /* Cho phép shrink đúng */
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    /* Bỏ max-height: 88dvh (magic number không chính xác) */
+    /* Thay bằng padding để tránh content bị footer che */
+    padding-bottom: var(--footer-actual-height, calc(var(--footer-height) + 0.5rem));
+    position: relative;
+}  
 
   /* 5. FIX NAV-CONTAINER NGANG */
   .nav-container {
@@ -1097,25 +1189,31 @@
     padding: 0.2rem !important;
   }
 
-  .booking-info {
-    display: flex !important;
-    flex-direction: row !important;
+  .admin-wrapper {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--app-bg);
+    padding: 1.25rem;
+  }
+
+  #sub-booking-form {
+    flex-direction: column !important;
     justify-content: start !important;
     margin: 0.15rem !important;
     padding: 0.15rem !important;
   }
-  .booking-info > * .form-control-sm,
-  .booking-info > * .form-select-sm {
-    margin: 0 !important;
-    padding: 0.15rem !important;
-    width: fit-content !important;
-  }
+
   /* --- 2. FIX MODAL BACKDROP CLICK-THROUGH --- */
 
   /* Đảm bảo Modal Container bao phủ toàn màn hình nhưng cho phép click xuyên qua vùng trống */
   .modal {
     background-color: rgba(0, 0, 0, 0.5) !important; /* Tạo lớp nền mờ thủ công nếu cần */
     pointer-events: auto !important;
+    top: 10dvh;
   }
 
   .modal-dialog {
@@ -1124,50 +1222,6 @@
     z-index: 1051;
   }
   
-
-  /* 3. FIX LỖI MODAL CHẶN THAO TÁC */
-  .modal-fit-content .modal-dialog {
-    /* Modal hiển thị ở giữa màn hình */
-    position: fixed !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    margin: 0 !important;
-    
-    /* Responsive width */
-    width: 95vw !important;
-    max-width: 95vw !important;
-    
-    /* Safe area cho iPhone notch/Dynamic Island */
-    max-height: calc(100vh - 40px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left) !important;
-  }
-  
-  /* Modal body scrollable */
-  .modal-fit-content .modal-body {
-    max-height: calc(100vh - 200px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    padding: 0.5rem;
-  }
-  
-  /* Tablet: Tăng width */
-  @media (min-width: 768px) {
-    .modal-fit-content .modal-dialog {
-      width: 85vw !important;
-      max-width: 85vw !important;
-    }
-  }
-  
-  /* Desktop: Dùng max-width cố định */
-  @media (min-width: 992px) {
-    .modal-fit-content .modal-dialog {
-      width: auto !important;
-      height: auto !important;
-      max-height: 85vh !important;
-    }
-  }
-
   /* 4. ĐẢM BẢO CÁC VÙNG NHẬP LIỆU LUÔN TƯƠNG TÁC ĐƯỢC */
   input, select, textarea, button, .btn {
     pointer-events: auto !important;
@@ -1177,45 +1231,25 @@
     margin: 0.15rem;
   }
     
-  /* --- TỐI ƯU TOÀN BỘ BUTTON TRONG FOOTER (ANY DEPTH) --- */
-  .footer-bar * .btn {
-
-      flex: 0 0 auto !important; 
-      min-width: 3rem !important; /* ~80px */
-      height: 2.25rem !important;  /* ~44px - Chuẩn Touch Target của Apple */
-      
-
-      font-size: 0.7rem !important;
-      padding: 0 0.45rem !important;
-      display: inline-flex !important;
-      align-items: center;
-      justify-content: center;
-      white-space: nowrap !important; /* Không cho chữ xuống dòng trong nút */
-      
-
-      margin: 0.1rem !important; /* Tạo khoảng cách an toàn xung quanh */
-      border-radius: 0.5rem !important;
-      vertical-align: middle;
-  }
-  /* Xử lý các icon bên trong button cho đồng nhất */
-  .footer-bar * .btn i, 
-  .footer-bar * .btn svg {
-      font-size: 1rem !important;
-      margin-right: 0.15rem; /* Khoảng cách giữa icon và chữ */
+  .btn {
+    display: inline-block; /* Stack buttons vertically if multiple */
+    margin: 10px 0; /* Add vertical spacing */
+    box-sizing: border-box;
   }
 
-  /* 4. Footer cố định bên dưới */
-  .footer-bar {
-    display: flex !important; /* 'contents' giúp các thẻ bọc trung gian "vô hình", khiến các button bên trong hành xử như con trực tiếp của footer-bar */
-    flex: 0 0 auto !important;
+  .btn .btn-sm {
+    padding: 0.15rem 0.25rem !important;
+    font-size: 0.75rem !important;
+    min-height: 2rem !important;
+  }
+
+  .nav-tabs {
+    display: flex !important;
     flex-wrap: nowrap !important;
-    overflow-x: auto !important; /* Cuộn ngang menu */
-    overflow-y: hidden !important;    
-    white-space: nowrap !important;
-    padding: 0.2rem!important;
-    margin-bottom: 0.5rem !important;
-    gap: 0.25rem !important;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
   }
+
 
   .desktop-only {
     display: none !important;
@@ -1235,10 +1269,71 @@
   #toast-container .toast {
     width: 100%;
   }  
+  .g-layout {
+    display: grid;
+    /* Chia 4 cột bằng nhau, 1fr = 1 phân số (fraction) của không gian trống */
+    grid-template-columns: repeat(4, 1fr); 
+    /* Chia 5 hàng bằng nhau */
+    grid-template-rows: repeat(5, 1fr); 
 
+    /* Đảm bảo chiều rộng đủ lớn để 4 cột hiển thị rõ ràng (ví dụ: tối thiểu 1200px) */
+    min-width: 1200px; 
+    /* Bỏ giới hạn chiều cao cố định trên mobile để dễ lướt đọc */
+    height: auto; 
+    min-height: 85dvh;
+    
+    height: 85dvh; /* Tối ưu cho Mobile: Dynamic Viewport Height tránh bị che bởi thanh cuộn */
+    /* Khoảng cách giữa các ô (Grid Gap) - Bạn có thể chỉnh về 0 nếu muốn các ô dính sát vào nhau */
+    gap: 0; 
+    
+    /* Padding an toàn xung quanh để nội dung không chạm sát mép màn hình */
+    padding: 8px;
+    
+    /* Ngăn chặn scroll tổng thể nếu nội dung bên trong vô tình phình to */
+    overflow: scroll;
+    background-color: #f8f9fa; /* Màu nền nhẹ nhàng, đồng bộ bootstrap (tùy chọn) */
+    }
 
+    /* Các ô bên trong grid (Card UI) để đảm bảo nội dung không làm vỡ cấu trúc */
+    .g-layout > div {
+        background: #ffffff;
+        border-radius: 6px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        overflow: auto; /* Nếu nội dung trong 1 ô quá dài, chỉ cuộn riêng ô đó */
+        padding: 10px;
+    }
 
+    .no-select {
+        user-select: none !important; /* Ngăn người dùng chọn văn bản trong phần này */
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        -webkit-touch-callout: none !important;
+    }
 
+    .erp-header {
+      padding: 0;
+      height: 36px;
+      width: 36px;
+    }
 
- }
+    fieldset {
+      display: grid;
+      grid-template-columns: 50% 50%;
+      gap: 0.75rem;
+      padding: 0 1rem;
+      margin: 0;
+      border-bottom: 0.5rem solid #ccc;
+      border-radius: 8px;
+      background-color: #f9f9f9;
+      align-items: start;
+      align-content: start;
+      grid-auto-flow: row;
+    }
+
+    fieldset > * {
+      width: 100%;
+    }
+}
+
 

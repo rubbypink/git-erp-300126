@@ -15,6 +15,7 @@ const CACHE_KEY = '9trip_lang_v1';
 
 class TranslationModule {
     constructor() {
+        this._initialized = true;
         this.dict = {}; 
         this.currentLang = 'vi'; // Mặc định tiếng Việt
         

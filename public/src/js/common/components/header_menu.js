@@ -6,20 +6,29 @@
 export default class ErpHeaderMenu {
     constructor(containerId = 'nav-container') {
         this.containerId = containerId;
-        this.currentRole = 'sale';
+        this.currentRole = CURRENT_USER.realrole ? CURRENT_USER.realrole : CURRENT_USER.role || 'guest';
         this.config = { height: '60px', zIndex: '1040', bgColor: '#0d6efd' };
+        this._initialized = false;
 
         // [SỬA LỖI]: Bơm HTML ngay lập tức (Đồng bộ) để giữ chỗ ID cho Firebase Auth bắn dữ liệu vào
         this._injectStyles();
         this._renderLayout();
+        this.init();
     }
 
-    async init(userRole = 'sale') {
+    async init() {
+        if (this._initialized) {
+            console.warn('[ERP Header Menu] Đã khởi tạo rồi, bỏ qua...');
+            return;
+        }
+        this._initialized = true;
         try {
-            this.currentRole = userRole.toLowerCase();
+            if  (!this.currentRole || this.currentRole === 'guest') {
+            this.currentRole = CURRENT_USER.realrole ? CURRENT_USER.realrole : CURRENT_USER.role || 'sale';
             this._applyRoleFilters(); // Chỉ chạy CSS filter sau khi đã có Role
             
-            console.log(`[9 Trip ERP] Header Menu initialized for role: ${this.currentRole}`);
+            console.log(`[UI] Header Menu initialized for role: ${this.currentRole}`);
+            }
         } catch (error) {
             console.error('[9 Trip ERP] Lỗi khởi tạo Header Menu:', error);
         }
@@ -70,6 +79,38 @@ export default class ErpHeaderMenu {
             @media (max-width: 991px) {
                 .erp-desktop-nav { display: none !important; }
                 .erp-mobile-menu-trigger { display: flex !important; }
+                
+                /* Mobile: Reorder elements bằng flexbox order - ĐẶT 1 HÀNG */
+                .erp-header-inner {
+                    flex-wrap: nowrap;
+                }
+                .erp-header-inner > div:nth-child(1) { /* Logo */
+                    order: 1;
+                    flex-shrink: 0;
+                }
+                .erp-header-inner > div:nth-child(3) { /* Content wrapper - Settings + Notification + Hamburger */
+                    order: 2;
+                    width: auto;
+                    display: flex !important;
+                    align-items: center;
+                    justify-content: flex-end;
+                    gap: 0.5rem;
+                    flex-shrink: 0;
+                }
+                
+                /* Reorder inside content wrapper */
+                .erp-header-inner > div:nth-child(3) > div:nth-child(1) { /* Search - ẩn */
+                    display: none !important;
+                }
+                .erp-header-inner > div:nth-child(3) > div:nth-child(2) { /* Settings menu */
+                    order: 1;
+                }
+                .erp-header-inner > div:nth-child(3) > div:nth-child(3) { /* Notification widget */
+                    order: 3;
+                }
+                .erp-header-inner > div:nth-child(3) > div:nth-child(4) { /* Hamburger menu */
+                    order: 2;
+                }
                 
                 /* Tối ưu dropdown menu trên mobile để dễ touch (chạm) */
                 .erp-mobile-dropdown-menu {
@@ -167,7 +208,7 @@ export default class ErpHeaderMenu {
                         ${this._getNotificationWidgetHTML()}
 
                         <div class="dropdown d-lg-none ms-1">
-                            <button class="btn btn-light btn-sm d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" style="width: 36px; height: 36px; border-radius: 8px;">
+                            <button class="btn btn-light btn-sm d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" style="width: 36px; height: 36px; border-radius: 50%;">
                                 <i class="fa-solid fa-bars text-primary"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end mt-2 shadow-lg border-0">
@@ -248,40 +289,10 @@ export default class ErpHeaderMenu {
         `;
     }
 
-    // _getUserMenuHTML() {
-    //     return `
-    //         <div class="user-menu dropdown">
-    //             <button class="btn btn-light btn-sm dropdown-toggle d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" style="width: 32px; height: 32px; border-radius: 50%;">
-    //                 <i class="fa-solid fa-user text-primary"></i>
-    //             </button>
-    //             <ul class="dropdown-menu dropdown-menu-end shadow-sm mt-2" id="user-menu">
-    //                 <li id="user-info-card" class="px-3 py-2 border-bottom bg-light">
-    //                     <div class="text-dark small">
-    //                         <div><strong id="user-menu-name">Guest</strong></div>
-    //                         <div id="user-menu-email" class="text-muted" style="font-size: 0.85rem;"></div>
-    //                     </div>
-    //                 </li>
-    //                 <li><button class="dropdown-item btn-sm py-2" id="btn-login-menu" onclick="A.Auth.showChoiceScreen()"><i class="fa-solid fa-sign-in-alt text-primary w-20px"></i> Đăng Nhập</button></li>
-    //                 <li><button class="dropdown-item btn-sm py-2" id="btn-logout-menu" onclick="A.Auth.signOut()" style="display:none;"><i class="fa-solid fa-sign-out-alt text-danger w-20px"></i> Đăng Xuất</button></li>
-    //                 <li class="manager-only">
-    //                     <hr class="dropdown-divider">
-    //                     <div class="px-3 py-1">
-    //                         <select id="btn-select-masked-role" class="form-select form-select-sm fw-bold text-primary" onchange="if(typeof reloadSystemMode === 'function') reloadSystemMode(this.value);">
-    //                             <option id="user-menu-role" value="" selected>-- Chọn Role --</option>
-    //                             <option value="sale">Sales Mode</option>
-    //                             <option value="op">Operator Mode</option>
-    //                         </select>
-    //                     </div>
-    //                 </li>
-    //             </ul>
-    //         </div>
-    //     `;
-    // }
-
     _getSettingsMenuHTML() {
         return `
-            <div class="erp-header d-flex justify-content-end p-2 bg-light rounded-circle shadow-sm">
-                <button id="erp-menu-trigger" class="chrome-trigger-btn" aria-label="Menu">
+            <div class="erp-header d-flex justify-content-end rounded-circle shadow-sm">
+                <button id="erp-menu-trigger" class="chrome-trigger-btn" aria-label="Menu" title="Menu">
                 <i class="fa-solid fa-ellipsis-vertical"></i>
                 </button>
                 
@@ -293,11 +304,11 @@ export default class ErpHeaderMenu {
             2. CSS: CHROME UI, DARK THEME & MOBILE RESPONSIVE
              ========================================== */
              :root {
-                 --erp-menu-bg: #ffffff;
+                 --erp-menu-bg: #e9e7e7;
                  --erp-menu-text: #333333;
                  --erp-menu-hover: #f1f3f4;
                  --erp-menu-divider: #e8eaed;
-                 --erp-icon-color: #5f6368;
+                 --erp-icon-color: #a7991e;
              }
              
              body.dark-theme {
@@ -310,11 +321,10 @@ export default class ErpHeaderMenu {
              
              /* Nút Trigger 3 chấm */
              .chrome-trigger-btn {
-                 background-color: transparent;
-                 border: none;
+                 background-color: var(--erp-menu-bg);
+                 border: 1px solid var(--erp-menu-divider);
                  width: 36px;
-                 height: 36px;
-                 border-radius: 50%;
+                 border-radius: 8px;
                  display: flex;
                  align-items: center;
                  justify-content: center;

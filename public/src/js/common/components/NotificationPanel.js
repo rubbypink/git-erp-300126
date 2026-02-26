@@ -1,32 +1,4 @@
-/**
- * =========================================================================
- * 9 TRIP ERP - UI RENDERER (FINAL FIX)
- * Module: NotificationPanelRenderer
- * Status: Bulletproof (Chống crash)
- * 
- * DEPENDENCIES (from NotificationModule.js):
- * - window.getAllNotifications(limit) → Get notifications array
- * - window.getUnreadNotificationCount() → Get unread count
- * - window.markNotificationAsRead(id) → Mark as read
- * - window.markAllNotificationsAsRead() → Mark all as read
- * - window.clearAllNotifications() → Clear all notifications
- * 
- * EVENTS LISTENED:
- * - notification_received → Trigger render()
- * - notification_count_changed → Update badge with count
- * - notification_marked_read → Trigger render()
- * 
- * EXPECTED STRUCTURE (from NotificationModule):
- * notification = {
- *     id: string,
- *     title: string,
- *     body: string,
- *     timestamp: ISO string,
- *     read: boolean,
- *     data: {id, url, ...}
- * }
- * =========================================================================
- */
+
 
 const NotificationPanelRenderer = (function() {
     // 1. CHỈ LƯU SELECTOR (CHUỖI), KHÔNG LƯU DOM ELEMENT
@@ -42,52 +14,43 @@ const NotificationPanelRenderer = (function() {
         emptyState: '#notificationEmptyState'
     };
 
-    let isInitialized = false;
+    let initialized = false;
 
     // =========================================================================
     // 2. PUBLIC API
     // =========================================================================
 
     function init() {
-        if (isInitialized) return;
+        if (initialized) return;
         render();
 
-        // Đăng ký sự kiện
-        _setupEventListeners();
-
-        isInitialized = true;
+        initialized = true;
     }
 
     // =========================================================================
     // 3. CORE RENDERING (CÓ SAFETY GUARD)
     // =========================================================================
 
-    function render() {
-        // ★ SAFETY GUARD 1: Tìm element ngay tại thời điểm render
+    function render(notifications, unreadCount) {
+        // ★ SAFETY GUARD: Tìm element ngay tại thời điểm render
         const listEl = document.querySelector(SELECTORS.list);
-        
-        // Nếu vẫn không tìm thấy -> Dừng ngay, không làm gì cả (Chống Crash)
         if (!listEl) {
             console.error('[UI] ❌ LỖI: Không tìm thấy #notificationList trong DOM!');
-            return; 
+            return;
         }
 
-        // Lấy dữ liệu an toàn
-        const notifications = (window.getAllNotifications && typeof window.getAllNotifications === 'function') 
-                            ? window.getAllNotifications(50) 
-                            : [];
-        
-        const unreadCount = (window.getUnreadNotificationCount && typeof window.getUnreadNotificationCount === 'function')
-                            ? window.getUnreadNotificationCount()
-                            : 0;
+        // ★ Fallback: Nếu gọi không có tham số (ví dụ từ waitForUI → init()), lấy từ window.*
+        const items = Array.isArray(notifications)
+            ? notifications
+            : (window.getAllNotifications?.() ?? []);
+        const count = (unreadCount != null)
+            ? unreadCount
+            : (window.getUnreadNotificationCount?.() ?? 0);
 
-        // 1. Update Badge & Header (Nếu tìm thấy)
-        _updateBadges(unreadCount);
+        _updateBadges(count);
+        listEl.innerHTML = '';
 
-        // 2. Render List (Bây giờ chắc chắn listEl đã tồn tại)
-        listEl.innerHTML = ''; 
-
-        if (notifications.length === 0) {
+        if (items.length === 0) {
             _showEmptyState(true);
             return;
         }
@@ -95,59 +58,37 @@ const NotificationPanelRenderer = (function() {
         _showEmptyState(false);
 
         const fragment = document.createDocumentFragment();
-        notifications.forEach(notif => {
-            const item = _createNotificationItem(notif);
-            fragment.appendChild(item);
+        items.forEach(notif => {
+            fragment.appendChild(_createNotificationItem(notif));
         });
 
         listEl.appendChild(fragment);
     }
 
+
     // =========================================================================
-    // 4. EVENT HANDLERS
+    // 4. APPEND (New realtime item – không render lại toàn bộ)
     // =========================================================================
 
-    function _setupEventListeners() {
-        // Lắng nghe sự kiện từ Module Logic
-        window.addEventListener('notification_received', () => {
-            render();
-        });
+    /**
+     * Thêm một item mới lên đầu danh sách mà không render lại toàn bộ.
+     * Dùng cho thông báo realtime đến sau khi đã render lần đầu.
+     *
+     * @param {Object} notif        - Notification object
+     * @param {number} unreadCount  - Số unread mới nhất để cập nhật badge
+     */
+    function appendItem(notif, unreadCount) {
+        const listEl = document.querySelector(SELECTORS.list);
+        if (!listEl) return;
 
-        window.addEventListener('notification_count_changed', (e) => {
-            _updateBadges(e.detail.count);
-        });
+        // Ẩn empty state nếu đang hiện
+        _showEmptyState(false);
 
-        window.addEventListener('notification_marked_read', render);
+        // Tạo item và chèn vào đầu list
+        const item = _createNotificationItem(notif);
+        listEl.insertBefore(item, listEl.firstChild);
 
-        // Gán sự kiện click cho các nút (nếu tìm thấy)
-        const markAllBtn = document.querySelector(SELECTORS.markAllBtn);
-        if (markAllBtn) {
-            markAllBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (window.markAllNotificationsAsRead) window.markAllNotificationsAsRead();
-            });
-        }
-
-        const clearAllBtn = document.querySelector(SELECTORS.clearAllBtn);
-        if (clearAllBtn) {
-            clearAllBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (confirm('Xóa toàn bộ thông báo?')) {
-                    if (window.clearAllNotifications && typeof window.clearAllNotifications === 'function') {
-                        window.clearAllNotifications();
-                        // ★ FIX: Cập nhật UI ngay sau khi xóa
-                        setTimeout(() => {
-                            render();
-                            console.log('[NotificationPanel] ✓ Đã xóa toàn bộ thông báo');
-                        }, 100);
-                    } else {
-                        console.error('[NotificationPanel] ❌ Hàm clearAllNotifications không tồn tại');
-                    }
-                }
-            });
-        }
+        _updateBadges(unreadCount ?? 0);
     }
 
     // =========================================================================
@@ -156,11 +97,11 @@ const NotificationPanelRenderer = (function() {
 
     function _createNotificationItem(notif) {
         const item = document.createElement('div'); // Hoặc thẻ a tùy cấu trúc
-        item.className = `dropdown-item notification-item ${!notif.read ? 'unread' : ''}`;
+        item.className = `dropdown-item notification-item ${!notif.isRead ? 'unread' : ''}`;
         item.style.cursor = 'pointer';
         
-        const iconClass = _getIconClass(notif.data?.type);
-        const timeString = _formatTime(notif.timestamp);
+        const iconClass = _getIconClass(notif?.type);
+        const timeString = _formatTime(notif.created_at);
 
         item.innerHTML = `
             <div class="d-flex align-items-start p-2">
@@ -169,18 +110,18 @@ const NotificationPanelRenderer = (function() {
                 </div>
                 <div class="notification-content flex-grow-1">
                     <div class="fw-bold text-dark" style="font-size: 0.9rem;">${_escapeHtml(notif.title)}</div>
-                    <div class="small text-muted text-wrap" style="font-size: 0.85rem;">${_escapeHtml(notif.body)}</div>
+                    <div class="small text-muted text-wrap" style="font-size: 0.85rem;">${_escapeHtml(notif.message)}</div>
                     <div class="tiny text-secondary mt-1" style="font-size: 0.75rem;">${timeString}</div>
                 </div>
                 <div class="ms-2">
-                    ${!notif.read ? '<span class="badge bg-primary rounded-circle p-1" style="width:8px; height:8px; display:block;"> </span>' : ''}
+                    ${!notif.isRead ? '<span class="badge bg-primary rounded-circle p-1" style="width:8px; height:8px; display:block;"> </span>' : ''}
                 </div>
             </div>
         `;
 
         item.addEventListener('click', (e) => {
-            if (!notif.read && window.markNotificationAsRead) {
-                window.markNotificationAsRead(notif.id);
+            if (!notif.isRead && A.NotificationManager) {
+                A.NotificationManager.markAsRead(notif.id);
             }
             if (notif.data?.url && notif.data.url !== '/') {
                 window.location.href = notif.data.url;
@@ -221,7 +162,11 @@ const NotificationPanelRenderer = (function() {
             'booking': 'fa-solid fa-ticket text-primary',
             'payment': 'fa-solid fa-money-bill-wave text-success',
             'cancel': 'fa-solid fa-ban text-danger',
-            'warning': 'fa-solid fa-triangle-exclamation text-warning'
+            'warning': 'fa-solid fa-triangle-exclamation text-warning',
+            'success': 'fa-solid fa-check-circle text-success',
+            'new': 'fa-solid fa-star text-info',
+            'modify': 'fa-solid fa-pen-to-square text-secondary',
+            'info': 'fa-solid fa-info-circle text-info'
         };
         return map[type] || 'fa-solid fa-bell text-info';
     }
@@ -255,7 +200,7 @@ const NotificationPanelRenderer = (function() {
         return unsafe.replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    return { init, render };
+    return { init, render, appendItem, updateBadges: _updateBadges };
 })();
 
 // =========================================================================
@@ -270,8 +215,10 @@ const NotificationPanelRenderer = (function() {
         if (list) {
             clearInterval(interval);
             NotificationPanelRenderer.init();
-        } else if (attempts > 20) {
+        } else if (attempts > 10) {
             clearInterval(interval); // Time out sau 10s
         }
     }, 500);
 })();
+
+export default NotificationPanelRenderer;

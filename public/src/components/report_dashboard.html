@@ -6,18 +6,25 @@
                     <span class="input-group-text fw-bold text-primary"><i class="fas fa-chart-pie"></i></span>
                     <select class="form-select fw-bold text-primary" id="rpt-type-select"
                         onchange="ReportModule.changeReportType(this.value)">
-                        <optgroup label="1. SALES (Kinh Doanh)">
+                        <optgroup class="sales-only" label="1. SALES (Kinh Doanh)">
                             <option value="SALES_GENERAL">Doanh Thu Tổng Hợp</option>
                             <option value="SALES_SERVICES">Chi tiết theo Dịch vụ</option>
                             <option value="SALES_MATRIX_STAFF">Doanh Thu NV Chi tiết</option>
                         </optgroup>
-                        <optgroup label="2. OPERATOR (Điều Hành)">
+                        <optgroup class="op-only" label="2. OPERATOR (Điều Hành)">
                             <option value="OP_GENERAL">Tổng hợp Điều hành</option>
                             <option value="OP_DEBT_DETAIL">Công nợ chi tiết NCC</option>
                         </optgroup>
-                        <optgroup label="3. FINANCIAL (Tài Chính)">
+                        <optgroup class="acc-only" label="3. FINANCIAL (Tài Chính)">
                             <option value="FIN_GENERAL">Tổng hợp Lợi nhuận</option>
                             <option value="FIN_BY_TYPE">Lợi nhuận theo Loại DV</option>
+                        </optgroup>
+                        <optgroup class="admin-only" label="4. Admin Reports (Error & Debug)">
+                            <option value="ERROR_PAYMENT">Lỗi Booking Thiếu Thanh Toán</option>
+                            <option value="ERROR_SYNC_SA">Lỗi Sync Sales-Acc</option>
+                            <option value="ERROR_BOOKING_DETAILS">Lỗi Booking Details</option>
+                            <option value="ERROR_SYNC_SO">Lỗi Sync Sales-Op</option>
+                            <option value="ERROR_CANCELLED_BOOKING">Lỗi Cập Nhật Booking Đã Hủy</option>
                         </optgroup>
                     </select>
                 </div>
@@ -99,15 +106,15 @@
     </div>
 
     <div class="card shadow-sm mb-3">
-        <div class="card-header bg-white py-2 cursor-pointer" style="cursor: pointer;"
-            onclick="ReportModule.toggleCharts()" title="Click để ẩn/hiện biểu đồ">
+        <div class="card-header  py-2 cursor-pointer" style="cursor: pointer;" onclick="ReportModule.toggleCharts()"
+            title="Click để ẩn/hiện biểu đồ">
             <div class="d-flex justify-content-between align-items-center">
                 <h6 class="mb-0 fw-bold text-primary"><i class="fas fa-chart-line me-2"></i>BIỂU ĐỒ THỐNG KÊ</h6>
                 <i class="fas fa-chevron-up text-muted" id="chart-toggle-icon"></i>
             </div>
         </div>
 
-        <div class="card-body collapse show" id="rpt-chart-container">
+        <div class="card-body collapse" id="rpt-chart-container">
             <div class="row g-3">
                 <div class="col-md-8">
                     <div style="height: 300px; position: relative;">
@@ -130,7 +137,7 @@
                 onkeyup="ReportModule.filterTable(this.value);">
         </div>
         <div class="card-body p-0 table-responsive flex-center">
-            <table class="table table-bordered table-striped table-hover mb-0 small" id="rpt-table">
+            <table class="table table-bordered table-striped table-hover mb-0 small" id="rpt-table" data-collection="">
                 <thead class="bg-light text-dark"></thead>
                 <tbody class="text-center"></tbody>
             </table>

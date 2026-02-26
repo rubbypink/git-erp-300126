@@ -28,15 +28,17 @@ module.exports = {
       RATE_LIMIT_COUNTERS: "rate_limit_counters",
       USER_SUBSCRIPTIONS: "user_subscriptions",
       USER_NOTIFICATION_PREFS: "user_notification_prefs",
+      BOOKINGS: "bookings",
     },
   },
 
   // CORS configuration - whitelist domains
   CORS: [
-    "https://9tripphuquoc.com",
     "https://www.9tripphuquoc.com",
+    "https://9tripphuquoc.com",
     "http://localhost:5000",
     "http://127.0.0.1:5000",
+    "http://127.0.0.1:5500"
   ],
 
   // Cloud Function configuration

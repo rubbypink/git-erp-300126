@@ -9,13 +9,12 @@
 
 class EventManager {
     constructor() {
-        this.isInitialized = false;
+        this._initialized = false;
         this.modules = {};
-        
     }
 
     async init() {
-        if (this.isInitialized) {
+        if (this._initialized) {
             console.warn('[EventManager] Đã khởi tạo rồi, bỏ qua...');
             return;
         }
@@ -31,8 +30,9 @@ class EventManager {
             this._setupNumberInputEvents();
             this._setupBkFormCtm();
             this._setupKeyboardNavEvents();
+            this.setupGlobalEvents();
 
-            this.isInitialized = true;
+            this._initialized = true;
             log('[EventManager] ✅ Tất cả events đã khởi tạo', 'success');
         } catch (err) {
             console.error('[EventManager] ❌ Lỗi khởi tạo:', err);
@@ -253,8 +253,26 @@ class EventManager {
                 const deposit = getNum('BK_Deposit');
                 const balance = grandTotal - deposit;
                 setNum('BK_Balance', balance);
-            }, 1250);
+            }, 500);
         }, true);
+
+        this.on('#tab-form-btn-save-cust', 'click', async (e) => {
+            if (typeof saveCustomer === 'function') {
+                await saveCustomer();
+            }
+        }, true);
+        this.on('#tab-form-btn-new-deposit', 'click', async (e) => {
+            const module = await import('../../../accountant/controller_accountant.js');
+            if (module && module.default) {
+                const AccountantCtrl = module.default;
+                await AccountantCtrl.openTransactionModal('IN');
+                setVal('inp-amount-show', getVal('BK_Deposit') * 1000);
+                const inpBkId = $("[data-field='booking_id']", getE('dynamic-modal-body'));
+                if (inpBkId) {
+                    setVal(inpBkId, getVal('BK_ID'));
+                }
+            }
+        }, true);        
     }
 
     /**
@@ -598,7 +616,86 @@ class EventManager {
         targetEl.dispatchEvent(new Event('change', { bubbles: true }));
         targetEl.dispatchEvent(new Event('input', { bubbles: true }));
     }
-}
 
+    async setupGlobalEvents() {
+        window.addEventListener('beforeunload', () => {
+            log('[EventManager] Trang sắp được tải lại, hủy tất cả subscription...');
+            A.DB.unsubscribeAll();
+            log('[EventManager] ✅ Đã hủy tất cả subscription');
+        });
+
+        // Handler chung cho cả dblclick và longpress
+        const handleRowClick = (e) => {
+            if (!e || !e.target || typeof e.target.closest !== 'function') return;
+            
+            const table = e.target.closest('table');
+            if (!table) return;           
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return;
+
+            const tr = e.target.closest('tr');
+            if (!tr) return;
+            const collection = table.dataset.collection;
+            const trId = tr.id;
+            
+            if (!collection || !trId) return;
+            
+            const isDetailEntry = ['booking_details', 'operator_entries'].includes(collection);
+            
+            if (typeof onGridRowClick === 'function') {
+                onGridRowClick(trId, isDetailEntry);
+            }
+        };
+        
+        // Xử lý dblclick
+        this.on('tr', 'dblclick', (e) => {
+            e.preventDefault();
+            handleRowClick(e);
+        }, true);
+        this.on('tr', 'click', (e) => {
+            const isCtrl = e.ctrlKey || e.metaKey;
+            if (!isCtrl) return;
+            handleRowClick(e);
+        }, true);
+        
+        // Xử lý longpress (chỉ trên mobile)
+        if (window.innerWidth <= 768) {
+            let touchStartTime = 0;
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let currentTr = null;
+            const threshold = 500;
+            
+            document.addEventListener('touchstart', (e) => {
+                const tr = e.target.closest('tr');
+                if (!tr) return;
+                
+                if (e.touches.length > 0) {
+                    touchStartTime = Date.now();
+                    touchStartX = e.touches[0].clientX;
+                    touchStartY = e.touches[0].clientY;
+                    currentTr = tr;
+                }
+            }, { passive: true });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (e.touches.length > 0) {
+                    const moveX = Math.abs(e.touches[0].clientX - touchStartX);
+                    const moveY = Math.abs(e.touches[0].clientY - touchStartY);
+                    if (moveX > 10 || moveY > 10) {
+                        currentTr = null;
+                    }
+                }
+            }, { passive: true });
+            
+            document.addEventListener('touchend', (e) => {
+                if (currentTr && Date.now() - touchStartTime >= threshold) {
+                    handleRowClick({ target: currentTr, currentTarget: currentTr });
+                }
+                currentTr = null;
+            }, { passive: true });
+        }
+    }
+}
 // Export cho ES6 import
 export default EventManager;

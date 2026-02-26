@@ -1,13 +1,12 @@
-/**
- * AccountantController - Module quản lý kế toán (Fixed & Optimized)
- * * Updates:
- * - Fix DOM Timing issue
- * - Advanced Transaction Logic (Check Booking -> Gen ID -> Update Balance)
- * - Fix Filter logic
- * - Added removeVietnameseTones
- */
 
-// --- 1. HELPER FUNCTIONS ---
+// ===================================================================
+// IMPORTS (v9 Modular ES6)
+// ===================================================================
+import { getNewData, migrateBookingTransactions, auditTransactionsChecking } from './accountant_logic.js';
+
+// ===================================================================
+// HELPER FUNCTIONS
+// ===================================================================
 
 function removeVietnameseTones(str) {
     if (!str) return '';
@@ -151,8 +150,8 @@ class AccountantController {
             this.currentEntity = '9trip';
             if(selector) selector.value = '9trip';
         }
-        this.currentTransCol = this.entityConfig[this.currentEntity].trans;
-        this.currentFundCol = this.entityConfig[this.currentEntity].fund;
+        this.currentTransCol = this.entityConfig[this.currentEntity].trans || 'transactions';
+        this.currentFundCol = this.entityConfig[this.currentEntity].fund || 'fund_accounts';
     }
 
     cacheDom() {
@@ -460,7 +459,7 @@ class AccountantController {
 
     // --- TRANSACTION MODAL & SAVE LOGIC (CORE FIX #1) ---
 
-    openTransactionModal(type, id = null) {
+    async openTransactionModal(type, id = null) {
         // Tìm transaction nếu là edit
         const existingData = id ? this.transactions.find(t => t.id === id) : null;
         const isEdit = !!existingData;
@@ -469,7 +468,8 @@ class AccountantController {
         const title = isEdit ? `Sửa Giao Dịch (${id})` : (mode === 'IN' ? 'Lập Phiếu Thu' : 'Lập Phiếu Chi');
         const colorClass = mode === 'IN' ? 'text-success' : 'text-danger';
         const currentUser = window.A && CURRENT_USER ? CURRENT_USER.name || 'Hệ thống' : 'Hệ thống';
-
+        if (!this.funds || this.funds.length === 0) this.funds = await this.getData('fund_accounts') || []; 
+        console.log("Debug: Funds for modal", this.funds);
         // Fund Options
         let fundOptions = this.funds.map(f => 
             `<option value="${f.id}" ${existingData && existingData.fund_source === f.id ? 'selected' : ''}>${f.name} (${formatCurrency(f.balance)})</option>`
@@ -507,8 +507,8 @@ class AccountantController {
                     <div>
                         <label class="form-label fw-bold small">🔄 Trạng thái</label>
                         <select class="form-select form-select-sm w-100" data-field="status" ${isEdit && existingData.status === 'Completed' && !isManager ? 'disabled' : ''}>
-                            <option value="Pending" ${existingData?.status === 'Pending' || !isEdit ? 'selected' : ''}>⏳ Chờ duyệt</option>
-                            <option value="Completed" ${existingData?.status === 'Completed' ? 'selected' : ''}>✅ Hoàn thành</option>
+                            <option value="Pending" ${existingData?.status === 'Pending' ? 'selected' : ''}>⏳ Chờ duyệt</option>
+                            <option value="Completed" ${existingData?.status === 'Completed' || !isEdit ? 'selected' : ''}>✅ Hoàn thành</option>
                             <option value="Planning" ${existingData?.status === 'Planning' ? 'selected' : ''}>📝 Lên Lịchh</option>
                         </select>
                         ${isEdit && existingData.status === 'Completed' && !isManager ? '<div class="form-text text-warning small mt-1"><i class="fas fa-info-circle"></i> Không thể sửa trạng thái khi đã hoàn thành</div>' : ''}
@@ -691,9 +691,9 @@ class AccountantController {
                     }
                 });
             }
-
+            const collectionName = this.currentTransCol || 'transactions';
             // --- 4. TẠO RECORD GIAO DỊCH ---
-            const transRef = db.collection(this.currentTransCol).doc(transId);
+            const transRef = db.collection(collectionName).doc(transId);
             const record = {
                 id: transId,
                 ...data,
@@ -706,7 +706,7 @@ class AccountantController {
                 record.created_at = new Date().toISOString();
                 // Check status để cập nhật quỹ
                 if (data.status === 'Completed') {
-                    const fundRef = db.collection(this.currentFundCol).doc(data.fund_source);
+                    const fundRef = db.collection(this.currentFundCol || 'fund_accounts').doc(data.fund_source);
                     // IN: Balance + amount, OUT: Balance - amount
                     const change = type === 'IN' ? amount : -amount;
                     batch.update(fundRef, { 
@@ -720,6 +720,7 @@ class AccountantController {
             // Commit Batch 1: Lưu giao dịch & Cập nhật Quỹ trước
             await batch.commit(); 
             console.log(`Saved Transaction ${transId}`);
+            A.NotificationManager.sendToSales('GIAO DỊCH MỚI', `Giao dịch ${transId} đã được lưu với số tiền ${formatCurrency(amount)} VNĐ.`);
 
             // --- 5. AGGREGATION (CỘNG DỒN & UPDATE PARENT) ---
             // Bước này chạy riêng sau khi đã lưu transaction thành công
@@ -728,12 +729,12 @@ class AccountantController {
             }
 
             A.Modal.hide();
-            alert("✅ Lưu thành công!");
+            logA("✅ Lưu thành công!", 'success');
             this.refreshData();
 
         } catch (e) {
             console.error(e);
-            alert("Lỗi: " + e.message);
+            logA("❌ Lỗi: " + e.message, 'error');
             btnSave.innerText = 'Lưu lại';
             btnSave.disabled = false;
         }
@@ -772,7 +773,7 @@ class AccountantController {
                 // Lấy total_amount hiện tại để tính balance
                 const bDoc = await bookingRef.get();
                 const totalAmount = parseFloat(bDoc.data().total_amount || 0);
-                const customerName = bDoc.data().customer_name || '';
+                const customerName = bDoc.data().customer_full_name || '';
                 
                 const balance = totalAmount - totalIn;
 
@@ -812,9 +813,307 @@ class AccountantController {
             console.warn("Giao dịch đã lưu nhưng cập nhật số dư Booking thất bại. Hãy kiểm tra lại.");
         }
     }
+
+    /**
+     * Mở modal báo cáo giao dịch
+     * Tải dữ liệu từ logic module và render bảng
+     */
+    async openReportModal() {
+        try {
+            // Lấy template
+            const reportTemplate = document.getElementById('tmpl-report');
+            if (!reportTemplate) {
+                console.error('❌ Không tìm thấy template tmpl-report');
+                return;
+            }
+
+            // Kiểm tra modal cũ, xóa nếu có
+            const oldModal = document.getElementById('acc-report-modal');
+            if (oldModal) oldModal.remove();
+
+            // Clone template content
+            const reportContent = reportTemplate.content.cloneNode(true);
+            
+            // Tạo modal bootstrap chuẩn
+            const modalContainer = document.createElement('div');
+            modalContainer.id = 'acc-report-modal';
+            modalContainer.className = 'modal fade';
+            modalContainer.tabIndex = -1;
+            modalContainer.setAttribute('aria-labelledby', 'reportModalLabel');
+            modalContainer.setAttribute('aria-hidden', 'true');
+            
+            // Modal dialog
+            const modalDialog = document.createElement('div');
+            modalDialog.className = 'modal-dialog modal-lg modal-dialog-scrollable';
+            
+            // Modal content
+            const modalContent = document.createElement('div');
+            modalContent.className = 'modal-content';
+            
+            // Modal header
+            const modalHeader = document.createElement('div');
+            modalHeader.className = 'modal-header bg-light border-bottom';
+            modalHeader.innerHTML = `
+                <h5 class="modal-title" id="reportModalLabel">
+                    <i class="fas fa-file-invoice text-success me-2"></i> Báo Cáo Giao Dịch
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            `;
+            
+            // Modal body
+            const modalBody = document.createElement('div');
+            modalBody.className = 'modal-body p-0';
+            modalBody.appendChild(reportContent);
+            
+            // Assemble modal
+            modalContent.appendChild(modalHeader);
+            modalContent.appendChild(modalBody);
+            modalDialog.appendChild(modalContent);
+            modalContainer.appendChild(modalDialog);
+            
+            // Append vào body
+            document.body.appendChild(modalContainer);
+
+            // Render dữ liệu
+            await this.renderReportData();
+            
+            // Show modal bằng Bootstrap API
+            const bsModal = new bootstrap.Modal(modalContainer, {
+                backdrop: true,
+                keyboard: true,
+                focus: true
+            });
+            bsModal.show();
+
+            // Bind event listeners
+            this.setupReportEventListeners();
+
+        } catch (e) {
+            console.error("❌ Report Modal Error:", e);
+            alert('Lỗi mở báo cáo: ' + e.message);
+        }
+    }
+
+    /**
+     * Render dữ liệu báo cáo vào bảng
+     */
+    async renderReportData() {
+        try {
+            // Gọi hàm từ accountant_logic để tải dữ liệu
+            const hasData = await getNewData();
+            if (!hasData) {
+                console.warn('⚠️ Không có dữ liệu từ getNewData');
+            }
+
+            // Lấy dữ liệu từ cache
+            const allTransactions = window.A?.DATA?.checkingTransactions || [];
+            const tbody = document.getElementById('report-table-body');
+            
+            if (!tbody) return;
+
+            // Xóa loading state
+            tbody.innerHTML = '';
+
+            if (allTransactions.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="12" class="text-center text-muted py-4">Không có dữ liệu</td></tr>`;
+                return;
+            }
+
+            // Render bảng
+            let totalIn = 0, totalOut = 0, totalAmount = 0;
+            
+            allTransactions.forEach(trans => {
+                const amount = parseFloat(trans.amount || 0);
+                const isIn = trans.type === 'IN';
+                if (isIn) totalIn += amount;
+                else totalOut += amount;
+                totalAmount += amount;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="ps-3">${trans.id || ''}</td>
+                    <td class="text-center">
+                        <span class="badge ${isIn ? 'bg-success' : 'bg-danger'}">
+                            ${isIn ? '📥 IN' : '📤 OUT'}
+                        </span>
+                    </td>
+                    <td class="text-center">${trans.transaction_date ? trans.transaction_date.substring(0, 10) : ''}</td>
+                    <td class="text-center">${trans.created_at ? new Date(trans.created_at).toLocaleDateString('vi-VN') : ''}</td>
+                    <td class="text-end fw-bold ${isIn ? 'text-success' : 'text-danger'}">
+                        ${isIn ? '+' : '-'} ${formatCurrency(amount)}
+                    </td>
+                    <td>${trans.description || ''}</td>
+                    <td class="small">${trans.category || ''}</td>
+                    <td class="small">${trans.booking_id || '-'}</td>
+                    <td class="small">${trans.fund_source || '-'}</td>
+                    <td class="text-center small">
+                        <span class="badge ${trans.status === 'Completed' ? 'bg-success' : 'bg-warning'}">
+                            ${trans.status || ''}
+                        </span>
+                    </td>
+                    <td class="small">${trans.created_by || ''}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="window.AccountantCtrl.openTransactionModal('${trans.type}', '${trans.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Update totals
+            document.getElementById('report-total-records').textContent = allTransactions.length;
+            document.getElementById('report-total-in').textContent = formatCurrency(totalIn);
+            document.getElementById('report-total-out').textContent = formatCurrency(totalOut);
+            document.getElementById('report-balance').textContent = formatCurrency(totalIn - totalOut);
+
+        } catch (e) {
+            console.error("Render Report Error:", e);
+            const tbody = document.getElementById('report-table-body');
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="12" class="text-center text-danger">Lỗi tải dữ liệu: ${e.message}</td></tr>`;
+            }
+        }
+    }
+
+    /**
+     * Setup event listeners cho report modal
+     */
+    setupReportEventListeners() {
+        try {
+            // Period filter
+            const periodSelect = document.getElementById('report-filter-period');
+            const customDateRow = document.getElementById('report-custom-date-row');
+            if (periodSelect) {
+                periodSelect.addEventListener('change', (e) => {
+                    if (customDateRow) {
+                        customDateRow.style.display = e.target.value === 'custom' ? 'block' : 'none';
+                    }
+                });
+            }
+
+            // Apply filter button
+            const applyBtn = document.getElementById('btn-apply-report-filter');
+            if (applyBtn) {
+                applyBtn.addEventListener('click', () => {
+                    this.applyReportFilters();
+                });
+            }
+
+            // Reset filter button
+            const resetBtn = document.getElementById('btn-reset-report-filter');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', () => {
+                    this.renderReportData();
+                });
+            }
+
+            // Report type filter
+            const typeSelect = document.getElementById('report-type-select');
+            if (typeSelect) {
+                typeSelect.addEventListener('change', () => {
+                    this.applyReportFilters();
+                });
+            }
+
+        } catch (e) {
+            console.error("Setup Report Listeners Error:", e);
+        }
+    }
+
+    /**
+     * Áp dụng các bộ lọc cho báo cáo
+     */
+    applyReportFilters() {
+        try {
+            const typeFilter = document.getElementById('report-type-select')?.value || 'all';
+            const periodFilter = document.getElementById('report-filter-period')?.value || 'month';
+            const keyword = document.getElementById('report-filter-keyword')?.value || '';
+            const fundFilter = document.getElementById('report-filter-fund')?.value || '';
+
+            const allTransactions = window.A?.DATA?.checkingTransactions || [];
+            let filtered = allTransactions;
+
+            // Filter by type
+            if (typeFilter !== 'all') {
+                filtered = filtered.filter(t => t.type === typeFilter.toUpperCase());
+            }
+
+            // Filter by keyword
+            if (keyword) {
+                const lowerKeyword = keyword.toLowerCase();
+                filtered = filtered.filter(t => 
+                    (t.id && t.id.toLowerCase().includes(lowerKeyword)) ||
+                    (t.description && t.description.toLowerCase().includes(lowerKeyword)) ||
+                    (t.booking_id && t.booking_id.toLowerCase().includes(lowerKeyword))
+                );
+            }
+
+            // Filter by fund
+            if (fundFilter) {
+                filtered = filtered.filter(t => t.fund_source === fundFilter);
+            }
+
+            // Render filtered data
+            const tbody = document.getElementById('report-table-body');
+            if (!tbody) return;
+
+            tbody.innerHTML = '';
+            let totalIn = 0, totalOut = 0;
+
+            filtered.forEach(trans => {
+                const amount = parseFloat(trans.amount || 0);
+                const isIn = trans.type === 'IN';
+                if (isIn) totalIn += amount;
+                else totalOut += amount;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="ps-3">${trans.id || ''}</td>
+                    <td class="text-center">
+                        <span class="badge ${isIn ? 'bg-success' : 'bg-danger'}">
+                            ${isIn ? '📥 IN' : '📤 OUT'}
+                        </span>
+                    </td>
+                    <td class="text-center">${trans.transaction_date ? trans.transaction_date.substring(0, 10) : ''}</td>
+                    <td class="text-center">${trans.created_at ? new Date(trans.created_at).toLocaleDateString('vi-VN') : ''}</td>
+                    <td class="text-end fw-bold ${isIn ? 'text-success' : 'text-danger'}">
+                        ${isIn ? '+' : '-'} ${formatCurrency(amount)}
+                    </td>
+                    <td>${trans.description || ''}</td>
+                    <td class="small">${trans.category || ''}</td>
+                    <td class="small">${trans.booking_id || '-'}</td>
+                    <td class="small">${trans.fund_source || '-'}</td>
+                    <td class="text-center small">
+                        <span class="badge ${trans.status === 'Completed' ? 'bg-success' : 'bg-warning'}">
+                            ${trans.status || ''}
+                        </span>
+                    </td>
+                    <td class="small">${trans.created_by || ''}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="window.AccountantCtrl.openTransactionModal('${trans.type}', '${trans.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Update totals
+            document.getElementById('report-total-records').textContent = filtered.length;
+            document.getElementById('report-total-in').textContent = formatCurrency(totalIn);
+            document.getElementById('report-total-out').textContent = formatCurrency(totalOut);
+            document.getElementById('report-balance').textContent = formatCurrency(totalIn - totalOut);
+
+        } catch (e) {
+            console.error("Apply Report Filters Error:", e);
+        }
+    }
 }
 
-// Khởi tạo
+// ===================================================================
+// INITIALIZATION
+// ===================================================================
 window.AccountantCtrl = new AccountantController();
 window.AccountantCtrl.init(); // Gọi init ngay
-export default window.AccountantCtrl;
+export default AccountantCtrl;

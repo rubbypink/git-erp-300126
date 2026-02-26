@@ -224,6 +224,7 @@ export default class ServicePriceController {
     };
     
     constructor(containerId) {
+        this._initialized = false;
         this.containerId = containerId;
         this.container = document.getElementById(containerId);
         if (!this.container) throw new Error("Missing container");
@@ -252,7 +253,11 @@ export default class ServicePriceController {
      */
     static init(containerId, isForce = false) {
         let instance;
-        
+        if (this._initialized) {
+            console.warn('[EventManager] Đã khởi tạo rồi, bỏ qua...');
+            return;
+        }
+        this._initialized = true;
         // ─────────────────────────────────────────────────────────────
         // STEP 1: Determine instance (reuse old or create new)
         // ─────────────────────────────────────────────────────────────
@@ -357,9 +362,9 @@ export default class ServicePriceController {
             try {
                 // ─────────────────────────────────────────────────────────────
                 // Try to get suppliers from global APP_DATA
-                // APP_DATA.suppliers_obj structure: [{id, name, ...}, ...]
+                // Object.values(APP_DATA.suppliers) structure: [{id, name, ...}, ...]
                 // ─────────────────────────────────────────────────────────────
-                suppliers = window.APP_DATA?.suppliers_obj || [];
+                suppliers = window.Object.values(APP_DATA.suppliers) || [];
 
                 // Convert to standard format if needed
                 suppliers = suppliers.map(s => ({

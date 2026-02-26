@@ -1,6 +1,6 @@
 <template id="tmpl-dashboard">
   <div class="container-fluid p-0">
-    <div class="bg-white p-2 mb-2 shadow-sm rounded d-flex align-items-center justify-content-between">
+    <div class=" p-2 mb-2 shadow-sm rounded d-flex align-items-center justify-content-between">
       <h6 class="m-0 text-uppercase fw-bold text-primary"><i class="fa-solid fa-gauge me-2"></i>Trung Tâm Điều Hành</h6>
       <div class="d-flex align-items-center gap-2">
         <span class="small text-muted desktop-only">Giai đoạn:</span>
@@ -22,10 +22,11 @@
         <div class="card shadow-sm h-100 border-0">
           <div class="card-header bg-primary text-white py-1 d-flex justify-content-between align-items-center">
             <small class="fw-bold">BOOKING MỚI (14 ngày qua)</small>
-            <span class="badge bg-white text-primary" id="badge-new-bk">0</span>
+            <span class="badge  text-primary" id="badge-new-bk">0</span>
           </div>
           <div class="card-body p-0 border-bottom" style="height: 38vh; overflow-y: auto;">
-            <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-new-bk">
+            <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-new-bk"
+              data-collection="bookings">
               <thead class="table-light table-bordered sticky-top" style="z-index: 10;">
                 <tr>
                   <th>ID</th>
@@ -47,10 +48,11 @@
         <div class="card shadow-sm h-100 border-0">
           <div class="card-header bg-danger text-white py-1 d-flex justify-content-between align-items-center">
             <small class="fw-bold">CHƯA ĐẶT DỊCH VỤ (Missing Supplier)</small>
-            <span class="badge bg-white text-danger" id="badge-missing-supplier">0</span>
+            <span class="badge  text-danger" id="badge-missing-supplier">0</span>
           </div>
           <div class="card-body p-0 border-bottom" style="height: 38vh; overflow-y: auto;">
-            <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-missing">
+            <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-missing"
+              data-collection="operator_entries">
               <thead class="table-light sticky-top" style="z-index: 10;">
                 <tr>
                   <th>SID</th>
@@ -72,7 +74,7 @@
     <div class="row g-2">
       <div class="col-md-6">
         <div class="card shadow-sm h-100 border-0">
-          <div class="card-header bg-white py-1 border-bottom">
+          <div class="card-header  py-1 border-bottom">
             <div class="d-flex justify-content-between align-items-center">
               <small class="fw-bold text-dark border-start border-4 border-warning ps-2">CÔNG NỢ THEO NCC</small>
               <div class="small fw-bold text-danger">Còn lại: <span id="sum-supplier-bal">0</span></div>
@@ -96,7 +98,7 @@
 
       <div class="col-md-6">
         <div class="card shadow-sm h-100 border-0">
-          <div class="card-header bg-white py-1 border-bottom">
+          <div class="card-header  py-1 border-bottom">
             <div class="d-flex justify-content-between align-items-center">
               <small class="fw-bold text-dark border-start border-4 border-info ps-2">CHI PHÍ THEO LOẠI DV</small>
               <div class="small fw-bold text-danger">Còn lại: <span id="sum-type-bal">0</span></div>

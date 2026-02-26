@@ -64,7 +64,7 @@ const TABLE_DISPLAY_MAP = {
 const TABLE_HIDDEN_FIELDS = {
 	'bookings':  ['created_at', 'customer_id'],
 	'booking_details': ['id', 'booking_id'], 
-	'operator_entries': ['id', 'booking_id', 'customer_name'], 
+	'operator_entries': ['id', 'booking_id', 'customer_full_name'], 
 	'customers': ['created_at'],
 	'suppliers':  ['created_at'],
 	'users': ['created_at'],
@@ -146,7 +146,7 @@ const setupMainFormUI = function(lists) {
 	fillDataList('list-tours', lists.tours);
 
 	// --- SỬA LỖI READING 1 TẠI ĐÂY ---
-	const customers = window.APP_DATA.customers_obj || window.APP_DATA.customers || [];
+	const customers = window.Object.values(APP_DATA.customers) || window.Object.values(APP_DATA.customers) || [];
 	if (customers.length > 0) {
 		let phones = [];
 		let names = [];
@@ -287,21 +287,17 @@ function selectTab(targetTabId) {
 	if (targetTabId === 'tab-theme-content') {
 		setClass($(targetTabId), 'd-none', false);
 		setClass($('#tab-shortcut-content'), 'd-none', true);
-		setClass($('#tab-users-content'), 'd-none', true);
-		setClass($('#tab-users-content'), 'admin-only', false); 
+
 		A.Modal.setSaveHandler(saveThemeSettings, 'Áp Dụng Theme');
 		A.Modal.setResetHandler(THEME_MANAGER.resetToDefault, 'Đặt Lại');
 	} else if (targetTabId === 'tab-shortcut-content') {
 		setClass($(targetTabId), 'd-none', false);
 		setClass($('#tab-theme-content'), 'd-none', true);
-		setClass($('#tab-users-content'), 'd-none', true);  
-		setClass($('#tab-users-content'), 'admin-only', false);            
+        
 		A.Modal.setSaveHandler(saveShortcutsConfig, 'Lưu Phím Tắt');
 		A.Modal.setResetHandler(() => {}, 'Đặt Lại');
-	} else if (targetTabId === 'tab-users-content') {
-		setClass($(targetTabId), 'd-none', false);
-		setClass($('#tab-theme-content'), 'd-none', true);
-		setClass($('#tab-shortcut-content'), 'd-none', true);              
+	} else if (targetTabId === 'tab-admin-users') {
+		setClass($(targetTabId), 'd-none', false);           
 		A.Auth.renderUsersConfig();
 		A.Modal.setSaveHandler(A.Auth.saveUser, 'Lưu User');
 		A.Modal.setResetHandler(() => {
@@ -460,6 +456,7 @@ function renderGrid(dataList, table) {
 		const tr = document.createElement('tr');
 		tr.className = "align-middle";
 		
+		
 		// Cột STT (Tính theo trang nếu có phân trang)
 		let stt = idx + 1;
 		if(typeof PG_STATE !== 'undefined') stt = ((PG_STATE.currentPage - 1) * PG_STATE.limit) + idx + 1;
@@ -499,12 +496,13 @@ function renderGrid(dataList, table) {
 			rowId = row[0];
 			if (CURRENT_TABLE_KEY === "booking_details" || CURRENT_TABLE_KEY === "operator_entries") rowId = row[1]; // Details lấy cột 1 (BK_ID)
 		}
+		tr.id = rowId;
 		
-		tr.onclick = (e) => {
-			const isCtrl = e.ctrlKey || e.metaKey;
-			if(!isCtrl) return; // Phải có Ctrl mới mở chi tiết
-			if(typeof onGridRowClick === 'function') onGridRowClick(rowId);
-		};
+		// tr.onclick = (e) => {
+		// 	const isCtrl = e.ctrlKey || e.metaKey;
+		// 	if(!isCtrl) return; // Phải có Ctrl mới mở chi tiết
+		// 	if(typeof onGridRowClick === 'function') onGridRowClick(rowId);
+		// };
 		
 		tr.onmouseover = function() { this.classList.add('table-active'); };
 		tr.onmouseout = function() { this.classList.remove('table-active'); };
@@ -513,6 +511,7 @@ function renderGrid(dataList, table) {
 	});
 
 	tbody.appendChild(docFrag);
+	table.dataset.collection = CURRENT_TABLE_KEY; // Gắn collection vào dataset của table để tiện truy xuất sau này
 }
 
 // =========================================================================
@@ -593,6 +592,62 @@ function renderPaginationControls(container) {
 	container.innerHTML = html;
 }
 
+/**
+ * Setup longpress event handler on element
+ * Triggers on sustained touch/mouse press without significant movement
+ * Similar to dblclick but works on mobile via touch
+ * @param {HTMLElement} element - Target element
+ * @param {Function} callback - Handler function to call on longpress
+ * @param {number} [threshold=500] - Milliseconds for longpress detection
+ */
+function setupLongPress(element, callback, threshold = 500) {
+	let touchStartTime = 0;
+	let touchStartX = 0;
+	let touchStartY = 0;
+	let isValidPress = false;
+	let isMobile = window.innerWidth <= 768; // Simple mobile detection
+	if (!isMobile) return; // Only setup on mobile devices
+	// Touch events
+	element.addEventListener('touchstart', (e) => {
+		if (e.touches.length > 0) {
+			touchStartTime = Date.now();
+			touchStartX = e.touches[0].clientX;
+			touchStartY = e.touches[0].clientY;
+			isValidPress = true;
+		}
+	}, { passive: true });
+
+	element.addEventListener('touchmove', (e) => {
+		if (e.touches.length > 0) {
+			const moveX = Math.abs(e.touches[0].clientX - touchStartX);
+			const moveY = Math.abs(e.touches[0].clientY - touchStartY);
+			// Cancel longpress if user moves > 10px
+			if (moveX > 10 || moveY > 10) {
+				isValidPress = false;
+			}
+		}
+	}, { passive: true });
+
+	element.addEventListener('touchend', (e) => {
+		if (isValidPress && Date.now() - touchStartTime >= threshold) {
+			callback(e);
+		}
+		isValidPress = false;
+	}, { passive: true });
+
+	// Pointer events (desktop + stylus support)
+	let pointerDownTime = 0;
+	element.addEventListener('pointerdown', () => {
+		pointerDownTime = Date.now();
+	});
+
+	element.addEventListener('pointerup', (e) => {
+		if (Date.now() - pointerDownTime >= threshold) {
+			callback(e);
+		}
+	});
+}
+
 // =========================================================================
 // 6. RENDER DATA (Main Entry for List Tab)
 // =========================================================================
@@ -615,23 +670,11 @@ function renderTableByKey(key, tblId) {
 		let useObjectFormat = false;
 		
 		// 1. Check for object-based data (new)
-		if (APP_DATA[key + '_obj'] && Array.isArray(APP_DATA[key + '_obj']) && APP_DATA[key + '_obj'].length > 0) {
-			dataToRender = [...APP_DATA[key + '_obj']];
-			dataKey = key + '_obj';
+		if (APP_DATA[key] && Object.values(APP_DATA[key]).length > 0) {
+			dataToRender = Object.values([...Object.values(APP_DATA[key])]);
+			dataKey = key + '';
 			useObjectFormat = true;
 			log(`[GRID] Using object-based data for [${key}]`);
-		}
-		// 2. Fallback to array-based data (legacy)
-		else if (APP_DATA[key] && Array.isArray(APP_DATA[key]) && APP_DATA[key].length > 0) {
-			dataToRender = [...APP_DATA[key]];
-			// For array data with header, extract data rows
-			if (dataToRender.length > 0 && Array.isArray(dataToRender[0]) && dataToRender[0][0] && typeof dataToRender[0][0] === 'string') {
-				const headerRow = dataToRender.shift();
-				generateGridCols(headerRow);
-			} else {
-				// Data is already without header or in object format
-				generateGridCols(dataToRender[0]);
-			}
 		}
 		
 		if (dataToRender && dataToRender.length > 0) {
@@ -714,15 +757,12 @@ function updateFilterOptions() {
 	let sourceData = [];
 	
 	// ✅ NEW: Support both array and object formats
-	const objectKey = CURRENT_TABLE_KEY + '_obj';
+	const objectKey = CURRENT_TABLE_KEY + '';
 	
-	if (APP_DATA[objectKey] && Array.isArray(APP_DATA[objectKey])) {
+	if (Object.values(APP_DATA[objectKey]) && Array.isArray(Object.values(APP_DATA[objectKey]))) {
 		// Object-based format (new)
-		sourceData = APP_DATA[objectKey];
-	} else if (APP_DATA[CURRENT_TABLE_KEY] && Array.isArray(APP_DATA[CURRENT_TABLE_KEY])) {
-		// Array-based format (legacy)
-		sourceData = stripHeaderIfAny(APP_DATA[CURRENT_TABLE_KEY].slice());
-	}
+		sourceData = Object.values(APP_DATA[objectKey]);
+	} 
 
 	if(sourceData.length === 0) return;
 
@@ -761,7 +801,7 @@ function updateFilterOptions() {
  */
 function initBtnSelectDataList(data) {
 	if (!data) data = APP_DATA;
-	const selectElem = document.getElementById('btn-select-datalist');
+	const selectElem = getE('btn-select-datalist');
 	if (!selectElem) return;
 
 	selectElem.innerHTML = '';
@@ -781,10 +821,9 @@ function initBtnSelectDataList(data) {
 		}
 
 		// ✅ IMPROVE: Check both object format (new) and array format (legacy)
-		const hasObjectData = data && data[key + '_obj'] && Array.isArray(data[key + '_obj']) && data[key + '_obj'].length > 0;
-		const hasArrayData = data && data[key] && Array.isArray(data[key]) && data[key].length > 0;
+		const hasObjectData = data && data[key] && Object.values(data[key]).length > 0;
 
-		if (hasObjectData || hasArrayData) {
+		if (hasObjectData) {
 			const opt = document.createElement('option');
 			opt.value = key;
 			opt.textContent = label;
@@ -798,15 +837,39 @@ function initBtnSelectDataList(data) {
 		selectElem.disabled = true;
 	} else {
 		selectElem.disabled = false;
-		if (data['bookings'] || data['bookings_obj']) {
+		if (data['bookings']) {
 			selectElem.value = 'bookings';
 		}
+	}
+
+	if (selectElem) {
+		// Clone Node để xóa event cũ tránh gán chồng
+		const newSelect = selectElem.cloneNode(true); 
+		selectElem.parentNode.replaceChild(newSelect, selectElem);
+		
+		newSelect.addEventListener('change', function(e) {
+			const el = e.target;
+			const selectedKey = el.value;
+			CURRENT_TABLE_KEY = selectedKey; 
+			// renderTableByKey là hàm cũ của bạn, nó sẽ tự switch case 
+			// để chọn Object.values(APP_DATA.booking_details) hay Object.values(APP_DATA.bookings)
+			renderTableByKey(selectedKey);
+			$('#tbl-container-tab2').dataset.collection = selectedKey; // Cập nhật dataset để filter hoạt động đúng 
+		});
+
+		// Render mặc định: Ưu tiên hiển thị bảng Bookings
+		renderTableByKey(newSelect.value || 'bookings');
+	} else {
+		// Fallback nếu không có nút chọn
+		renderTableByKey('bookings');
 	}
 }
 
 // =========================================================================
 // 8. DASHBOARD RENDERER (Logic vẽ biểu đồ)
 // =========================================================================
+
+
 
 function initDashboard() {
 	if (CURRENT_USER?.role === 'acc' || CURRENT_USER?.role === 'acc_thenice') return; 
@@ -822,7 +885,7 @@ function initDashboard() {
 }
 
 function renderDashboard() {
-	if (!APP_DATA || !APP_DATA.bookings) return;
+	if (!APP_DATA || !Object.values(APP_DATA.bookings)) return;
 	
 	// Render các bảng con
 	renderDashTable1();
@@ -836,33 +899,43 @@ function renderDashTable1() {
 	if(!tbody) return;
 	tbody.innerHTML = '';
 
-	const bookings = APP_DATA.bookings.reverse();
+	const bookings = Object.values(APP_DATA.bookings);
 	const limitDate = new Date(); limitDate.setDate(limitDate.getDate() - 14);
 	let count = 0;
 
 	bookings.forEach(row => {
 		// Cột 1 là CreatedAt (COL_INDEX.M_CREATED)
-		const dStr = row[COL_INDEX.M_CREATED] || row[COL_INDEX.M_START];
-		const dCreated = new Date(dStr);
-		const balClass = row[COL_INDEX.M_DEPOSIT] > 0 ? 'text-danger fw-bold' : 'text-success';
-		if (dCreated >= limitDate) {
+		const dStr = row.end_date || row.created_at || row.start_date; // Ưu tiên END, nếu không có thì CREATED, nếu không có nữa thì START
+		const dDate = new Date(dStr);
+		const balClass = row.deposit_amount > 0 ? 'text-danger fw-bold' : 'text-success';
+		if (dDate >= limitDate && dDate <= new Date()) {
 			count++;
 			const tr = document.createElement('tr');
 			tr.innerHTML = `
-				<td class="text-center">${row[COL_INDEX.M_ID]}</td>
-				<td class="fw-bold text-primary text-center">${row[COL_INDEX.M_CUST]}</td>
-				<td class="text-center">${formatDateVN(row[COL_INDEX.M_START])}</td>
-				<td class="text-center text-success">${formatMoney(row[COL_INDEX.M_TOTAL])}</td>
-				<td class="text-center ${balClass}">${formatMoney(row[COL_INDEX.M_DEPOSIT])}</td>
-				<td class="small text-center">${row[COL_INDEX.M_STATUS]}</td>
-				<td class="small text-center">${row[COL_INDEX.M_STAFF]}</td>
+				<td class="text-center">${row.id}</td>
+				<td class="fw-bold text-primary text-center">${row.customer_full_name}</td>
+				<td class="text-center">${formatDateVN(row.end_date || row.created_at || row.start_date)}</td>
+				<td class="text-center text-success">${formatMoney(row.total_amount)}</td>
+				<td class="text-center ${balClass}">${formatMoney(row.deposit_amount)}</td>
+				<td class="small text-center"><at-status status="${row.status}"></at-status></td>
+				<td class="small text-center">${row.staff_id}</td>
 			`;
 			tr.style.cursor = 'pointer';
-			tr.onclick = (e) => {
-				const isCtrl = e.ctrlKey || e.metaKey;
-				if(!isCtrl) return;
-				handleDashClick(row[COL_INDEX.M_ID], false);
-			} 
+			tr.id = row.id; // Gán ID cho tr để dễ lấy khi click
+			// onEvent(tr, 'click', (e) => {
+			// 	const isCtrl = e.ctrlKey || e.metaKey;
+			// 	if(!isCtrl) return;
+			// 	handleDashClick(row.id, false);
+			// });
+				// onEvent(tr, 'dblclick', (e) => {
+				// 	e.preventDefault();
+				// 	handleDashClick(row.id, false);
+				// });
+				// // Longpress support on mobile (similar to dblclick)
+				// setupLongPress(tr, (e) => {
+				// 	e.preventDefault?.();
+				// 	handleDashClick(row.id, false);
+				// });			
 			tbody.appendChild(tr);
 		}
 	});
@@ -877,34 +950,40 @@ function renderDashTable2() {
 	
 	// Tạo map tên khách
 	const bookingsMap = {};
-	if (APP_DATA.bookings) APP_DATA.bookings.forEach(r => { if(r[0]) bookingsMap[r[0]] = r[COL_INDEX.M_CUST]; });
+	if (Object.values(APP_DATA.bookings)) Object.values(Object.values(Object.values(APP_DATA.bookings))).forEach(r => { if(r.id) bookingsMap[r.id] = r.customer_full_name; });
 
 	const today = new Date(); today.setHours(0,0,0,0);
-	const raw = APP_DATA.booking_details;
+	const raw = Object.values(APP_DATA.booking_details);
 	
 	const list = raw.filter(r => {
-		const type = r[COL_INDEX.D_TYPE];
-		const code = r[COL_INDEX.D_CODE];
-		const dIn = new Date(r[COL_INDEX.D_IN]);
+		const type = r.service_type;
+		const code = r.ref_code;
+		const dIn = new Date(r.check_in);
 		return (!type || type.trim() === 'Phòng') && !code && dIn >= today;
-	}).sort((a,b) => new Date(a[COL_INDEX.D_IN]) - new Date(b[COL_INDEX.D_IN]));
+	}).sort((a,b) => new Date(a.check_in) - new Date(b.check_in));
 
 	list.forEach(r => {
-		const custName = bookingsMap[r[COL_INDEX.D_BKID]] || '---';
+		const custName = bookingsMap[r.booking_id] || '---';
 		const tr = document.createElement('tr');
 		tr.innerHTML = `
-			<td>${r[COL_INDEX.D_SID]}</td>
+			<td>${r.id}</td>
 			<td class="fw-bold text-primary text-truncate" style="max-width:120px" title="${custName}">${custName}</td>
-			<td>${r[COL_INDEX.D_HOTEL]}</td>
-			<td>${r[COL_INDEX.D_SERVICE]}</td>
-			<td class="text-center">${formatDateVN(r[COL_INDEX.D_IN])}</td>
+			<td>${r.hotel_name}</td>
+			<td>${r.service_name}</td>
+			<td class="text-center">${formatDateVN(r.check_in)}</td>
 		`;
 		tr.style.cursor = 'pointer';
-		tr.onclick = (e) => {
-			const isCtrl = e.ctrlKey || e.metaKey;
-			if(!isCtrl) return;
-			handleDashClick(r[COL_INDEX.D_SID], true);
-		} 
+		tr.id = r.id || r[COL_INDEX.D_SID]; // Gán ID cho tr để dễ lấy khi click
+		// tr.onclick = (e) => {
+		// 	const isCtrl = e.ctrlKey || e.metaKey;
+		// 	if(!isCtrl) return;
+		// 	handleDashClick(tr.id, true);
+		// }
+		// Longpress support on mobile (similar to dblclick)
+		// setupLongPress(tr, (e) => {
+		// 	e.preventDefault?.();
+		// 	handleDashClick(tr.id, true);
+		// }); 
 
 		tbody.appendChild(tr);
 	});
@@ -917,36 +996,41 @@ function renderDashTable3() {
 	if(!tbody) return;
 	tbody.innerHTML = '';
 	
-	const bookings = APP_DATA.bookings.reverse();
+	const bookings = Object.values(APP_DATA.bookings);
 	const today = new Date();
 	const limit = new Date(); limit.setDate(limit.getDate() + 30);
 	let count = 0;
 	
 	bookings.forEach(row => {
-		const dStart = new Date(row[COL_INDEX.M_START]);
-		const balClass = row[COL_INDEX.M_DEPOSIT] > 0 ? 'text-danger fw-bold' : 'text-success';
+		const dStart = new Date(row.start_date);
+		const balClass = row.deposit_amount > 0 ? 'text-danger fw-bold' : 'text-success';
 		if (dStart >= today && dStart <= limit) {
 			count++;
 			const tr = document.createElement('tr');
 			tr.innerHTML = `
-				<td class="text-center">${row[COL_INDEX.M_ID]}</td>
-				<td class="fw-bold text-primary text-center">${row[COL_INDEX.M_CUST]}</td>
-				<td class="text-center">${formatDateVN(row[COL_INDEX.M_START])}</td>
-				<td class="text-center">${formatMoney(row[COL_INDEX.M_TOTAL])}</td>
-				<td class="text-center">${formatMoney(row[COL_INDEX.M_DEPOSIT])}</td>
-				<td class="text-center fw-bold ${balClass}">${formatMoney(row[COL_INDEX.M_BALANCE])}</td>
-				<td class="small text-center">${row[COL_INDEX.M_STAFF]}</td>
+				<td class="text-center">${row.id}</td>
+				<td class="fw-bold text-primary text-center">${row.customer_full_name}</td>
+				<td class="text-center">${formatDateVN(row.start_date)}</td>
+				<td class="text-center">${formatMoney(row.total_amount)}</td>
+				<td class="text-center">${formatMoney(row.deposit_amount)}</td>
+				<td class="text-center fw-bold ${balClass}">${formatMoney(row.balance)}</td>
+				<td class="small text-center">${row.staff_id}</td>
 			`;
 			tr.style.cursor = 'pointer';
-			tr.onclick = (e) => {
-				const isCtrl = e.ctrlKey || e.metaKey;
-				if(!isCtrl) return;
-				handleDashClick(row[COL_INDEX.M_ID], false);
-			} 
+			tr.id = row.id || row[COL_INDEX.M_ID]; // Gán ID cho tr để dễ lấy khi click
+			// tr.onclick = (e) => {
+			// 	const isCtrl = e.ctrlKey || e.metaKey;
+			// 	if(!isCtrl) return;
+			// 	handleDashClick(tr.id, false);
+			// }
+			// // Longpress support on mobile (similar to dblclick)
+			// setupLongPress(tr, (e) => {
+			// 	e.preventDefault?.();
+			// 	handleDashClick(tr.id, false);
+			// });
 			tbody.appendChild(tr);
 		}
-	});
-	
+	});	
 	setVal('badge-arrival-bk', count);
 }
 
@@ -956,7 +1040,7 @@ function renderAggregates() {
 	const dTo = new Date(getVal('dash-filter-to'));
 	const aggStaff = {};
 	
-	const bookings = APP_DATA.bookings;
+	const bookings = Object.values(APP_DATA.bookings);
 	bookings.forEach(row => {
 		const dIn = new Date(row[COL_INDEX.M_START]);
 		if (dIn >= dFrom && dIn <= dTo) {
@@ -998,11 +1082,17 @@ function renderAggTable(tblId, dataObj, sumId) {
 		`;
 		// Gán sự kiện click lọc theo nhân viên (Batch Edit)
 		tr.style.cursor = 'pointer';
+		tr.id = item.id || item[0]; // Gán ID cho tr để dễ lấy khi click
 		tr.onclick = (e) => {
 			const isCtrl = e.ctrlKey || e.metaKey;
 			if(!isCtrl) return;
 			if(typeof handleAggClick === 'function') handleAggClick(k, 'staff');
 		};
+		// Longpress support on mobile (similar to dblclick)
+		setupLongPress(tr, (e) => {
+			e.preventDefault?.();
+			if(typeof handleAggClick === 'function') handleAggClick(k, 'staff');
+		});
 		tbody.appendChild(tr);
 	});
 	if(document.getElementById(sumId)) setVal(sumId, formatMoney(totalBal));
@@ -1033,7 +1123,7 @@ function setupMonthSelector(id = 'dash-month-select') {
  * 2. Hàm Render chính (Điều phối)
  */
 window.renderDashboard_Op = function() {
-	if (!APP_DATA || !APP_DATA.bookings || !APP_DATA.operator_entries) return;
+	if (!APP_DATA || !Object.values(APP_DATA.bookings) || !Object.values(APP_DATA.operator_entries)) return;
 
 	// Chuẩn bị dữ liệu ngày
 	const dFrom = new Date(getVal('dash-filter-from'));
@@ -1052,7 +1142,7 @@ window.renderDashboard_Op = function() {
 	let totalSupplierBal = 0;
 	let totalTypeBal = 0;
 
-	const operatorEntries = APP_DATA.operator_entries_obj; // Bỏ header
+	const operatorEntries = Object.values(APP_DATA.operator_entries); // Bỏ header
 	
 	operatorEntries.forEach(row => {
 		const dIn = row.check_in ? new Date(row.check_in) : row.start_date ? new Date(row.start_date) : null;
@@ -1105,7 +1195,7 @@ function renderDashTable1_Op() {
 	const dFrom = dFromInput ? new Date(dFromInput) : null;
 	const dTo = dToInput ? new Date(dToInput) : null;
 	
-	const bookings = APP_DATA.bookings_obj;
+	const bookings = Object.values(APP_DATA.bookings);
 	
 	let count = 0;
 	let totalDeposit = 0;
@@ -1135,7 +1225,7 @@ function renderDashTable1_Op() {
 			const tr = document.createElement('tr');
 			tr.innerHTML = `
 				<td class="fw-bold text-primary">${row.id}</td>
-				<td>${row.customer_name}</td>
+				<td>${row.customer_full_name}</td>
 				<td class="text-center">${formatDateVN(row.start_date)}</td>
 				<td class="small">${row.status}</td>
 				<td class="text-end">${formatMoney(row.total_amount)}</td>
@@ -1143,11 +1233,12 @@ function renderDashTable1_Op() {
 				<td class="text-end">${formatMoney(row.total_amount - row.deposit_amount)}</td>
 			`;
 			tr.style.cursor = 'pointer';
-			tr.onclick = (e) => {
-				const isCtrl = e.ctrlKey || e.metaKey;
-				if(!isCtrl) return;
-				handleDashClick(row.id, false);
-			};
+			tr.id = row.id; // Gán ID cho tr để dễ lấy khi click
+			// tr.onclick = (e) => {
+			// 	const isCtrl = e.ctrlKey || e.metaKey;
+			// 	if(!isCtrl) return;
+			// 	handleDashClick(row.id, false);
+			// };
 			tbody.appendChild(tr);
 		}
 	});
@@ -1163,7 +1254,7 @@ function renderDashTable2_Op() {
 	if(!tbody) {log("No tbody found for missing supplier table"); return;}
 	tbody.innerHTML = '';
 	
-	let details = APP_DATA.operator_entries_obj.filter(r => !r.supplier || String(r.supplier).trim() === '').sort((a, b) => new Date(b.check_in) - new Date(a.check_in));
+	let details = Object.values(Object.values(Object.values(APP_DATA.operator_entries))).filter(r => !r.supplier || String(r.supplier).trim() === '').sort((a, b) => new Date(b.check_in) - new Date(a.check_in));
 
 	let count = 0;
 	let total = 0;
@@ -1175,7 +1266,7 @@ function renderDashTable2_Op() {
 		const tr = document.createElement('tr');
 		tr.innerHTML = `
 			<td>${row.id}</td>
-			<td>${row.customer_name}</td>
+			<td>${row.customer_full_name}</td>
 			<td>${row.service_type}</td>
 			<td>${row.service_name}</td>
 			<td class="text-center">${formatDateVN(row.check_in)}</td>
@@ -1183,13 +1274,14 @@ function renderDashTable2_Op() {
 			<td>${row.total_cost ? formatMoney(row.total_cost) : formatMoney(row.total_sales)}</td>
 		`;
 		tr.style.cursor = 'pointer';
+		tr.id = row.id; // Gán ID cho tr để dễ lấy khi click
 		// True nghĩa là click vào Service ID -> Cần tìm Booking ID
-		tr.onclick = (e) => {
-			const isCtrl = e.ctrlKey || e.metaKey;
-			if(!isCtrl) return;
-			handleDashClick(row.id, true);
-		};
-		tbody.appendChild(tr);
+		// tr.onclick = (e) => {
+		// 	const isCtrl = e.ctrlKey || e.metaKey;
+		// 	if(!isCtrl) return;
+		// 	handleDashClick(row.id, true);
+		// };
+		// tbody.appendChild(tr);
 		
 	});
 	setVal('badge-missing-supplier', `Tổng Phải Trả: ${formatMoney(total)} | Số Lượt: ${count}`);

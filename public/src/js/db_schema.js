@@ -27,7 +27,7 @@ const COL_INDEX = {
 const FIELD_MAP = {
     bookings: {
         [COL_INDEX.M_ID]: 'id', [COL_INDEX.M_CREATED]: 'created_at', [COL_INDEX.M_CUSTID]: 'customer_id', 
-        [COL_INDEX.M_CUST]: 'customer_name', [COL_INDEX.M_PHONE]: 'customer_phone', 
+        [COL_INDEX.M_CUST]: 'customer_full_name', [COL_INDEX.M_PHONE]: 'customer_phone', 
         [COL_INDEX.M_START]: 'start_date', [COL_INDEX.M_END]: 'end_date', [COL_INDEX.M_ADULT]: 'adults', 
         [COL_INDEX.M_CHILD]: 'children', [COL_INDEX.M_TOTAL]: 'total_amount', [COL_INDEX.M_STATUS]: 'status', 
         [COL_INDEX.M_PAYTYPE]: 'payment_method', [COL_INDEX.M_PAYDUE]: 'payment_due_date', 
@@ -43,7 +43,7 @@ const FIELD_MAP = {
         [COL_INDEX.D_CODE]: 'ref_code', [COL_INDEX.D_NOTE]: 'note'
     },
     operator_entries: {
-        [COL_INDEX.OP_SID]: 'id', [COL_INDEX.OP_BKID]: 'booking_id', [COL_INDEX.OP_CUST]: 'customer_name',
+        [COL_INDEX.OP_SID]: 'id', [COL_INDEX.OP_BKID]: 'booking_id', [COL_INDEX.OP_CUST]: 'customer_full_name',
         [COL_INDEX.OP_TYPE]: 'service_type', [COL_INDEX.OP_HOTEL]: 'hotel_name', [COL_INDEX.OP_SERVICE]: 'service_name',
         [COL_INDEX.OP_IN]: 'check_in', [COL_INDEX.OP_OUT]: 'check_out', [COL_INDEX.OP_NIGHT]: 'nights',
         [COL_INDEX.OP_QTY]: 'adults', [COL_INDEX.OP_COSTA]: 'cost_adult', [COL_INDEX.OP_CHILD]: 'children', [COL_INDEX.OP_COSTC]: 'cost_child', 
@@ -181,7 +181,7 @@ function getHeader(collectionName) {
 
 /**
  * Reverse mapping: Field name → Index position (for quick lookups)
- * Usage: REVERSE_FIELD_MAP['bookings']['customer_name'] → 4
+ * Usage: REVERSE_FIELD_MAP['bookings']['customer_full_name'] → 4
  */
 const REVERSE_FIELD_MAP = {};
 Object.entries(FIELD_MAP).forEach(([collectionName, fieldMap]) => {
@@ -193,7 +193,7 @@ Object.entries(FIELD_MAP).forEach(([collectionName, fieldMap]) => {
 
 /**
  * Get field name by index (Reverse of map lookup)
- * Usage: getFieldName('bookings', 4) → 'customer_name'
+ * Usage: getFieldName('bookings', 4) → 'customer_full_name'
  */
 function getFieldName(collectionName, index) {
     const map = FIELD_MAP[collectionName];
@@ -202,7 +202,7 @@ function getFieldName(collectionName, index) {
 
 /**
  * Get index by field name
- * Usage: getFieldIndex('bookings', 'customer_name') → 4
+ * Usage: getFieldIndex('bookings', 'customer_full_name') → 4
  */
 function getFieldIndex(collectionName, fieldName) {
     return REVERSE_FIELD_MAP[collectionName] ? REVERSE_FIELD_MAP[collectionName][fieldName] : -1;
@@ -210,7 +210,7 @@ function getFieldIndex(collectionName, fieldName) {
 
 /**
  * Convert Firestore object to user-friendly object with display names
- * Usage: objectToDisplay(firestoreObj, 'bookings') → { id, customer_name, start_date, ... }
+ * Usage: objectToDisplay(firestoreObj, 'bookings') → { id, customer_full_name, start_date, ... }
  */
 function objectToDisplay(objData, collectionName) {
     if (!objData) return {};
@@ -236,7 +236,7 @@ function getFieldNames(collectionName) {
 
 /**
  * Create header row for grid display from field names
- * Usage: createHeaderFromFields('bookings') → { id: 'ID', customer_name: 'Tên Khách', ... }
+ * Usage: createHeaderFromFields('bookings') → { id: 'ID', customer_full_name: 'Tên Khách', ... }
  */
 function createHeaderFromFields(collectionName) {
     const fieldNames = getFieldNames(collectionName);

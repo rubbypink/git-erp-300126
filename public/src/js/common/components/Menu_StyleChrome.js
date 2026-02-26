@@ -3,7 +3,7 @@
  * 3. JAVASCRIPT: CORE MENU CONTROLLER & UTILS
  * ==========================================
  */
-
+import {AUTH_MANAGER} from '../../login_module.js';
 const MenuUtils = {
     currentZoom: 100,
     zoomIn: function(e) { if(e) e.stopPropagation(); this.currentZoom = Math.min(this.currentZoom + 10, 200); this.applyZoom(); },
@@ -23,8 +23,8 @@ const MenuUtils = {
     },
     toggleTheme: function(e) {
         if(e) e.stopPropagation();
-        document.body.classList.toggle('dark-theme');
-        const isDark = document.body.classList.contains('dark-theme');
+        document.documentElement.getAttribute('data-bs-theme') === 'dark' ? THEME_MANAGER.applyTheme('light') : THEME_MANAGER.applyTheme('dark');
+        const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
         const themeText = document.getElementById('theme-toggle-text');
         const themeIcon = document.getElementById('theme-toggle-icon');
         if (themeText && themeIcon) {
@@ -34,41 +34,53 @@ const MenuUtils = {
     }
 };
 
-const MenuController = {
+export const ChromeMenuController = {
     containerId: 'erp-menu-container',
     triggerId: 'erp-menu-trigger',
     actionsRegistry: {}, // Kho chứa các hàm gọi an toàn
+    fn: MenuUtils,
+
     
     // Khung dữ liệu Menu mặc định
     config: [
-        { type: 'item', label: 'Reload ERP', icon: 'fa-solid fa-rotate text-primary', actionCode: "if(typeof reloadPage === 'function') reloadPage()" },
-        { type: 'item', label: 'Cập Nhật Dữ Liệu', icon: 'fa-solid fa-cloud-arrow-down text-info', actionCode: "if(typeof A !== 'undefined' && A.DB && A.DB.syncDelta) A.DB.syncDelta()" },
-        { type: 'divider' },
-        { type: 'theme_toggle' }, 
-        { type: 'zoom_row' },
-        { type: 'divider' },
-        { type: 'submenu', label: 'Admin Tools', icon: 'fa-solid fa-gear text-secondary', cssClass: 'admin-only', children: [
-            { type: 'item', label: 'Cài Đặt', icon: 'fa-solid fa-sliders text-success', actionCode: "if(typeof openSettingsModal === 'function') openSettingsModal()" },
-            { type: 'item', label: 'Operator DB', icon: 'fa-solid fa-database text-primary', actionCode: "window.open('#', '_blank')" },
-            { type: 'divider' },
-            { type: 'item', label: 'Xóa Cache', icon: 'fa-solid fa-trash text-warning', actionCode: "if(typeof clearLocalCache === 'function') clearLocalCache()" }
-        ]},
-        { type: 'divider' },
         { type: 'user_info' }, 
         { type: 'item', id: 'btn-login-menu', label: 'Đăng Nhập', icon: 'fa-solid fa-sign-in-alt text-primary', actionCode: "if(typeof A !== 'undefined' && A.Auth) A.Auth.showChoiceScreen()" },
         { type: 'item', id: 'btn-logout-menu', label: 'Đăng Xuất', icon: 'fa-solid fa-sign-out-alt text-danger', inlineStyle: 'display:none;', actionCode: "if(typeof A !== 'undefined' && A.Auth) A.Auth.signOut()" },
-        { type: 'role_switcher', cssClass: 'manager-only' }
+        { type: 'role_switcher', cssClass: 'manager-only' },
+        { type: 'divider' },
+       
+        { type: 'theme_toggle' }, 
+        { type: 'zoom_row' },
+        { type: 'item', label: 'Cài Đặt', icon: 'fa-solid fa-sliders text-success', actionCode: "if(typeof openSettingsModal === 'function') openSettingsModal()" },
+        { type: 'divider' },
+        { type: 'item', label: 'Reload ERP', icon: 'fa-solid fa-rotate text-primary', actionCode: "if(typeof reloadPage === 'function') reloadPage()" },
+        { type: 'item', label: 'Cập Nhật Dữ Liệu', icon: 'fa-solid fa-cloud-arrow-down text-info', actionCode: "if(typeof A !== 'undefined' && A.DB) A.DB.syncDelta(null, true)" },
+        { type: 'divider' },
+        { type: 'submenu', label: 'Cài Đặt Hệ Thống', icon: 'fa-solid fa-gear text-secondary', cssClass: 'admin-only', children: [
+            { type: 'item', label: 'Operator DB', icon: 'fa-solid fa-database text-primary', actionCode: "window.open('#', '_blank')" },
+            { type: 'divider' },
+            { type: 'item', label: 'Xóa Cache', icon: 'fa-solid fa-trash text-warning', actionCode: "if(typeof clearLocalCache === 'function') clearLocalCache()" },
+            { type: 'item', label: 'Cấu Hình Admin', icon: 'fa-solid fa-cog text-warning', actionCode: "if(typeof A.AdminConsole.openAdminSettings === 'function') A.AdminConsole.openAdminSettings()" }
+        ]},
+        
+       
     ],
 
     // Khởi chạy hệ thống
     init: async function() {
+        if(this._initialized) return; // Ngăn init lại nếu đã chạy
         try {
             this.normalizeConfig(this.config);
             await this.renderMenuAsync(this.config);
             this.bindEvents();
+            this._updateMenu();
+            console.log('log đến đây chưa?');
+            AUTH_MANAGER.updateUserMenu();
+            this._initialized = true;
         } catch (error) {
             console.error('[ERP Menu Error] Init failed:', error);
         }
+
     },
 
     // Tiền xử lý: Gắn ID và lưu Hàm vào Registry để chống lỗi khi render chuỗi
@@ -143,25 +155,25 @@ const MenuController = {
         
         // Kích hoạt sự kiện lấy từ Registry
         const clickEvent = item._internalActionId 
-            ? `onclick="MenuController.executeAction('${item._internalActionId}')"` 
+            ? `onclick="A.ChromeMenuController.executeAction('${item._internalActionId}')"` 
             : '';
 
         switch (item.type) {
             case 'divider': 
                 return `<div class="erp-menu-divider${wrapperClass}" ${styleAttr}></div>`;
             case 'theme_toggle': 
-                return `<div class="erp-menu-item${wrapperClass}" onclick="MenuUtils.toggleTheme(event)" ${styleAttr}><i id="theme-toggle-icon" class="menu-icon fa-solid fa-moon text-secondary"></i><span id="theme-toggle-text" class="menu-text">Giao diện Tối</span></div>`;
+                return `<div class="erp-menu-item${wrapperClass}" onclick="A.ChromeMenuController.fn.toggleTheme(event)" ${styleAttr}><i id="theme-toggle-icon" class="menu-icon fa-solid fa-moon text-secondary"></i><span id="theme-toggle-text" class="menu-text">Giao diện Tối</span></div>`;
             case 'zoom_row': 
-                return `<div class="erp-menu-item d-flex align-items-center justify-content-between${wrapperClass}" style="cursor: default; ${item.inlineStyle || ''}"><div class="d-flex align-items-center"><i class="menu-icon fa-solid fa-magnifying-glass"></i><span class="menu-text">Thu phóng</span></div><div class="d-flex align-items-center"><div class="chrome-zoom-controls"><button onclick="MenuUtils.zoomOut(event)">-</button><span id="zoom-level-display">100%</span><button onclick="MenuUtils.zoomIn(event)">+</button></div><button class="btn btn-sm btn-light ms-2 border" onclick="MenuUtils.toggleFullScreen(event)" title="Toàn màn hình"><i class="fa-solid fa-expand"></i></button></div></div>`;
+                return `<div class="erp-menu-item d-flex align-items-center justify-content-between${wrapperClass}" style="cursor: default; ${item.inlineStyle || ''}"><div class="d-flex align-items-center"><i class="menu-icon fa-solid fa-magnifying-glass"></i><span class="menu-text">Thu phóng</span></div><div class="d-flex align-items-center"><div class="chrome-zoom-controls"><button onclick="A.ChromeMenuController.fn.zoomOut(event)">-</button><span id="zoom-level-display">100%</span><button onclick="A.ChromeMenuController.fn.zoomIn(event)">+</button></div><button class="btn btn-sm btn-light ms-2 border" onclick="A.ChromeMenuController.fn.toggleFullScreen(event)" title="Toàn màn hình"><i class="fa-solid fa-expand"></i></button></div></div>`;
             case 'user_info': 
-                return `<div id="user-info-card" class="px-3 py-2 bg-light border-bottom border-top${wrapperClass}" ${styleAttr}><div class="text-dark"><div><strong id="user-menu-name">Guest</strong></div><div id="user-menu-email" class="text-muted" style="font-size: 11px;"></div></div></div>`;
+                return `<div id="user-info-card" class="px-3 py-2 border-bottom border-top${wrapperClass}" ${styleAttr}><div class="fw-bold"><div><strong id="user-menu-name">Guest</strong></div><div id="user-menu-email" class="text-muted" style="font-size: 11px;"></div></div></div>`;
             case 'role_switcher': 
-                return `<div class="px-3 py-2 border-top${wrapperClass}" ${styleAttr}><select id="btn-select-masked-role" class="form-select form-select-sm fw-bold text-primary" onchange="if(typeof reloadSystemMode === 'function') reloadSystemMode(this.value); MenuController.hideMenu();"><option id="user-menu-role" value="" selected>-- Chọn Role --</option><option value="sale">Sales Mode</option><option value="op">Operator Mode</option></select></div>`;
+                return `<div class="px-3 py-2 border-top${wrapperClass}" ${styleAttr}><select id="btn-select-masked-role" class="form-select form-select-sm fw-bold text-primary" onchange="if(typeof reloadSystemMode === 'function') reloadSystemMode(this.value); A.ChromeMenuController.hideMenu();"><option id="user-menu-role" value="" selected>-- Chọn Role --</option><option value="sale">Sales Mode</option><option value="op">Operator Mode</option></select></div>`;
             case 'submenu':
                 const childrenHtml = item.children ? item.children.map(child => this.buildItemHtml(child)).join('') : '';
                 return `
                     <div class="erp-submenu${wrapperClass}" ${styleAttr}>
-                        <div class="erp-menu-item" onclick="MenuController.toggleSubmenu(event, this)" ${idAttr}>
+                        <div class="erp-menu-item" onclick="A.ChromeMenuController.toggleSubmenu(event, this)" ${idAttr}>
                             <i class="menu-icon ${item.icon}"></i>
                             <span class="menu-text flex-grow-1">${item.label}</span>
                             <i class="fa-solid fa-chevron-right submenu-arrow" style="font-size:10px;"></i>
@@ -218,38 +230,41 @@ const MenuController = {
                 }
             }
         }, true);
+
+        window.onload = () => {
+
+
+        };
+    },
+
+    _updateMenu: function() {
+        this.addMenu(
+            {
+                type: 'item',
+                label: 'Báo Cáo Hệ Thống',
+                icon: 'fa-solid fa-file-invoice text-warning',
+                
+                // Bạn cũng có thể dùng string (actionCode) truyền thống nếu thích cho gọn
+                action: function() {
+                    const modal = document.querySelector('at-modal-full');
+                    if (modal) {
+                        // Set tiêu đề và hiển thị
+                        
+                        // Gọi hàm show của Report Module
+                        // Lưu ý: Cần đảm bảo script logic_report.js đã được load
+                        if (window.ReportModule) {
+                            window.ReportModule.init(); // Init report content inside modal
+                            modal.show(); // Show modal container
+                        } else {
+                            console.error("ReportModule not found. Please load logic_report.js");
+                            alert("Chưa tải module báo cáo. Vui lòng refresh trang.");
+                        }
+                    } else {
+                        console.error("Modal component not found. Please ensure at-modal-full is included in the page.");
+                        alert("Không tìm thấy thành phần modal. Vui lòng refresh trang.");
+                    }
+                    },
+            }, 'Cài Đặt Hệ Thống' // Chỉ định chính xác tên (label) của Submenu đích
+        );
     }
 };
-
-// Kích hoạt khởi tạo khi trang load xong
-document.addEventListener('DOMContentLoaded', () => {
-    MenuController.addMenu(
-        {
-            type: 'item',
-            label: 'Báo Cáo Hệ Thống',
-            icon: 'fa-solid fa-file-invoice text-warning',
-            
-            // Bạn cũng có thể dùng string (actionCode) truyền thống nếu thích cho gọn
-            action: function() {
-                const modal = document.querySelector('at-modal-full');
-                if (modal) {
-                    // Set tiêu đề và hiển thị
-                    
-                    // Gọi hàm show của Report Module
-                    // Lưu ý: Cần đảm bảo script logic_report.js đã được load
-                    if (window.ReportModule) {
-                        window.ReportModule.init(); // Init report content inside modal
-                        modal.show(); // Show modal container
-                    } else {
-                        console.error("ReportModule not found. Please load logic_report.js");
-                        alert("Chưa tải module báo cáo. Vui lòng refresh trang.");
-                    }
-                } else {
-                    console.error("Modal component not found. Please ensure at-modal-full is included in the page.");
-                    alert("Không tìm thấy thành phần modal. Vui lòng refresh trang.");
-                }
-                },
-        }, 'Admin Tools' // Chỉ định chính xác tên (label) của Submenu đích
-    );
-    MenuController.init();
-});

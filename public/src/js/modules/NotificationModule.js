@@ -9,63 +9,103 @@
  * 3. OR await NotificationModule.getInstance().waitForInitialization()
  */
 
-class NotificationModule {
-    static #instance = null;
+import NotificationPanelRenderer from '../common/components/NotificationPanel.js';
 
-    // ★ CONFIGURATION
-    static CONFIG = {
-        REGION: 'asia-southeast1',
-        VAPID_KEY: 'BPX6h6jp0syY263nIiwVKB-7TJRp83xoo1rFt0fLJ9w-wvb87Xd-aKcFg3j1-dzrKgAY5fEuUzohdmdlX-nnPdE'
-    };
+/**
+ * 9TRIP NOTIFICATION MANAGER - VERSION 1.0
+ * Chuyên trách: Lắng nghe, lưu trữ và điều phối thông báo ERP
+ */
+class NotificationModule {
+    static #STORAGE_KEY = '9trip_notifications_logs';
+    static #LAST_SYNC_KEY = '9trip_notify_last_sync';
+    static #instance = null;
+    markAllBtn = '#markAllReadBtn';
+    clearAllBtn = '#clearAllBtn';
+    _initialized = false;
+
+    // ─── Instance Fields ───
+    #unreadCount = 0;
+    #firstRenderDone = false;
 
     constructor() {
-        // === LIFECYCLE STATE ===
-        this.isInitialized = false;
-        this._initPromise = null;
+        this.notifications = [];
+        this.listener = null;
+        this.db = null;
+        // ★ KHÔNG gọi init() ở đây vì CURRENT_USER chưa sẵn sàng khi module load.
+        // Gọi NotificationManager.init() thủ công sau khi auth thành công.
+    }
+    async render() {
+        NotificationPanelRenderer.render(this.notifications, this.#unreadCount);
+    }
+    /**
+     * Bước 1: Khởi tạo lắng nghe Realtime
+     */
+    init () {
+        if (!CURRENT_USER || this._initialized) return;
+        if (!this.db) this.db = A.DB?.db || window.firebase.firestore();
 
-        // === FIREBASE SDK ===
-        this.sendTopicMessage = null;
-        this.messaging = null;
+        try {
+            // ★ Tải cache từ Storage trước để hiển thị ngay lập tức
+            this._initialized = true; // Đảm bảo trạng thái chưa initialized khi load cache
+            log('🔄 Loading notifications from storage...');
+            const cached = this.#loadFromStorage();
+            this.notifications = cached.items;
+            this.#unreadCount = cached.unreadCount;
 
-        // === DEVICE STATE ===
-        this.isOnline = navigator.onLine;
-        this.fcmToken = null;
-        this.notificationPermission = null;
+            // Xác định Role & Group
+            const userRole = CURRENT_USER.realrole || CURRENT_USER.role;
+            const userGroup = CURRENT_USER.group || 'new';
 
-        // === USER STATE ===
-        this.currentUser = null;
+            // Lấy mốc thời gian load (mặc định 24h qua)
+            let lastSync = localStorage.getItem(NotificationModule.#LAST_SYNC_KEY);
+            const sinceTime = lastSync ? new Date(parseInt(lastSync)) : new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-        // ===STORAGE ===
-        this.unreadNotifications = [];
-        this.storageKey = 'app_unread_notifications';
-        this.tokenKey = 'app_fcm_token';
+            // Query tối ưu: theo thời gian, filter Role/Group tại Client
+            const query = this.db.collection('notifications')
+                .where('created_at', '>', sinceTime);
 
-        // ★ OPTIONS
-        this.options = {
-            enabled: true,
-            retryAttempts: 2,
-            retryDelayMs: 1000,
-            debug: true,
-            persistOfflineMessages: true,
-            maxStoredNotifications: 100,
-            requestTokenPermission: true
-        };
+            this.listener = query.onSnapshot(snapshot => {
+                if (snapshot.metadata.fromCache && snapshot.docChanges().length === 0) return;
 
-        // ★ AUTO SETUP
-        this._setupNetworkListeners();
-        this._initPromise = this._initialize(); // Fire-and-forget async init
+                snapshot.docChanges().forEach(change => {
+                    if (change.type === 'added') {
+                        const data = { id: change.doc.id, ...change.doc.data() };
+
+                        // Filter Role hoặc Group (Logic OR)
+                        const isForMe = (data.role === userRole) || (data.group === userGroup) || (data.group === 'All');
+
+                        if (isForMe) {
+                            this.#handleIncoming(data);
+                        }
+                    }
+                });
+
+                // ★ Sau snapshot ĐẦU TIÊN: sort lại, tính unread, render toàn bộ
+                if (!this.#firstRenderDone) {
+                    this.#firstRenderDone = true;
+                    const toDate = v => v?.seconds ? new Date(v.seconds * 1000) : new Date(v || 0);
+                    this.notifications.sort((a, b) => {
+                        if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+                        return toDate(b.created_at) - toDate(a.created_at);
+                    });
+                    this.#unreadCount = this.notifications.filter(n => !n.isRead).length;
+                    this.render();
+                }
+
+                // Cập nhật mốc thời gian đồng bộ cuối cùng
+                localStorage.setItem(NotificationModule.#LAST_SYNC_KEY, Date.now().toString());
+            }, error => {
+                console.error('❌ Notification Listener Error:', error);
+            });
+            this._setupEventListeners();
+            this.initialized = true;
+            log('✅ NotificationModule initialized and listening for changes');
+
+        } catch (e) {
+            console.error('❌ Notification Init Failed:', e);
+        }
     }
 
-    // =========================================================================
-    // SINGLETON PATTERN
-    // =========================================================================
-
-    /**
-     * Get or create singleton instance
-     * Init runs automatically in background
-     * 
-     * @returns {NotificationModule} Singleton instance
-     */
     static getInstance() {
         if (!NotificationModule.#instance) {
             NotificationModule.#instance = new NotificationModule();
@@ -74,565 +114,188 @@ class NotificationModule {
     }
 
     /**
-     * Wait for initialization to complete (if needed)
-     * 
-     * @returns {Promise<boolean>} True when ready
+     * Bước 2: Xử lý thông báo đến.
+     * - Khi init (lần đầu): chỉ tích lũy vào mảng, init() sẽ render toàn bộ sau.
+     * - Khi có thông báo mới từ server: prepend item vào UI, cập nhật badge.
      */
-    async waitForInitialization() {
-        await this._initPromise;
-        return this.isInitialized;
+    async #handleIncoming(notifyData) {
+        // Kiểm tra trùng lặp
+        if (this.notifications.some(n => n.id === notifyData.id)) return;
+
+        // Giữ trạng thái isRead từ server nếu có, mặc định false
+        const newNotify = {
+            ...notifyData,
+            isRead: notifyData.isRead ?? false,
+            receivedAt: Date.now()
+        };
+
+        this.notifications.unshift(newNotify);
+        this._saveToStorage();
+
+        // ★ Nếu chưa render lần đầu → chỉ tích lũy, dừng tại đây
+        if (!this.#firstRenderDone) return;
+
+        // ★ Thông báo mới từ server: thêm item vào đầu danh sách UI
+        if (!newNotify.isRead) this.#unreadCount++;
+        NotificationPanelRenderer.appendItem(newNotify, this.#unreadCount);
+        console.log(`🔔 Notify Received: ${newNotify.title}`);
     }
 
     // =========================================================================
-    // INITIALIZATION (AUTO-RUNS IN CONSTRUCTOR)
+    // 4. EVENT HANDLERS
     // =========================================================================
 
-    /**
-     * Private: Initialize module (called automatically from constructor)
-     * Runs in background without blocking
-     */
-    async _initialize() {
-        if (this.isInitialized) return true;
-
-        try {
-            // 1. Check Firebase SDK
-            if (!window.firebase || !window.firebase.functions) {
-                throw new Error('Firebase SDK not loaded!');
-            }
-            if (window.CURRENT_USER) {
-                this.setCurrentUser(window.CURRENT_USER);
-            } else {
-                this._log('⚠️ CURRENT_USER not found, topics will register after login', 'warning');
-            }
-
-            // 2. Setup Cloud Functions
-            const app = window.firebase.app();
-            this.sendTopicMessage = app.functions(NotificationModule.CONFIG.REGION)
-                                       .httpsCallable('sendTopicMessage');
-
-            // 3. Setup Firebase Messaging (FCM)
-            if (window.firebase.messaging && NotificationModule.CONFIG.VAPID_KEY) {
-                this.messaging = window.firebase.messaging();
-
-                // A. Listen for foreground messages
-                this.messaging.onMessage((payload) => {
-                    this._handleIncomingMessage(payload);
-                });
-
-                // B. Setup background listener (from Service Worker)
-                this._setupBroadcastListener();
-
-                // C. Get FCM token (auto-request if needed)
-                await this._initializeNotificationPermission();
-                await this._requestFCMToken();
-            }
-
-            // 4. Load unread from storage
-            this._loadUnreadFromStorage();
-
-            this.isInitialized = true;
-            this._log('✅ Notification module initialized', 'success');
-            return true;
-
-        } catch (err) {
-            console.error('[NotificationModule] ❌ Init error:', err);
-            return false;
-        }
-    }
-
-    // =========================================================================
-    // NETWORK LISTENERS
-    // =========================================================================
-
-    _setupNetworkListeners() {
-        window.addEventListener('online', () => {
-            this.isOnline = true;
-            this._log('🌐 Network restored', 'info');
-        });
-
-        window.addEventListener('offline', () => {
-            this.isOnline = false;
-            this._log('📡 Network lost', 'warning');
-        });
-    }
-
-    // =========================================================================
-    // NOTIFICATION PERMISSION
-    // =========================================================================
-
-    /**
-     * Initialize browser notification permission (call once)
-     */
-    async _initializeNotificationPermission() {
-        try {
-            if (!window.Notification) {
-                this.notificationPermission = 'denied';
-                return;
-            }
-
-            const current = window.Notification.permission;
-
-            if (current === 'granted') {
-                this.notificationPermission = 'granted';
-                this._log('✅ Notification permission granted', 'success');
-            } else if (current === 'denied') {
-                this.notificationPermission = 'denied';
-                this._log('⚠️ Notification permission denied', 'warning');
-            } else {
-                // Prompt user
-                const permission = await window.Notification.requestPermission();
-                this.notificationPermission = permission;
-
-                if (permission === 'granted') {
-                    this._log('✅ User granted Notification permission', 'success');
-                } else {
-                    this._log('⚠️ User denied Notification permission', 'warning');
-                }
-            }
-        } catch (err) {
-            console.warn('[NotificationModule] Permission init error:', err);
-            this.notificationPermission = 'denied';
-        }
-    }
-
-    /**
-     * Request new permission (if user wants to re-enable)
-     */
-    static async requestPermissionAgain() {
-        const instance = NotificationModule.getInstance();
-
-        if (!window.Notification) {
-            console.error('Browser does not support Notification API');
-            return instance.notificationPermission;
-        }
-
-        const permission = await window.Notification.requestPermission();
-        instance.notificationPermission = permission;
-
-        if (permission === 'granted') {
-            instance._log('✅ User granted permission', 'success');
-            await instance._requestFCMToken();
-        } else {
-            instance._log('⚠️ User denied permission', 'warning');
-        }
-
-        return permission;
-    }
-
-    // =========================================================================
-    // FCM TOKEN MANAGEMENT
-    // =========================================================================
-
-    /**
-     * Request FCM token (only if permission granted)
-     */
-    async _requestFCMToken() {
-        try {
-            if (!('serviceWorker' in navigator)) return null;
-
-            // Check permission state
-            if (this.notificationPermission !== 'granted') {
-                this._log('⚠️ No permission for FCM token', 'warning');
-                return null;
-            }
-
-            // Get token
-            const registration = await navigator.serviceWorker.ready;
-            this.fcmToken = await this.messaging.getToken({
-                vapidKey: NotificationModule.CONFIG.VAPID_KEY,
-                serviceWorkerRegistration: registration
+    _setupEventListeners() {
+        // Gán sự kiện click cho các nút (nếu tìm thấy)
+        const markAllBtn = document.querySelector(this.markAllBtn);
+        if (markAllBtn) {
+            markAllBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.markAllNotificationsAsRead();
             });
+        }
 
-            if (this.fcmToken) {
-                this._log('✅ FCM token obtained', 'success');
-                localStorage.setItem(this.tokenKey, this.fcmToken);
+        const clearAllBtn = document.querySelector(this.clearAllBtn);
+        if (clearAllBtn) {
+            clearAllBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (confirm('Xóa toàn bộ thông báo?')) {
+                    this.clearAllNotifications();
+                }
+            });
+        }
+    }
 
-                // Auto-register topics
-                await this._registerTopicsOnServer(this.fcmToken);
-            }
-            return this.fcmToken;
+    _log(msg, type = 'info') {
+        const prefix = '[NotificationModule] ';
+        if (typeof log === 'function') log(prefix + msg, type);
+        else console.log(prefix + msg);
+    }
 
-        } catch (err) {
-            console.warn('[NotificationModule] FCM token error:', err);
+    /**
+     * Bước 3: Hàm tạo thông báo mới (Dành cho Admin/Hệ thống)
+     */
+    async _send(title, message, group, options = {}) {
+        try {
+            const newDoc = {
+                title: title,
+                message: message,
+                type: options.type || 'info', // info, success, warning, danger
+                role: options.role || CURRENT_USER.role,
+                group: group || CURRENT_USER.group?.[0] || 'All',
+                data: options.data || {}, // Payload đi kèm (booking_id, v.v..)
+                created_by: CURRENT_USER.username || 'System',
+                created_at: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            const docRef = await this.db.collection('notifications').add(newDoc);
+            return docRef.id;
+        } catch (e) {
+            console.error("❌ Gửi thông báo thất bại:", e);
             return null;
         }
     }
 
+    async sendToOperator(title, message) {
+        return await this._send(title, message, 'Operator');
+    }
+    async sendToSales(title, message) {
+        return await this._send(title, message, 'Sales');
+    }
+    async sendToAccountant(title, message) {
+        return await this._send(title, message, 'Accountant');
+    }
+    async sendToAdmin(title, message) {
+        return await this._send(title, message, 'Admin');
+    }
+    sendToAll = async (title, message) => {
+        return await this._send(title, message, 'All');
+    }
     /**
-     * Get or request token
+     * Bước 4: Quản lý trạng thái Đã đọc
      */
-    static async getOrRequestToken() {
-        const instance = NotificationModule.getInstance();
+    markAsRead(id) {
+        const index = this.notifications.findIndex(n => n.id === id);
 
-        // 1. Check memory
-        if (instance.fcmToken) {
-            return instance.fcmToken;
-        }
-
-        // 2. Check localStorage
-        const saved = localStorage.getItem('app_fcm_token');
-        if (saved) {
-            instance.fcmToken = saved;
-            return saved;
-        }
-
-        // 3. Request new
-        console.log('⚠️ Token not found, requesting...');
-        return await instance._requestFCMToken();
-    }
-
-    // =========================================================================
-    // TOPIC SUBSCRIPTION
-    // =========================================================================
-
-    /**
-     * Auto-register topics based on user role
-     */
-    async _registerTopicsOnServer(token) {
-        if (!this.currentUser) {
-            setTimeout(() => this._registerTopicsOnServer(token), 2000);
-            return;
-        }
-
-        const topics = ['All'];
-        const role = this.currentUser.role?.toLowerCase() || '';
-
-        if (role.includes('sale') || role === 'admin') topics.push('Sales');
-        if (role.includes('operator') || role.includes('op') || role === 'admin') topics.push('Operator');
-        if (role.includes('account') || role.includes('acc') || role === 'admin') topics.push('Accountant');
-        if (role === 'admin') topics.push('Admin');
-
-        this._log(`🔄 Registering topics: ${topics.join(', ')}...`);
-
-        try {
-            const app = window.firebase.app();
-            const subscribeFn = app.functions(NotificationModule.CONFIG.REGION)
-                                   .httpsCallable('subscribeToTopics');
-
-            await subscribeFn({ token, topics });
-            this._log('✅ Topics registered', 'success');
-        } catch (err) {
-            console.error('[NotificationModule] Topic registration error:', err);
+        if (index !== -1) {
+            this.notifications[index].isRead = true;
+            this.#unreadCount = this.#unreadCount - 1;
+            this._saveToStorage();
+            NotificationPanelRenderer.updateBadges(this.#unreadCount);
         }
     }
-
-    // =========================================================================
-    // BACKGROUND LISTENER (Service Worker)
-    // =========================================================================
-
-    _setupBroadcastListener() {
-        const channel = new BroadcastChannel('erp_notification_channel');
-
-        channel.onmessage = (event) => {
-            if (event.data && event.data.type === 'BACKGROUND_MESSAGE') {
-                const payload = event.data.payload;
-                this._log('📻 Background message received', 'info');
-
-                // ★ Service Worker sends: { notification: { title, body }, data: {...}, timestamp }
-                this._handleIncomingMessage({
-                    notification: payload.notification,  // Already has title & body
-                    data: payload.data,
-                    timestamp: payload.timestamp
-                });
-            }
-        };
-
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.addEventListener('message', (event) => {
-                if (event.data && event.data.type === 'NOTIFICATION_CLICK') {
-                    if (event.data.url && event.data.url !== '/') {
-                        window.location.href = event.data.url;
-                    }
-                }
-            });
-        }
-    }
-
-    // =========================================================================
-    // SENDING MESSAGES
-    // =========================================================================
-
-    /**
-     * Send notification to topic
-     */
-    async send(topic, title, body) {
-        if (!this._validateSendConditions(topic, title, body)) {
-            return { success: false, error: 'Invalid data' };
-        }
-
-        return this._sendWithRetry(topic, title, body);
-    }
-
-    async _sendWithRetry(topic, title, body, attempt = 1) {
-        try {
-            if (this.options.debug) {
-                console.log(`[NotificationModule] 📤 Sending (attempt ${attempt})...`);
-            }
-
-            const payload = { topic, title, body };
-            const result = await this.sendTopicMessage(payload);
-            const responseData = result.data;
-
-            this._log(`✅ Sent! ID: ${responseData.messageId}`, 'success');
-
-            return {
-                success: true,
-                messageId: responseData.messageId,
-                timestamp: responseData.timestamp
-            };
-
-        } catch (error) {
-            console.error(`[NotificationModule] ❌ Error (${attempt}):`, error.code, error.message);
-
-            if (attempt < this.options.retryAttempts) {
-                const delay = this.options.retryDelayMs * attempt;
-                await this._delay(delay);
-                return this._sendWithRetry(topic, title, body, attempt + 1);
-            }
-
-            return { success: false, error: error.message };
-        }
-    }
-
-    _validateSendConditions(topic, title, body) {
-        if (!topic || !title || !body) {
-            this._log('❌ Invalid data', 'error');
-            return false;
-        }
-        if (!this.currentUser && !window.CURRENT_USER) {
-            this._log('❌ Login required', 'error');
-            return false;
-        }
-        return true;
-    }
-
-    // =========================================================================
-    // RECEIVING MESSAGES
-    // =========================================================================
-
-    _handleIncomingMessage(payload) {
-        // ★ Use ID from Service Worker if available, otherwise generate new one
-        const uniqueId = payload.data?.id || `msg_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
-
-        const notification = {
-            id: uniqueId,
-            title: payload.notification?.title || 'New notification',
-            body: payload.notification?.body || '',
-            timestamp: payload.timestamp || new Date().toISOString(),
-            read: false,
-            data: payload.data || {}
-        };
-
-        this.unreadNotifications.unshift(notification);
-
-        if (this.options.persistOfflineMessages) {
-            this._saveUnreadToStorage();
-        }
-
-        window.dispatchEvent(new CustomEvent('notification_received', {
-            detail: notification
-        }));
-
-        this._showNotificationBadge();
-    }
-
-    // =========================================================================
-    // STORAGE & UI
-    // =========================================================================
-
-    _saveUnreadToStorage() {
-        const limited = this.unreadNotifications.slice(0, this.options.maxStoredNotifications);
-        localStorage.setItem(this.storageKey, JSON.stringify(limited));
-    }
-
-    _loadUnreadFromStorage() {
-        const stored = localStorage.getItem(this.storageKey);
-        if (stored) {
-            this.unreadNotifications = JSON.parse(stored);
-            this._showNotificationBadge();
-        }
-    }
-
-    _showNotificationBadge() {
-        const count = this.unreadNotifications.filter(n => !n.read).length;
-        window.dispatchEvent(new CustomEvent('notification_count_changed', {
-            detail: { count }
-        }));
-    }
-
-    // =========================================================================
-    // NOTIFICATION MANAGEMENT (For UI Panel)
-    // =========================================================================
-
-    /**
-     * Get all notifications (with limit)
-     * @param {number} limit - Max results (default 50)
-     * @returns {Array} Notifications array
-     */
-    getAllNotifications(limit = 50) {
-        return this.unreadNotifications.slice(0, limit);
-    }
-
-    /**
-     * Get unread notification count
-     * @returns {number} Count of unread notifications
-     */
-    getUnreadNotificationCount() {
-        return this.unreadNotifications.filter(n => !n.read).length;
-    }
-
-    /**
-     * Mark specific notification as read
-     * @param {string} notificationId - Notification ID to mark read
-     */
-    markNotificationAsRead(notificationId) {
-        const notif = this.unreadNotifications.find(n => n.id === notificationId);
-        if (notif && !notif.read) {
-            notif.read = true;
-            this._saveUnreadToStorage();
-            this._showNotificationBadge();
-            
-            // Dispatch event for UI update
-            window.dispatchEvent(new CustomEvent('notification_marked_read', {
-                detail: { id: notificationId }
-            }));
-            
-            this._log('✓ Notification marked as read', 'info');
-        }
-    }
-
-    /**
-     * Mark all notifications as read
-     */
     markAllNotificationsAsRead() {
         let changed = false;
-        this.unreadNotifications.forEach(n => {
-            if (!n.read) {
-                n.read = true;
+        this.notifications.forEach(n => {
+            if (!n.isRead) {
+                n.isRead = true;
                 changed = true;
             }
         });
         
         if (changed) {
-            this._saveUnreadToStorage();
-            this._showNotificationBadge();
-            
-            window.dispatchEvent(new CustomEvent('notification_marked_read', {
-                detail: { all: true }
-            }));
-            
+            this._saveToStorage();
+            this.render();
             this._log('✓ All notifications marked as read', 'info');
         }
+    }
+    /**
+     * Helper: Lưu trữ & Tải từ LocalStorage
+     */
+    _saveToStorage() {
+        // Chỉ giữ lại 50 thông báo gần nhất để tránh nặng máy
+        const limitData = this.notifications.slice(0, 50);
+        localStorage.setItem(NotificationModule.#STORAGE_KEY, JSON.stringify(limitData));
+    }
+
+    /**
+     * Tải dữ liệu từ LocalStorage, sắp xếp và đếm unread.
+     *
+     * @returns {{ items: Array, unreadCount: number }}
+     */
+    #loadFromStorage() {
+        try {
+            const raw = localStorage.getItem(NotificationModule.#STORAGE_KEY);
+            let items = raw ? JSON.parse(raw) : [];
+
+            // Helper: parse Firestore Timestamp ({ seconds }) hoặc ISO string
+            const toDate = v => v?.seconds ? new Date(v.seconds * 1000) : new Date(v || 0);
+
+            // Sắp xếp: chưa đọc lên trước, sau đó mới nhất trước
+            items.sort((a, b) => {
+                if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+                return toDate(b.created_at) - toDate(a.created_at);
+            });
+
+            const unreadCount = items.filter(n => !n.isRead).length;
+            return { items, unreadCount };
+        } catch {
+            return { items: [], unreadCount: 0 };
+        }
+    }
+
+    _showNotificationBadge() {
+        const count = this.notifications.filter(n => !n.isRead).length;
+        this.#unreadCount = count;
+        // Gọi qua public API (updateBadges được expose từ NotificationPanel)
+        NotificationPanelRenderer.updateBadges(count);
     }
 
     /**
      * Clear all notifications
      */
     clearAllNotifications() {
-        this.unreadNotifications = [];
-        this._saveUnreadToStorage();
+        this.notifications = [];
+        this._saveToStorage();
         this._showNotificationBadge();
-        
-        window.dispatchEvent(new CustomEvent('notification_cleared', {
-            detail: { count: 0 }
-        }));
-        
+        this.render(); 
         this._log('✓ All notifications cleared', 'info');
     }
-
-    // =========================================================================
-    // UTILITIES
-    // =========================================================================
-
-    setCurrentUser(user) {
-        this.currentUser = user;
-    }
-
-    _delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    _log(msg, type = 'info') {
-        if (!this.options.debug) return;
-        const prefix = '[NotificationModule] ';
-        if (typeof log === 'function') {
-            log(prefix + msg, type);
-        } else {
-            console.log(prefix + msg);
-        }
-    }
-
-    // =========================================================================
-    // CONSOLE TESTING HELPERS
-    // =========================================================================
-
-    /**
-     * Call any Cloud Function from console
-     * Usage: await Notification.request('sendTopicMessage', {...})
-     */
-    static async request(functionName, data = {}) {
-        try {
-            if (!window.firebase || !window.firebase.functions) {
-                throw new Error('❌ Firebase SDK not loaded!');
-            }
-
-            const app = window.firebase.app();
-            const fn = app.functions(NotificationModule.CONFIG.REGION)
-                          .httpsCallable(functionName);
-
-            console.log(`📤 Calling ${functionName}...`, data);
-            const result = await fn(data);
-
-            console.log(`✅ ${functionName} success:`, result.data);
-            return result.data;
-
-        } catch (error) {
-            console.error(`❌ ${functionName} error:`, {
-                code: error.code,
-                message: error.message,
-                details: error
-            });
-            throw error;
-        }
-    }
-
-    // ===== SHORTCUTS =====
-    async sendToSales(title, body) { return this.send('Sales', title, body); }
-    async sendToOperator(title, body) { return this.send('Operator', title, body); }
-    async sendToAccountant(title, body) { return this.send('Accountant', title, body); }
-    async sendToAll(title, body) { return this.send('All', title, body); }
-    async sendToAdmin(title, body) { return this.send('Admin', title, body); }
 }
 
-export default NotificationModule;
+const NotificationManager = new NotificationModule();
+export default NotificationManager;
 
-// ★ GLOBAL EXPORTS
-window.NotificationModule = NotificationModule;
-window.Notification_ERP = NotificationModule;  // Alias for console testing
-
-// ★ GLOBAL FUNCTIONS (For UI Panel & Other Modules)
-// These are delegated to singleton instance
-window.getAllNotifications = (limit = 50) => {
-    const instance = NotificationModule.getInstance();
-    return instance.getAllNotifications(limit);
-};
-
-window.getUnreadNotificationCount = () => {
-    const instance = NotificationModule.getInstance();
-    return instance.getUnreadNotificationCount();
-};
-
-window.markNotificationAsRead = (notificationId) => {
-    const instance = NotificationModule.getInstance();
-    return instance.markNotificationAsRead(notificationId);
-};
-
-window.markAllNotificationsAsRead = () => {
-    const instance = NotificationModule.getInstance();
-    return instance.markAllNotificationsAsRead();
-};
-
-window.clearAllNotifications = () => {
-    const instance = NotificationModule.getInstance();
-    return instance.clearAllNotifications();
-};
+window.sendToAll = NotificationManager.sendToAll;

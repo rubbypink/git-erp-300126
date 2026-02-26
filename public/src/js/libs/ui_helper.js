@@ -469,6 +469,11 @@ class TableResizeManager {
  * Tối ưu: GPU Acceleration (translate3d), Dynamic Events, Mobile Support
  */
 class DraggableSetup {
+    // ✅ Static: Lưu all instances và flag để set event 1 lần
+    static instances = [];
+    static isDblClickListenerAdded = false;
+    static isTouchDoubleTapListenerAdded = false;
+
     /**
      * @param {string} elementId - ID của phần tử gốc chứa đối tượng cần kéo
      * @param {Object} options - Cấu hình linh hoạt (targetSelector, handleSelector)
@@ -496,11 +501,29 @@ class DraggableSetup {
             this.currentX = 0; this.currentY = 0;
             this.initialX = 0; this.initialY = 0;
             this.xOffset = 0;  this.yOffset = 0;
+            
+            // ★ Lưu initial offset (vị trí center ban đầu khi mở modal)
+            this.initialCenterOffsetX = 0;
+            this.initialCenterOffsetY = 0;
+            this.hasInitialOffset = false; // Flag để đánh dấu lần đầu set offset
+            
+            // ✅ RAF throttle - Tránh schedule RAF liên tục trên mỗi mousemove
+            this.rafId = null;
+            this.pendingX = 0;
+            this.pendingY = 0;
+
+            // ✅ Touch double-tap detection (mobile support)
+            this.lastTouchTime = 0;
+            this.lastTouchX = 0;
+            this.lastTouchY = 0;
 
             // Bind context
             this.dragStart = this.dragStart.bind(this);
             this.dragMove = this.dragMove.bind(this);
             this.dragEnd = this.dragEnd.bind(this);
+
+            // Thêm instance vào static list
+            DraggableSetup.instances.push(this);
 
             this.init();
         } catch (error) {
@@ -516,6 +539,75 @@ class DraggableSetup {
         // CSS báo hiệu cho người dùng
         this.handle.style.cursor = "move";
         this.target.style.willChange = "transform"; // Gợi ý trình duyệt tối ưu GPU trước
+        
+        // ★ Lưu initial center offset lần đầu (vị trí mặc định khi modal mở)
+        if (!this.hasInitialOffset) {
+            this.initialCenterOffsetX = this.xOffset;
+            this.initialCenterOffsetY = this.yOffset;
+            this.hasInitialOffset = true;
+            console.log(`[DraggableSetup] 💾 Saved initial center offset: (${this.initialCenterOffsetX}, ${this.initialCenterOffsetY})`);
+        }
+        
+        // ✅ Set event dblclick TOÀN giao diện - chỉ 1 lần cho toàn bộ class (Desktop)
+        // Kiểm tra event.target nằm trong phạm vi element nào để reset
+        if (!DraggableSetup.isDblClickListenerAdded) {
+            document.addEventListener('dblclick', (e) => {
+                // Tìm instance nào chứa event target
+                DraggableSetup.instances.forEach(instance => {
+                    // Kiểm tra xem click target có nằm trong element này không
+                    if (instance.wrapper.contains(e.target)) {
+                        // Chỉ reset nếu element này header bị khuất
+                        if (instance._isHeaderHidden()) {
+                            instance._centerElement();
+                        }
+                    }
+                });
+            });
+            DraggableSetup.isDblClickListenerAdded = true;
+        }
+
+        // ✅ Set event touchend TOÀN giao diện - chỉ 1 lần cho toàn bộ class (Mobile - Double Tap)
+        // Detect touch double-tap: 2 tap < 300ms, di chuyển < 20px
+        if (!DraggableSetup.isTouchDoubleTapListenerAdded) {
+            document.addEventListener('touchend', (e) => {
+                const currentTime = Date.now();
+                const currentX = e.changedTouches[0]?.clientX || 0;
+                const currentY = e.changedTouches[0]?.clientY || 0;
+                
+                // Tính khoảng cách từ tap cuối cùng
+                const dx = currentX - DraggableSetup._lastTapX;
+                const dy = currentY - DraggableSetup._lastTapY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Kiểm tra: time < 300ms và khoảng cách < 20px
+                const isDoubleTap = (currentTime - DraggableSetup._lastTapTime) < 300 && distance < 20 && window.innerWidth < 991; // Chỉ áp dụng trên mobile
+                
+                if (isDoubleTap) {
+                    // Tìm instance nào chứa event target
+                    DraggableSetup.instances.forEach(instance => {
+                        if (instance.wrapper.contains(e.target)) {
+                            if (instance._isHeaderHidden()) {
+                                instance._centerElement();
+                            }
+                        }
+                    });
+                    
+                    // Reset lastTap để tránh trigger 3x tap
+                    DraggableSetup._lastTapTime = 0;
+                } else {
+                    // Lưu lại tap hiện tại
+                    DraggableSetup._lastTapTime = currentTime;
+                    DraggableSetup._lastTapX = currentX;
+                    DraggableSetup._lastTapY = currentY;
+                }
+            }, { passive: true });
+            
+            // Initialize static tap tracking
+            DraggableSetup._lastTapTime = 0;
+            DraggableSetup._lastTapX = 0;
+            DraggableSetup._lastTapY = 0;
+            DraggableSetup.isTouchDoubleTapListenerAdded = true;
+        }
     }
 
     dragStart(e) {
@@ -541,34 +633,44 @@ class DraggableSetup {
             document.addEventListener("mousemove", this.dragMove);
             document.addEventListener("touchmove", this.dragMove, { passive: false });
             document.addEventListener("mouseup", this.dragEnd);
-            document.addEventListener("touchend", this.dragEnd);
+            document.addEventListener("touchend", this.dragEnd, { passive: false });
         }
     }
 
     dragMove(e) {
         if (!this.isDragging) return;
         
-        // Chặn cuộn trang (scroll) trên điện thoại khi đang kéo
-        e.preventDefault();
-
         if (e.type === "touchmove") {
-            this.currentX = e.touches[0].clientX - this.initialX;
-            this.currentY = e.touches[0].clientY - this.initialY;
+            e.preventDefault();
+            this.pendingX = e.touches[0].clientX - this.initialX;
+            this.pendingY = e.touches[0].clientY - this.initialY;
         } else {
-            this.currentX = e.clientX - this.initialX;
-            this.currentY = e.clientY - this.initialY;
+            this.pendingX = e.clientX - this.initialX;
+            this.pendingY = e.clientY - this.initialY;
         }
 
-        this.xOffset = this.currentX;
-        this.yOffset = this.currentY;
-
-        requestAnimationFrame(() => {
+        // ✅ RAF throttle: Chỉ schedule RAF một lần, không mỗi event
+        if (this.rafId) return; // RAF đã scheduled, bỏ qua
+        
+        this.rafId = requestAnimationFrame(() => {
+            this.currentX = this.pendingX;
+            this.currentY = this.pendingY;
+            this.xOffset = this.currentX;
+            this.yOffset = this.currentY;
+            
             this.target.style.transform = `translate3d(${this.currentX}px, ${this.currentY}px, 0)`;
+            this.rafId = null; // Clear flag để RAF tiếp theo được schedule
         });
     }
 
     dragEnd() {
         if (!this.isDragging) return;
+        
+        // ✅ Cancel RAF nếu còn pending
+        if (this.rafId) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
         
         this.initialX = this.currentX;
         this.initialY = this.currentY;
@@ -583,6 +685,37 @@ class DraggableSetup {
         document.removeEventListener("touchmove", this.dragMove);
         document.removeEventListener("mouseup", this.dragEnd);
         document.removeEventListener("touchend", this.dragEnd);
+    }
+
+    /**
+     * Kiểm tra header có bị khuất khỏi viewport không
+     * @private
+     */
+    _isHeaderHidden() {
+        const header = this.target.querySelector('.modal-header') || this.target.querySelector('header');
+        if (!header) return false;
+        
+        const rect = header.getBoundingClientRect();
+        // Header bị khuất nếu: top < 0 (kéo lên quá) hoặc top > window.innerHeight (kéo xuống quá)
+        return rect.top < 0 || rect.top > window.innerHeight;
+    }
+
+    /**
+     * Reset element về giữa màn hình
+     * ✅ Được gọi khi dblclick vào element này mà header bị khuất
+     * @private
+     */
+    _centerElement() {
+        // ★ Restore về vị trí center ban đầu (khi modal lần đầu mở)
+        // Không tính toán lại - chỉ restore initial offset đã lưu
+        this.xOffset = this.initialCenterOffsetX;
+        this.yOffset = this.initialCenterOffsetY;
+        this.currentX = this.initialCenterOffsetX;
+        this.currentY = this.initialCenterOffsetY;
+        
+        // Apply transform
+        this.target.style.transform = `translate3d(${this.initialCenterOffsetX}px, ${this.initialCenterOffsetY}px, 0)`;
+        console.log(`[DraggableSetup] 🎯 Restored to initial center offset`);
     }
 }
 
@@ -611,6 +744,11 @@ class Resizable {
             this.initialHeight = 0;
             this.startX = 0;
             this.startY = 0;
+            
+            // ✅ RAF throttle - Tránh schedule RAF liên tục trên mỗi mousemove
+            this.rafId = null;
+            this.pendingWidth = 0;
+            this.pendingHeight = 0;
 
             // Bind context
             this.resizeStart = this.resizeStart.bind(this);
@@ -624,6 +762,11 @@ class Resizable {
     }
 
     init() {
+        if (this._initialized) {
+            console.warn('[Resizable] Đã khởi tạo rồi, bỏ qua...');
+            return;
+        }
+        this._initialized = true;
         // Tự động tạo một cái "tay cầm" (handle) ở góc dưới cùng bên phải nếu chưa có
         this.resizeHandle = document.createElement('div');
         this.resizeHandle.className = 'erp-resize-handle';
@@ -681,19 +824,29 @@ class Resizable {
         const dy = currentY - this.startY;
 
         // Tính toán kích thước mới với giới hạn (minWidth, minHeight)
-        const newWidth = Math.max(this.initialWidth + dx, this.minWidth);
-        const newHeight = Math.max(this.initialHeight + dy, this.minHeight);
+        this.pendingWidth = Math.max(this.initialWidth + dx, this.minWidth);
+        this.pendingHeight = Math.max(this.initialHeight + dy, this.minHeight);
 
-        // Tối ưu render
-        requestAnimationFrame(() => {
-            this.target.style.width = `${newWidth}px`;
-            this.target.style.height = `${newHeight}px`;
+        // ✅ RAF throttle: Chỉ schedule RAF một lần
+        if (this.rafId) return; // RAF đã scheduled, bỏ qua
+        
+        this.rafId = requestAnimationFrame(() => {
+            this.target.style.width = `${this.pendingWidth}px`;
+            this.target.style.height = `${this.pendingHeight}px`;
             this.target.style.flex = 'none'; // Ghi đè flex của bootstrap nếu có
+            this.rafId = null; // Clear flag để RAF tiếp theo được schedule
         });
     }
 
     resizeEnd() {
         if (!this.isResizing) return;
+        
+        // ✅ Cancel RAF nếu còn pending
+        if (this.rafId) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
+        
         this.isResizing = false;
         this.target.classList.remove('is-resizing');
 
@@ -708,18 +861,33 @@ class Resizable {
 /**
  * 9TRIP HELPER: UNIVERSAL WINDOW MINIMIZER
  * Tạo hiệu ứng thu nhỏ cửa sổ xuống Taskbar ảo
+ * ✅ Tối ưu: Tự động loại bỏ modal-dialog-centered để tránh xung đột với DraggableSetup
+ * 
+ * @param {string} elementId - ID của modal hoặc cửa sổ cần minimize
+ * @param {Object} options - Cấu hình
+ *   - options.title (string) - Tên hiển thị trong taskbar (auto-detect nếu không có)
+ *   - options.btnSelector (string) - Selector của nút minimize (default: '.btn-minimize')
+ *   - options.removeCenteredClass (boolean) - Loại bỏ modal-dialog-centered khi minimize (default: true)
+ * 
+ * @example
+ * const minimizer = new WindowMinimizer('#myModal', { 
+ *   title: 'My Window',
+ *   removeCenteredClass: true
+ * });
  */
 class WindowMinimizer {
     constructor(elementId, options = {}) {
         try {
-            this.target = document.getElementById(elementId);
+            this.target = $(elementId);
             if (!this.target) return;
 
-            // Tên hiển thị dưới Taskbar
-            this.title = options.title || 'Cửa sổ làm việc';
-            
-            // Tìm nút thu nhỏ trong header
+            // ✅ Configuration
+            this.title = this._resolveTitle(options.title);
             this.minimizeBtn = this.target.querySelector(options.btnSelector || '.btn-minimize');
+            this.removeCenteredClass = options.removeCenteredClass !== false; // Default true
+            
+            // ✅ Lưu trạng thái Bootstrap classes để restore nếu cần
+            this.savedClasses = null;
             
             this.initTaskbar();
 
@@ -734,8 +902,45 @@ class WindowMinimizer {
         }
     }
 
+    /**
+     * Xác định title từ options hoặc từ DOM element
+     * ✅ Tối ưu: Lấy text ngoài các thẻ button/icon
+     * @private
+     */
+    _resolveTitle(providedTitle) {
+        // Nếu có truyền title vào options thì dùng luôn
+        if (providedTitle) return providedTitle;
+        
+        // Tự động tìm .modal-header hoặc header trong element
+        const headerEl = this.target.querySelector('.modal-header') || this.target.querySelector('header');
+        if (headerEl) {
+            // ✅ Tối ưu: Clone element, xóa icons/buttons, lấy text
+            const cloned = headerEl.cloneNode(true);
+            cloned.querySelectorAll('button, i, svg').forEach(el => el.remove());
+            
+            const titleText = cloned.textContent?.trim();
+            if (titleText) return titleText;
+        }
+        
+        // Fallback: mặc định
+        return 'Cửa sổ làm việc';
+    }
+
+    /**
+     * ✅ Kiểm tra xem modal có class Bootstrap layout không
+     * Để quyết định loại bỏ hay bảo tồn
+     * @private
+     */
+    _getModalDialog() {
+        // Tìm .modal-dialog (nếu là Bootstrap modal)
+        return this.target.querySelector('.modal-dialog') || this.target;
+    }
+
+    /**
+     * Khởi tạo Taskbar global (chỉ 1 lần)
+     * @private
+     */
     initTaskbar() {
-        // Tạo thanh Taskbar nếu chưa tồn tại
         this.taskbarId = 'erp-global-taskbar';
         this.taskbar = document.getElementById(this.taskbarId);
         
@@ -747,35 +952,73 @@ class WindowMinimizer {
         }
     }
 
+    /**
+     * Thu nhỏ cửa sổ
+     * ✅ Tối ưu: Loại bỏ modal-dialog-centered để tránh xung đột khi drag
+     */
     minimize() {
-        // 1. Ẩn cửa sổ (Dùng display none để không chặn thao tác click ở dưới)
-        // Lưu lại thuộc tính display cũ để khi bật lên không bị lỗi Flexbox
+        // 1. Lưu display cũ để phục hồi
         this.oldDisplay = window.getComputedStyle(this.target).display;
+        
+        // 2. ✅ Loại bỏ modal-dialog-centered nếu có
+        // Vì: Modal đã bị drag không cần centered, sẽ xung đột với transform
+        const modalDialog = this._getModalDialog();
+        if (this.removeCenteredClass && modalDialog) {
+            if (modalDialog.classList.contains('modal-dialog-centered')) {
+                // Lưu lại để có thể restore nếu cần (optional)
+                this.hadCenteredClass = true;
+                modalDialog.classList.remove('modal-dialog-centered');
+            }
+        }
+        
+        // 3. Ẩn cửa sổ
         this.target.style.display = 'none';
 
-        // 2. Tạo nút đại diện dưới Taskbar
+        // 4. Tạo nút trong Taskbar
         this.taskItem = document.createElement('button');
         this.taskItem.className = 'btn btn-primary btn-sm erp-task-item';
-        // Thêm icon FontAwesome cho đẹp mắt (bạn có thể đổi icon tùy ý)
         this.taskItem.innerHTML = `<i class="fa-solid fa-window-restore me-2"></i>${this.title}`;
-        
-        // 3. Sự kiện: Khi bấm vào nút ở Taskbar -> Bật lại cửa sổ
         this.taskItem.addEventListener('click', () => this.restore());
         
         this.taskbar.appendChild(this.taskItem);
     }
 
+    /**
+     * Khôi phục cửa sổ
+     * ✅ Tối ưu: Có thể restore modal-dialog-centered nếu user chọn
+     */
     restore() {
-        // 1. Hiện lại cửa sổ (Phục hồi display cũ)
+        // 1. Hiện lại cửa sổ
         this.target.style.display = this.oldDisplay;
         
-        // 2. Tùy chọn: Nhấn nháy cửa sổ 1 xíu để user chú ý
-        this.target.style.animation = 'none'; // Reset
-        setTimeout(() => this.target.style.animation = 'popIn 0.3s ease forwards', 10);
+        // 2. ✅ Restore modal-dialog-centered nếu nó đã bị loại bỏ
+        // (Optional: Chỉ restore nếu cấu hình restoreCenteredClass = true)
+        if (this.hadCenteredClass && this.removeCenteredClass) {
+            const modalDialog = this._getModalDialog();
+            if (modalDialog && !modalDialog.classList.contains('modal-dialog-centered')) {
+                // ✅ Tối ưu: Không restore vì modal do drag không cần centered
+                // Nếu user muốn restore, có thể thêm option: restoreCenteredClass
+                // modalDialog.classList.add('modal-dialog-centered');
+            }
+        }
+        
+        // 3. Trigger animation popIn
+        requestAnimationFrame(() => {
+            this.target.style.animation = 'popIn 0.3s ease forwards';
+        });
 
-        // 3. Xóa nút ở Taskbar
+        // 4. Xóa nút khỏi Taskbar
         if (this.taskItem) {
             this.taskItem.remove();
+        }
+        
+        // 5. ✅ Cleanup: Xóa Taskbar nếu không còn item nào
+        if (this.taskbar) {
+            const remainingItems = this.taskbar.querySelectorAll('.erp-task-item');
+            if (remainingItems.length === 0) {
+                this.taskbar.remove();
+                this.taskbar = null;
+            }
         }
     }
 }

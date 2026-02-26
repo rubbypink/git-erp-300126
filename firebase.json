@@ -1,10 +1,10 @@
 {
   "hosting": {
-    "public": "public",
+    "public": "dist",
+    "predeploy": ["npm run build"],
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/v2/**",
       "**/node_modules/**"
     ],
     "rewrites": [
@@ -15,46 +15,24 @@
     ],
     "headers": [
       {
-        "source": "**/*.@(jpg|jpeg|gif|png|css|js)",
+        "source": "**/*.@(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2)",
         "headers": [
           {
             "key": "Cache-Control",
-            "value": "max-age=604800"
+            "value": "public, max-age=604800"
           }
         ]
       }
     ]
   },
-  "functions": [
-    {
-      "codebase": "default",
-      "disallowLegacyRuntimeConfig": true,
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "*.local"
-      ],
-      "source": "functions"
-    }
-  ],
+  "functions": {
+    "source": "functions"
+  },
   "emulators": {
-    "auth": {
-      "port": 9099
-    },
-    "functions": {
-      "port": 5001
-    },
-    "firestore": {
-      "port": 8080
-    },
-    "hosting": {
-      "port": 5000
-    },
-    "ui": {
-      "enabled": true
-    },
-    "singleProjectMode": true
+    "auth": { "port": 9099 },
+    "functions": { "port": 5001 },
+    "firestore": { "port": 8080 },
+    "hosting": { "port": 5000 },
+    "ui": { "enabled": true }
   }
 }

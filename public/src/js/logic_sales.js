@@ -8,7 +8,7 @@
     window.loadBookingToUI = function(bkData, customerData, detailsData) {
       if (!bkData) return;
       try {
-        log("Loading Booking...:", bkData);
+        log("Loading Booking...:", detailsData);
 
         // --- NEW LOGIC: TÌM CUSTOMER SOURCE ---
         let custSource = "";
@@ -20,78 +20,28 @@
           return isBkObj ? (bkData[field] ?? bkData[idx]) : bkData[idx];
         };
 
-        // Ưu tiên dùng customerData truyền vào (nếu có), rồi mới fallback tìm trong APP_DATA
-        if (customerData && typeof customerData === 'object') {
-          custSource = customerData.source || customerData.customer_source || custSource;
-        }
-
-        // Xử lý số điện thoại từ Bookings
-        const phoneRaw = bk(COL_INDEX.M_PHONE);
-        const phone = phoneRaw ? String(phoneRaw).replace(/^'/, "").trim() : "";
-
-        let custRow = null;
-
-        // 4. Tìm thông tin Customer (Hỗ trợ cả array format và object format)
-        if (!custSource && phone !== "" && window.APP_DATA) {
-          // Ưu tiên danh sách object (customers_obj) nếu có, fallback sang legacy array (customers)
-          const customerList = (Array.isArray(window.APP_DATA.customers_obj) && window.APP_DATA.customers_obj.length)
-            ? window.APP_DATA.customers_obj
-            : window.APP_DATA.customers;
-
-          if (Array.isArray(customerList)) {
-            custRow = customerList.find(r => {
-              if (!r) return false;
-
-              let rPhone = '';
-              if (typeof r === 'object' && !Array.isArray(r)) {
-                rPhone = r.phone || r.customer_phone || '';
-              } else if (Array.isArray(r)) {
-                rPhone = r[COL_INDEX.C_PHONE] || '';
-              } else {
-                return false;
-              }
-
-              const cleanRPhone = String(rPhone).replace(/^'/, "").replace(/[^0-9]/g, "");
-              const cleanPhone = String(phone).replace(/[^0-9]/g, "");
-              if (!cleanRPhone || !cleanPhone) return false;
-
-              // So sánh dạng contains để hỗ trợ trường hợp số bị lưu thiếu/khác prefix
-              return cleanRPhone.includes(cleanPhone) || cleanPhone.includes(cleanRPhone);
-            });
-
-            if (!custRow) {
-              log("Local search: Không tìm thấy khách theo SĐT");
-            } else {
-              if (typeof custRow === 'object' && !Array.isArray(custRow)) {
-                custSource = custRow.source || custRow.customer_source || '';
-              } else {
-                custSource = custRow[COL_INDEX.C_SOURCE] || '';
-              }
-            }
-          }
-        }
         if (!getE('main-form')) activateTab('tab-form');
         if (isBkObj) HD.setFormData('sub-booking-form', bkData);
-        else {
-          log('Data booking ko phải object, sử dụng method setVal thủ công theo index');
-          setVal('BK_ID', bk(COL_INDEX.M_ID));
-          setVal('BK_Date', bk(COL_INDEX.M_CREATED));
-          setVal('Cust_Phone', bk(COL_INDEX.M_PHONE));
-          setVal('Cust_Name', bk(COL_INDEX.M_CUST));
-          setVal('Cust_Source', custSource);
-          setVal('BK_Start', bk(COL_INDEX.M_START));
-          setVal('BK_End', bk(COL_INDEX.M_END));
-          setVal('BK_Adult', bk(COL_INDEX.M_ADULT));
-          setVal('BK_Child', bk(COL_INDEX.M_CHILD));
-          // Tiền tệ & Trạng thái
-          setVal('BK_Status', bk(COL_INDEX.M_STATUS));
-          setVal('BK_PayType', bk(COL_INDEX.M_PAYTYPE));
-          setVal('BK_PayDue', bk(COL_INDEX.M_PAYDUE));
-          setNum('BK_Total', bk(COL_INDEX.M_TOTAL));
-          setNum('BK_Deposit', bk(COL_INDEX.M_DEPOSIT));
-          setVal('BK_Note', bk(COL_INDEX.M_NOTE));
-          setVal('BK_Staff', bk(COL_INDEX.M_STAFF));
-        }
+        // else {
+        //   log('Data booking ko phải object, sử dụng method setVal thủ công theo index');
+        //   setVal('BK_ID', bk(COL_INDEX.M_ID));
+        //   setVal('BK_Date', bk(COL_INDEX.M_CREATED));
+        //   setVal('Cust_Phone', bk(COL_INDEX.M_PHONE));
+        //   setVal('Cust_Name', bk(COL_INDEX.M_CUST));
+        //   setVal('Cust_Source', custSource);
+        //   setVal('BK_Start', bk(COL_INDEX.M_START));
+        //   setVal('BK_End', bk(COL_INDEX.M_END));
+        //   setVal('BK_Adult', bk(COL_INDEX.M_ADULT));
+        //   setVal('BK_Child', bk(COL_INDEX.M_CHILD));
+        //   // Tiền tệ & Trạng thái
+        //   setVal('BK_Status', bk(COL_INDEX.M_STATUS));
+        //   setVal('BK_PayType', bk(COL_INDEX.M_PAYTYPE));
+        //   setVal('BK_PayDue', bk(COL_INDEX.M_PAYDUE));
+        //   setNum('BK_Total', bk(COL_INDEX.M_TOTAL));
+        //   setNum('BK_Deposit', bk(COL_INDEX.M_DEPOSIT));
+        //   setVal('BK_Note', bk(COL_INDEX.M_NOTE));
+        //   setVal('BK_Staff', bk(COL_INDEX.M_STAFF));
+        // }
 
         
 
@@ -110,11 +60,14 @@
             return;
           }
         }
-        
+        if (customerData) {
+          findCustByPhone(customerData);
+        }
         
         detailRowCount = 0;
         
         if (Array.isArray(detailsData)) {
+          log(`Loading ${detailsData.length} - ${detailsData[0]} detail rows...`);
           // Sắp xếp chi tiết theo thứ tự service_type và check_in
           const sortedDetails = sortDetailsData(detailsData);
           sortedDetails.forEach(row => {
@@ -724,7 +677,7 @@
         const bookings = {
           id: getVal('BK_ID'),
           customer_id: getVal('BK_CustID') || '',
-          customer_name: getVal('Cust_Name'),
+          customer_full_name: getVal('Cust_Name'),
           customer_phone: formatPhone(getVal('Cust_Phone')),
           startDate: getVal('BK_Start'),
           endDate: getVal('BK_End'),
@@ -801,18 +754,6 @@
         log(Object.values(bkData));
         const detailsData = res.booking_details;
         const customerData = res.customer;
-        // THÊM: Đồng bộ sang Tab Khách hàng
-        // if (typeof window.updateCustomerTab === 'function' && getE('tab-sub-form')) {
-        //     // res.customer là dữ liệu full lấy từ searchBookingAPI (bước trước ta đã làm)
-        //     const syncData = {
-        //         full_name: res.bookings[4] || res.bookings.customer_name, // Name từ Booking Bookings
-        //         phone: res.bookings[5] || res.bookings.customer_phone, // Phone từ Booking Bookings
-        //         source: "", // Sẽ lấy từ fullRaw
-        //         fullRaw: res.customer // Data lấy từ DB_CUSTOMER
-        //     };
-
-        //     window.updateCustomerTab(syncData);
-        // }
 
         if (typeof loadBookingToUI === 'function') {
             loadBookingToUI(bkData, customerData, detailsData);
@@ -830,79 +771,116 @@
       }
     }
     
-    function findCustByPhone(e) {
-      const phoneInput = getE('Cust_Phone').value.trim();
-      const nameInput = getE('Cust_Name').value.trim();
+    async function findCustByPhone(customerData = null, e) {
+      // 1. Lấy fieldset với name="customers"
+      let custFieldset = document.querySelector('fieldset[name="customers"]');
+      if (!custFieldset) {
+        custFieldset = document.querySelector('fieldset#fs_customer_info');
+      }
+      
+      if (!custFieldset) {
+        log("Không tìm thấy fieldset customers", "warning");
+        return;
+      }
+
+
+      // 2. Lấy giá trị input từ fieldset
+      const phoneEl = custFieldset.querySelector('[data-field="customer_phone"]');
+      const nameEl = custFieldset.querySelector('[data-field="customer_full_name"]');
+      
+      const phoneInput = phoneEl?.value.trim() || '';
+      const nameInput = nameEl?.value.trim() || '';
       
       if (phoneInput.length < 3 && nameInput.length < 3) return;
       
-      const customers = window.APP_DATA ? window.APP_DATA.customers : [];
+      const customers = window.APP_DATA ? window.Object.values(APP_DATA.customers) : [];
       
       let found = null;
       
-      // --- BƯỚC 1: TÌM THEO SỐ ĐIỆN THOẠI ---
-      if (phoneInput.length >= 3) {
-      found = customers.find(c => {
-        if (!c) return false;
-        
-        // Object format: c.phone hoặc c.customer_phone
-        if (typeof c === 'object' && !Array.isArray(c)) {
-        const phone = c.phone || c.customer_phone || '';
-        return String(phone).includes(phoneInput);
+      if (!customerData) {
+        // --- BƯỚC 1: TÌM THEO SỐ ĐIỆN THOẠI ---
+        if (phoneInput.length >= 3) {
+          found = customers.find(c => {
+            if (!c) return false;
+            
+            // Object format: c.phone hoặc c.customer_phone
+            if (typeof c === 'object' && !Array.isArray(c)) {
+              const phone = c.phone || c.customer_phone || '';
+              return String(phone).includes(phoneInput);
+            }
+            
+            // Array format: c[6] là phone index
+            if (Array.isArray(c)) {
+              return c[6] && String(c[6]).includes(phoneInput);
+            }
+            
+            return false;
+          });
         }
         
-        // Array format: c[1]
-        if (Array.isArray(c)) {
-        return c[6] && String(c[6]).includes(phoneInput);
+        // --- BƯỚC 2: NẾU CHƯA TÌM THẤY => TÌM THEO TÊN ---
+        if (!found && nameInput.length >= 3) {
+          found = customers.find(c => {
+            if (!c) return false;
+            
+            // Object format: c.full_name hoặc c.customer_full_name
+            if (typeof c === 'object' && !Array.isArray(c)) {
+              const name = c.full_name || c.customer_full_name || '';
+              return String(name).toLowerCase().includes(nameInput.toLowerCase());
+            }
+            
+            // Array format: c[1]
+            if (Array.isArray(c)) {
+              return c[1] && String(c[1]).toLowerCase().includes(nameInput.toLowerCase());
+            }
+            
+            return false;
+          });
         }
-        
-        return false;
-      });
-      }
+      } else found = customerData; // Nếu đã có data từ search thì dùng luôn, không cần tìm nữa
       
-      // --- BƯỚC 2: NẾU CHƯA TÌM THẤY => TÌM THEO TÊN ---
-      if (!found && nameInput.length >= 3) {
-      found = customers.find(c => {
-        if (!c) return false;
-        
-        // Object format: c.name hoặc c.customer_name
-        if (typeof c === 'object' && !Array.isArray(c)) {
-        const name = c.name || c.customer_name || '';
-        return String(name).toLowerCase().includes(nameInput.toLowerCase());
-        }
-        
-        // Array format: c[1]
-        if (Array.isArray(c)) {
-        return c[1] && String(c[1]).toLowerCase().includes(nameInput.toLowerCase());
-        }
-        
-        return false;
-      });
-      }
 
       if (found) {
-      // Lấy dữ liệu theo format
-      let custName = '';
-      let custPhone = '';
-      let custSource = '';
-      
-      if (typeof found === 'object' && !Array.isArray(found)) {
-        // Object format
-        custName = found.full_name || found.customer_name || '';
-        custPhone = found.phone || found.customer_phone || '';
-        custSource = found.source || found.customer_source || '';
-      } else if (Array.isArray(found)) {
-        // Array format
-        custName = found[1] || '';
-        custPhone = found[6] || '';
-        custSource = found[8] || '';
-      }
-      
-      // Cập nhật form
-      getE('Cust_Name').value = custName;
-      getE('Cust_Phone').value = custPhone;
-      if (custSource) getE('Cust_Source').value = custSource;
-      log("Tìm thấy khách:", found);
+        // 3. Trích xuất dữ liệu theo format
+        let custData = {};
+        if (typeof found === 'object' && !Array.isArray(found)) {
+          // Object format
+          custData = {
+            full_name: found.full_name || found.customer_full_name || '',
+            phone: found.phone || found.customer_phone || '',
+            email: found.email || found.customer_email || '',
+            id_card: found.id_card || found.cccd || '',
+            id_card_date: found.id_card_date || found.cccd_date || '',
+            dob: found.dob || found.date_of_birth || '',
+            address: found.address || '',
+            source: found.source || found.customer_source || ''
+          };
+        } else if (Array.isArray(found)) {
+          // Array format - adjust theo cấu trúc thực tế
+          custData = {
+            full_name: found[1] || '',
+            phone: found[6] || '',
+            email: found[7] || '',
+            id_card: found[3] || '',
+            id_card_date: found[4] || '',
+            dob: found[2] || '',
+            address: found[5] || '',
+            source: found[8] || ''
+          };
+        }
+        
+        // 4. Cập nhật các element trong fieldset dựa vào data-field
+        // Looping qua custData và tìm element tương ứng (với prefix customer_)
+        Object.keys(custData).forEach(key => {
+          const fieldName = 'customer_' + key; // Thêm prefix
+          const el = custFieldset.querySelector(`[data-field="${fieldName}"]`);
+          if (el && custData[key]) {
+            setVal(el, custData[key]);
+          }
+        });
+        
+        log("✅ Tìm thấy khách hàng và cập nhật dữ liệu vào fieldset", "success");
+        log("Dữ liệu:", found);
       }
     }
 
@@ -999,169 +977,110 @@
       logA("Đã tải Template và cập nhật ngày tháng thành công!", "success");
     }
 
-    // =========================================================================
-    // LOGIC CUSTOMER TAB
-    // =========================================================================
+    // // =========================================================================
+    // // LOGIC CUSTOMER TAB
+    // // =========================================================================
 
-    /**
-     * Hàm này được gọi từ BookingForm hoặc BaseForm khi có dữ liệu khách hàng
-     * @param {Object} custData - { name, phone, email, ... }
-     */
-    window.updateCustomerTab = function(custData) {
-      if(!custData && getE('tab-sub-form')) {
-        // 1. Đồng bộ dữ liệu cơ bản từ Booking Form
-        getE('Ext_CustName') ? setVal('Ext_CustName', getVal('Cust_Name')) : null;
-        getE('Ext_CustPhone') ? setVal('Ext_CustPhone', getVal('Cust_Phone')) : null;
-        getE('Ext_CustSource') ? setVal('Ext_CustSource', getVal('Cust_Source')) : null;
-        return;
-      }
+    // /**
+    //  * Hàm này được gọi từ BookingForm hoặc BaseForm khi có dữ liệu khách hàng
+    //  * @param {Object} custData - { name, phone, email, ... }
+    //  */
+    // window.updateCustomerTab = function(custData) {
+    //   if(!custData && getE('tab-sub-form')) {
+    //     // 1. Đồng bộ dữ liệu cơ bản từ Booking Form
+    //     getE('Ext_CustName') ? setVal('Ext_CustName', getVal('Cust_Name')) : null;
+    //     getE('Ext_CustPhone') ? setVal('Ext_CustPhone', getVal('Cust_Phone')) : null;
+    //     getE('Ext_CustSource') ? setVal('Ext_CustSource', getVal('Cust_Source')) : null;
+    //     return;
+    //   }
 
-      // 1. Đồng bộ dữ liệu cơ bản từ Booking Form
-      setVal('Ext_CustName', getVal('Cust_Name'));
-      setVal('Ext_CustPhone', getVal('Cust_Phone'));
-      setVal('Ext_CustSource', getVal('Cust_Source'));
+    //   // 1. Đồng bộ dữ liệu cơ bản từ Booking Form
+    //   setVal('Ext_CustName', getVal('Cust_Name'));
+    //   setVal('Ext_CustPhone', getVal('Cust_Phone'));
+    //   setVal('Ext_CustSource', getVal('Cust_Source'));
 
-      // 2. Điền dữ liệu chi tiết (nếu lấy từ DB)
-      // Map theo index cột của DB_CUSTOMER hoặc Object trả về từ searchBookingAPI
-      // Giả sử searchBookingAPI trả về mảng customer full: [ID, Phone, Name, Email, Addr, Note, Type, Source, ...]
+    //   // 2. Điền dữ liệu chi tiết (nếu lấy từ DB)
+    //   // Map theo index cột của DB_CUSTOMER hoặc Object trả về từ searchBookingAPI
+    //   // Giả sử searchBookingAPI trả về mảng customer full: [ID, Phone, Name, Email, Addr, Note, Type, Source, ...]
       
-      if (custData.fullRaw) {
-          const raw = custData.fullRaw;
+    //   if (custData.fullRaw) {
+    //       const raw = custData.fullRaw;
 
-          setVal('Ext_CustEmail', raw.email || raw[7] || ""); 
-          setVal('Ext_CustAddr', raw.address || raw[5] || "");
-          setVal('Ext_CustCCCDDate', raw.id_card_date || raw[4] || "");
-          setVal('Ext_CustDOB', raw.dob || raw[2] || "");
-          setVal('Ext_CustCCCD', raw.id_card || raw[3] || "");
-      }
-    };
+    //       setVal('Ext_CustEmail', raw.email || raw[7] || ""); 
+    //       setVal('Ext_CustAddr', raw.address || raw[5] || "");
+    //       setVal('Ext_CustCCCDDate', raw.id_card_date || raw[4] || "");
+    //       setVal('Ext_CustDOB', raw.dob || raw[2] || "");
+    //       setVal('Ext_CustCCCD', raw.id_card || raw[3] || "");
+    //   }
+    // };
 
-    /**
-     * Hàm lấy dữ liệu đầy đủ từ Tab này để phục vụ Export
-     */
-    window.getExtendedCustomerData = function() {
+    // /**
+    //  * Hàm lấy dữ liệu đầy đủ từ Tab này để phục vụ Export
+    //  */
+    getCustomerData = function() {
       try {
-        // Ưu tiên lấy từ Tab 4, nếu Tab 4 trống thì fallback về Tab 1
-        const phone = getVal('Ext_CustPhone') || getVal('Cust_Phone');
-
-        let custRow = null;
-          
-        // Tìm thông tin Customer (Hỗ trợ cả array và object format)
-        if (phone !== "" && window.APP_DATA) {
-          // Hỗ trợ cả format cũ (array) và format mới (object)
-          const customerList = window.APP_DATA.customers_obj || window.APP_DATA.customers || [];
-          
-          custRow = customerList.find(r => {
-            if (!r) return false;
-
-            // Xử lý object format (mới)
-            if (typeof r === 'object' && !Array.isArray(r)) {
-              const rPhone = r.phone || r.customer_phone || '';
-              return String(rPhone).includes(phone);
-            }
-
-            // Xử lý array format (cũ)
-            if (Array.isArray(r)) {
-              const rPhone = r[6] || ''; // Index 6 cho array format
-              return String(rPhone).includes(phone);
-            }
-
-            return false;
-          });
-          
-          if (!custRow) {
-            log("Local search: Không tìm thấy khách theo SĐT");
-          }
+        // 1. Lấy fieldset với name="customers" (hoặc fallback id="fs_customer_info")
+        let custFieldset = document.querySelector('fieldset[name="customers"]');
+        if (!custFieldset) {
+          custFieldset = document.querySelector('fieldset#fs_customer_info');
         }
-
-        const formSource = getVal('Cust_Source') || getVal('Ext_CustSource');
         
-        if (custRow) {
-          log('Thấy cust row', custRow);
-          
-          // Lấy dữ liệu từ object hoặc array
-          let dbSource = "";
-          let custEmail = "";
-          let custCCCD = "";
-          let custAddress = "";
-          let custCCCDDate = "";
-          let custDOB = "";
-
-          if (typeof custRow === 'object' && !Array.isArray(custRow)) {
-            // Object format (mới)
-            dbSource = custRow.source || custRow.customer_source || "";
-            custEmail = custRow.email || custRow.customer_email || "";
-            custCCCD = custRow.id_card || custRow.cccd || "";
-            custAddress = custRow.address || custRow.customer_address || "";
-            custCCCDDate = custRow.id_card_date || custRow.cccd_date || "";
-            custDOB = custRow.dob || custRow.customer_dob || "";
-          } else if (Array.isArray(custRow)) {
-            // Array format (cũ) - Index mapping
-            // Giả định: [0]=ID, [6]=Phone, [1]=Name, [2]=DOB, [5]=Address, [3]=CCCD, [4]=CCCD_Date, [7]=Email, [8]=Source
-            dbSource = custRow[8] || "";
-            custEmail = custRow[7] || "";
-            custCCCD = custRow[3] || "";
-            custAddress = custRow[5] || "";
-            custCCCDDate = custRow[4] || "";
-            custDOB = custRow[2] || "";
-          }
-
-          return {
-            full_name: getVal('Ext_CustName') !== "" ? getVal('Ext_CustName') : getVal('Cust_Name'),
-            phone: phone,        
-            email: custEmail !== "" ? custEmail : "",
-            id_card: custCCCD !== "" ? custCCCD : "",
-            address: custAddress !== "" ? custAddress : "",
-            id_card_date: custCCCDDate !== "" ? custCCCDDate : "",
-            dob: custDOB !== "" ? custDOB : "",
-            source: dbSource !== "" ? dbSource : formSource
-          };
-        } else {
-          log('Chưa có khách hàng => sẽ tạo mới!');
-          return {
-            full_name: getVal('Ext_CustName') || getVal('Cust_Name'),
-            phone: phone,        
-            email: getVal('Ext_CustEmail') || "",
-            id_card: getVal('Ext_CustCCCD') || "",
-            address: getVal('Ext_CustAddr') || "",
-            id_card_date: getVal('Ext_CustCCCDDate') || "",
-            dob: getVal('Ext_CustDOB') || "",
-            source: formSource
-          };
+        if (!custFieldset) {
+          logA("Không tìm thấy fieldset khách hàng!", "warning");
+          return null;
         }
+
+        // 2. Trích xuất dữ liệu từ tất cả input/select/textarea trong fieldset
+        const data = {};
+        custFieldset.querySelectorAll('input, select, textarea').forEach(el => {
+          if (el.hasAttribute('data-field')) {
+            let fieldName = el.getAttribute('data-field');
+            // Xóa prefix "customer_" nếu có
+            fieldName = fieldName.replace(/^customer_/, '');
+            // Lấy value (trim whitespace)
+            data[fieldName] = getVal(el.id).trim(); // Sử dụng getVal để đảm bảo lấy giá trị đã được xử lý (nếu có logic đặc biệt)
+          }
+        });
+
+        // 3. Validation cơ bản
+        if (!data.full_name || !data.phone) {
+          logA("Vui lòng nhập Tên và Số điện thoại!", "warning");
+          return;
+        }
+        return data;
       } catch (e) {
-        log("Lỗi hàm getExtendedCustomerData", e.message, 'error');
+        log("Lỗi hàm getCustomerData", e.message, 'error');
         return null;
       }
     };
 
-    window.prepareCreateCustomer = function() {
-      // A. Chuyển sang Tab Customer
-      // B. Reset form về rỗng
-      const customerForm = getE('customer-extended-form');
-      if (customerForm) customerForm.reset();
+    // window.prepareCreateCustomer = function() {
+    //   // A. Chuyển sang Tab Customer
+    //   // B. Reset form về rỗng
+    //   const customerForm = getE('customer-extended-form');
+    //   if (customerForm) customerForm.reset();
       
-      // C. Mở khóa (Unlock) các trường Readonly (Tên & SĐT)
-      const elName = getE('Ext_CustName');
-      const elPhone = getE('Ext_CustPhone');
+    //   // C. Mở khóa (Unlock) các trường Readonly (Tên & SĐT)
+    //   const elName = getE('Ext_CustName');
+    //   const elPhone = getE('Ext_CustPhone');
       
-      if (elName) {
-        elName.readOnly = false;
-        elName.classList.remove('bg-light');
-        elName.placeholder = "Nhập tên khách mới...";
-        elName.focus();
-      }
+    //   if (elName) {
+    //     elName.readOnly = false;
+    //     elName.classList.remove('bg-light');
+    //     elName.placeholder = "Nhập tên khách mới...";
+    //     elName.focus();
+    //   }
 
-      if (elPhone) {
-        elPhone.readOnly = false;
-        elPhone.classList.remove('bg-light');
-        elPhone.placeholder = "Nhập số điện thoại...";
-      }
+    //   if (elPhone) {
+    //     elPhone.readOnly = false;
+    //     elPhone.classList.remove('bg-light');
+    //     elPhone.placeholder = "Nhập số điện thoại...";
+    //   }
 
-      // D. Hiển thị nút Lưu
-      const btnSave = getE('btn-save-customer');
-      if (btnSave) btnSave.classList.remove('d-none');
-    };
+    //   // D. Hiển thị nút Lưu
+    //   const btnSave = getE('btn-save-customer');
+    //   if (btnSave) btnSave.classList.remove('d-none');
+    // };
 
     /**
      * 1. Xử lý khi click vào dòng trong Bảng Tổng hợp (Bảng 3, 4)
@@ -1171,15 +1090,15 @@
     function handleAggClick(key, filterType) {
         log(`📂 Mở chế độ Batch Edit: [${filterType}] ${key}`);
 
-        // 1. CHỈNH SỬA: Đổi nguồn dữ liệu sang APP_DATA.booking_details
-        const source = APP_DATA.booking_details.slice(); 
+        // 1. CHỈNH SỬA: Đổi nguồn dữ liệu sang Object.values(APP_DATA.booking_details)
+        const source = Object.values(APP_DATA.booking_details).slice(); 
 
         // 2. CHUẨN BỊ DỮ LIỆU TRA CỨU (Lookup Map)
         // Mục đích: Tạo bảng nối nhanh giữa ID Booking và Tên Staff để không phải loop qua bookings nhiều lần
         const staffMap = new Map();
         
         if (filterType === 'staff') {
-            const bookings = APP_DATA.bookings.slice();
+            const bookings = Object.values(APP_DATA.bookings).slice();
             bookings.forEach(mRow => {
                 const mId = mRow[COL_INDEX.M_ID];     // ID trong Bookings
                 const mStaff = mRow[COL_INDEX.M_STAFF]; // Tên Staff
@@ -1328,7 +1247,7 @@
         setVal('print-time', new Date().toLocaleString());
         setVal('conf-cust-adult', m.adults || m[COL_INDEX.M_ADULT]); // Số người lớn
         setVal('conf-cust-child', m.children || m[COL_INDEX.M_CHILD]); // Số trẻ em
-        setVal('conf-cust-name', m.customer_name || c[1]);
+        setVal('conf-cust-name', m.customer_full_name || c[1]);
         setVal('conf-cust-phone', m.customer_phone || c[6]);
         setVal('conf-cust-email', (c && c.email) ? c.email : ""); // Email từ bảng Customer
         setVal('conf-cust-add', (c && c.address) ? c.address : "");   // Địa chỉ

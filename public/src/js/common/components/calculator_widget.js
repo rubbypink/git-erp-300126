@@ -14,6 +14,11 @@ const CalculatorWidget = {
 
     // 2. INIT
     init: function() {
+        if (this._initialized) {
+            console.warn('[Calculator Widget] Đã khởi tạo rồi, bỏ qua...');
+            return;
+        }
+        this._initialized = true;
         // Render giao diện ngay khi khởi tạo
         if (!document.getElementById(this.config.containerId)) {
             this.renderUI();
@@ -332,10 +337,31 @@ const CalculatorWidget = {
 // =========================================================================
 // EXPORT & INITIALIZATION
 // =========================================================================
-// Attach to global scope (không dùng ES Module để tương thích với v1 legacy code)
-if (typeof window !== 'undefined') {
-    window.CalculatorWidget = CalculatorWidget;
-}
+// ✅ Support cả ES6 module + Global script loading
+(function(globalObject) {
+    // ES6 Module export
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = CalculatorWidget;
+    }
+    
+    // CommonJS export
+    if (typeof exports !== 'undefined') {
+        exports.CalculatorWidget = CalculatorWidget;
+    }
+    
+    // Global window export (for <script> tag loading)
+    if (typeof globalObject !== 'undefined') {
+        globalObject.CalculatorWidget = CalculatorWidget;
+    }
+})(typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : this);
 
-// Khởi chạy khi load trang (Hoặc gọi trong file main.js)
-// CalculatorWidget.init();
+// ⚠️ Khỏi tạo chỉ nếu DOM sẵn sàng
+// Người dùng có thể gọi CalculatorWidget.init() thủ công nếu cần
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        CalculatorWidget.init();
+    });
+} else {
+    // DOM đã ready
+    CalculatorWidget.init();
+}

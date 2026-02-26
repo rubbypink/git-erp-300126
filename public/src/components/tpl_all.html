@@ -1,4 +1,5 @@
 <template id="tmpl-download-library">
+  <!-- <script async src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script> -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
 </template>
@@ -7,7 +8,7 @@
 </template>
 <template id="tmpl-settings-form">
   <div class="d-flex flex-column h-100 w-auto">
-    <div class="card-header nav-container px-3 border-bottom bg-white">
+    <div class="card-header nav-container px-3 border-bottom ">
       <ul class="nav nav-tabs" id="settingTabs" role="tablist">
         <li class="nav-item" role="presentation">
           <button class="nav-link active fw-bold small" id="tab-theme-btn" onclick="selectTab('tab-theme-content')"
@@ -21,12 +22,6 @@
             data-bs-target="#tab-shortcut-content" type="button" role="tab">
             <i class="fa-solid fa-keyboard me-2 text-danger"></i>Phím Tắt
             (Hotkeys)
-          </button>
-        </li>
-        <li class="nav-item admin-only" role="presentation">
-          <button class="nav-link fw-bold small" id="tab-users-btn" onclick="selectTab('tab-users-content')"
-            data-bs-target="#tab-users-content" type="button" role="tab">
-            <i class="fa-solid fa-users me-2 text-success"></i>Quản Lý Người Dùng
           </button>
         </li>
       </ul>
@@ -458,151 +453,14 @@
           </div>
         </div>
       </div>
-
-      <div class="tab-pane fade admin-only" id="tab-users-content" role="tabpanel">
-        <div id="users-config-container">
-          <div class="card shadow-sm border-0 h-100">
-            <div class="card-body h-100">
-              <div class="d-flex flex-row justify-content-between border-bottom pb-2 mb-3">
-                <h6 class="fw-bold text-success">
-                  <i class="fa-solid fa-users me-2"></i>Quản Lý Người Dùng
-                </h6>
-                <button type="button" class="btn btn-sm btn-secondary"
-                  onclick="A.Auth.renderUsersConfig()">Load</button>
-              </div>
-              <!-- Phần Form Nhập Liệu -->
-              <form id="users-form" class="row g-2 mb-2 p-2 rounded border h-100" style="font-size: 0.75rem;">
-
-                <div class="col-md-3 form-floating">
-                  <input type="text" class="form-control form-control-sm" id="form-account" placeholder="Account name"
-                    style="max-height: 1.5rem !important;">
-                  <label for="form-account">Tên Tài Khoản</label>
-                </div>
-
-                <div class="col-md-3 form-floating">
-                  <input type="text" class="form-control form-control-sm" id="form-user-name" placeholder="Họ tên"
-                    style="max-height: 1.5rem !important;">
-                  <label for="form-user-name">Tên Người Dùng</label>
-                </div>
-
-                <div class="col-md-3 form-floating">
-                  <input type="text" class="form-control form-control-sm" id="form-user-phone" placeholder="0123456789"
-                    style="max-height: 1.5rem !important;">
-                  <label for="form-user-phone">Số Điện Thoại</label>
-                </div>
-
-                <div class="col-md-3 form-floating">
-                  <input type="email" class="form-control form-control-sm" id="form-email"
-                    placeholder="user@example.com" style="max-height: 1.5rem !important;">
-                  <label for="form-email">Email</label>
-                </div>
-
-                <div class="col-md-3">
-                  <div class="form-floating">
-                    <select class="form-select form-select-sm" style="max-height: 1.5rem !important;" id="form-role"
-                      onchange="
-                      const selectedOption = this.options[this.selectedIndex];
-                      const level = selectedOption.getAttribute('data-level') || '0';
-                      getE('form-level').value = level;
-                    ">
-                      <option value="sale" data-level="1">Sales</option>
-                      <option value="sale_sup" data-level="2">Sales Supervisor</option>
-                      <option value="op" data-level="1">Operator</option>
-                      <option value="acc" data-level="3">Accountant</option>
-                      <option value="supervisor" data-level="5">Supervisor</option>
-                      <option value="manager" data-level="10">Manager</option>
-                      <option value="admin" data-level="99">Admin</option>
-                    </select>
-                    <label for="form-role">Vai Trò</label>
-                  </div>
-                </div>
-
-                <div class="col-md-6">
-                  <label class="form-label small fw-bold">Group</label>
-                  <div class="border rounded p-2 bg-white" style="max-height: 150px; overflow-y: auto;">
-                    <div class="form-check form-check-inline">
-                      <input class="form-check-input group-role-checkbox" type="checkbox" id="group-guests"
-                        value="GUESTS">
-                      <label class="form-check-label small" for="group-guests">Khách</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                      <input class="form-check-input group-role-checkbox" type="checkbox" id="group-sales"
-                        value="SALES">
-                      <label class="form-check-label small" for="group-sales">Sales Team</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                      <input class="form-check-input group-role-checkbox" type="checkbox" id="group-operations"
-                        value="OPERATIONS">
-                      <label class="form-check-label small" for="group-operations">Operations Team</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                      <input class="form-check-input group-role-checkbox" type="checkbox" id="group-accountant"
-                        value="ACCOUNTANT">
-                      <label class="form-check-label small" for="group-accountant">Kế toán</label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                      <input class="form-check-input group-role-checkbox" type="checkbox" id="group-admin"
-                        value="ADMIN">
-                      <label class="form-check-label small" for="group-admin">Admin</label>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="col-md-3 form-floating" style="max-height: 1.5rem !important;">
-                  <input type="date" class="form-control form-control-sm" id="form-created-at" readonly>
-                  <label for="form-created-at">Ngày Tạo</label>
-                </div>
-
-                <div class="text-muted small" style="max-height: 1.5rem !important;">
-                  <input type="hidden" class="form-control form-control-sm" id="form-level" placeholder="1" min="0"
-                    readonly>
-                </div>
-                <div class="text-muted small">
-                  <input type="hidden" class="form-control form-control-sm" id="form-uid" readonly placeholder="Tự động"
-                    style="max-height: 1.5rem !important;">
-                </div>
-
-              </form>
-
-              <!-- Phần Bảng Dữ Liệu -->
-              <h6 class="fw-bold text-info border-bottom pb-2 mb-3">
-                <i class="fa-solid fa-table me-2"></i>Danh Sách Người Dùng
-              </h6>
-              <div class="table-responsive" style="max-height: 50vh; overflow-y: auto;">
-                <table class="table table-bordered table-hover table-sm" id="users-table">
-                  <thead class="table-light sticky-top text-center">
-                    <tr>
-                      <th style="width: 15%">UID</th>
-                      <th style="width: 12%">Account</th>
-                      <th style="width: 15%">Họ & Tên</th>
-                      <th style="width: 12%">Điện Thoại</th>
-                      <th style="width: 15%">Email</th>
-                      <th style="width: 8%">Vai Trò</th>
-                      <th style="width: 7%">Cấp Độ</th>
-                      <th style="width: 10%">Nhóm</th>
-                      <th style="width: 15%">Ngày Tạo</th>
-                      <th style="width: 8%">Hành động</th>
-                    </tr>
-                  </thead>
-                  <tbody id="users-table-body">
-                    <tr>
-                      <td colspan="10" class="text-center text-muted">Đang tải dữ liệu...</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
 
 <template id="tmpl-list">
   <div class="card h-100">
-    <div class="card-header bg-white py-1">
-      <div class="d-flex flex-wrap justify-content-between align-items-center bg-white rounded">
+    <div class="card-header  py-1">
+      <div class="d-flex flex-wrap justify-content-between align-items-center  rounded">
         <div class="row align-items-center">
           <div class="col-auto">
             <select id="filter-col" class="form-select form-select-sm" onchange="updateFilterOptions()"
@@ -651,7 +509,8 @@
     </div>
     <div id="tbl-container-tab2">
       <div class="flex-grow-1 mb-0">
-        <table class="table table-responsive table-bordered table-hover table-sm table-data" id="grid-table">
+        <table class="table table-responsive table-bordered table-hover table-sm table-data" id="grid-table"
+          data-collection="">
           <thead class="table-secondary text-center">
             <tr id="grid-header"></tr>
           </thead>

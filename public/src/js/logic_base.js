@@ -267,85 +267,50 @@ function handleSearchResult(data) {
  */
 function findBookingInLocal(bkId) {
     // 1. Guard Clause: Kiểm tra dữ liệu nguồn
-        if (!APP_DATA) return null;
+    if (!APP_DATA) return null;
     let role = CURRENT_USER.role;
-    let detailsSource = ROLE_DATA[role];
-    let detailsSourceObj = detailsSource + '_obj'; // Object variant
+    let detailsSource = role === 'op' ? 'operator_entries' : 'booking_details';
+    let detailsSourceData = detailsSource + "_by_booking";
+
+
+    // ✅ Guard: đảm bảo các sub-collection đã được load
+    const bookingsMap       = APP_DATA.bookings        || {};
+    const detailsMap        = APP_DATA[detailsSource]  || {};
+    const detailsByBkMap    = APP_DATA[detailsSourceData] || {};
 
     // ✅ Prefer object format if available
-    let bookingsData = APP_DATA.bookings_obj || APP_DATA.bookings;
-    let detailsData = APP_DATA[detailsSourceObj] || APP_DATA[detailsSource];
-
-    if (!Array.isArray(bookingsData) || bookingsData.length === 0) return null;
-    if (!Array.isArray(detailsData)) detailsData = [];
-
-    const isObjList = (list) => Array.isArray(list) && list[0] && typeof list[0] === 'object' && !Array.isArray(list[0]);
-    const toStr = (v) => String(v ?? '');
-
-    const findBookingRowById = (id) => {
-        if (!Array.isArray(bookingsData)) return null;
-        if (isObjList(bookingsData)) {
-            return bookingsData.find(row => row && toStr(row.id) === toStr(id)) || null;
-        }
-        return bookingsData.find(row => row && toStr(row[0]) === toStr(id)) || null;
-    };
-
-    const findDetailRowById = (id) => {
-        if (!Array.isArray(detailsData)) return null;
-        if (isObjList(detailsData)) {
-            // Object format detail id: `id`
-            return detailsData.find(row => row && toStr(row.id) === toStr(id)) || null;
-        }
-        // Array format: SID at index 0
-        return detailsData.find(row => row && toStr(row[0]) === toStr(id)) || null;
-    };
-
-    const getBookingIdFromDetail = (detailRow) => {
-        if (!detailRow) return null;
-        if (typeof detailRow === 'object' && !Array.isArray(detailRow)) return detailRow.booking_id;
-        return detailRow[1];
-    };
-    
-    // 2. Tìm dòng Bookings
-    let resolvedBkId = bkId;
-    let bookingsRow = findBookingRowById(resolvedBkId);
+    let bookingData = bookingsMap[bkId];
+    let detailsData = detailsByBkMap[bkId] ? Object.values(detailsByBkMap[bkId]) : [];
 
     // ✅ Nếu không tìm thấy booking, coi bkId là ID của bảng detailsSource/detailsSourceObj
     // -> tìm detail row theo id -> lấy booking_id -> tìm lại booking
-    if (!bookingsRow) {
-        const detailHit = findDetailRowById(bkId);
-        const bkIdFromDetail = getBookingIdFromDetail(detailHit);
-        if (bkIdFromDetail) {
-            resolvedBkId = bkIdFromDetail;
-            bookingsRow = findBookingRowById(resolvedBkId);
-        }
+    if (!bookingData) {
+        const detailHit = detailsMap[bkId];
+        const bkIdFromDetail = detailHit ? (detailHit.booking_id || detailHit[1]) : null;
+        bookingData = bkIdFromDetail ? bookingsMap[bkIdFromDetail] : null;
+        detailsData = (bkIdFromDetail && detailsByBkMap[bkIdFromDetail])
+            ? Object.values(detailsByBkMap[bkIdFromDetail])
+            : [];
+        log("⚠️ Không tìm thấy booking trực tiếp, thử tìm qua details với id: " + bkIdFromDetail);
     }
 
-    if (!bookingsRow) return null;
-
-    // 3. Tìm các dòng Details (lọc theo booking_id)
-    let detailsRows;
-    if (isObjList(detailsData)) {
-        detailsRows = detailsData.filter(row => row && toStr(row.booking_id) === toStr(resolvedBkId));
-    } else {
-        detailsRows = detailsData.filter(row => row && toStr(row[1]) === toStr(resolvedBkId));
-    }
+    if (!bookingData) return null;
     
     // Xử lý số điện thoại
     let phoneRaw;
-    if (typeof bookingsRow === 'object' && !Array.isArray(bookingsRow)) {
-        phoneRaw = bookingsRow.customer_phone;
+    if (typeof bookingData === 'object' && !Array.isArray(bookingData)) {
+        phoneRaw = bookingData.customer_phone;
     } else {
-        phoneRaw = bookingsRow[3];
+        phoneRaw = bookingData[3];
     }
     const phone = phoneRaw ? String(phoneRaw).replace(/^'/, "").trim() : "";
 
     let custRow = null;
     
     // 4. Tìm thông tin Customer
-    if (phone !== "" && window.APP_DATA && Array.isArray(window.APP_DATA.customers)) {
+    if (phone !== "" && window.APP_DATA && Array.isArray(Object.values(APP_DATA.customers))) {
         // Check if customers is object format
-        let customersData = APP_DATA.customers_obj || APP_DATA.customers;
+        let customersData = Object.values(APP_DATA.customers) || Object.values(APP_DATA.customers);
         
         custRow = customersData.find(r => {
             if (!r) return false;
@@ -369,8 +334,8 @@ function findBookingInLocal(bkId) {
     // 5. Đóng gói kết quả
     return {
     success: true,
-    bookings: bookingsRow,     
-    [detailsSource]: detailsRows,  
+    bookings: bookingData,     
+    [detailsSource]: detailsData,  
     customer: custRow,
     source: 'local' 
     };
@@ -423,11 +388,9 @@ function applyGridFilter() {
         to: rawTo
     });
 
-    // ✅ FIX: Check both array and object formats for data
-    const hasDataArray = APP_DATA[CURRENT_TABLE_KEY] && Array.isArray(APP_DATA[CURRENT_TABLE_KEY]) && APP_DATA[CURRENT_TABLE_KEY].length > 0;
-    const hasDataObj = APP_DATA[CURRENT_TABLE_KEY + '_obj'] && Array.isArray(APP_DATA[CURRENT_TABLE_KEY + '_obj']) && APP_DATA[CURRENT_TABLE_KEY + '_obj'].length > 0;
+    const hasDataObj = Object.values(APP_DATA[CURRENT_TABLE_KEY]) && Array.isArray(Object.values(Object.values(APP_DATA[CURRENT_TABLE_KEY]))) && Object.values(Object.values(APP_DATA[CURRENT_TABLE_KEY])).length > 0;
     
-    if (!hasDataArray && !hasDataObj) {
+    if (!hasDataObj) {
         log('⚠ Không có dữ liệu để lọc', 'warning');
         return;
     }
@@ -470,10 +433,10 @@ function applyGridFilter() {
         
         // Render lại bảng gốc (Reset Table)
         let originalData;
-        if (hasDataArray) {
-            originalData = stripHeaderIfAny(APP_DATA[CURRENT_TABLE_KEY].slice());
+        if (hasDataObj) {
+            originalData = Object.values(Object.values(APP_DATA[CURRENT_TABLE_KEY]));
         } else {
-            originalData = APP_DATA[CURRENT_TABLE_KEY + '_obj'];
+            originalData = Object.values(Object.values(APP_DATA[CURRENT_TABLE_KEY]));
         }
         
         if (typeof initPagination === 'function') initPagination(originalData);
@@ -524,9 +487,9 @@ function applyGridFilter() {
     // ✅ FIX: Get source data from either array or object format
     let source;
     if (hasDataObj) {
-        source = APP_DATA[CURRENT_TABLE_KEY + '_obj'];
+        source = Object.values(APP_DATA[CURRENT_TABLE_KEY]);
     } else if (hasDataArray) {
-        source = stripHeaderIfAny(APP_DATA[CURRENT_TABLE_KEY].slice());
+        source = stripHeaderIfAny(Object.values(APP_DATA[CURRENT_TABLE_KEY]).slice());
     } else return;
 
     const filtered = source.filter(row => {
@@ -696,11 +659,11 @@ function applyGridSorter() {
     if (!PG_STATE.data || PG_STATE.data.length === 0) {
         
         // ✅ FIX: Try object format first, fallback to array
-        let rawData = APP_DATA[CURRENT_TABLE_KEY + '_obj'];
+        let rawData = Object.values(APP_DATA[CURRENT_TABLE_KEY]);
         let isObjectFormat = true;
         
         if (!rawData || rawData.length === 0) {
-            rawData = APP_DATA[CURRENT_TABLE_KEY];
+            rawData = Object.values(APP_DATA[CURRENT_TABLE_KEY]);
             isObjectFormat = false;
         }
         
@@ -1074,7 +1037,7 @@ async function downloadData(type = 'excel') {
             } 
             else {
                 // DETAILS: Phải đối chiếu với Bookings gốc
-                const bookingsrc = (typeof APP_DATA !== 'undefined') ? APP_DATA.bookings : [];
+                const bookingsrc = (typeof APP_DATA !== 'undefined') ? Object.values(APP_DATA.bookings) : [];
                 
                 if (bookingsrc && bookingsrc.length > 0) {
                     // B1: Quét Bookings để lấy danh sách ID hợp lệ
@@ -1094,7 +1057,7 @@ async function downloadData(type = 'excel') {
                         return validIds.has(refId);
                     });
                 } else {
-                    console.warn("Cảnh báo: Không tìm thấy APP_DATA.bookings để đối chiếu VAT");
+                    console.warn("Cảnh báo: Không tìm thấy Object.values(APP_DATA.bookings) để đối chiếu VAT");
                 }
             }
             
@@ -1193,7 +1156,7 @@ var CURRENT_BATCH_DATA = [];
 
 function openBatchEdit(dataList, title) {
     // A. Lưu bản sao dữ liệu để xử lý sau (Quan trọng)
-    // dataList là mảng các dòng (Array) lấy từ APP_DATA.booking_details
+    // dataList là mảng các dòng (Array) lấy từ Object.values(APP_DATA.booking_details)
     CURRENT_BATCH_DATA = JSON.parse(JSON.stringify(dataList)); 
 
     // B. Chuyển Tab & UI Footer (Giữ nguyên)

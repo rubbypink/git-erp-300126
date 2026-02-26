@@ -97,7 +97,10 @@ const THEME_CONFIG = {
     fontFamily: "'Roboto', sans-serif",
     spacingScale: 1,
     classOverrides: {
-      'text-dark': { color: '#808080' }
+      'text-dark': { color: '#808080' },
+      'bg-light': { backgroundColor: 'var(--bs-light)' }, // ★ Keep: Use Bootstrap's light background variable
+      'btn-light': { backgroundColor: 'var(--bs-light)', color: '#1e293b', borderColor: '#475569' }, // ★ Keep: Light buttons with dark text and borders
+      'bg-white': { backgroundColor: 'var(--bs-white)' || 'var(--bs-light)' }, // ★ Keep: Map bg-white to light background variable
     }
   },
 
@@ -180,7 +183,7 @@ const THEME_CONFIG = {
 // 2. THEME MANAGER CLASS
 // =========================================================================
 
-class ThemeManager {
+export default class ThemeManager {
   constructor() {
     this.currentTheme = this.getStoredTheme() || 'light';
     this.classOverridesStyle = null;
@@ -239,13 +242,18 @@ class ThemeManager {
     const root = document.documentElement;
     root.removeAttribute('data-theme');
     root.removeAttribute('data-bs-theme');
+    
     root.style.cssText = '';
 
     if (themeName === 'dark') {
         root.setAttribute('data-bs-theme', themeName);
+        const themeClass = `${themeName}-theme`;
+        document.body.classList.add(themeClass);
         // 5. Dispatch custom event
         window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: themeName } }));
         return;
+    } else {
+      document.body.classList.remove('dark-theme');
     }
 
     this.currentTheme = themeName;
@@ -255,6 +263,7 @@ class ThemeManager {
 
     // 2. Update data-theme attribute
     document.documentElement.setAttribute('data-theme', themeName);
+
 
     // 3. Update Bootstrap class overrides
     if (theme.classOverrides && Object.keys(theme.classOverrides).length > 0) {
@@ -357,7 +366,6 @@ class ThemeManager {
   clearPreference() {
     localStorage.removeItem('app-theme');
     this.applyTheme('light');
-    log('💾 Theme preference cleared, using default (light)', 'info');
   }
 
   /**
@@ -694,7 +702,7 @@ function toggleTheme(direction = 'next') {
   updateThemeToggleButton(newTheme);
   return newTheme;
 }
-
+window.toggleTheme = toggleTheme;
 /**
  * Global helper: Apply theme from settings form dropdown
  * Called when user selects a preset from the form
@@ -717,7 +725,7 @@ function applyThemePresetFromForm(presetKey) {
   THEME_MANAGER.applyTheme(presetKey);
   log(`✅ Preset [${presetKey}] applied to form and theme`, 'success');
 }
-
+window.applyThemePresetFromForm = applyThemePresetFromForm;
 /**
  * Global helper: Update theme toggle button
  */
@@ -735,7 +743,7 @@ function updateThemeToggleButton(themeName) {
   btn.innerHTML = icons[themeName] || '🎨';
   setVal('st-theme-preset', themeName);
 }
-
+window.updateThemeToggleButton = updateThemeToggleButton;
 /**
  * Global helper: Preview logo file upload
  * Called from HTML form: <input onchange="previewLogo()" />
@@ -753,7 +761,7 @@ function previewLogo() {
   };
   reader.readAsDataURL(fileInput.files[0]);
 }
-
+window.previewLogo = previewLogo;
 /**
  * Global helper: Save settings from form
  * Called from saveThemeSettings() in logic_base.js
@@ -782,3 +790,4 @@ function saveThemeSettings() {
 
   return true;
 }
+window.saveThemeSettings = saveThemeSettings;

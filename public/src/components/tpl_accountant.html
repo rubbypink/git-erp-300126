@@ -1,6 +1,6 @@
 <template id="tmpl-dashboard">
     <div class="acc-wrapper container-fluid p-0">
-        <div class="acc-header d-flex justify-content-between align-items-center px-3 py-2 bg-white shadow-sm">
+        <div class="acc-header d-flex justify-content-between align-items-center px-3 py-2  shadow-sm">
             <div class="d-flex align-items-center">
                 <i class="fas fa-wallet text-primary fs-4 me-2"></i>
                 <h5 class="m-0 fw-bold text-dark">Kế Toán</h5>
@@ -16,11 +16,11 @@
         </div>
 
         <div class="p-3">
-            <div class="row g-3">
-                <div class="col-12 col-lg-6">
+            <div class="row g-3 justify-content-center">
+                <div class="col-12 col-lg-4">
                     <div class="acc-card h-100 border-start border-4 border-primary">
                         <div class="acc-card-header d-flex justify-content-between align-items-center mb-2">
-                            <span class="text-uppercase text-muted small fw-bold"><i
+                            <span class="text-uppercase text-dark small fw-bold"><i
                                     class="fas fa-landmark me-1"></i>Tổng
                                 Quỹ Thực Tế</span>
                             <span class="fs-5 fw-bold text-primary" id="d-total-fund">0</span>
@@ -31,10 +31,10 @@
                     </div>
                 </div>
 
-                <div class="col-12 col-lg-6">
+                <div class="col-12 col-lg-4">
                     <div class="acc-card h-100 border-start border-4 border-success">
                         <div class="acc-card-header d-flex justify-content-between align-items-center mb-2">
-                            <span class="text-uppercase text-muted small fw-bold"><i
+                            <span class="text-uppercase text-dark small fw-bold"><i
                                     class="fas fa-chart-line me-1"></i>Lãi/Lỗ (Net)</span>
                             <span class="fs-5 fw-bold text-success" id="d-net-balance">0</span>
                         </div>
@@ -58,7 +58,7 @@
         </div>
 
         <div class="px-3 mb-3">
-            <div class="acc-filter-container" style="width: fit-content; justify-self: start;">
+            <div class="acc-filter-container" style="width: 100%; justify-self: start;">
                 <div class="acc-filter-header bg-light" onclick="this.parentElement.classList.toggle('active')"
                     style="pointer-events: auto;">
                     <div class="d-flex align-items-center">
@@ -158,12 +158,13 @@
         </div>
 
         <div class="d-flex gap-2">
-            <button class="btn btn-light text-primary btn-icon-only rounded-circle" id="btn-sync-sales" title="Update"
-                onclick="window.AccountantCtrl?.init()">
+            <button class="btn btn-light text-primary btn-icon-only rounded-circle" id="acc-btn-sync-sales"
+                title="Update" onclick="window.AccountantCtrl?.init()">
                 <i class="fas fa-sync-alt"></i>
             </button>
 
-            <button class="btn btn-light text-secondary btn-icon-only rounded-circle" id="btn-report" title="Báo cáo">
+            <button class="btn btn-light text-secondary btn-icon-only rounded-circle" id="acc-btn-report"
+                title="Báo cáo" onclick="window.AccountantCtrl?.openReportModal()">
                 <i class="fas fa-file-invoice"></i>
             </button>
 
@@ -173,16 +174,137 @@
                     <i class="fas fa-plus me-1"></i> Tạo
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2 rounded-3 mb-2">
-                    <li><button class="dropdown-item rounded-2 text-success py-2 fw-bold" id="btn-add-in"
+                    <li><button class="dropdown-item rounded-2 text-success py-2 fw-bold" id="acc-btn-add-in"
                             onclick="window.AccountantCtrl.openTransactionModal('IN')">
                             <i class="fas fa-arrow-down me-2"></i> Phiếu Thu (IN)
                         </button></li>
-                    <li><button class="dropdown-item rounded-2 text-danger py-2 fw-bold" id="btn-add-out"
+                    <li><button class="dropdown-item rounded-2 text-danger py-2 fw-bold" id="acc-btn-add-out"
                             onclick="window.AccountantCtrl.openTransactionModal('OUT')">
                             <i class="fas fa-arrow-up me-2"></i> Phiếu Chi (OUT)
                         </button></li>
                 </ul>
             </div>
+        </div>
+    </div>
+</template>
+<template id="tmpl-report">
+    <!-- Report Modal Content -->
+    <div class="acc-report-wrapper container-fluid p-0">
+        <div
+            class="acc-report-header d-flex justify-content-between align-items-center px-3 py-2  shadow-sm border-bottom">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-file-invoice text-success fs-4 me-2"></i>
+                <h5 class="m-0 fw-bold text-dark">Báo Cáo Giao Dịch</h5>
+            </div>
+            <select id="report-type-select" class="form-select form-select-sm fw-bold border-0 bg-light"
+                style="max-width: 200px;">
+                <option value="all">📊 Tất cả giao dịch</option>
+                <option value="in">📥 Phiếu Thu (IN)</option>
+                <option value="out">📤 Phiếu Chi (OUT)</option>
+                <option value="summary">📈 Tổng hợp</option>
+            </select>
+        </div>
+
+        <div class="px-3 py-2 bg-light">
+            <div class="acc-filter-container" style="width: fit-content;">
+                <div class="acc-filter-header  border rounded" onclick="this.parentElement.classList.toggle('active')"
+                    style="pointer-events: auto;">
+                    <div class="d-flex align-items-center px-2 py-2">
+                        <i class="fas fa-filter text-success me-2"></i>
+                        <span class="fw-bold text-dark me-1">Bộ lọc:</span>
+                        <span id="report-filter-summary" class="text-success fw-bold small">Tháng này</span>
+                    </div>
+                    <i class="fas fa-chevron-down text-muted transition-icon"></i>
+                </div>
+
+                <div class="acc-filter-body  border border-top-0 rounded-bottom p-3">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="acc-label">Giai đoạn</label>
+                            <select id="report-filter-period" class="form-select form-select-sm">
+                                <option value="today">Hôm nay</option>
+                                <option value="week">Tuần này</option>
+                                <option value="month" selected>Tháng này</option>
+                                <option value="quarter">Quý này</option>
+                                <option value="year">Năm nay</option>
+                                <option value="all">Tất cả</option>
+                                <option value="custom">Tùy chọn ngày...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6" id="report-custom-date-row" style="display: none;">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="acc-label-xs">Từ ngày</label>
+                                    <input type="date" id="report-filter-start" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-6">
+                                    <label class="acc-label-xs">Đến ngày</label>
+                                    <input type="date" id="report-filter-end" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-6">
+                            <label class="acc-label">Tìm kiếm</label>
+                            <input type="text" id="report-filter-keyword" class="form-control form-control-sm"
+                                placeholder="ID, Diễn giải, Booking ID...">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="acc-label">Lọc theo Quỹ</label>
+                            <select id="report-filter-fund" class="form-select form-select-sm">
+                                <option value="">Tất cả quỹ</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="text-end mt-3">
+                        <button class="btn btn-sm btn-success" id="btn-apply-report-filter">
+                            <i class="fas fa-check me-1"></i> Áp dụng
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" id="btn-reset-report-filter">
+                            <i class="fas fa-redo me-1"></i> Làm mới
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-3 pb-5" style="max-height: 70vh; overflow-y: auto;">
+            <table class="table table-striped table-hover align-middle mt-3 text-nowrap" id="report-transaction-table"
+                style="font-size: 0.85rem;">
+                <thead class="table-light sticky-top">
+                    <tr>
+                        <th width="80px"><i class="fas fa-barcode me-1"></i>ID GD</th>
+                        <th width="60px" class="text-center">Loại</th>
+                        <th width="90px" class="text-center">Ngày Giao Dịch</th>
+                        <th width="90px" class="text-center">Ngày Tạo</th>
+                        <th class="text-end">Số Tiền</th>
+                        <th style="min-width: 160px;">Diễn Giải</th>
+                        <th width="100px">Hạng Mục</th>
+                        <th width="85px">Booking ID</th>
+                        <th width="75px">Quỹ</th>
+                        <th width="90px">Trạng Thái</th>
+                        <th width="85px">Người Tạo</th>
+                        <th width="50px"></th>
+                    </tr>
+                </thead>
+                <tbody id="report-table-body">
+                    <tr>
+                        <td colspan="12" class="text-center text-muted py-4">
+                            <i class="fas fa-spinner fa-spin me-2"></i> Đang tải dữ liệu...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="px-3 py-2 bg-light border-top text-muted small text-center">
+            Tổng: <span id="report-total-records" class="fw-bold text-dark">0</span> giao dịch |
+            Thu: <span id="report-total-in" class="fw-bold text-success">0</span> |
+            Chi: <span id="report-total-out" class="fw-bold text-danger">0</span> |
+            Lệch: <span id="report-balance" class="fw-bold">0</span>
         </div>
     </div>
 </template>
