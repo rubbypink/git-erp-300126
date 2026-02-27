@@ -104,7 +104,7 @@ class EventManager {
     // Hàm trigger event thủ công (nếu cần)
     trigger(selector, eventName) {
         const el = document.querySelector(selector);
-        if(el) el.dispatchEvent(new Event(eventName));
+        if (el) el.dispatchEvent(new Event(eventName));
     }
 
     _setupModalEvents() {
@@ -189,14 +189,29 @@ class EventManager {
      * =========================================================================
      */
     _setupGridFilterEvents() {
-        // Nút Lọc
+        // Nút Lọc — click lần 1: áp dụng filter; click lần 2: reset về dữ liệu gốc
         this.on('#btn-data-filter', 'click', () => {
-            if (typeof applyGridFilter === 'function') {
-                applyGridFilter();
+            if (window.FILTER_ACTIVE) {
+                // Second click → toggle off: reset PG_DATA and clear UI
+                if (typeof resetGridData === 'function') {
+                    resetGridData();
+                }
+            } else {
+                if (typeof applyGridFilter === 'function') {
+                    applyGridFilter();
+                }
             }
         }, true);
 
-        // Input Filter
+        // Input Filter — dùng throttle để giới hạn số lần chạy khi gõ liên tục
+        this.on('#filter-val', 'input', () => {
+            if (typeof applyGridFilterThrottled === 'function') {
+                applyGridFilterThrottled();
+            }
+        }, true);
+
+        // Vẫn bắt thêm 'change' để đảm bảo chạy khi giá trị thay đổi
+        // (ví dụ: chọn từ datalist, paste, blur)
         this.on('#filter-val', 'change', () => {
             if (typeof applyGridFilter === 'function') {
                 applyGridFilter();
@@ -208,6 +223,20 @@ class EventManager {
             if (typeof applyGridSorter === 'function') {
                 applyGridSorter();
             }
+        }, true);
+        this.on('#btn-reload-collection', 'click', () => {
+            if (typeof A.DB.loadCollections === 'function') {
+                A.DB.loadCollections(getVal('btn-select-datalist') || null, { forceNew: true });
+            }
+        }, true);
+        this.on('#btn-select-datalist', 'change', (e) => {
+            const el = e.target;
+            const selectedKey = el.value;
+            CURRENT_TABLE_KEY = selectedKey;
+            // renderTableByKey là hàm cũ của bạn, nó sẽ tự switch case 
+            // để chọn Object.values(APP_DATA.booking_details) hay Object.values(APP_DATA.bookings)
+            renderTableByKey(selectedKey);
+            if ($('#tbl-container-tab2')) $('#tbl-container-tab2').dataset.collection = selectedKey; // Cập nhật dataset để filter hoạt động đúng 
         }, true);
     }
 
@@ -272,7 +301,7 @@ class EventManager {
                     setVal(inpBkId, getVal('BK_ID'));
                 }
             }
-        }, true);        
+        }, true);
     }
 
     /**
@@ -428,7 +457,7 @@ class EventManager {
                     }
                 } else {
                     logA('❓ Dòng chưa lưu. Xóa khỏi giao diện?', 'info', () => {
-                        if(window.CURRENT_CTX_ROW){
+                        if (window.CURRENT_CTX_ROW) {
                             window.CURRENT_CTX_ROW.remove();
                         }
                     });
@@ -620,16 +649,16 @@ class EventManager {
     async setupGlobalEvents() {
         window.addEventListener('beforeunload', () => {
             log('[EventManager] Trang sắp được tải lại, hủy tất cả subscription...');
-            A.DB.unsubscribeAll();
+            A.DB.stopNotificationsListener();
             log('[EventManager] ✅ Đã hủy tất cả subscription');
         });
 
         // Handler chung cho cả dblclick và longpress
         const handleRowClick = (e) => {
             if (!e || !e.target || typeof e.target.closest !== 'function') return;
-            
+
             const table = e.target.closest('table');
-            if (!table) return;           
+            if (!table) return;
             const tbody = table.querySelector('tbody');
             if (!tbody) return;
 
@@ -637,16 +666,16 @@ class EventManager {
             if (!tr) return;
             const collection = table.dataset.collection;
             const trId = tr.id;
-            
+
             if (!collection || !trId) return;
-            
+
             const isDetailEntry = ['booking_details', 'operator_entries'].includes(collection);
-            
+
             if (typeof onGridRowClick === 'function') {
                 onGridRowClick(trId, isDetailEntry);
             }
         };
-        
+
         // Xử lý dblclick
         this.on('tr', 'dblclick', (e) => {
             e.preventDefault();
@@ -657,7 +686,7 @@ class EventManager {
             if (!isCtrl) return;
             handleRowClick(e);
         }, true);
-        
+
         // Xử lý longpress (chỉ trên mobile)
         if (window.innerWidth <= 768) {
             let touchStartTime = 0;
@@ -665,11 +694,11 @@ class EventManager {
             let touchStartY = 0;
             let currentTr = null;
             const threshold = 500;
-            
+
             document.addEventListener('touchstart', (e) => {
                 const tr = e.target.closest('tr');
                 if (!tr) return;
-                
+
                 if (e.touches.length > 0) {
                     touchStartTime = Date.now();
                     touchStartX = e.touches[0].clientX;
@@ -677,7 +706,7 @@ class EventManager {
                     currentTr = tr;
                 }
             }, { passive: true });
-            
+
             document.addEventListener('touchmove', (e) => {
                 if (e.touches.length > 0) {
                     const moveX = Math.abs(e.touches[0].clientX - touchStartX);
@@ -687,7 +716,7 @@ class EventManager {
                     }
                 }
             }, { passive: true });
-            
+
             document.addEventListener('touchend', (e) => {
                 if (currentTr && Date.now() - touchStartTime >= threshold) {
                     handleRowClick({ target: currentTr, currentTarget: currentTr });

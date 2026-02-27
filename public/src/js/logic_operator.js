@@ -30,7 +30,7 @@ window.loadBookingToUI = function(bkData, detailsData) {
 
     // Find customer by phone to get source
     if (phoneStr !== "" && window.APP_DATA) {
-      const custRow = window.Object.values(Object.values(APP_DATA.customers)).find(c => 
+      const custRow = Object.values(APP_DATA.customers ?? {}).find(c => 
         c && c.phone && String(c.phone).includes(phoneStr)
       );
       if (custRow) {
@@ -778,7 +778,7 @@ function findCustByPhone(e) {
     return;
   }
 
-  const customers = window.APP_DATA ? window.Object.values(APP_DATA.customers) || [] : [];
+  const customers = window.APP_DATA ? Object.values(APP_DATA.customers ?? {}) : [];
   
   let found = null;
   
@@ -913,7 +913,7 @@ function handleAggClick(key, filterType) {
   const dTo = new Date(getVal('dash-filter-to'));
   dTo.setHours(23, 59, 59, 999);
   
-  const source = window.Object.values(APP_DATA.operator_entries) || [];
+  const source = Object.values(APP_DATA.operator_entries ?? {});
   
   const batchData = source.filter(row => {
     if (!row) return false;

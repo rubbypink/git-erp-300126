@@ -1,3 +1,4 @@
+import { DB_SCHEMA } from './DBSchema.js';
 /**
  * DB MANAGER - FIRESTORE VERSION
  * ─────────────────────────────────────────────────────────────────────────
@@ -11,65 +12,37 @@
  * ─────────────────────────────────────────────────────────────────────────
  */
 
-const DEPT_COLLS = {
-    admin: ['app_config', 'bookings', 'booking_details', 'operator_entries', 'customers', 'transactions', 'fund_accounts', 'users', 'suppliers', 'hotels', 'transactions_thenice', 'fund_accounts_thenice'],
-    sales: ['bookings', 'booking_details', 'customers', 'transactions', 'fund_accounts', 'users'],
-    operations: ['operator_entries', 'bookings', 'booking_details', 'customers', 'transactions', 'fund_accounts', 'users'],
-    accountant: ['transactions', 'fund_accounts', 'users', 'bookings'],
-    accountant_thenice: ['transactions_thenice', 'fund_accounts_thenice', 'users']
-};
-
 class DBManager {
     // ─── Private state ────────────────────────────────────────────────
     #db = null;
-    #networkEnabled = false;
-    #persistenceEnabled = false;
     #listeners = {};      // chỉ dùng cho notifications listener
     #config = {};
     #initPromise = null;    // đảm bảo init chỉ chạy 1 lần
     #resolveInit = null;    // để init() thủ công resolve promise
-    #idbReady = null;    // Promise<IDBDatabase> — IndexedDB instance
-
+    #schema = DB_SCHEMA; // Cấu trúc schema tập trung, dễ maintain và dùng chung với UI Renderer
     // ─── Public State ────────────────────────────────────────────────
     batchCounterUpdates = {};
     currentCustomer = null;
     _initialized = false;    // true sau khi #bootInit hoàn tất
 
-    // ─── Static keys ─────────────────────────────────────────────────
-    static #OPTIONS_KEY = 'DBManager_OPTIONS';
-    static #IDB_NAME = 'DBManager_IDB';
-    static #IDB_STORE = 'app_cache';
-    static #IDB_VERSION = 1;
-
-    // ─── Collection Name Aliases ──────────────────────────────────────
-    COLL = {
-        BOOKINGS: 'bookings',
-        DETAILS: 'booking_details',
-        OPERATORS: 'operator_entries',
-        CUSTOMERS: 'customers',
-        TRANSACTIONS: 'transactions',
-        TRANSACTIONS_THENICE: 'transactions_thenice',
-        FUNDS: 'fund_accounts',
-        FUNDS_THENICE: 'fund_accounts_thenice',
-        USERS: 'users',
-        CONFIG: 'app_config'
-    };
-
     static #QUERY_CONFIG = {
-        bookings: { orderBy: 'created_at', limit: 1000 },
-        booking_details: { orderBy: 'created_at', limit: 2000 },
-        operator_entries: { orderBy: 'created_at', limit: 2000 },
-        customers: { orderBy: 'created_at', limit: 2000 },
-        transactions: { orderBy: 'created_at', limit: 2000 },
-        suppliers: { orderBy: 'created_at', limit: 1000 },
-        fund_accounts: { orderBy: 'created_at', limit: 20 },
-        transactions_thenice: { orderBy: 'created_at', limit: 2000 },
-        fund_accounts_thenice: { orderBy: 'created_at', limit: 20 },
-        hotels: { orderBy: 'name', limit: 1000 },
-        hotel_price_schedules: { orderBy: 'created_at', limit: 500 },
-        service_price_schedules: { orderBy: 'created_at', limit: 500 },
+        // postSort: client-side sort SAU KHI hydrate — KHÔNG dùng orderBy cho Firestore query.
+        // Lý do: Firestore v8 với orderBy() sẽ loại trừ mọi document thiếu field đó khỏi kết quả,
+        //        dẫn đến mất dữ liệu âm thầm. Toàn bộ ordering được xử lý phía client.
+        // limit:   Chỉ áp dụng khi KHÔNG có orderBy (tức là full-collection scan có giới hạn).
+        bookings: { limit: 1000, postSort: { key: 'id', dir: 'desc' } },
+        booking_details: { limit: 2000, postSort: { key: 'created_at', dir: 'desc' } },
+        operator_entries: { limit: 2000, postSort: { key: 'created_at', dir: 'desc' } },
+        customers: { limit: 1000, postSort: { key: 'created_at', dir: 'desc' } },
+        transactions: { limit: 2000, postSort: { key: 'created_at', dir: 'desc' } },
+        suppliers: { limit: 1000, postSort: { key: 'created_at', dir: 'desc' } },
+        fund_accounts: { limit: 20, postSort: { key: 'created_at', dir: 'desc' } },
+        transactions_thenice: { limit: 2000, postSort: { key: 'created_at', dir: 'desc' } },
+        fund_accounts_thenice: { limit: 20, postSort: { key: 'created_at', dir: 'desc' } },
+        hotels: { limit: 1000, postSort: { key: 'name', dir: 'asc' } },
+        hotel_price_schedules: { limit: 500, postSort: { key: 'created_at', dir: 'desc' } },
+        service_price_schedules: { limit: 500, postSort: { key: 'created_at', dir: 'desc' } },
     };
-
     // ─── Cấu hình secondary indexes ──────────────────────────────────────
     // Khai báo tập trung — dễ thêm index mới sau này
     static #INDEX_CONFIG = [
@@ -80,54 +53,20 @@ class DBManager {
     ];
 
     /**
-     * Constructor — nhận config một lần, tự động khởi chạy init()
-     * khi firebase.auth() sẵn sàng (lắng nghe onAuthStateChanged).
+     * Constructor — luôn dùng manual-init.
+     * Gọi await DB.init() sau khi Firebase auth sẵn sàng để khởi động.
      *
      * @param {object} [options]
-     * @param {boolean} [options.persistence=true]         - Bật IndexedDB persistence
-     * @param {boolean} [options.networkEnabled=true]      - Bật network ngay từ đầu
      * @param {number}  [options.cacheMaxAgeMs]            - Tuổi tối đa của cache (ms), mặc định 72h
      */
     constructor(options = {}) {
         const HR72 = 72 * 60 * 60 * 1000;
-
-        // Kiểm tra config đã lưu từ trước
-        const savedCfg = this.#loadOptions('config');
-        const hasSaved = savedCfg?.persistence !== undefined || savedCfg?.networkEnabled !== undefined;
-        const hasExplicitOptions = Object.keys(options).length > 0;
-
         this.#config = {
-            persistence: options.persistence ?? savedCfg?.persistence ?? true,
-            networkEnabled: options.networkEnabled ?? savedCfg?.networkEnabled ?? true,
             cacheMaxAgeMs: options.cacheMaxAgeMs ?? HR72,
             notificationsWindowMs: options.notificationsWindowMs ?? HR72,
         };
-
-        if (hasExplicitOptions || hasSaved) {
-            // ── Auto-init: có config rõ ràng hoặc đã lưu → tự khởi chạy khi auth ready ──
-            // ⚠️ QUAN TRỌNG: Constructor chạy lúc module được import (trước DOMContentLoaded),
-            // tức là trước khi AUTH_MANAGER.initFirebase() gọi firebase.initializeApp().
-            // Nếu gọi firebase.auth() ngay lập tức sẽ throw "No Firebase App '[DEFAULT]'".
-            // → Dùng polling để chờ Firebase được khởi tạo trước khi subscribe.
-            this.#initPromise = new Promise(resolve => {
-                this.#resolveInit = resolve;
-                const trySubscribe = () => {
-                    if (!firebase.apps?.length) {
-                        setTimeout(trySubscribe, 200);
-                        return;
-                    }
-                    const unsub = firebase.auth().onAuthStateChanged(user => {
-                        if (user) { unsub(); this.#bootInit().then(resolve); }
-                    });
-                };
-                trySubscribe();
-            });
-        } else {
-            // ── Manual-init: không có config → chờ gọi init() thủ công từ bên ngoài ──
-            this._initialized = false;
-            this.#initPromise = new Promise(resolve => { this.#resolveInit = resolve; });
-            log('⏸️ DBManager: không có config — chờ init() thủ công');
-        }
+        this._initialized = false;
+        this.#initPromise = new Promise(resolve => { this.#resolveInit = resolve; });
     }
 
     /**
@@ -135,35 +74,10 @@ class DBManager {
      * Có thể await bên ngoài qua: await DB_MANAGER.ready()
      */
     async #bootInit() {
-        const cfg = this.#config;
-
-        // Bật IndexedDB persistence
-        if (cfg.persistence) {
-            try {
-                await firebase.firestore().enablePersistence({ synchronizeTabs: true });
-                this.#persistenceEnabled = true;
-                console.log('✅ enablePersistence: THÀNH CÔNG');
-            } catch (err) {
-                this.#persistenceEnabled = false;
-                console.warn('⚠️ enablePersistence THẤT BẠI:', err.code);
-                // failed-precondition = nhiều tab | unimplemented = trình duyệt không hỗ trợ
-            }
-        }
-
         this.#db = firebase.firestore();
-
-        // Bật / tắt network theo config
-        if (!cfg.networkEnabled) {
-            await this.setNetwork(false);
-        } else {
-            this.#networkEnabled = true;
-        }
-
-        // Khởi notifications listener
         this.#startNotificationsListener();
-
         this._initialized = true;
-        log(`🚀 DBManager ready | Persistence: ${this.#persistenceEnabled ? 'ON' : 'OFF'} | Network: ${this.#networkEnabled ? 'ON' : 'OFF'}`);
+        log('🚀 DBManager ready');
     }
 
     /**
@@ -173,184 +87,98 @@ class DBManager {
     ready = () => this.#initPromise;
 
     /**
-     * (Legacy compat) Gọi thủ công với firestoreInstance nếu cần.
-     * • Nếu DBManager chưa tự init (không có config) → gọi này để khởi động.
-     * • Nếu đã tự init → chỉ override #db nếu cần.
-     * @param {object} [firestoreInstance]
-     * @param {object} [options] - config ghi đè (dùng khi manual-init)
+     * Khởi động DBManager — gọi sau khi Firebase auth sẵn sàng.
      */
-    async init(firestoreInstance, options = {}) {
+    async init() {
         if (!this._initialized && !this.#db) {
-            // Manual-init path: cập nhật config rồi chạy bootInit
-            const HR72 = 72 * 60 * 60 * 1000;
-            this.#config = {
-                ...this.#config,
-                ...Object.fromEntries(Object.entries(options).filter(([, v]) => v !== undefined)),
-                cacheMaxAgeMs: options.cacheMaxAgeMs ?? this.#config.cacheMaxAgeMs ?? HR72,
-            };
             await this.#bootInit().catch(e => console.error('❌ bootInit thất bại:', e));
             this.#resolveInit?.();
         } else {
-            await this.#initPromise; // đảm bảo bootInit xong
-        }
-        if (firestoreInstance && firestoreInstance !== this.#db) {
-            this.#db = firestoreInstance;
-            log('🔄 DBManager: firestoreInstance overridden manually');
+            await this.#initPromise;
         }
         return this;
     }
-
-    // ─── Private: Đọc/ghi options vào localStorage ────────────────────
-
-    #loadOptions = (key) => {
-        if (!key) return false;
-        try {
-            let prefix = 'DBManager';
-            key = `${prefix}.${key}`;
-            const raw = localStorage.getItem(key);
-            return raw ? JSON.parse(raw) : null;
-        } catch (e) {
-            console.error(`❌ Lỗi khi đọc key [${key}] từ storage:`, e);
-            return null;
-        }
-    }
-
-    #saveOptions = (key, data) => {
-        if (!key) return false;
-        try {
-            let prefix = 'DBManager';
-            key = `${prefix}.${key}`;
-            localStorage.setItem(key, JSON.stringify(data));
-            return true;
-        } catch (e) {
-            console.warn(`⚠️ Không thể lưu dữ liệu cho key [${key}]:`, e);
-            return false;
-        }
-    }
-
-    // ─── IndexedDB Cache ─────────────────────────────────────────────────────
-    // APP_DATA được lưu vào IDB thay vì localStorage → dữ liệu tăng không phải sửa.
-
-    /**
-     * Mở (hoặc tái sử dụng) IndexedDB database.
-     * @returns {Promise<IDBDatabase>}
-     */
-    #openIDB() {
-        if (this.#idbReady) return this.#idbReady;
-        this.#idbReady = new Promise((resolve, reject) => {
-            const req = indexedDB.open(DBManager.#IDB_NAME, DBManager.#IDB_VERSION);
-            req.onupgradeneeded = e => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(DBManager.#IDB_STORE))
-                    db.createObjectStore(DBManager.#IDB_STORE);
-            };
-            req.onsuccess = e => resolve(e.target.result);
-            req.onerror = e => { console.error('❌ IDB open failed:', e.target.error); reject(e.target.error); };
-        });
-        return this.#idbReady;
-    }
-
-    /**
-     * Ghi giá trị vào IndexedDB.
-     * @param {string} key
-     * @param {*} value - bất kỳ giá trị structured-clone-able (object, array, string...)
-     * @returns {Promise<boolean>}
-     */
-    async #idbSet(key, value) {
-        try {
-            const db = await this.#openIDB();
-            return new Promise((resolve, reject) => {
-                const tx = db.transaction(DBManager.#IDB_STORE, 'readwrite');
-                const req = tx.objectStore(DBManager.#IDB_STORE).put(value, key);
-                req.onsuccess = () => resolve(true);
-                req.onerror = e => { console.warn('⚠️ IDB set failed:', e.target.error); reject(e.target.error); };
-            });
-        } catch (e) { console.warn('⚠️ #idbSet error:', e); return false; }
-    }
-
-    /**
-     * Đọc giá trị từ IndexedDB.
-     * @param {string} key
-     * @returns {Promise<*>} null nếu key không tồn tại
-     */
-    async #idbGet(key) {
-        try {
-            const db = await this.#openIDB();
-            return new Promise((resolve, reject) => {
-                const tx = db.transaction(DBManager.#IDB_STORE, 'readonly');
-                const req = tx.objectStore(DBManager.#IDB_STORE).get(key);
-                req.onsuccess = () => resolve(req.result ?? null);
-                req.onerror = e => { console.warn('⚠️ IDB get failed:', e.target.error); reject(e.target.error); };
-            });
-        } catch (e) { console.warn('⚠️ #idbGet error:', e); return null; }
-    }
-
-    /**
-     * Xóa key trong IndexedDB.
-     * @param {string} key
-     */
-    async #idbDelete(key) {
-        try {
-            const db = await this.#openIDB();
-            return new Promise(resolve => {
-                const tx = db.transaction(DBManager.#IDB_STORE, 'readwrite');
-                tx.objectStore(DBManager.#IDB_STORE).delete(key);
-                tx.oncomplete = () => resolve(true);
-            });
-        } catch (e) { return false; }
-    }
-
-    // ─── Initialization ───────────────────────────────────────────────
-
-    /**
-     * @param {object} firestoreInstance - firebase.firestore()
-     * @param {object} [options]
-     * @param {boolean} [options.persistence=false]
-     * @param {boolean} [options.network=true]
-     */
-
-
-    /**
-     * Bật/tắt network Firestore — tự động lưu trạng thái vào localStorage.
-     * @param {boolean} enabled
-     */
-    setNetwork = async (enabled) => {
-        if (!this.#db) { console.error('❌ DB chưa init'); return; }
-
-        if (enabled && !this.#networkEnabled) {
-            await this.#db.enableNetwork();
-            this.#networkEnabled = true;
-            console.log('🌐 Firestore network: BẬT');
-        } else if (!enabled && this.#networkEnabled) {
-            await this.#db.disableNetwork();
-            this.#networkEnabled = false;
-            console.log('✈️ Firestore network: TẮT (offline mode)');
-        }
-
-        // Cập nhật lại localStorage khi trạng thái thay đổi
-        const saved = this.#loadOptions('config') ?? {};
-        this.#saveOptions('config', { ...saved, network: this.#networkEnabled });
-    }
-
-    /**
-     * Xoá settings đã lưu, về lại defaults lần khởi động tiếp theo.
-     */
-    resetOptions = () => {
-        localStorage.removeItem(DBManager.#OPTIONS_KEY);
-        this.stopNotificationsListener();
-        console.log('🔄 DB options đã reset');
-    }
-
     // ─── Getters ──────────────────────────────────────────────────────────
 
     /** Firestore instance */
     get db() { return this.#db; }
+    get schema() { return this.#schema; }
 
-    /** Trạng thái mạng Firestore */
-    get isOnline() { return this.#networkEnabled; }
+    // ─── Load All Data ────────────────────────────────────────────────────────
 
-    /** Trạng thái IndexedDB persistence */
-    get isPersisted() { return this.#persistenceEnabled; }
+    /**
+     * Tải toàn bộ data cần thiết cho APP_DATA.
+     *
+     * Ưu tiên 1 — IndexedDB cache (localStorage):
+     *   Nếu có data và LAST_SYNC < 72h thì dùng luôn, không đụng Firestore.
+     *
+     * Ưu tiên 2 — Firestore:
+     *   Tải theo QUERY_CONFIG cho các collections được phép (theo role),
+     *   sau đó lưu cache để lần sau dùng.
+     *
+     * @param {boolean} [forceNew=false] - Bỏ qua cache, buộc tải từ Firestore
+     * @returns {Promise<object|null>} APP_DATA
+     */
+    async loadAllData(forceNew = false) {
+        await this.#initPromise; // đảm bảo #bootInit xong
+        if (!this.#db) { console.error('❌ DB chưa init'); return null; }
+        if (!firebase.auth().currentUser) { console.error('❌ Chưa đăng nhập'); return null; }
+        const currentRole = window.CURRENT_USER?.role ?? '';
+        // ── 1. Ưu tiên IndexedDB cache ────────────────────────────────────
+        const cachedData = localStorage.getItem(`APP_DATA${currentRole ? `_${currentRole}` : ''}`); // ★ Cache theo role
+        const lastSync = localStorage.getItem('LAST_SYNC');
+
+        const cacheAge = this.#config.cacheMaxAgeMs;
+        const isCacheValid = !forceNew
+            && cachedData
+            && lastSync
+            && (Date.now() - parseInt(lastSync, 10) < cacheAge);
+
+        if (isCacheValid) {
+            APP_DATA = JSON.parse(cachedData);
+
+            log(`📦 APP_DATA từ Local (age: ${Math.round((Date.now() - parseInt(lastSync, 10)) / 60000)} phút, role: ${currentRole})`);
+            return APP_DATA;
+        }
+
+        // ── 2. Tải từ Firestore ───────────────────────────────────────────
+        console.time('loadAllData');
+        const result = this.#buildEmptyResult();
+
+        const userRole = CURRENT_USER?.role ?? null;
+
+        const allowed = (COLL_MANIFEST?.[userRole] ?? ['bookings', 'booking_details', 'operator_entries', 'customers'])
+            .filter(c => c !== 'users');
+
+        log(`📚 Collections sẽ tải (role=${userRole}): ${allowed.join(', ')}`);
+
+        try {
+            await Promise.all([
+                this.loadMeta(APP_DATA),
+                this.syncDelta(allowed, true),
+            ]);
+            console.timeEnd('loadAllData');
+            log('📥 APP_DATA sẵn sàng (tải từ Firestore)');
+            this.#applyAllPostSorts(APP_DATA); // đảm bảo thứ tự đúng sau khi tải
+            this.#saveAppDataCache(); // lưu cache sau khi tải xong
+            return APP_DATA;
+        } catch (e) {
+            logError('❌ loadAllData thất bại:', e);
+            console.timeEnd('loadAllData');
+            return null;
+        }
+    }
+
+    async #saveAppDataCache() {
+        try {
+            localStorage.setItem(`APP_DATA${window.CURRENT_USER?.role ? `_${window.CURRENT_USER.role}` : ''}`, JSON.stringify(APP_DATA)); // ★ Cache theo role
+            localStorage.setItem('LAST_SYNC', Date.now().toString());
+            // ★ FIX Bug: Lưu role để kiểm tra cache invalidation khi role thay đổi
+            localStorage.setItem('LAST_SYNC_ROLE', window.CURRENT_USER?.role ?? '');
+        } catch (e) {
+            console.warn('⚠️ Không lưu được Local cache:', e);
+        }
+    }
 
     // ─── Notifications Listener ────────────────────────────────────────────────
 
@@ -397,10 +225,13 @@ class DBManager {
 
                 if (dataChangeDocs.length > 0) this.#autoSyncData(dataChangeDocs);
                 if (notifDocs.length > 0) {
-                    let notifications = localStorage.getItem('NotificationModule.9trip_notifications_logs');
-                    notifications = notifications ? JSON.parse(notifications) : [];
-                    notifications.unshift(...notifDocs);
-                    localStorage.setItem('NotificationModule.9trip_notifications_logs', JSON.stringify(notifications));
+                    // let notifications = localStorage.getItem('9trip_notifications_logs');
+                    // notifications = notifications ? JSON.parse(notifications) : [];
+                    // notifications.unshift(...notifDocs);
+                    // localStorage.setItem('9trip_notifications_logs', JSON.stringify(notifications));
+                    // Chỉ dispatch event — NotificationModule tự quản lý storage của nó.
+                    // (Trước đây có pre-write vào localStorage nhưng dùng sai key,
+                    //  nay đã xoá để tránh nhầm lẫn và giảm writes thừa.)
                     window.dispatchEvent(new CustomEvent('new-notifications-arrived', { detail: notifDocs }));
                 }
             },
@@ -498,7 +329,7 @@ class DBManager {
                 if (typeof payload === 'string') {
                     // payload là batch_id → batch lớn, fetch toàn bộ collection từ server
                     log(`🔄 #applyLocalChange: batch lớn (batch_id=${payload}), reload từ server...`);
-                    await this.#reloadCollection(coll, payload);
+                    await this.reloadCollection(coll, payload);
                 } else if (Array.isArray(payload)) {
                     // payload là array [{id, action, data}] → batch nhỏ, apply inline
                     for (const item of payload) {
@@ -526,139 +357,323 @@ class DBManager {
         }
     }
 
+    // reloadCollection → đã gộp vào loadCollections({ forceNew: true, batchId })
+
+
     /**
-     * Tải lại 1 collection từ Firestore (server), cập nhật APP_DATA.
-     * @param {string} collName
-     * @param {string} [batchId] - optional batch ID for large batch reload
+     * Sort 1 collection in-place theo postSort config.
+     *
+     * Ưu tiên phát hiện kiểu theo thứ tự:
+     *   1. Timestamp (Firestore Timestamp, JS Date, Unix ms)
+     *   2. String ngày: ISO (YYYY-MM-DD[T...]) hoặc VN (DD/MM/YYYY)
+     *   3. Số (number thuần hoặc string có dấu phân cách `,` `_`)
+     *   4. Chuỗi thông thường — localeCompare tiếng Việt
+     *
+     * Hướng sắp xếp luôn theo `dir` trong QUERY_CONFIG (asc / desc).
+     *
+     * @param {string} collName - Tên collection
+     * @param {object} collData - Dữ liệu dạng { docId: doc, ... }
+     * @returns {object} Object đã sort
      */
-    async #reloadCollection(collName, batchId) {
+    sortCollection(collName, collData) {
         const cfg = DBManager.#QUERY_CONFIG[collName];
-        if (!cfg) { console.warn(`⚠️ #reloadCollection: không có config cho '${collName}'`); }
-        try {
-            let query = this.#db.collection(collName);
-            if (cfg.orderBy) query = query.orderBy(cfg.orderBy, 'desc');
-            if (cfg.limit) query = query.limit(cfg.limit);
-            if (batchId) query = query.where('batchId', '==', batchId);
+        if (!cfg?.postSort || !collData || typeof collData !== 'object') return collData;
+        const { key, dir } = cfg.postSort;
+        const items = Object.values(collData);
+        if (items.length === 0) return collData;
 
-            const snap = await query.get({ source: 'server' });
-            if (!APP_DATA) APP_DATA = {};
-            APP_DATA[collName] = {};
-            this.#hydrateCollection(APP_DATA, collName, snap);
-            log(`✅ #reloadCollection [${collName}]: ${snap.size} docs`);
-            await this.#saveAppDataCache();
-        } catch (e) {
-            console.error(`❌ #reloadCollection [${collName}]:`, e);
-        }
-    }
-
-    // ─── Load All Data ────────────────────────────────────────────────────────
-
-    /**
-     * Tải toàn bộ data cần thiết cho APP_DATA.
-     *
-     * Ưu tiên 1 — IndexedDB cache (localStorage):
-     *   Nếu có data và LAST_SYNC < 72h thì dùng luôn, không đụng Firestore.
-     *
-     * Ưu tiên 2 — Firestore:
-     *   Tải theo QUERY_CONFIG cho các collections được phép (theo role),
-     *   sau đó lưu cache để lần sau dùng.
-     *
-     * @param {boolean} [forceNew=false] - Bỏ qua cache, buộc tải từ Firestore
-     * @returns {Promise<object|null>} APP_DATA
-     */
-    async loadAllData(forceNew = false) {
-        await this.#initPromise; // đảm bảo #bootInit xong
-        if (!this.#db) { console.error('❌ DB chưa init'); return null; }
-        if (!firebase.auth().currentUser) { console.error('❌ Chưa đăng nhập'); return null; }
-
-        // ── 1. Ưu tiên IndexedDB cache ────────────────────────────────────
-        const cachedData = await this.#idbGet('APP_DATA');
-        const lastSync = localStorage.getItem('LAST_SYNC');
-        const cacheAge = this.#config.cacheMaxAgeMs;
-
-        if (!forceNew && cachedData && lastSync && (Date.now() - parseInt(lastSync, 10) < cacheAge)) {
-            APP_DATA = cachedData;
-            log(`📦 APP_DATA từ IndexedDB (age: ${Math.round((Date.now() - parseInt(lastSync, 10)) / 60000)} phút)`);
-            return APP_DATA;
-        }
-
-        // ── 2. Tải từ Firestore ───────────────────────────────────────────
-        console.time('loadAllData');
-        const result = this.#buildEmptyResult();
-
-        const userRole = window.CURRENT_USER?.role ?? null;
-        const allowed = (userRole && window.COLL_MANIFEST?.[userRole])
-            ? window.COLL_MANIFEST[userRole]
-            : ['bookings', 'booking_details', 'operator_entries', 'customers'];
-
-        try {
-            await Promise.all([
-                this.#loadCollections(result, allowed),
-                this.#loadMeta(result),
-            ]);
-
-            APP_DATA = result;
-            await this.#saveAppDataCache();
-
-            console.timeEnd('loadAllData');
-            log('📥 APP_DATA sẵn sàng (tải từ Firestore)');
-            return APP_DATA;
-        } catch (e) {
-            console.error('❌ loadAllData thất bại:', e);
-            console.timeEnd('loadAllData');
-            return null;
-        }
-    }
-
-    // Lưu APP_DATA vào IndexedDB (không JSON.stringify — IDB tự serialize object)
-    // LAST_SYNC — giá trị nhỏ, vẫn dùng localStorage — không cần thay đổi
-    async #saveAppDataCache() {
-        try {
-            await this.#idbSet('APP_DATA', APP_DATA);
-            localStorage.setItem('LAST_SYNC', Date.now().toString());
-        } catch (e) {
-            console.warn('⚠️ Không lưu được IDB cache:', e);
-        }
-    }
-
-    /**
-     * Tải tất cả collections theo QUERY_CONFIG qua loadCollectionWithCache.
-     * @param {object}   result  - object kết quả đang xây dựng
-     * @param {string[]} allowed - danh sách collections được phép
-     */
-    async #loadCollections(result, allowed) {
-        const tasks = allowed.map(async collName => {
-            const cfg = DBManager.#QUERY_CONFIG[collName];
-            if (!cfg) return;
-            try {
-                let query = this.#db.collection(collName);
-                if (cfg.orderBy) query = query.orderBy(cfg.orderBy, 'desc');
-                if (cfg.limit) query = query.limit(cfg.limit);
-
-                const snap = await this.loadCollectionWithCache(query);
-                const source = snap.metadata?.fromCache ? '📦 cache' : '🌐 server';
-                this.#hydrateCollection(result, collName, snap);
-                log(`✅ [${collName}] ${snap.size} docs — ${source}`);
-            } catch (e) {
-                console.error(`❌ [${collName}] tải thất bại:`, e);
+        // ── Helpers ────────────────────────────────────────────────────────
+        /** Firestore Timestamp / JS Date / Unix ms / ISO string / VN date string → ms hoặc null */
+        const toTimestamp = v => {
+            if (v?.toMillis) return v.toMillis();                        // Firestore Timestamp
+            if (v instanceof Date) return v.getTime();                   // JS Date
+            if (typeof v === 'number' && v > 1e10) return v;             // Unix ms (> năm ~1973)
+            if (typeof v === 'string' && v.trim() !== '') {
+                if (/^\d{4}-\d{2}-\d{2}/.test(v)) {                     // ISO: YYYY-MM-DD[T...]
+                    const ms = Date.parse(v);
+                    return isNaN(ms) ? null : ms;
+                }
+                const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})/);        // VN: DD/MM/YYYY
+                if (m) {
+                    const ms = Date.parse(`${m[3]}-${m[2]}-${m[1]}`);
+                    return isNaN(ms) ? null : ms;
+                }
             }
+            return null;
+        };
+
+        /** Số thuần hoặc string số (có dấu , _ ngàn) → number hoặc null */
+        const toNumber = v => {
+            if (typeof v === 'number') return v;
+            if (typeof v !== 'string' || v.trim() === '') return null;
+            const cleaned = v.trim().replace(/[,_\s]/g, '');            // bỏ dấu phân cách
+            const n = Number(cleaned);
+            return isNaN(n) ? null : n;
+        };
+
+        // ── Comparator ────────────────────────────────────────────────────
+        items.sort((a, b) => {
+            const av = a[key] ?? '';
+            const bv = b[key] ?? '';
+
+            // 1. Timestamp / Date
+            const at = toTimestamp(av);
+            const bt = toTimestamp(bv);
+            if (at !== null && bt !== null) {
+                const cmp = at - bt;
+                return dir === 'desc' ? -cmp : cmp;
+            }
+
+            // 2. Số (kể cả string dạng số, có dấu phân cách)
+            const an = toNumber(av);
+            const bn = toNumber(bv);
+            if (an !== null && bn !== null) {
+                const cmp = an - bn;
+                return dir === 'desc' ? -cmp : cmp;
+            }
+
+            // 3. Chuỗi thuần — A-Z (localeCompare tiếng Việt)
+            const cmp = String(av).localeCompare(String(bv), 'vi', { sensitivity: 'base' });
+            return dir === 'desc' ? -cmp : cmp;
         });
-        return Promise.all(tasks);
+        const out = {};
+        items.forEach(doc => { if (doc?.id) out[doc.id] = doc; });
+        return out;
     }
 
     /**
-     * Tải meta: app_config + users (cache-first).
+     * Áp dụng postSort cho tất cả collection có config — gọi sortCollection.
+     * @param {object} [data] - APP_DATA hoặc bất kỳ data object nào (mặc định APP_DATA)
+     */
+    #applyAllPostSorts(data) {
+        const target = data ?? APP_DATA;
+        if (!target) return;
+        for (const collName of Object.keys(DBManager.#QUERY_CONFIG)) {
+            if (!target[collName]) continue;
+            target[collName] = this.sortCollection(collName, target[collName]);
+        }
+    }
+
+    /**
+     * Hàm DUY NHẤT tải collection(s) từ Firestore vào APP_DATA.
+     * Mọi nơi cần fetch data từ Firestore đều phải gọi qua hàm này.
+     *
+     * @param {string|string[]|null} [collections=null]
+     *   - null     → lấy danh sách mặc định từ COLL_MANIFEST theo role hiện tại
+     *   - string   → tải 1 collection
+     *   - string[] → tải nhiều collections
+     * @param {object}  [options={}]
+     * @param {boolean} [options.forceNew=false]  - Bỏ qua so sánh, tải lại toàn bộ docs
+     * @param {boolean} [options.deltaSync=false] - Chỉ fetch docs có updated_at > LAST_SYNC_DELTA
+     * @param {string}  [options.batchId]         - Lọc theo batchId (Large Batch reload)
+     * @param {number}  [options.limit]           - Override limit từ QUERY_CONFIG
+     * @returns {Promise<number>} Tổng số docs đã tải
+     */
+    async loadCollections(collections = null, options = {}) {
+        await this.#initPromise;
+        if (!this.#db) { console.error('❌ DB chưa init'); return 0; }
+
+        const { forceNew = false, deltaSync = false, batchId = null, limit: limitOverride = null } = options;
+
+        // ── Xác định danh sách collections ───────────────────────────────
+        let collList;
+        if (!collections) {
+            const role = window.CURRENT_USER?.role ?? null;
+            collList = (COLL_MANIFEST?.[role] ?? ['bookings', 'booking_details', 'operator_entries', 'customers'])
+                .filter(c => c !== 'users');
+            // Loại trừ các collections đã được chọn trong UI filter (btn-select-datalist)
+            const dataListSelect = document.getElementById('btn-select-datalist');
+            const selectedColls = dataListSelect
+                ? Array.from(dataListSelect.querySelectorAll('option')).map(opt => opt.value).filter(Boolean)
+                : [];
+            if (selectedColls.length > 0) collList = collList.filter(c => !selectedColls.includes(c));
+        } else {
+            collList = Array.isArray(collections) ? collections : [collections];
+        }
+
+        if (collList.length === 0) return 0;
+
+        // ── Delta: mốc thời gian cho updated_at filter ────────────────────
+        const lastSyncRaw = localStorage.getItem('LAST_SYNC_DELTA');
+        const lastSyncDate = deltaSync && lastSyncRaw ? new Date(parseInt(lastSyncRaw)) : null;
+
+        log(`📚 loadCollections (role=${CURRENT_USER?.role ?? '-'}, delta=${deltaSync}, force=${forceNew}): ${collList.join(', ')}`);
+
+        showLoading(true);
+        try {
+            const counts = await Promise.all(collList.map(async collName => {
+                const cfg = DBManager.#QUERY_CONFIG[collName];
+                const isMissingData = !APP_DATA[collName] || Object.keys(APP_DATA[collName]).length === 0;
+                try {
+                    // ── Build query ───────────────────────────────────────────────────────
+                    // ⚠️  KHÔNG dùng orderBy() trong Firestore query:
+                    //     Firestore v8 loại trừ mọi doc thiếu field orderBy khỏi kết quả
+                    //     → mất dữ liệu âm thầm. Ordering luôn thực hiện client-side.
+                    let query = this.#db.collection(collName);
+
+                    if (deltaSync && lastSyncDate && !isMissingData && !forceNew) {
+                        // Delta mode: chỉ lấy docs có updated_at thay đổi sau lần sync cuối
+                        query = query.where('updated_at', '>', lastSyncDate);
+                    } else if (batchId) {
+                        // Large-batch reload: lọc theo batchId
+                        query = query.where('batchId', '==', batchId);
+                    } else {
+                        // Full load: KHÔNG thêm orderBy, chỉ giới hạn số docs nếu có config
+                        const lim = limitOverride ?? cfg?.limit;
+                        if (lim) query = query.limit(lim);
+                    }
+
+                    const snap = await query.get();
+                    if (snap.empty) return 0;
+
+                    const isDelta = deltaSync && lastSyncDate && !isMissingData && !forceNew;
+                    if (!isDelta) {
+                        // Full replace — reset primary + secondary indexes rồi hydrate
+                        APP_DATA[collName] = {};
+                        DBManager.#INDEX_CONFIG
+                            .filter(c => c.source === collName)
+                            .forEach(({ index }) => { APP_DATA[index] = {}; });
+                        this.#hydrateCollection(APP_DATA, collName, snap);
+                        // Client-side post-sort
+                        APP_DATA[collName] = this.sortCollection(collName, APP_DATA[collName]);
+                        log(`✅ [${collName}] full load: ${snap.size} docs`);
+                    } else {
+                        // Delta merge — chỉ cập nhật/thêm docs thay đổi
+                        snap.forEach(doc => {
+                            this._updateAppDataObj(collName, { id: doc.id, ...doc.data() });
+                        });
+                        log(`✅ [${collName}] delta: ${snap.size} docs mới/thay đổi`);
+                    }
+                    return snap.size;
+                } catch (e) {
+                    console.error(`❌ [${collName}] tải thất bại:`, e);
+                    return 0;
+                }
+            }));
+
+            const total = counts.reduce((a, b) => a + b, 0);
+            if (total > 0) {
+                await this.#saveAppDataCache();
+                if (typeof initBtnSelectDataList === 'function') initBtnSelectDataList();
+            }
+            log(`✅ loadCollections hoàn tất: ${total} docs từ ${collList.length} collection(s)`);
+            return total;
+        } catch (e) {
+            log('❌ loadCollections thất bại:', e);
+            return 0;
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    syncDelta = async (collection, forceFullLoad = false) => {
+        try {
+            showLoading(true);
+            const lastSync = localStorage.getItem('LAST_SYNC_DELTA');
+            const lastSyncDate = lastSync ? new Date(parseInt(lastSync)) : null;
+            let collectionsToSync = [];
+
+            if (collection) {
+                // Hỗ trợ cả string ('bookings') lẫn array (['bookings', 'customers', ...])
+                collectionsToSync = Array.isArray(collection) ? collection : [collection];
+            } else {
+                const role = window.CURRENT_USER?.role;
+                const roleMap = {
+                    'sale': ['bookings', 'booking_details', 'customers', 'transactions', 'fund_accounts', 'users'],
+                    'op': ['bookings', 'operator_entries', 'transactions'],
+                    'acc': ['transactions', 'fund_accounts', 'bookings'],
+                    'acc_thenice': ['transactions_thenice', 'fund_accounts_thenice'],
+                    'admin': ['bookings', 'booking_details', 'operator_entries', 'customers', 'transactions', 'users']
+                };
+
+                collectionsToSync = roleMap[role] || [];
+                const dataListSelect = document.getElementById('btn-select-datalist');
+                const selectedColls = dataListSelect
+                    ? Array.from(dataListSelect.querySelectorAll('option')).map(opt => opt.value).filter(Boolean)
+                    : [];
+                if (selectedColls.length > 0) {
+                    collectionsToSync = collectionsToSync.filter(c => !selectedColls.includes(c));
+                }
+
+            }
+
+            if (collectionsToSync.length === 0) return 0;
+
+            const results = await Promise.all(collectionsToSync.map(async (colName) => {
+                const isMissingData = !window.APP_DATA[colName] || Object.keys(APP_DATA[colName]).length === 0;
+
+                let query;
+                if (isMissingData || !lastSyncDate || forceFullLoad) {
+                    log(`[${colName}] Chưa có dữ liệu hoặc yêu cầu tải lại toàn bộ. Đang tải...`);
+
+                    query = this.#db.collection(colName);
+                } else {
+                    query = this.#db.collection(colName).where("updated_at", ">", lastSyncDate);
+                }
+
+                const querySnapshot = await query.get();
+
+                if (!querySnapshot.empty) {
+                    log(`[${colName}] Đang xử lý ${querySnapshot.size} bản ghi.`);
+                    if (isMissingData || forceFullLoad) {
+                        // Full reload: reset primary collection + all related secondary indexes
+                        localStorage.removeItem(`APP_DATA${window.CURRENT_USER?.role ? `_${window.CURRENT_USER.role}` : ''}`);
+                        APP_DATA[colName] = {};
+                        DBManager.#INDEX_CONFIG
+                            .filter(cfg => cfg.source === colName)
+                            .forEach(({ index }) => { APP_DATA[index] = {}; });
+                        querySnapshot.forEach(doc => {
+                            this._updateAppDataObj(colName, { id: doc.id, ...doc.data() });
+                        });
+                        // Sort sau khi toàn bộ docs đã nạp (không sort từng doc)
+                        APP_DATA[colName] = this.sortCollection(colName, APP_DATA[colName]);
+                    } else {
+                        // Delta: chỉ cập nhật/thêm docs thay đổi, secondary indexes tự cập nhật qua _updateAppDataObj
+                        querySnapshot.forEach(doc => {
+                            this._updateAppDataObj(colName, { id: doc.id, ...doc.data() });
+                        });
+                    }
+
+                    log(`[SYNC DELTA][${colName}] Cập nhật APP_DATA với ${querySnapshot.size} bản ghi thay đổi.`);
+                    return querySnapshot.size;
+                }
+                return 0;
+            }));
+
+            const totalChanges = results.reduce((a, b) => a + b, 0);
+
+            if (totalChanges > 0) {
+                await this.#saveAppDataCache();
+                initBtnSelectDataList();
+            }
+            logA(`✅ Sync Delta hoàn tất. Tổng bản ghi thay đổi: ${totalChanges}`);
+            return totalChanges;
+        } catch (e) {
+            log(`Lỗi syncDelta (Hybrid): `, e);
+            return 0;
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    /**
+     * Tải meta: app_config + users.
      * @param {object} result
      */
-    async #loadMeta(result) {
+    async loadMeta(result) {
+        // ★ FIX: đảm bảo result.lists và result.users tồn tại trước khi ghi
+        if (!result.lists) result.lists = {};
+        if (!result.users) result.users = {};
+
         const [cfgSnap, usersSnap] = await Promise.all([
-            this.loadCollectionWithCache(this.#db.collection('app_config').doc('current')),
-            this.loadCollectionWithCache(this.#db.collection('users')),
+            this.#db.collection('app_config').doc('current').get(),
+            this.#db.collection('users').get(),
         ]);
 
         // app_config
         if (cfgSnap?.exists) {
             const rawCfg = cfgSnap.data();
+            log(`📋 app_config/current: ${Object.keys(rawCfg).length} keys`);
             for (const k in rawCfg) {
                 try {
                     result.lists[k] = (typeof rawCfg[k] === 'string' && rawCfg[k].startsWith('['))
@@ -666,7 +681,7 @@ class DBManager {
                 } catch { result.lists[k] = rawCfg[k]; }
             }
         } else {
-            log('⚠️ app_config/current không tồn tại');
+            log('⚠️ app_config/current không tồn tại — lists sẽ rỗng');
         }
 
         // users
@@ -711,141 +726,18 @@ class DBManager {
             'hotels', 'hotel_price_schedules', 'service_price_schedules', 'users'
         ];
 
-        const result = { lists: {}, currentUser: {} };
+        APP_DATA = { lists: {}, currentUser: {} };
 
         // Primary flat indexes
-        primaryColls.forEach(c => { result[c] = {}; });
+        primaryColls.forEach(c => { APP_DATA[c] = {}; });
 
         // Secondary grouped indexes
-        DBManager.#INDEX_CONFIG.forEach(({ index }) => { result[index] = {}; });
+        DBManager.#INDEX_CONFIG.forEach(({ index }) => { APP_DATA[index] = {}; });
 
-        return result;
+        return APP_DATA;
     }
 
-    loadCollection = async (collectionName, limit = 2000) => {
-        if (!this.#db) { console.error("❌ DB chưa init"); return null; }
-        console.log(`📥 Loading collection: ${collectionName}...`);
-        try {
-            const collSnap = await this.#db.collection(collectionName)
-                .orderBy('created_at', 'desc').limit(limit).get();
-            const dataList = [];
-            collSnap.forEach(doc => dataList.push(doc.data()));
-            console.log(`✅ Loaded ${dataList.length} items from ${collectionName}`);
-            return dataList;
-        } catch (e) {
-            console.error(`❌ Error loading ${collectionName}:`, e);
-            return null;
-        }
-    }
-
-    /**
-     * Lấy collection: ưu tiên cache, fall back server nếu cache miss.
-     */
-    loadCollectionWithCache = async (query) => {
-        try {
-            // Ưu tiên lấy từ IndexDB (Firestore Persistence)
-            const snap = await query.get({ source: 'cache' });
-
-            // Nếu cache rỗng (size === 0), bắt buộc phải lên server
-            if (snap.empty) {
-                log('📦 Cache empty, fetching from server...');
-                return await query.get({ source: 'server' });
-            }
-            log(`loadCollectionWithCache: 📦 Cache hit: ${snap.size} docs`);
-
-            return snap;
-        } catch (e) {
-            log('⚠️ Cache load failed, fetching from server...', e);
-            return await query.get({ source: 'server' });
-        }
-    }
-
-    // ─── Sync ─────────────────────────────────────────────────────────────
-
-    syncDelta = async (collection, forceFullLoad = false) => {
-        try {
-            showLoading(true);
-            const lastSync = localStorage.getItem('LAST_SYNC');
-            const lastSyncDate = lastSync ? new Date(parseInt(lastSync)) : null;
-            let collectionsToSync = [];
-
-            if (collection) {
-                collectionsToSync = [collection];
-            } else {
-                const role = window.CURRENT_USER?.role;
-                const roleMap = {
-                    'sale': ['bookings', 'booking_details', 'customers', 'transactions', 'fund_accounts', 'users'],
-                    'op': ['bookings', 'operator_entries', 'transactions'],
-                    'acc': ['transactions', 'fund_accounts'],
-                    'acc_thenice': ['transactions_thenice', 'fund_accounts_thenice'],
-                    'admin': ['bookings', 'booking_details', 'operator_entries', 'customers', 'transactions', 'users']
-                };
-
-                collectionsToSync = roleMap[role] || [];
-                const dataListSelect = document.getElementById('btn-select-datalist');
-                const selectedColls = dataListSelect
-                    ? Array.from(dataListSelect.querySelectorAll('option')).map(opt => opt.value).filter(Boolean)
-                    : [];
-                if (selectedColls.length > 0) {
-                    collectionsToSync = collectionsToSync.filter(c => !selectedColls.includes(c));
-                }
-
-            }
-
-            if (collectionsToSync.length === 0) return 0;
-
-            const results = await Promise.all(collectionsToSync.map(async (colName) => {
-                const isMissingData = !window.APP_DATA[colName] || Object.keys(window.APP_DATA[colName]).length === 0;
-
-                let query;
-                if (isMissingData || !lastSyncDate || forceFullLoad) {
-                    log(`[${colName}] Chưa có dữ liệu hoặc yêu cầu tải lại toàn bộ. Đang tải...`);
-                    query = this.#db.collection(colName);
-                } else {
-                    query = this.#db.collection(colName).where("updated_at", ">", lastSyncDate);
-                }
-
-                const querySnapshot = await query.get();
-
-                if (!querySnapshot.empty) {
-                    log(`[${colName}] Đang xử lý ${querySnapshot.size} bản ghi.`);
-                    if (isMissingData || forceFullLoad) {
-                        // Full reload: reset primary collection + all related secondary indexes
-                        window.APP_DATA[colName] = {};
-                        DBManager.#INDEX_CONFIG
-                            .filter(cfg => cfg.source === colName)
-                            .forEach(({ index }) => { window.APP_DATA[index] = {}; });
-                        querySnapshot.forEach(doc => {
-                            this._updateAppDataObj(colName, { id: doc.id, ...doc.data() });
-                        });
-                    } else {
-                        // Delta: chỉ cập nhật/thêm docs thay đổi, secondary indexes tự cập nhật qua _updateAppDataObj
-                        querySnapshot.forEach(doc => {
-                            this._updateAppDataObj(colName, { id: doc.id, ...doc.data() });
-                        });
-                    }
-                    return querySnapshot.size;
-                }
-                return 0;
-            }));
-
-            const totalChanges = results.reduce((a, b) => a + b, 0);
-
-            if (totalChanges > 0) {
-                await this.#saveAppDataCache();
-                initBtnSelectDataList();
-            }
-
-            localStorage.setItem('LAST_SYNC', Date.now().toString());
-            logA(`✅ Sync Delta hoàn tất. Tổng bản ghi thay đổi: ${totalChanges}`);
-            return totalChanges;
-        } catch (e) {
-            log(`Lỗi syncDelta (Hybrid): `, e);
-            return 0;
-        } finally {
-            showLoading(false);
-        }
-    }
+    // loadCollection / syncDelta → đã gộp vào loadCollections()
 
 
     // ─── Sync Trigger ─────────────────────────────────────────────────────
@@ -895,8 +787,8 @@ class DBManager {
             updated_at: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        const res = await this.#firestoreCRUD(this.COLL.OPERATORS, 'set', String(d_id), syncData);
-        if (res.success) this._updateAppDataObj(this.COLL.OPERATORS, syncData);
+        const res = await this.#firestoreCRUD('operator_entries', 'set', String(d_id), syncData);
+        if (res.success) this._updateAppDataObj('operator_entries', syncData);
         return res;
     }
 
@@ -1124,28 +1016,28 @@ class DBManager {
             dataObj = dataArray;
         } else {
             log(`Converting array to object for ${collectionName} saving...`);
-            dataObj = arrayToObject(dataArray, collectionName);
+            dataObj = this.#schema.arrayToObject(dataArray, collectionName);
         }
 
-        if (collectionName === this.COLL.BOOKINGS)
+        if (collectionName === 'bookings')
             this.currentCustomer = dataObj.customer_full_name || dataArray[COL_INDEX.M_CUST];
 
         // Auto-create customer nếu booking thiếu customer_id
-        if (collectionName === this.COLL.BOOKINGS && (!dataObj.customer_id || dataObj.customer_id === "")) {
+        if (collectionName === 'bookings' && (!dataObj.customer_id || dataObj.customer_id === "")) {
             let customerPhone = dataObj.customer_phone || dataArray[COL_INDEX.M_PHONE];
 
             if (customerPhone) {
                 if (customerPhone.startsWith("'") || customerPhone.startsWith('+'))
                     customerPhone = customerPhone.slice(1).trim();
 
-                const customerSnap = await this.#db.collection(this.COLL.CUSTOMERS)
+                const customerSnap = await this.#db.collection('customers')
                     .where('phone', '==', String(customerPhone)).limit(1).get();
 
                 if (customerSnap.size > 0) {
                     dataObj.customer_id = customerSnap.docs[0].id;
                     console.log(`✅ Tìm thấy customer cũ: ${customerSnap.docs[0].id}`);
                 } else {
-                    const newCustomerId = await this.generateIds(this.COLL.CUSTOMERS);
+                    const newCustomerId = await this.generateIds('customers');
                     if (!newCustomerId) return { success: false, message: "Failed to create customer ID" };
 
                     const newCustomer = {
@@ -1157,15 +1049,15 @@ class DBManager {
                     };
 
                     try {
-                        const custRes = await this.#firestoreCRUD(this.COLL.CUSTOMERS, 'set', newCustomerId.newId, newCustomer);
+                        const custRes = await this.#firestoreCRUD('customers', 'set', newCustomerId.newId, newCustomer);
                         if (!custRes.success) throw new Error(custRes.error ?? 'Lỗi tạo customer');
-                        this._updateAppDataObj(this.COLL.CUSTOMERS, newCustomer);
+                        this._updateAppDataObj('customers', newCustomer);
                         dataObj.customer_id = newCustomerId.newId;
                         console.log(`✅ Tạo customer mới thành công: ${newCustomerId.newId}`);
                     } catch (e) {
                         console.error(`❌ Lỗi tạo customer: ${e.message}`);
-                        await this._updateCounter(this.COLL.CUSTOMERS, newCustomerId.newNo - 1);
-                        delete this.batchCounterUpdates[this.COLL.CUSTOMERS];
+                        await this._updateCounter('customers', newCustomerId.newNo - 1);
+                        delete this.batchCounterUpdates['customers'];
                         return { success: false, message: "Failed to create customer" };
                     }
                 }
@@ -1178,7 +1070,7 @@ class DBManager {
 
         if (!docId || docId === "") {
             let bookingId = null;
-            if (collectionName === this.COLL.DETAILS)
+            if (collectionName === 'booking_details')
                 bookingId = dataObj.booking_id || dataArray[COL_INDEX.D_BKID];
 
             const idResult = await this.generateIds(collectionName, bookingId);
@@ -1207,14 +1099,14 @@ class DBManager {
 
             this._updateAppDataObj(collectionName, dataObj);
 
-            if (collectionName === this.COLL.DETAILS) {
+            if (collectionName === 'booking_details') {
                 await this._syncOperatorEntry(dataArray);
                 if (!isNew)
                     A.NotificationManager.sendToOperator(
                         `Booking Detail ${dataObj.id} cập nhật!`,
                         `Khách: ${dataObj.customer_full_name || dataArray[COL_INDEX.M_CUST] || "Unknown"} cập nhật DV ${dataObj.service_name || dataArray[COL_INDEX.D_SERVICE] || "Unknown"}`
                     );
-            } else if (collectionName === this.COLL.BOOKINGS) {
+            } else if (collectionName === 'bookings') {
                 if (isNew)
                     A.NotificationManager.sendToOperator(
                         `Booking ${dataObj.id} mới!`,
@@ -1255,7 +1147,7 @@ class DBManager {
             for (const row of chunk) {
                 const rowId = Array.isArray(row) ? row[0] : row.id;
                 if (!rowId || rowId === "") {
-                    const bookingId = (collectionName === this.COLL.DETAILS)
+                    const bookingId = (collectionName === 'booking_details')
                         ? (Array.isArray(row) ? row[COL_INDEX.D_BKID] : row.booking_id)
                         : null;
                     const idResult = await this.generateIds(collectionName, bookingId);
@@ -1274,10 +1166,15 @@ class DBManager {
         // Giai đoạn 2: Batch save
         for (const chunk of chunks) {
             const batch = this.#db.batch();
-            chunk.forEach(row => {
-                this.saveRecord(collectionName, row, true, batch);
-                if (collectionName === this.COLL.DETAILS) detailsForTrigger.push(row);
-            });
+
+            // Phải await toàn bộ saveRecord trước khi commit —
+            // saveRecord là async (có thể gọi generateIds bên trong),
+            // nếu dùng forEach không await thì batch.commit() chạy trước, gây lỗi
+            // "write batch can no longer be used after commit() has been called"
+            await Promise.all(chunk.map(row => {
+                if (collectionName === 'booking_details') detailsForTrigger.push(row);
+                return this.saveRecord(collectionName, row, true, batch);
+            }));
 
             try {
                 await batch.commit();
@@ -1285,7 +1182,7 @@ class DBManager {
                 console.log(`📦 Saved chunk: ${chunk.length} items to ${collectionName}`);
                 chunk.forEach(row => {
                     const dataObj = (typeof row === 'object' && !Array.isArray(row))
-                        ? row : arrayToObject(row, collectionName);
+                        ? row : this.#schema.arrayToObject(row, collectionName);
                     this._updateAppDataObj(collectionName, dataObj);
                 });
             } catch (e) {
@@ -1295,7 +1192,7 @@ class DBManager {
         this.batchCounterUpdates = {};
 
         // Giai đoạn 3: Trigger operator sync
-        if (collectionName === this.COLL.DETAILS && detailsForTrigger.length > 0) {
+        if (collectionName === 'booking_details' && detailsForTrigger.length > 0) {
             for (const detailRow of detailsForTrigger) {
                 if (typeof detailRow === 'object') detailRow.customer_full_name = customerName;
                 else detailRow[COL_INDEX.M_CUST] = customerName;
@@ -1313,9 +1210,9 @@ class DBManager {
             if (!res.success) throw new Error(res.error);
             this._removeFromAppDataObj(collectionName, id);
 
-            if (collectionName === this.COLL.DETAILS) {
-                await this.#firestoreCRUD(this.COLL.OPERATORS, 'delete', id);
-                this._removeFromAppDataObj(this.COLL.OPERATORS, id);
+            if (collectionName === 'booking_details') {
+                await this.#firestoreCRUD('operator_entries', 'delete', id);
+                this._removeFromAppDataObj('operator_entries', id);
             }
             return { success: true, message: 'Deleted' };
         } catch (e) {
@@ -1330,14 +1227,14 @@ class DBManager {
             const res = await this.#firestoreCRUD(collectionName, 'batch', null, null, { items });
             if (!res.success) throw new Error(res.error);
 
-            if (collectionName === this.COLL.DETAILS) {
-                await this.#firestoreCRUD(this.COLL.OPERATORS, 'batch', null, null, { items });
+            if (collectionName === 'booking_details') {
+                await this.#firestoreCRUD('operator_entries', 'batch', null, null, { items });
             }
 
             idList.forEach(id => {
                 this._removeFromAppDataObj(collectionName, id);
-                if (collectionName === this.COLL.DETAILS)
-                    this._removeFromAppDataObj(this.COLL.OPERATORS, id);
+                if (collectionName === 'booking_details')
+                    this._removeFromAppDataObj('operator_entries', id);
             });
             return { success: true };
         } catch (e) {
@@ -1475,7 +1372,7 @@ class DBManager {
             let useRandomId = false;
 
             if (counterSnap.exists) {
-                if (collectionName === this.COLL.DETAILS) prefix = bookingId ? `${bookingId}_` : 'SID_';
+                if (collectionName === 'booking_details') prefix = bookingId ? `${bookingId}_` : 'SID_';
                 else prefix = counterSnap.data().prefix || '';
                 lastNo = counterSnap.data().last_no;
                 if (lastNo && lastNo > 0) await this._updateCounter(collectionName, lastNo + 1);
@@ -1690,6 +1587,34 @@ class DBManager {
             return { success: false, error: err.message };
         }
     }
+
+    /**
+     * Dừng listeners và reset trạng thái.
+     */
+    resetOptions = () => {
+        this.stopNotificationsListener();
+        console.log('🔄 DB options đã reset');
+    }
+
+    /**
+     * Sort toàn bộ APP_DATA theo QUERY_CONFIG — gọi từ console hoặc sau khi load
+     */
+    sortAppData = () => {
+        if (!APP_DATA) return;
+        this.#applyAllPostSorts(APP_DATA);
+        console.log('🔀 Đã sắp xếp lại APP_DATA');
+    }
+
+    /**
+     * Sort 1 collection cụ thể — public wrapper của sortCollection
+     * @param {string} collName
+     */
+    sortCollection = (collName) => {
+        if (!APP_DATA?.[collName]) { console.warn(`⚠️ sortCollection: không có data cho '${collName}'`); return; }
+        APP_DATA[collName] = this.sortCollection(collName, APP_DATA[collName]);
+        console.log(`🔀 Đã sort [${collName}]`);
+    }
+
 
 }
 

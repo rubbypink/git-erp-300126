@@ -9,15 +9,21 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+  <!-- animate.css: chỉ dùng cho loading screen → load async, không block render -->
+  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" as="style"
+    onload="this.onload=null;this.rel='stylesheet'">
+  <noscript>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+  </noscript>
 
   <link rel="stylesheet" href="./src/css/main.css">
   <link rel="stylesheet" href="./src/css/notification-panel.css">
 
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-functions.js"></script>
+  <!-- Firebase SDK: defer để không block HTML parsing -->
+  <!-- firebase-functions không load ở đây — được load động bởi migration-helper.js (chỉ cho admin) -->
+  <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 </head>
 
 <body>
@@ -46,31 +52,147 @@
     };
     var TEMPLATE_MANIFEST = {
       base: ['tmpl-dashboard', 'tmpl-form'],
-      sale: ['tmpl-sub-form', 'tmpl-confirmation-modal'],
+      sale: ['tmpl-confirmation-modal'],
       op: ['tmpl-partner-mail'],
       acc: ['tmpl-report', 'tmpl-acc-footer-bar'],
       acc_thenice: ['tmpl-report', 'tmpl-acc-footer-bar']
     };
     var COLL_MANIFEST = {
-      admin: ['bookings', 'booking_details', 'customers', 'operator_entries', 'transactions', 'suppliers', 'fund_accounts', 'transactions_thenice', 'fund_accounts_thenice', 'users'],
-      sale: ['bookings', 'booking_details', 'customers'],
-      op: ['bookings', 'operator_entries', 'suppliers', 'hotels', 'hotel_price_schedules', 'service_price_schedules'],
-      acc: ['transactions', 'suppliers', 'fund_accounts', 'bookings', 'operator_entries'],
+      admin: ['bookings', 'booking_details', 'booking_details_by_booking', 'customers', 'operator_entries', 'operator_entries_by_booking', 'transactions', 'suppliers', 'fund_accounts', 'transactions_thenice', 'fund_accounts_thenice', 'users'],
+      sale: ['bookings', 'booking_details', 'booking_details_by_booking', 'customers'],
+      op: ['bookings', 'operator_entries', 'operator_entries_by_booking', 'suppliers', 'hotels', 'hotel_price_schedules', 'service_price_schedules'],
+      acc: ['transactions', 'suppliers', 'fund_accounts', 'bookings', 'operator_entries', 'operator_entries_by_booking'],
       acc_thenice: ['transactions_thenice', 'fund_accounts_thenice']
-    };    
+    };
+    // =========================================================================
+    // 1. GLOBAL UI VARIABLES (CHỈ KHAI BÁO BIẾN UI TẠI ĐÂY)
+    // =========================================================================
+    var isMobile;
+    var APP_URL = {
+      baseUrl: 'https://script.google.com/macros/s/AKfycbyKK7O71jsyamCcBaeCMA0lio1YdQ_onGrUz1X1IYY/exec',
+      devUrl: 'https://script.google.com/macros/s/AKfycbyKK7O71jsyamCcBaeCMA0lio1YdQ_onGrUz1X1IYY/dev',
+    }
+    var APP_DATA = {};
+
+    var ROLE_DATA = {
+      'sale': 'booking_details',
+      'sale_sup': 'booking_details',
+      'manager': 'booking_details',
+      'op': 'operator_entries',
+      'acc': 'transactions',
+      'admin': 'booking_details'
+    };
+    var CR_COLLECTION = ''; // Collection hiện tại dựa trên role người dùng
+
+    var testValue;
+
+    // Cấu hình Retry
+    const MAX_RETRIES = 3;       // Số lần thử tối đa
+    const RETRY_DELAY = 2000;    // Thời gian chờ giữa các lần (ms) -> 2 giây
+    var retryCount = 0;          // Biến đếm số lần đã thử
+    var CURRENT_TABLE_KEY = '';
+    // Biến toàn cục tạm để lưu tham chiếu hàng đang được click chuột phải
+    // (Cần gán biến này khi sự kiện 'contextmenu' trên tr được kích hoạt)
+    var CURRENT_ROW_DATA = null;     // Data của hàng đang chọn
+
+
+    var GRID_COLS = [];
+    var LAST_FILTER_SIGNATURE = null;
+
+    // Trạng thái phân trang
+    var PG_STATE = {
+      data: [],
+      currentPage: 1,
+      limit: 100,
+      totalPages: 0
+    };
+
+    // Trạng thái sắp xếp
+    var SORT_STATE = { col: -1, dir: 'asc' };
+
+    // =========================================================================
+    // TRẠNG THÁI DỮ LIỆU PHẲNG (SOURCE OF TRUTH CHO FILTER / SORT / RENDER)
+    // PG_DATA là bảng làm việc duy nhất: filter đọc APP_DATA → ghi PG_DATA,
+    // sorter chỉ đọc & ghi PG_DATA, renderer chỉ đọc PG_DATA.
+    // =========================================================================
+    var PG_DATA = [];               // Flat working array (filtered/sorted snapshot)
+    window.PG_DATA = PG_DATA;      // Expose globally
+
+    var FILTER_ACTIVE = false;      // Toggle: true khi đang có filter áp dụng
+    window.FILTER_ACTIVE = FILTER_ACTIVE;
+
+    // =========================================================================
+    // CONFIG: DATA TABLE MAPPING
+    // Định nghĩa các bảng dữ liệu và tên hiển thị Tiếng Việt tương ứng
+    // =========================================================================
+    const TABLE_DISPLAY_MAP = {
+      'bookings': 'Booking',          // Ưu tiên 2
+      'booking_details': 'Chi Tiết Booking', // Ưu tiên 1
+      'operator_entries': 'Booking NCC',
+      'customers': 'Khách Hàng',
+      'suppliers': 'Đối Tác',
+      'transactions': 'DS Thu Chi',
+      'transactions_thenice': 'DS Thu Chi - The Nice',
+      'users': 'Tài Khoản',
+      'hotels': 'Khách Sạn',
+      'hotel_price_schedules': 'Bảng Giá Khách Sạn',
+      'service_price_schedules': 'Bảng Giá Dịch Vụ',
+    };
+    const TABLE_HIDDEN_FIELDS = {
+      'bookings': ['created_at', 'customer_id'],
+      'booking_details': ['id', 'booking_id'],
+      'operator_entries': ['id', 'booking_id', 'customer_full_name'],
+      'customers': ['created_at'],
+      'suppliers': ['created_at'],
+      'users': ['created_at'],
+      'hotels': ['created_at'],
+      'hotel_price_schedules': ['created_at'],
+      'service_price_schedules': ['created_at']
+    };
+
+    const TAB_INDEX_BY_ID = {
+      "tab-dashboard": 1,
+      "tab-form": 2,
+      "tab-list": 3,
+      "tab-sub-form": 4,
+      "tab-log": 5,
+      "tab-admin-dashboard": 6
+    };
+
+
+    /**
+     * CẤU HÌNH CỘT NGÀY CHO TỪNG BẢNG (QUAN TRỌNG)
+     * Key: Tên bảng (CURRENT_TABLE_KEY)
+     * Value: Index của cột ngày (Bắt đầu từ 0). Nếu bảng không có cột ngày, để null.
+     */
+    const TABLE_DATE_CONFIG = {
+      'bookings': 6,    // Bảng Bookings: Ngày ở cột 6
+      'booking_details': 5,   // Bảng Details: Ngày ở cột 5
+      'operator_entries': 6,
+      'transactions': 1,  // Ví dụ bảng SP: Ngày nhập ở cột 2
+      'customers': null, // Bảng Khách hàng: Không lọc theo ngày
+      'users': null, // Bảng Tài Khoản: Không lọc theo ngày
+      'hotels': null, // Bảng Khách Sạn: Không lọc theo ngày
+      'hotel_price_schedules': null, // Bảng Giá Khách Sạn: Không lọc theo ngày
+      'service_price_schedules': null // Bảng Giá Dịch Vụ: Không lọc theo ngày
+    };
+
+    // Global State cho Context Menu
+    var CURRENT_CTX_ID = null;   // ID của dòng (SID)
+    var CURRENT_CTX_ROW = null;  // Element dòng (TR)
+
+
   </script>
 
   <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
   <script defer src="./src/js/utils.js"></script>
-  <script async src="./src/js/common/components/offcanvas_menu.js"></script>
-
-  <script defer src="./src/js/db_schema.js"></script>
-  <script async src="./src/js/shortkey.js"></script>
   <script defer src="./src/js/renderer.js"></script>
   <script defer src="./src/js/logic_base.js"></script>
   <script defer src="./src/js/api_base.js"></script>
   <script type="module" src="./src/js/app.js"></script>
+  <!-- <script async src="./src/js/common/components/offcanvas_menu.js"></script> -->
+  <script async src="./src/js/shortkey.js"></script>
 
 </body>
 

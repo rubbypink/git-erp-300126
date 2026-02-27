@@ -1,6 +1,6 @@
 
 
-const NotificationPanelRenderer = (function() {
+const NotificationPanelRenderer = (function () {
     // 1. CHỈ LƯU SELECTOR (CHUỖI), KHÔNG LƯU DOM ELEMENT
     // Để tránh việc lưu null khi khởi tạo
     const SELECTORS = {
@@ -98,8 +98,9 @@ const NotificationPanelRenderer = (function() {
     function _createNotificationItem(notif) {
         const item = document.createElement('div'); // Hoặc thẻ a tùy cấu trúc
         item.className = `dropdown-item notification-item ${!notif.isRead ? 'unread' : ''}`;
+        item.dataset.notifId = notif.id; // ★ Để markItemAsRead() tìm đúng phần tử
         item.style.cursor = 'pointer';
-        
+
         const iconClass = _getIconClass(notif?.type);
         const timeString = _formatTime(notif.created_at);
 
@@ -131,6 +132,24 @@ const NotificationPanelRenderer = (function() {
         return item;
     }
 
+    /**
+     * Cập nhật trực tiếp DOM của một item thành trạng thái "đã đọc".
+     * Không cần render lại toàn bộ danh sách.
+     *
+     * @param {string} id - ID của thông báo cần cập nhật
+     */
+    function markItemAsRead(id) {
+        const listEl = document.querySelector(SELECTORS.list);
+        if (!listEl) return;
+        const item = listEl.querySelector(`[data-notif-id="${id}"]`);
+        if (!item) return;
+
+        // Xoá class unread + ẩn blue dot
+        item.classList.remove('unread');
+        const dot = item.querySelector('.badge.bg-primary.rounded-circle');
+        if (dot) dot.remove();
+    }
+
     function _updateBadges(count) {
         const badge = document.querySelector(SELECTORS.badge);
         const headerCount = document.querySelector(SELECTORS.headerCount);
@@ -151,7 +170,7 @@ const NotificationPanelRenderer = (function() {
     function _showEmptyState(isEmpty) {
         const emptyEl = document.querySelector(SELECTORS.emptyState);
         if (!emptyEl) return;
-        
+
         if (isEmpty) emptyEl.classList.remove('d-none');
         else emptyEl.classList.add('d-none');
     }
@@ -173,24 +192,33 @@ const NotificationPanelRenderer = (function() {
 
     function _formatTime(iso) {
         if (!iso) return '';
-        
+
         const now = new Date();
-        const notifDate = new Date(iso);
+        // ★ Khi Firestore Timestamp được JSON.stringify rồi JSON.parse,
+        //   nó thành plain object {seconds, nanoseconds} → new Date() trả về Invalid Date.
+        //   Xử lý cả 3 dạng: Firestore Timestamp object, số ms, ISO string.
+        const notifDate = iso?.seconds
+            ? new Date(iso.seconds * 1000)
+            : iso?.toDate
+                ? iso.toDate()   // Firestore Timestamp chưa serialize (có method .toDate())
+                : new Date(iso);
+
+        if (isNaN(notifDate.getTime())) return '';
         const diff = (now - notifDate) / 1000; // seconds in difference
-        
+
         // ★ FIX: Kiểm tra xem có phải cùng ngày không
-        const isSameDay = 
+        const isSameDay =
             now.getFullYear() === notifDate.getFullYear() &&
             now.getMonth() === notifDate.getMonth() &&
             now.getDate() === notifDate.getDate();
-        
+
         // Nếu cùng ngày, tính theo giờ/phút
         if (isSameDay) {
             if (diff < 60) return 'Vừa xong';
-            if (diff < 3600) return `${Math.floor(diff/60)} phút trước`;
-            return `${Math.floor(diff/3600)} giờ trước`; // ★ NEW: Tính theo giờ
+            if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
+            return `${Math.floor(diff / 3600)} giờ trước`; // ★ NEW: Tính theo giờ
         }
-        
+
         // Nếu khác ngày, hiển thị ngày tháng
         return notifDate.toLocaleDateString('vi-VN');
     }
@@ -200,7 +228,7 @@ const NotificationPanelRenderer = (function() {
         return unsafe.replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    return { init, render, appendItem, updateBadges: _updateBadges };
+    return { init, render, appendItem, markItemAsRead, updateBadges: _updateBadges };
 })();
 
 // =========================================================================
@@ -211,7 +239,7 @@ const NotificationPanelRenderer = (function() {
     const interval = setInterval(() => {
         attempts++;
         const list = document.querySelector('#notificationList'); // Check trực tiếp
-        
+
         if (list) {
             clearInterval(interval);
             NotificationPanelRenderer.init();

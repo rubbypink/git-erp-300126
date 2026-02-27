@@ -13,37 +13,26 @@ const AUTH_MANAGER = {
     app: null,
     auth: null,
     initFirebase: async function () {
-        return new Promise((resolve, reject) => {
-            try {
-                if (!firebase.apps.length) {
-                    this.app = firebase.initializeApp(this.CFG_FB_RTDB);
-                } else {
-                    this.app = firebase.app();
-                }
-                
-                this.auth = firebase.auth();
-                // ✅ CHUẨN: Dùng Firestore
-                // this.db = firebase.firestore(); 
-                
-                // Kích hoạt A.DB
-                // if (typeof A.DB !== 'undefined') {
-                //     A.DB.db = this.db;
-                //     log("✅ A.DB connected to Firestore");
-                // }
-                resolve(this.app);
-            } catch(e) {
-                console.error("🔥 Firebase Init Error:", e);
-                reject(e);
+        try {
+            if (!firebase.apps.length) {
+                this.app = firebase.initializeApp(this.CFG_FB_RTDB);
+            } else {
+                this.app = firebase.app();
             }
-        });
+            this.auth = firebase.auth();
+            return this.app;
+        } catch (e) {
+            console.error('🔥 Firebase Init Error:', e);
+            throw e;
+        }
     },
     // Lấy thông tin chi tiết từ Firestore
-    fetchUserProfile: async function(firebaseUser) {
+    fetchUserProfile: async function (firebaseUser) {
         try {
             CR_COLLECTION = ROLE_DATA[CURRENT_USER.role] || '';
             await SECURITY_MANAGER.applySecurity(CURRENT_USER);
-            SECURITY_MANAGER.cleanDOM(document);
-            loadDataFromFirebase(); // Đảm bảo dữ liệu đã sẵn sàng trước khi render                      
+            // SECURITY_MANAGER.cleanDOM(document);
+            // loadDataFromFirebase() đã được xử lý bởi app.js#runPostBoot — không gọi ở đây
         } catch (e) {
             console.error(e);
             alert("Lỗi tải profile: " + e.message);
@@ -53,29 +42,29 @@ const AUTH_MANAGER = {
         }
     },
 
-    updateUserMenu: function() {
+    updateUserMenu: function () {
         const userFullName = CURRENT_USER.profile.user_name || CURRENT_USER.email.split('@')[0];
         const userEmail = CURRENT_USER.email;
         const userRole = CURRENT_USER.role;
-        
-        if(document.getElementById('user-menu-text')) document.getElementById('user-menu-text').innerText = userFullName;
-        if(document.getElementById('user-menu-name')) document.getElementById('user-menu-name').innerText = userFullName;
-        if(document.getElementById('user-menu-email')) document.getElementById('user-menu-email').innerText = userEmail;
-        if(document.getElementById('user-menu-role')) document.getElementById('user-menu-role').innerText = userRole.toUpperCase();
-        
-        if(document.getElementById('btn-logout-menu')) document.getElementById('btn-logout-menu').style.display = 'flex';
+
+        if (document.getElementById('user-menu-text')) document.getElementById('user-menu-text').innerText = userFullName;
+        if (document.getElementById('user-menu-name')) document.getElementById('user-menu-name').innerText = userFullName;
+        if (document.getElementById('user-menu-email')) document.getElementById('user-menu-email').innerText = userEmail;
+        if (document.getElementById('user-menu-role')) document.getElementById('user-menu-role').innerText = userRole.toUpperCase();
+
+        if (document.getElementById('btn-logout-menu')) document.getElementById('btn-logout-menu').style.display = 'flex';
         const modalTitle = A.getConfig('moduleTitle') || '9 Trip System';
-        if(document.getElementById('module-title')) document.getElementById('module-title').innerText = modalTitle;
+        if (document.getElementById('module-title')) document.getElementById('module-title').innerText = modalTitle;
     },
 
     // Hiển thị màn hình lựa chọn Khách / Nhân sự
-    showChoiceScreen: function() {
+    showChoiceScreen: function () {
         const choiceHTML = `
         <style id="erp-login-style">
             .erp-login-bg {
                 min-height: 100dvh; width: 100vw;
                 display: flex; align-items: center; justify-content: center;
-                background: linear-gradient(150deg, #1a237e 0%, #2c37d1 55%, #5c6bc0 100%);
+                background: linear-gradient(150deg, #2933a5 0%, #1e29cc 55%, #5c6bc0 100%);
                 padding: 1rem; box-sizing: border-box;
             }
             .erp-login-card {
@@ -161,7 +150,7 @@ const AUTH_MANAGER = {
         const container = document.getElementById('main-app');
         container.innerHTML = choiceHTML;
         container.classList.remove('d-none');
-        
+
         // Gán sự kiện
         setTimeout(() => {
             document.getElementById('btn-choice-customer')?.addEventListener('click', () => {
@@ -174,7 +163,7 @@ const AUTH_MANAGER = {
     },
 
     // Hiển thị Form Login vào Modal
-    showLoginForm: function() {
+    showLoginForm: function () {
         const loginHTML = `
         <style id="erp-login-style">
             .erp-login-bg {
@@ -316,11 +305,11 @@ const AUTH_MANAGER = {
         const container = document.getElementById('main-app');
         container.innerHTML = loginHTML;
         container.classList.remove('d-none');
-        
+
         // Gán sự kiện Enter
         setTimeout(() => {
             document.getElementById('login-pass')?.addEventListener('keypress', (e) => {
-                if(e.key === 'Enter') {
+                if (e.key === 'Enter') {
                     showLoading(true);
                     this.handleEmailLogin();
                 }
@@ -339,11 +328,11 @@ const AUTH_MANAGER = {
         }, 100);
     },
 
-    handleEmailLogin: async function() {
+    handleEmailLogin: async function () {
         let email = document.getElementById('login-email').value;
         const pass = document.getElementById('login-pass').value;
-        
-        if(!email || !pass) {showLoading(false); alert("Thiếu thông tin"); return; }
+
+        if (!email || !pass) { showLoading(false); alert("Thiếu thông tin"); return; }
 
         // Kiểm tra nếu email không chứa '@' thì tự động thêm domain
         if (!email.includes('@')) {
@@ -352,7 +341,7 @@ const AUTH_MANAGER = {
 
         try {
             await this.auth.signInWithEmailAndPassword(email, pass);
-        } catch(e) {
+        } catch (e) {
             alert("Lỗi đăng nhập: " + e.message);
         } finally {
             showLoading(false);
@@ -360,7 +349,7 @@ const AUTH_MANAGER = {
     },
 
     // Xử lý Login Social
-    handleSocialLogin: async function(providerName) {
+    handleSocialLogin: async function (providerName) {
         let provider;
         if (providerName === 'google') provider = new firebase.auth.GoogleAuthProvider();
         if (providerName === 'facebook') provider = new firebase.auth.FacebookAuthProvider();
@@ -369,17 +358,17 @@ const AUTH_MANAGER = {
             showLoading(true);
             // Dùng signInWithPopup cho tiện trên WebApp
             await this.auth.signInWithPopup(provider);
-        } catch(e) {
+        } catch (e) {
             console.error(e);
             alert("Lỗi đăng nhập Social: " + e.message);
         } finally {
-            showLoading(false);           
+            showLoading(false);
         }
     },
-    
-    signOut: function() {
+
+    signOut: function () {
         this.auth.signOut().then(() => {
-            A.DB.unsubscribeAll(); // Hủy tất cả subscription khi logout
+            A.DB.stopNotificationsListener(); // Hủy tất cả subscription khi logout
             location.reload(); // Reload trang cho sạch
         });
     },
@@ -389,11 +378,11 @@ const AUTH_MANAGER = {
     /**
      * Load danh sách users từ Firestore để hiển thị
      */
-    loadUsersData: async function() {
+    loadUsersData: async function () {
         try {
             // ✅ FIRESTORE: Lấy toàn bộ collection users
             const snapshot = await A.DB.db.collection('users').get();
-            
+
             if (snapshot.empty) {
                 document.getElementById('users-table-body').innerHTML = '<tr><td colspan="10">Chưa có user nào</td></tr>';
                 return;
@@ -405,7 +394,7 @@ const AUTH_MANAGER = {
                 const user = doc.data();
                 const uid = doc.id; // Lấy ID từ doc
                 const createdDate = new Date(user.created_at || Date.now()).toLocaleDateString('vi-VN');
-                
+
                 html += `
                     <tr class="text-center" style="cursor: pointer;" onclick="A.Auth.loadUserToForm('${uid}')">
                         <td><small>${uid.substring(0, 5)}...</small></td>
@@ -421,9 +410,9 @@ const AUTH_MANAGER = {
                     </tr>
                 `;
             });
-            
+
             const tbody = document.getElementById('users-table-body');
-            if(tbody) tbody.innerHTML = html;
+            if (tbody) tbody.innerHTML = html;
 
         } catch (e) {
             console.error("Lỗi tải users:", e);
@@ -434,14 +423,14 @@ const AUTH_MANAGER = {
      * Load chi tiết user vào form để edit
      * Chỉ đọc từ Firestore
      */
-    loadUserToForm: async function(uid) {
+    loadUserToForm: async function (uid) {
         try {
             // ✅ FIRESTORE: Lấy dữ liệu user
             const doc = await A.DB.db.collection('users').doc(uid).get();
             if (!doc.exists) return;
-            
+
             const user = doc.data();
-            
+
             // Fill form (Giữ nguyên logic cũ)
             getE('form-uid').value = uid;
             getE('form-account').value = user.account || '';
@@ -460,7 +449,7 @@ const AUTH_MANAGER = {
                     if (checkbox) checkbox.checked = true;
                 });
             }
-            
+
             // Scroll
             getE('users-form').scrollIntoView({ behavior: 'smooth' });
         } catch (e) {
@@ -478,7 +467,7 @@ const AUTH_MANAGER = {
      * 
      * ⭐ Không còn tạo Auth trực tiếp, toàn bộ do Trigger xử lý
      */
-    saveUser: async function() {
+    saveUser: async function () {
         const userData = {};
         userData.uid = document.getElementById('form-uid').value.trim();
         userData.account = document.getElementById('form-account').value.trim();
@@ -530,7 +519,7 @@ const AUTH_MANAGER = {
             // Bước 3: Lưu vào Firestore (kèm password để trigger tạo Auth)
             userData.uid = newUid;
             userData.password = defaultPassword; // Trigger sẽ đọc field này để tạo Auth
-            
+
             await A.DB.saveRecord('users', userData);
             log(`✅ Firestore document created: ${newUid}`, 'success');
 
@@ -544,7 +533,7 @@ const AUTH_MANAGER = {
             showLoading(false);
         }
     },
-    renderUsersConfig: function() {
+    renderUsersConfig: function () {
         //   $('.modal-footer').style.display = 'none'; // Ẩn footer nếu có
         // Set ngày tạo mặc định là hôm nay
         document.getElementById('users-form').reset();
@@ -559,7 +548,7 @@ const AUTH_MANAGER = {
      * Tạo UID theo định dạng: ROLE-DDMMYY
      * Ví dụ: "OP-200226" (Operator, ngày 20/02/26)
      */
-    generateUserUID: function(role) {
+    generateUserUID: function (role) {
         const today = new Date();
         const dd = String(today.getDate()).padStart(2, '0');
         const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -572,7 +561,7 @@ const AUTH_MANAGER = {
      * Xóa user khỏi Firestore
      * Trigger "syncUserAuthDeleteOnDelete" sẽ tự động xóa Firebase Auth account
      */
-    deleteUser: async function(uid) {
+    deleteUser: async function (uid) {
         if (!confirm('Chắc chắn xóa user này?\n⚠️ Trigger sẽ tự động xóa Auth account')) return;
         try {
             showLoading(true);
@@ -583,7 +572,8 @@ const AUTH_MANAGER = {
             this.loadUsersData();
         } catch (error) {
             logError('❌ Lỗi xóa user: ' + error.message);
-        } finally {                showLoading(false);
+        } finally {
+            showLoading(false);
         }
     }
 };
@@ -593,14 +583,14 @@ const SECURITY_MANAGER = {
      * HÀM CHÍNH: ÁP DỤNG PHÂN QUYỀN VÀ KHỞI TẠO MODULE
      * Tối ưu hóa bởi 9Trip Tech Lead
      */
-    applySecurity: async function(userProfile) {
+    applySecurity: async function (userProfile) {
         try {
             const email = (userProfile.email || "").toLowerCase();
             const level = parseInt(userProfile.level || 0);
             const role = (userProfile.role || "").toLowerCase();
             const maskedRole = userProfile.realRole ? userProfile.role : null;
             const isHardAdmin = typeof ADMIN_EMAILS !== 'undefined' && ADMIN_EMAILS.includes(email);
-    
+
             // 1. Cấu hình Module dựa trên Role
             const ROLE_CONFIG = {
                 'op': {
@@ -629,14 +619,14 @@ const SECURITY_MANAGER = {
                     css: null
                 }
             };
-    
+
             // 2. Xác định cấu hình áp dụng
             let configKey = 'sale'; // Mặc định
             if (role === 'op') configKey = 'op';
             else if (['acc', 'acc_thenice', 'ketoan'].includes(role)) configKey = 'accountant';
-    
+
             const activeConfig = ROLE_CONFIG[configKey];
-    
+
             // 3. Xử lý UI & Tài nguyên (Async)
             // Load CSS nếu có
             if (activeConfig.css && !document.getElementById(activeConfig.css.id)) {
@@ -646,32 +636,32 @@ const SECURITY_MANAGER = {
                 link.href = activeConfig.css.href;
                 document.head.appendChild(link);
             }
-    
+
             // Load Logic JS
             if (activeConfig.js) await loadJSForRole(activeConfig.js);
             if (activeConfig.jsFile) await loadJSFile(activeConfig.jsFile, role);
-    
+
             // Render Giao diện chính
             await A.UI.renderTemplate('body', activeConfig.template, false, activeConfig.container);
-    
+
             // Render Footer riêng cho kế toán nếu có
             if (activeConfig.footerTemplate) {
                 await A.UI.renderTemplate('body', activeConfig.footerTemplate, false, '#main-footer', 'prepend');
             }
-    
+
             // Cập nhật thông tin tiêu đề
             if (activeConfig.moduleTitle) A.setConfig('moduleTitle', activeConfig.moduleTitle);
             if (activeConfig.title) document.title = activeConfig.title;
-    
+
             // 4. Xử lý Phân quyền (Security Class)
             document.body.className = ''; // Reset class
             let permissionClass = '';
-            
+
             if (isHardAdmin || level >= 50) {
                 permissionClass = 'is-admin';
                 A.UI.lazyLoad('tab-log');
                 log('🛡️ Security: ADMIN MODE');
-                
+
                 if (maskedRole) {
                     document.body.classList.add(`is-${maskedRole}`);
                     if (typeof activateTab === 'function') activateTab('tab-dashboard');
@@ -680,7 +670,7 @@ const SECURITY_MANAGER = {
                 }
             } else {
                 if (typeof activateTab === 'function') activateTab('tab-dashboard');
-                
+
                 if (level >= 10) permissionClass = 'is-manager';
                 else if (level >= 5) permissionClass = 'is-sup';
                 else {
@@ -696,13 +686,13 @@ const SECURITY_MANAGER = {
                 }
                 log(`🛡️ Security: STAFF MODE (${role})`);
             }
-    
+
             if (permissionClass) document.body.classList.add(permissionClass);
-            
+
             console.log('LOGIN: UI FOR ROLE LOADED');
 
-            
-    
+
+
         } catch (error) {
             console.error('❌ Lỗi tại applySecurity:', error);
             if (typeof showToast === 'function') showToast('Lỗi phân quyền hệ thống!', 'danger');
@@ -712,7 +702,7 @@ const SECURITY_MANAGER = {
      * GIẢI PHÁP CHO VẤN ĐỀ 3: XỬ LÝ DYNAMIC CONTENT
      * Hàm này sẽ duyệt qua container mới render và xóa các node bị cấm
      */
-    cleanDOM: async function(container) {
+    cleanDOM: async function (container) {
         // Lấy class hiện tại của body để biết đang là ai
         const body = document.body;
 
@@ -736,11 +726,11 @@ const SECURITY_MANAGER = {
         // Xử lý Role cụ thể (Logic loại trừ)
         // Ví dụ: Nếu là Sale -> Xóa Op, Xóa Acc
         const role = CURRENT_USER.role;
-        if (body.classList.contains('is-sale') || role ==='sale') {
+        if (body.classList.contains('is-sale') || role === 'sale') {
             container.querySelectorAll('.op-only, .acc-only').forEach(el => el.remove());
-            
+
         }
-        if (body.classList.contains('is-op') || role ==='op') {
+        if (body.classList.contains('is-op') || role === 'op') {
             container.querySelectorAll('.sales-only, .acc-only').forEach(el => el.remove());
         }
         if (body.classList.contains('is-acc') || CURRENT_USER.role === 'acc_thenice') {

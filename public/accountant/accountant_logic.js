@@ -31,7 +31,6 @@ const getTodayString = () => {
  */
 export async function getNewData() {
     const db = getDB();
-    console.log("9 Trip ERP: Đang tải dữ liệu mới nhất vào A.DATA...");
 
     try {
         const fetchCollection = async (colName, cacheKey) => {
@@ -45,7 +44,7 @@ export async function getNewData() {
             snap.forEach(doc => {
                 dataList.push({ db_id: doc.id, ...doc.data() });
             });
-            window.A.DATA[cacheKey] = dataList;
+            APP_DATA[cacheKey] = dataList;
             console.log(`- Đã tải ${dataList.length} docs từ [${colName}]`);
         };
 
@@ -71,7 +70,7 @@ export async function migrateBookingTransactions() {
     const db = getDB();
 
     // Kiểm tra Cache, nếu chưa có thì tải mới
-    if (!window.A.DATA.checkingBookings || window.A.DATA.checkingBookings.length === 0) {
+    if (!APP_DATA.checkingBookings || APP_DATA.checkingBookings.length === 0) {
         await getNewData();
     }
 
@@ -87,7 +86,7 @@ export async function migrateBookingTransactions() {
 
         // --- 3. Lọc dữ liệu thuần Javascript từ Cache ---
         const todayStr = getTodayString();
-        const bookingsToProcess = window.A.DATA.checkingBookings.filter(bk => {
+        const bookingsToProcess = APP_DATA.checkingBookings.filter(bk => {
             const isNotCancelled = bk.status !== "Hủy";
             const isPast = bk.end_date < todayStr;
             const isFullPaid = Number(bk.total_amount) === Number(bk.deposit_amount) && Number(bk.total_amount) > 0;
@@ -151,7 +150,7 @@ export async function migrateBookingTransactions() {
 
         console.log(`9 Trip Success: Hoàn tát Migrate! Đã tạo các transactions với updated_at chung.`);
         // Force clear cache transactions để lần Audit sau bắt buộc phải lấy data mới nhất
-        window.A.DATA.checkingTransactions = null;
+        APP_DATA.checkingTransactions = null;
 
     } catch (error) {
         console.error("9 Trip Error [migrateBookingTransactions]:", error);
@@ -160,16 +159,16 @@ export async function migrateBookingTransactions() {
 }
 
 /**
- * 3. HÀM CHECKING: Đối chiếu dòng tiền dựa trên Cache A.DATA
+ * 3. HÀM CHECKING: Đối chiếu dòng tiền dựa trên Cache APP_DATA
  */
 export async function auditTransactionsChecking() {
     try {
-        if (!window.A.DATA.checkingBookings || !window.A.DATA.checkingTransactions) {
+        if (!APP_DATA.checkingBookings || !APP_DATA.checkingTransactions) {
             await getNewData();
         }
 
-        const bookings = window.A.DATA.checkingBookings;
-        const transactions = window.A.DATA.checkingTransactions;
+        const bookings = APP_DATA.checkingBookings;
+        const transactions = APP_DATA.checkingTransactions;
 
         // Tạo Map để tối ưu O(1) tra cứu giao dịch
         const transMap = {};

@@ -11,6 +11,7 @@ function reloadSystemMode(modeCode) {
     };
     localStorage.setItem('erp-mock-role', JSON.stringify(roleData));
     log('🎭 Chuyển chế độ thành công sang: ' + Object.values(roleData).join(' -> ') + '. Đang tải lại trang...');
+    A.DB.stopNotificationsListener(); // Hủy tất cả subscription trước khi reload
     window.location.reload();
 }
 
@@ -222,13 +223,12 @@ function handleServerData(data) {
     showLoading(false);
 
     // 1. Kiểm tra an toàn lần cuối
-    if (!data || !data.currentUser) {
+    if (!data) {
         logA("Lỗi hiển thị: Dữ liệu chưa sẵn sàng.", "error");
         return;
     }
 
     const sourceIcon = data.source === "FIREBASE" ? "⚡ FIREBASE" : "🐢 LIVE SHEET";
-    log(`Bắt đầu dựng giao diện từ nguồn: ${sourceIcon}`, "info");
 
     // 3. KHỞI TẠO CÁC FORM CHỌN & SỰ KIỆN
     try {
@@ -251,7 +251,7 @@ function handleServerData(data) {
     }
 }
 
-async function loadDataFromFirebase() {
+async function loadDataFromFirebase(silent = false) {
     // 1. UI: Hiển thị trạng thái tải
     if (retryCount > 0) showLoading(true, `Đang thử lại (${retryCount}/${MAX_RETRIES})...`);
 
@@ -260,32 +260,41 @@ async function loadDataFromFirebase() {
     try {
         let role = CURRENT_USER.role;
 
-        await A.DB.loadAllData();
-        setTimeout(() => { }, 250); // Đợi một chút để đảm bảo dữ liệu đã sẵn sàng
-
-        // 3. Safety Check: Kiểm tra dữ liệu rỗng
-        if (!APP_DATA || Object.keys(APP_DATA).length === 0) {
-            console.error("❌ APP_DATA rỗng hoặc undefined");
-            handleRetry("Server trả về dữ liệu rỗng.");
+        // ★ FIX Bug: Kiểm tra giá trị trả về — loadAllData() trả về null khi DB/auth chưa sẵn sàng
+        const loadedData = await A.DB.loadAllData();
+        if (!loadedData) {
+            console.error('❌ loadAllData() trả về null — DB hoặc auth chưa sẵn sàng');
+            handleRetry('Không thể khởi tạo cơ sở dữ liệu.');
             return;
         }
 
-
+        // ★ FIX Bug: Kiểm tra dữ liệu thực tế theo role, không dùng Object.keys(APP_DATA).length
+        // vì #buildEmptyResult() luôn pre-populate tất cả keys là {} → length > 0 dù data rỗng.
+        const primaryColl = (role === 'op') ? 'operator_entries'
+            : (role === 'acc' || role === 'acc_thenice') ? 'transactions'
+                : 'bookings';
+        const collData = APP_DATA?.[primaryColl];
+        if (!collData) {
+            console.error(`❌ APP_DATA.${primaryColl} không tồn tại`);
+            handleRetry('Server trả về dữ liệu rỗng.');
+            return;
+        }
 
         // C. Mapping Details theo Role
         const userRole = role;
         const targetSourceKey = (userRole === 'op') ? 'operator_entries' : 'booking_details';
 
         // [OPTIONAL] Vẫn tạo Alias activeDetails để code mới sau này dùng cho tiện
+        // Dùng ?? {} để tránh Object.values(undefined) khi collection chưa được load cho role này
         APP_DATA.activeDetails = (userRole === 'op') ?
-            Object.values(APP_DATA.operator_entries) :
-            Object.values(APP_DATA.booking_details);
+            Object.values(APP_DATA?.operator_entries ?? {}) :
+            Object.values(APP_DATA?.booking_details ?? {});
 
-        log(`👤 User: ${userRole} - Data Loaded: ${APP_DATA.activeDetails.length} rows`);
+        log(`👤 User: ${userRole} - Data Loaded: ${APP_DATA?.activeDetails?.length} rows`);
         log(`✅ Tải xong sau: ${Date.now() - startTime}ms`, "success");
 
-        // 6. GỌI HÀM KHỞI TẠO UI
-        handleServerData(APP_DATA);
+        // 6. GỌI HÀM KHỞI TẠO UI — bỏ qua khi silent=true (boot flow tự gọi sau)
+        // if (!silent) handleServerData(APP_DATA);
 
         retryCount = 0;
 

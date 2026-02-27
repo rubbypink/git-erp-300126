@@ -13,6 +13,18 @@
  * ═════════════════════════════════════════════════════════════════════════
  */
 
+/** Load firebase-functions SDK động nếu chưa có (chỉ gọi khi admin dùng migration) */
+function _loadFunctionsSDK() {
+  if (typeof firebase !== 'undefined' && firebase.functions) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://www.gstatic.com/firebasejs/8.10.0/firebase-functions.js';
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Không thể load firebase-functions SDK'));
+    document.head.appendChild(s);
+  });
+}
+
 export const migrationHelper = (() => {
   /**
    * Execute field migration in a Firestore collection
@@ -28,10 +40,8 @@ export const migrationHelper = (() => {
    */
   async function migrateField(collection, oldField, newField, type = 'move') {
     try {
-      // ─── Check Firebase Initialization ───
-      if (typeof firebase === 'undefined' || !firebase.functions) {
-        throw new Error('Firebase functions not initialized. Please load Firebase SDK first.');
-      }
+      // ─── Load Functions SDK on demand ───
+      await _loadFunctionsSDK();
 
       // ─── Check User Authentication ───
       const currentUser = firebase.auth().currentUser;
@@ -104,7 +114,7 @@ export const migrationHelper = (() => {
   async function migrateFields(collection, fieldPairs, type = 'move') {
     const results = [];
 
-    for (const {oldField, newField} of fieldPairs) {
+    for (const { oldField, newField } of fieldPairs) {
       try {
         const result = await migrateField(collection, oldField, newField, type);
         results.push({

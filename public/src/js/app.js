@@ -2,9 +2,9 @@
 // 1. CORE IMPORTS (Bắt buộc load trước để chạy App & Login)
 // =====================================================================
 import DB_MANAGER from './modules/DBManager.js';
-import { AUTH_MANAGER, SECURITY_MANAGER } from './login_module.js';
+import { AUTH_MANAGER, SECURITY_MANAGER } from './modules/LoginModule.js';
 import { DraggableSetup, Resizable, TableResizeManager } from './libs/ui_helper.js';
-import UI_RENDERER from './renderUtils.js';
+import UI_RENDERER from './modules/UI_Manager.js';
 import EVENT_MANAGER from './modules/EventManager.js';
 
 // =========================================================================
@@ -12,7 +12,7 @@ import EVENT_MANAGER from './modules/EventManager.js';
 // =========================================================================
 
 class Application {
-    #state = { 
+    #state = {
         isReady: false,
         user: {},           // Giữ nguyên: {} thay vì null
         currentView: {},    // Dữ liệu màn hình hiện tại
@@ -20,24 +20,23 @@ class Application {
         eventCache: new Set(),
         modalHandlers: {}
     };
-    
-    DATA = {}; // Dữ liệu chung (APP_DATA cũ)
-    
+
     #moduleManager = null;
-    
+
     #config = {
         debug: false,
         roles: {},
         tables: {},
         path: {},
         consts: {
+            COLLECTIONS: ['bookings', 'booking_details', 'booking_details_by_booking', 'customers', 'operator_entries', 'operator_entries_by_booking', 'transactions', 'suppliers', 'hotels', 'hotel_price_schedules', 'service_price_schedules', 'fund_accounts', 'transactions_thenice', 'fund_accounts_thenice', 'users', 'app_config', 'notifications'],
             DATE_FMT: 'DD/MM/YYYY',
             DB_DATE_FMT: 'YYYY-MM-DD',
             CURRENCY: 'VND'
         },
-        disabledModules: ['Lang']
+        disabledModules: []
     };
-    
+
     #modules = {
         'Database': DB_MANAGER,
         'Auth': AUTH_MANAGER,
@@ -53,27 +52,27 @@ class Application {
     // =========================================================================
     // ★ MODAL ENGINE (Dynamic) - Đã khôi phục 100%
     // =========================================================================
-    
+
     #createDynamicModal() {
-        const appInstance = this; 
+        const appInstance = this;
         return {
             id: '#dynamic-modal',
             instance: null,
             initialStyles: {},
-            
-            _getEl: function() { return document.querySelector(this.id); },
 
-            _getInstance: function() {
+            _getEl: function () { return document.querySelector(this.id); },
+
+            _getInstance: function () {
                 const el = this._getEl();
                 if (!el) {
                     console.error(`❌ Modal ${this.id} not found!`);
                     return null;
                 }
-                
+
                 if (!this.instance) {
                     /* global bootstrap */
                     this.instance = bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el, { backdrop: false, keyboard: false });
-                    
+
                     const dialog = el.querySelector('.modal-dialog');
                     if (dialog && Object.keys(this.initialStyles).length === 0) {
                         this.initialStyles = {
@@ -95,7 +94,7 @@ class Application {
                 return this.instance;
             },
 
-            render: function(htmlContent, title = 'Thông báo') {
+            render: function (htmlContent, title = 'Thông báo') {
                 const el = this._getEl();
                 if (!el) return false;
 
@@ -123,25 +122,25 @@ class Application {
                 }
             },
 
-            show: function(htmlContent = null, title = null, saveHandler = null, resetHandler = null) {
+            show: function (htmlContent = null, title = null, saveHandler = null, resetHandler = null) {
                 if (htmlContent) this.render(htmlContent, title);
-                
+
                 const inst = this._getInstance();
                 if (inst) {
                     inst.show();
-                    setTimeout(() => {                        
+                    setTimeout(() => {
                         if (saveHandler) {
-                            this.setSaveHandler(saveHandler); 
-                            if (!resetHandler) this.setResetHandler(() => this._resetToDefaults(), 'Đặt lại');  
-                        } 
+                            this.setSaveHandler(saveHandler);
+                            if (!resetHandler) this.setResetHandler(() => this._resetToDefaults(), 'Đặt lại');
+                        }
                         if (resetHandler) this.setResetHandler(resetHandler);
-                    }, 100); 
-                    
+                    }, 100);
+
                     this._setupFullscreenButton();
                 }
             },
 
-            _initEscListener: function() {
+            _initEscListener: function () {
                 const modalEl = this._getEl();
                 if (!modalEl) return;
 
@@ -157,17 +156,17 @@ class Application {
                 document.addEventListener('keydown', this.escKeyHandler, { once: true });
             },
 
-            hide: function() {
+            hide: function () {
                 const inst = this._getInstance();
                 this._resetToDefaults();
                 if (inst) inst.hide();
             },
 
-            _resetContent: function() {
+            _resetContent: function () {
                 const el = this._getEl();
                 if (el) {
                     const bodyEl = el.querySelector('#dynamic-modal-body');
-                    if (bodyEl) bodyEl.innerHTML = ''; 
+                    if (bodyEl) bodyEl.innerHTML = '';
                     this._resetButton('#btn-save-modal');
                     this._resetButton('#btn-reset-modal');
                 }
@@ -177,43 +176,43 @@ class Application {
                 }
             },
 
-            setSaveHandler: function(callback, btnText = 'Lưu') {
+            setSaveHandler: function (callback, btnText = 'Lưu') {
                 this.setFooter(true);
                 const btn = this._getButton('#btn-save-modal');
                 if (!btn) return;
-    
+
                 const handlers = appInstance.getState('modalHandlers') || {};
                 if (handlers.saveHandler) btn.removeEventListener('click', handlers.saveHandler);
-    
+
                 const wrappedHandler = () => callback();
-                handlers.save = callback; 
-                handlers.saveHandler = wrappedHandler; 
+                handlers.save = callback;
+                handlers.saveHandler = wrappedHandler;
                 appInstance.setState({ modalHandlers: handlers });
-                
-                btn.addEventListener('click', wrappedHandler);
-                btn.style.display = 'inline-block';
-                btn.textContent = btnText;          
-            },
-    
-            setResetHandler: function(callback, btnText = 'Reset') {
-                const btn = this._getButton('#btn-reset-modal');
-                if (!btn) return;
-    
-                const handlers = appInstance.getState('modalHandlers') || {};
-                if (handlers.resetHandler) btn.removeEventListener('click', handlers.resetHandler);
-    
-                const wrappedHandler = () => callback();
-                handlers.reset = callback; 
-                handlers.resetHandler = wrappedHandler; 
-                appInstance.setState({ modalHandlers: handlers });
-                
+
                 btn.addEventListener('click', wrappedHandler);
                 btn.style.display = 'inline-block';
                 btn.textContent = btnText;
-                this.setFooter(true); 
             },
 
-            setFooter: function(show = true) {
+            setResetHandler: function (callback, btnText = 'Reset') {
+                const btn = this._getButton('#btn-reset-modal');
+                if (!btn) return;
+
+                const handlers = appInstance.getState('modalHandlers') || {};
+                if (handlers.resetHandler) btn.removeEventListener('click', handlers.resetHandler);
+
+                const wrappedHandler = () => callback();
+                handlers.reset = callback;
+                handlers.resetHandler = wrappedHandler;
+                appInstance.setState({ modalHandlers: handlers });
+
+                btn.addEventListener('click', wrappedHandler);
+                btn.style.display = 'inline-block';
+                btn.textContent = btnText;
+                this.setFooter(true);
+            },
+
+            setFooter: function (show = true) {
                 const el = this._getEl();
                 if (el) {
                     const footer = el.querySelector('.modal-footer');
@@ -221,12 +220,12 @@ class Application {
                 }
             },
 
-            _getButton: function(selector) {
+            _getButton: function (selector) {
                 const el = this._getEl();
                 return el ? el.querySelector(selector) : null;
             },
 
-            _resetButton: function(selector) {
+            _resetButton: function (selector) {
                 const btn = this._getButton(selector);
                 if (btn) {
                     const newBtn = btn.cloneNode(true);
@@ -235,16 +234,16 @@ class Application {
                 }
             },
 
-            _setupFullscreenButton: function() {
+            _setupFullscreenButton: function () {
                 const el = this._getEl();
                 if (!el) return;
-                
+
                 const btn = el.querySelector('.btn-fullscreen');
                 const dialog = el.querySelector('.modal-dialog');
                 if (!btn || !dialog) return;
-                
+
                 if (this._fullscreenHandler) btn.removeEventListener('click', this._fullscreenHandler);
-                
+
                 this._fullscreenHandler = () => {
                     const isFullscreen = dialog.classList.contains('modal-fullscreen');
                     if (isFullscreen) {
@@ -268,7 +267,7 @@ class Application {
                 onEvent(btn, 'click', this._fullscreenHandler);
             },
 
-            _resetToDefaults: function() {
+            _resetToDefaults: function () {
                 const el = this._getEl();
                 if (!el) return;
                 const dialog = el.querySelector('.modal-dialog');
@@ -277,24 +276,24 @@ class Application {
                 dialog.style.position = '';
                 dialog.style.left = '';
                 dialog.style.top = '';
-                dialog.style.width = this.initialStyles.width || '';      
-                dialog.style.height = this.initialStyles.height || '';    
-                dialog.style.minWidth = this.initialStyles.minWidth || ''; 
-                dialog.style.minHeight = this.initialStyles.minHeight || ''; 
-                dialog.style.maxWidth = this.initialStyles.maxWidth || ''; 
-                dialog.style.maxHeight = this.initialStyles.maxHeight || ''; 
+                dialog.style.width = this.initialStyles.width || '';
+                dialog.style.height = this.initialStyles.height || '';
+                dialog.style.minWidth = this.initialStyles.minWidth || '';
+                dialog.style.minHeight = this.initialStyles.minHeight || '';
+                dialog.style.maxWidth = this.initialStyles.maxWidth || '';
+                dialog.style.maxHeight = this.initialStyles.maxHeight || '';
                 dialog.style.transform = '';
                 dialog.style.transition = '';
 
                 if (!dialog.classList.contains('modal-dialog-centered')) dialog.classList.add('modal-dialog-centered');
                 dialog.classList.remove('modal-fullscreen', 'dragging');
-                
+
                 const btn = el.querySelector('.btn-fullscreen');
                 if (btn) {
                     btn.querySelector('i').className = 'fa-solid fa-expand';
                     btn.title = 'Fullscreen';
                 }
-            }      
+            }
         }
     }
 
@@ -409,7 +408,7 @@ class Application {
         }
 
         const isClass = typeof moduleOrClass === 'function' && moduleOrClass.toString().includes('class ');
-        
+
         if (isClass) {
             this.#modules[name] = { _class: moduleOrClass, _instance: null, _isLazy: true };
             Object.defineProperty(this, name, {
@@ -419,7 +418,7 @@ class Application {
                             if (!this.#modules[name]._instance) {
                                 this.#modules[name]._instance = new target(...args);
                                 const instance = this.#modules[name]._instance;
-                                
+
                                 // ✅ Kiểm tra: Nếu constructor không gọi init() thì gọi
                                 if (initialized && typeof instance?.init === 'function' && !instance._initialized) {
                                     instance.init();
@@ -467,10 +466,10 @@ class Application {
 
     getState(key = null) { return key ? this.#state[key] : this.#state; }
     getConfig(key = null) { return key ? this.#config[key] : this.#config; }
-    
+
     setConfig(updates) {
         if ((this.#state.user && this.#state.user.role !== 'admin') && !this.#config.saveLoad) throw new Error('Only admin can update config');
-        
+
         // 🔧 Xử lý disabledModules - merge vào thay vì ghi đè
         const mergedUpdates = { ...updates };
         if (updates.disabledModules && Array.isArray(updates.disabledModules)) {
@@ -480,18 +479,17 @@ class Application {
             // Nếu updates không có disabledModules, giữ nguyên cái cũ
             mergedUpdates.disabledModules = this.#config.disabledModules;
         }
-        
+
         this.#config = { ...this.#config, ...mergedUpdates };
-        console.log('[App.setConfig] ✅ Config updated:', this.#config);
     }
-    
+
     setState(updates) {
         if (!this.#state.user) throw new Error('Only user can update state');
         this.#state = { ...this.#state, ...updates };
-    }    
+    }
 
     isReady() { return this.#state.isReady; }
-    
+
     // =========================================================================
     // ★ APP CONFIG MANAGEMENT (Load/Save from Firestore)
     // =========================================================================
@@ -503,9 +501,8 @@ class Application {
     async loadAppConfig() {
         try {
             if (this.#state.user && this.#state.user.role !== 'admin' && !this.#config.saveLoad) throw new Error('Only admin can update config');
-            console.log('[App.loadAppConfig] 📥 Đang tải config từ Firestore...');
             const db = this.#modules['Database']?.db || (window.firebase?.firestore && window.firebase.firestore());
-            
+
             if (!db) {
                 console.error('[App.loadAppConfig] ❌ Firestore DB not initialized');
                 return false;
@@ -513,14 +510,13 @@ class Application {
 
             const docRef = db.collection('app_config').doc('app_secrets');
             const docSnap = await docRef.get();
-            
+
             if (!docSnap.exists) {
                 console.warn('[App.loadAppConfig] ⚠️ Config document not found, using default');
                 return false;
             }
 
             const firestoreConfig = docSnap.data()?.admin_config || {};
-            console.log('[App.loadAppConfig] ✅ Config loaded:', firestoreConfig);
 
             // Cập nhật A.#config thông qua setConfig
             this.setConfig(firestoreConfig);
@@ -542,26 +538,22 @@ class Application {
                 return;
             }
 
-            console.log('[App.saveAppConfig] 💾 Đang lưu config...');
-            
             // 1. Lấy dữ liệu từ form
             const formConfig = this._extractConfigFromForm();
-            
+
             // 2. Cập nhật A.#config thông qua setConfig
             this.setConfig(formConfig);
-            
+
             // 3. Lưu vào Firestore qua DBManager
             const timestamp = new Date().toISOString();
             // ✅ Route qua DBManager để đồng bộ notification
             await this.#modules['Database'].updateSingle('app_config', 'app_secrets', {
-                id:           'app_secrets',
+                id: 'app_secrets',
                 admin_config: formConfig,
                 last_updated: timestamp,
-                updated_by:   this.#state.user?.email || 'unknown',
+                updated_by: this.#state.user?.email || 'unknown',
             });
 
-            console.log('[App.saveAppConfig] ✅ Config saved successfully!');
-            log('✅ Cài đặt đã được lưu thành công!', 'success');
             return true;
         } catch (error) {
             console.error('[App.saveAppConfig] ❌ Lỗi:', error);
@@ -587,14 +579,14 @@ class Application {
         }
         inputs.forEach(input => {
             const key = input.getAttribute('data-key') || input.id || input.name;
-            
+
             if (!key) return; // Skip nếu không có key
-            
+
             // 🔧 XỬ LÝ MODULE PREFIX
             if (key.startsWith('module_')) {
                 // Trích tên module: module_CalculatorWidget -> CalculatorWidget
                 const moduleName = key.substring(7);
-                
+
                 // Nếu checkbox không được check (tắt) -> thêm vào disabledModules
                 if (input.type === 'checkbox' && !input.checked) {
                     configData.disabledModules.push(moduleName);
@@ -610,8 +602,6 @@ class Application {
                 }
             }
         });
-
-        console.log('[App._extractConfigFromForm] Disabled modules:', this.#config.disabledModules);
         return configData;
     }
 
@@ -629,17 +619,17 @@ class Application {
             return;
         }
         const disabledModules = configData.disabledModules || [];
-        
+
         inputs.forEach(input => {
             const key = input.getAttribute('data-key') || input.id || input.name;
-            
+
             if (!key) return; // Skip nếu không có key
-            
+
             // 🔧 XỬ LÝ MODULE PREFIX
             if (key.startsWith('module_')) {
                 // Trích tên module: module_CalculatorWidget -> CalculatorWidget
                 const moduleName = key.substring(7);
-                
+
                 // Nếu moduleName nằm trong disabledModules -> uncheck
                 if (input.type === 'checkbox') {
                     input.checked = !disabledModules.includes(moduleName);
@@ -647,9 +637,9 @@ class Application {
             } else {
                 // CÁC KEY KHÁC: Sync bình thường
                 const value = configData[key];
-                
+
                 if (value === undefined || value === null) return;
-                
+
                 if (input.type === 'checkbox') {
                     input.checked = Boolean(value);
                 } else if (input.type === 'number') {
@@ -668,50 +658,74 @@ class Application {
     // =========================================================================
 
     async init() {
-        try {
-            console.log('[App] 🚀 Initializing...');
-            await this._call('Auth', 'initFirebase');
-                        
-            this.#listenAuth();
-        } catch (err) {
-            console.error('[App] ❌ Error:', err);
-            throw err;
-        }
+        await this._call('Auth', 'initFirebase');
+        this.#listenAuth();
     }
 
-    #listenAuth () {
+    /**
+     * CRITICAL BOOT PATH — chỉ chứa những gì BẮT BUỘC để hiện app.
+     *
+     * Thứ tự:
+     *  1. DB init (lấy Firestore instance)
+     *  2. Fetch user doc (timeout 15s)
+     *  3. Set CURRENT_USER + xử lý role masking
+     *  4. UI.init + applySecurity (load JS role + render template) song song
+     *  5. cleanDOM → ensureModal → showLoading(false)
+     *
+     * Mọi tác vụ không thiết yếu → #runPostBoot() (background, không block).
+     */
+    #listenAuth() {
         this.#modules['Auth'].auth.onAuthStateChanged(async (user) => {
             const launcher = document.getElementById('app-launcher');
-            const app = document.getElementById('main-app');
-            
-            if (user) {
-                await this.#modules['Database'].init(); 
-                log("🔓 User detected, verifying profile...", "success");
-                const docSnap = await this.#modules['Database'].db.collection('users').doc(user.uid).get();
-                if (!docSnap.exists) {
-                    alert("Tài khoản chưa có dữ liệu trên ERP. Vui lòng liên hệ Admin.");
-                    // this.#modules['Auth'].signOut();
+            const appEl = document.getElementById('main-app');
+
+            // ── Chưa đăng nhập ─────────────────────────────────────────────
+            if (!user) {
+                if (launcher) launcher.remove();
+                if (appEl) appEl.style.opacity = 1;
+                await this._call('Auth', 'showChoiceScreen');
+                return;
+            }
+
+            // ── Đã đăng nhập — CRITICAL PATH ──────────────────────────────
+            try {
+                // 1. Khởi tạo Firestore instance (không await notifications listener)
+                await this.#modules['Database'].init();
+
+                // 2. Fetch user profile — timeout 15s tránh treo vô hạn trên mobile
+                let docSnap;
+                try {
+                    docSnap = await Promise.race([
+                        this.#modules['Database'].db.collection('users').doc(user.uid).get(),
+                        new Promise((_, rej) => setTimeout(() => rej(new Error('⏰ Timeout 15s')), 15000))
+                    ]);
+                } catch (e) {
+                    console.error('[Boot] ❌ Fetch user timeout/error:', e.message);
+                    alert('❌ Không thể kết nối server. Kiểm tra mạng và thử lại.');
                     showLoading(false);
                     return;
-                }   
+                }
+
+                if (!docSnap.exists) {
+                    alert('Tài khoản chưa có dữ liệu. Vui lòng liên hệ Admin.');
+                    showLoading(false);
+                    return;
+                }
+
+                // 3. Gán CURRENT_USER + xử lý role masking
                 const userProfile = docSnap.data();
                 this.#state.user = userProfile;
-                await this.loadAppConfig(); // Load config trước khi khởi tạo module để có config chính xác
 
                 window.CURRENT_USER = window.CURRENT_USER || {};
                 CURRENT_USER.uid = user.uid;
+                CURRENT_USER.email = user.email;
                 CURRENT_USER.name = userProfile.user_name || '';
-                CURRENT_USER.email = user.email;  
                 CURRENT_USER.level = userProfile.level;
                 CURRENT_USER.profile = userProfile;
                 CURRENT_USER.group = userProfile.group || '';
-                const userRoleFromFirebase = this.#state.user.role || 'guest';
-                const moduleManager = new MODULELOADER(this, this.#config.disabledModules);
-                this.#moduleManager = moduleManager;                
-  
-                // MASKING ROLE LOGIC (Khôi phục việc xóa script theo MANIFEST)
+
                 const masker = localStorage.getItem('erp-mock-role');
-                if (masker) {                  
+                if (masker) {
                     const mockData = JSON.parse(masker);
                     const realRole = mockData.realRole;
                     if (realRole === 'admin' || realRole === 'manager' || CURRENT_USER.level >= 50) {
@@ -719,68 +733,178 @@ class Application {
                         CURRENT_USER.realRole = realRole;
                         localStorage.removeItem('erp-mock-role');
                         this.#modules['UI'].renderedTemplates = {};
-                        log('🎭 Admin masking mode detected. Cleaning up old role scripts...');
-
-                        if (typeof JS_MANIFEST !== 'undefined') {
-                            Object.keys(JS_MANIFEST).forEach(role => {
-                                JS_MANIFEST[role].forEach(fileName => {
-                                    document.querySelectorAll(`script[src*="${fileName}"]`).forEach(script => {
-                                        script.remove();
-                                        log(`✂️ Removed script: ${fileName}`);
-                                    });
-                                });
+                        // Xóa script/template của role cũ
+                        ['JS_MANIFEST', 'TEMPLATE_MANIFEST'].forEach(manifestName => {
+                            const m = window[manifestName];
+                            if (!m) return;
+                            Object.values(m).flat().forEach(id => {
+                                const sel = manifestName === 'JS_MANIFEST'
+                                    ? `script[src*="${id}"]`
+                                    : `#${id}`;
+                                document.querySelectorAll(sel).forEach(el => el.remove());
                             });
-                        }
-                        
-                        if (typeof TEMPLATE_MANIFEST !== 'undefined') {
-                            Object.keys(TEMPLATE_MANIFEST).forEach(role => {
-                                TEMPLATE_MANIFEST[role].forEach(templateId => {
-                                    document.querySelectorAll(`#${templateId}`).forEach(template => {
-                                        template.remove();
-                                        log(`✂️ Removed template: ${templateId}`);
-                                    });
-                                });
-                            });
-                        }
+                        });
                     }
                 } else {
                     CURRENT_USER.role = userProfile.role || 'guest';
                 }
+
+                // 4. Khởi tạo UI renderer + render template theo role (song song)
+                const moduleManager = new MODULELOADER(this, this.#config.disabledModules);
+                this.#moduleManager = moduleManager;
                 this.#config.saveLoad = true;
+
+                CR_COLLECTION = (typeof ROLE_DATA !== 'undefined' ? ROLE_DATA[CURRENT_USER.role] : '') || '';
+
                 await Promise.all([
                     this._call('UI', 'init', moduleManager),
-                    moduleManager.loadCommonModules(),
-                    this.#moduleManager.loadForRole(userRoleFromFirebase),  
+                    SECURITY_MANAGER.applySecurity(CURRENT_USER),
                 ]);
-                this.#config.saveLoad = false;
-                
 
-                await this._call('Auth', 'fetchUserProfile', user);
+                this.#config.saveLoad = false;
+                SECURITY_MANAGER.cleanDOM(document);
                 this._ensureModalExists();
 
-                if(app) app.style.opacity = 1;
+                // 5. Hiển thị app — xóa màn hình loading
+                if (appEl) appEl.style.opacity = 1;
                 if (launcher) launcher.remove();
-                if (app) app.classList.remove('d-none');               
+                if (appEl) appEl.classList.remove('d-none');
                 showLoading(false);
-                  
-                const eventManager = new this.#modules['Events']();
-                eventManager.init();
-                
-                if (typeof window.initShortcuts === 'function') window.initShortcuts();
+
                 this.#state.isReady = true;
-                
-                if (['acc', 'acc_thenice'].includes(CURRENT_USER.role)) {
-                    if(typeof toggleTemplate === 'function') toggleTemplate('erp-footer-menu-container');
-                }
-                await this.#moduleManager.loadAsyncModules(CURRENT_USER.role);
-                await this._call('NotificationManager', 'init', this.#modules['Database'].db);
-            } else {
-                log("🔒 No user. Showing Login...", "warning");
-                if (launcher) launcher.remove();
-                if (app) app.style.opacity = 1;            
-                await this._call('Auth', 'showChoiceScreen');
+                log('✅ App ready', 'success');
+
+                // Chạy tất cả tác vụ background — KHÔNG block UI
+                this.#runPostBoot(user, moduleManager);
+
+            } catch (err) {
+                console.error('[Boot] ❌ Critical boot failed:', err);
+                showLoading(false);
+                document.body.innerHTML =
+                    `<div class="text-danger p-4"><strong>Lỗi khởi động:</strong> ${err.message}</div>`;
             }
         });
+    }
+
+    /**
+     * Chạy BACKGROUND sau khi app đã hiển thị.
+     * Tất cả tác vụ ở đây đều không block UI và có thể fail im lặng.
+     *
+     * @param {object} user          - Firebase auth user
+     * @param {MODULELOADER} mgr     - Module manager instance
+     */
+    async #runPostBoot(user, mgr) {
+        // a. Cập nhật user menu
+        try { this._call('Auth', 'updateUserMenu'); } catch (_) { }
+
+        // b. Load UI modules TRƯỚC (OffcanvasMenu → đăng ký <at-modal-full> custom element)
+        //    Phải hoàn thành trước khi AdminConsole / ReportModule khởi tạo.
+        try {
+            await mgr.loadUiModules();
+        } catch (e) {
+            console.warn('[PostBoot] uiModules load error:', e.message);
+        }
+
+        // c. Load config từ Firestore (không block UI)
+        this.loadAppConfig().catch(e => console.warn('[PostBoot] loadAppConfig:', e.message));
+
+        // d. Load data (silent=true — không render UI ngay) + common/async modules song song.
+        //    at-modal-full đã được đăng ký ở bước b → an toàn cho AdminConsole / ReportModule.
+        const dataPromise = (typeof loadDataFromFirebase === 'function')
+            ? loadDataFromFirebase(true).catch(e => console.warn('[PostBoot] dataLoad:', e.message))
+            : Promise.resolve();
+
+        try {
+            await Promise.all([
+                mgr.loadCommonModules(),
+                mgr.loadAsyncModules(CURRENT_USER.role),
+                dataPromise,
+            ]);
+        } catch (e) {
+            console.warn('[PostBoot] Module load error:', e.message);
+        }
+        await SECURITY_MANAGER.cleanDOM(document);
+        // e. Cả UI modules + data đã sẵn sàng → render UI với data
+        if (typeof handleServerData === 'function') {
+            try { debounce(handleServerData, 500)(APP_DATA); } catch (e) { console.warn('[PostBoot] handleServerData:', e.message); }
+        }
+
+        // e-bis. Activate đúng startup tab sau khi:
+        //   • loadUiModules() (bước b) đã tạo nav buttons trong DOM
+        //   • data đã load và handleServerData đã chạy
+        // Ghi đè lần gọi activateTab sớm trong applySecurity (lúc đó chưa có nav btn).
+        // Mobile sẽ override tiếp tại bước j.
+        if (typeof activateTab === 'function' && window.innerWidth > 768) {
+            try {
+                // tab-admin-dashboard không có render targets → dùng tab-dashboard cho mọi role
+                // Admin có thể chuyển sang Admin Dashboard qua header dropdown.
+                activateTab('tab-dashboard');
+            } catch (e) { console.warn('[PostBoot] activateTab:', e.message); }
+        }
+
+        // f. Event manager
+        try {
+            const em = new this.#modules['Events']();
+            em.init();
+        } catch (e) {
+            console.warn('[PostBoot] EventManager:', e.message);
+        }
+
+        // g. Acc footer toggle
+        if (['acc', 'acc_thenice'].includes(CURRENT_USER.role)) {
+            if (typeof toggleTemplate === 'function') toggleTemplate('erp-footer-menu-container');
+        }
+
+        // h. Notification manager
+        if (this.#modules['NotificationManager']) {
+            try {
+                await this._call('NotificationManager', 'init');
+                this.#modules['NotificationManager'].sendToAdmin(
+                    'User Login',
+                    `${CURRENT_USER.name} (${CURRENT_USER.email}) vừa đăng nhập.`
+                );
+            } catch (e) {
+                console.warn('[PostBoot] NotificationManager:', e.message);
+            }
+        }
+
+        // i. Keyboard shortcuts
+        if (typeof window.initShortcuts === 'function') window.initShortcuts();
+
+        // j. Mobile-specific tweaks (chạy sau khi UI đã render)
+        const isMobile = window.innerWidth <= 768 || ('ontouchstart' in window);
+        if (isMobile) {
+            if (typeof activateTab === 'function' && document.getElementById('tab-form')) {
+                activateTab('tab-form');
+            }
+            document.querySelectorAll('.desktop-only').forEach(el => el.remove());
+            document.body.classList.add('no-select');
+        }
+
+        // k. Thêm <at-modal-full> vào DOM nếu chưa có.
+        // Custom element đã được đăng ký bởi OffcanvasMenu ở bước e.
+        // connectedCallback() tự xử lý DraggableSetup bên trong.
+        if (!document.querySelector('at-modal-full')) {
+            document.body.appendChild(document.createElement('at-modal-full'));
+        }
+        const existingMenu = document.querySelector('offcanvas-menu');
+
+        if (!existingMenu) {
+            const menu = document.createElement('offcanvas-menu');
+            document.body.appendChild(menu);
+            log('✅ [9Trip System] ERP Left Menu Injected.', 'success');
+
+            menu.addEventListener('pin-changed', (e) => {
+                _updateMenuState({ isPinned: e.detail.isPinned });
+            });
+            menu.addEventListener('side-changed', (e) => {
+                _updateMenuState({ isRightSide: e.detail.isRightSide });
+            });
+            menu.addEventListener('resize-changed', (e) => {
+                _updateMenuState({ menuWidth: e.detail.width });
+            });
+            // menu.toggleSide();
+        };
     }
 }
 
@@ -789,13 +913,13 @@ class Application {
 // =====================================================================
 class MODULELOADER {
     #config = { disabledModules: [] };
-    #appInstance = null; 
+    #appInstance = null;
 
     constructor(appInstance, disabledModules = []) {
         this.#appInstance = appInstance;
-        this.loaded = {}; 
+        this.loaded = {};
         // Normalize disabledModules to lowercase for case-insensitive comparison
-        this.#config.disabledModules = (disabledModules || []).map(m => m); 
+        this.#config.disabledModules = (disabledModules || []).map(m => m);
         log('[ModuleLoader] Initialized with disabled modules:', this.#config.disabledModules);
         this.registry = {
             'DB': () => import('./modules/DBManager.js').then(m => m.default),
@@ -805,13 +929,28 @@ class MODULELOADER {
             'AdminConsole': () => import('./modules/AdminController.js').then(m => m.AdminConsole),
             'ReportModule': () => import('./modules/ReportModule.js').then(m => m.default),
             'ThemeManager': () => import('./modules/ThemeManager.js').then(m => m.default),
-            
+
             'Lang': () => import('./modules/TranslationModule.js').then(m => m.Lang),
             'NotificationManager': () => import('./modules/NotificationModule.js').then(m => m.default),
             'CalculatorWidget': () => import('./common/components/calculator_widget.js').then(m => m.CalculatorWidget),
             'ErpHeaderMenu': () => import('./common/components/header_menu.js').then(m => m.default),
             'ErpFooterMenu': () => import('./common/components/footer_menu.js').then(m => m.default),
-            'ChromeMenuController': () => import('./common/components/Menu_StyleChrome.js').then(m => m.ChromeMenuController)
+            'ChromeMenuController': () => import('./common/components/Menu_StyleChrome.js').then(m => m.ChromeMenuController),
+            // Side-effect import: đăng ký custom element <offcanvas-menu> + <at-modal-full>
+            // Trả về adapter object trỏ đến DOM instance để A.OffcanvasMenu.open() hoạt động
+            'OffcanvasMenu': async () => {
+                await import('./common/components/offcanvas_menu.js');
+                const getEl = () => document.querySelector('offcanvas-menu');
+                return {
+                    init: () => getEl()?.open(),
+                    close: () => getEl()?.close(),
+                    toggle: () => getEl()?.toggle(),
+                    togglePin: () => getEl()?.togglePin(),
+                    toggleSide: () => getEl()?.toggleSide(),
+                    setState: (s) => getEl()?.setState(s),
+                    get el() { return getEl(); },
+                };
+            }
         };
 
         this.roleMap = {
@@ -823,7 +962,7 @@ class MODULELOADER {
         };
         this.forAllModules = ['ReportModule', 'CalculatorWidget', 'ThemeManager', 'Lang', 'NotificationManager', 'PriceManager'];
         this.commonModules = ['Lang', 'ThemeManager'];
-        this.uiModules = ['ErpHeaderMenu','ErpFooterMenu', 'ChromeMenuController']; 
+        this.uiModules = ['ErpHeaderMenu', 'ErpFooterMenu', 'ChromeMenuController', 'OffcanvasMenu'];
         this.asyncModules = ['AdminConsole', 'ReportModule', 'CalculatorWidget', 'HotelPriceController', 'ServicePriceController', 'PriceManager', 'NotificationManager'];
     }
 
@@ -871,12 +1010,12 @@ class MODULELOADER {
     async loadForRole(role) {
         const roleKey = role.toLowerCase();
         let modulesToLoad = this.roleMap[roleKey] || this.roleMap['sale'];
-        
+
         const activeModules = modulesToLoad
             .filter(key => !this._isModuleDisabled(key))
             .filter(key => !this.commonModules.includes(key))
             .filter(key => !this.asyncModules.includes(key));
-        
+
         if (activeModules.length > 0) await Promise.all(activeModules.map(key => this.loadModule(key)));
     }
 }
@@ -889,37 +1028,12 @@ const A = new Application();
 window.A = A;
 export default A;
 
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        const isMobile = window.innerWidth <= 768 || ('ontouchstart' in window);
-        await A.init();
-        // A.DB.showMonitor();
-        
-        if (isMobile) {
-            if(typeof activateTab === 'function' && getE('tab-form')) activateTab('tab-form');
-            document.querySelectorAll('.desktop-only').forEach(el => el.remove());
-            // document.body.style.zoom = '100%';
-            document.body.classList.add('no-select');
-        } 
-        
-        // Modal-full fallback
-        if (!document.querySelector('at-modal-full')) {
-            document.body.appendChild(document.createElement('at-modal-full'));
-            // Chỉ chạy draggable khi element tồn tại
-            if(document.getElementById('dynamic-modal-full')) {
-                new DraggableSetup('dynamic-modal-full', { targetSelector: '.modal-dialog', handleSelector: '.modal-header' });
-            }
-        }
-    } catch (e) {
-        console.error("Critical Error:", e);
+document.addEventListener('DOMContentLoaded', () => {
+    // Chỉ gọi init() — critical path tiếp tục bên trong #listenAuth.
+    // Mọi tác vụ sau khi app hiển thị (mobile tweaks, modal-full, v.v.)
+    // được xử lý trong #runPostBoot sau khi A.#state.isReady = true.
+    A.init().catch(e => {
+        console.error('Critical Error:', e);
         document.body.innerHTML = `<h3 class="text-danger p-3">Lỗi kết nối hệ thống: ${e.message}</h3>`;
-    }
+    });
 });
-
-// Chạy Theme Manager sau khi tải DOM xong hoàn toàn
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    if (document.getElementById('theme-toggle') && typeof updateThemeToggleButton === 'function' && window.THEME_MANAGER) {
-        updateThemeToggleButton(window.THEME_MANAGER.getCurrentTheme());  
-        
-    }
-}

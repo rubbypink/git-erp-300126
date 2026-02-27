@@ -10,11 +10,11 @@ const CalculatorWidget = {
         containerId: 'erp-calculator-widget',
         lastFocusedInput: null, // Lưu vết ô input người dùng đang gõ
         animationDuration: 300 // ms
-        
+
     },
     _initialized: true, // Cờ để tránh khởi tạo nhiều lần
     // 2. INIT
-    init: function() {
+    init: function () {
         if (this._autoInitDone) {
             console.warn('[Calculator Widget] Đã khởi tạo rồi, bỏ qua...');
             return;
@@ -30,9 +30,9 @@ const CalculatorWidget = {
     },
 
     // 3. UI: Render HTML (Bootstrap + Vanilla JS)
-    renderUI: function() {
+    renderUI: function () {
         const html = `
-            <div id="${this.config.containerId}" class="shadow-lg desktop-only" style="position: fixed; bottom: 35px; right: 50px; width: 300px; z-index: 9999; background: #fff; border-radius: 12px; display: none; border: 1px solid #e0e0e0; opacity: 0; transition: opacity ${this.config.animationDuration}ms ease;">
+            <div id="${this.config.containerId}" class="shadow-lg desktop-only" style="position: fixed; bottom: 4vh; right: 50px; width: 300px; z-index: 9999; background: #fff; border-radius: 12px; display: none; border: 1px solid #e0e0e0; opacity: 0; transition: opacity ${this.config.animationDuration}ms ease;">
                 
                 <div class="d-flex justify-content-between align-items-center p-2 bg-primary text-white" style="border-radius: 12px 12px 0 0;">
                     <small><i class="fa-solid fa-calculator me-1"></i> Quick Calc (Ctrl + Enter để dán nhanh!)</small>
@@ -85,7 +85,7 @@ const CalculatorWidget = {
     },
 
     // 4. EVENTS: Xử lý sự kiện bàn phím + click
-    attachEvents: function() {
+    attachEvents: function () {
         const self = this;
         const widgetEl = document.getElementById(this.config.containerId);
         const toggleBtn = document.getElementById('btn-toggle-calc');
@@ -95,7 +95,7 @@ const CalculatorWidget = {
 
         // Click các nút máy tính (sử dụng event delegation)
         calcBtns.forEach(btn => {
-            btn.addEventListener('click', function(e) {
+            btn.addEventListener('click', function (e) {
                 e.preventDefault();
                 const val = this.getAttribute('data-val');
                 if (val === '=') {
@@ -114,7 +114,7 @@ const CalculatorWidget = {
         pasteBtn.addEventListener('click', () => self.pasteToInput());
 
         // Xử lý sự kiện bàn phím
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function (e) {
             // Chỉ bắt phím khi máy tính đang hiện
             if (widgetEl.style.display === 'none') return;
 
@@ -128,7 +128,7 @@ const CalculatorWidget = {
             } else if (key === 'Enter' && e.ctrlKey) {
                 e.preventDefault(); // Chặn submit form nếu có
                 self.pasteToInput();
-            }else if (key === 'Enter' || key === '=') {
+            } else if (key === 'Enter' || key === '=') {
                 e.preventDefault(); // Chặn submit form nếu có
                 self.calculate();
             } else if (key === 'Backspace') {
@@ -142,11 +142,11 @@ const CalculatorWidget = {
     },
 
     // 5. LOGIC: Theo dõi ô input người dùng đang focus
-    trackLastInput: function() {
+    trackLastInput: function () {
         document.addEventListener('focus', (e) => {
             const el = e.target;
             // Theo dõi các input text/number (ngoại trừ display của calc)
-            if ((el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'number')) 
+            if ((el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'number'))
                 && el.id !== 'calc-display') {
                 this.config.lastFocusedInput = el;
             }
@@ -154,7 +154,7 @@ const CalculatorWidget = {
     },
 
     // 6. ACTION: Xử lý nút bấm
-    append: function(val) {
+    append: function (val) {
         const display = document.getElementById('calc-display');
         let current = display.value;
 
@@ -166,14 +166,14 @@ const CalculatorWidget = {
         } else {
             // Validate sơ bộ: Không cho nhập 2 dấu liên tiếp
             if (['+', '-', '*', '/'].includes(val) && ['+', '-', '*', '/'].includes(current.slice(-1))) {
-                return; 
+                return;
             }
             display.value = current + val;
         }
     },
 
     // 7. CORE: Tính toán (An toàn)
-    calculate: function() {
+    calculate: function () {
         const display = document.getElementById('calc-display');
         const historyEl = document.getElementById('calc-history');
         const expression = display.value;
@@ -183,17 +183,17 @@ const CalculatorWidget = {
             if (/[^0-9+\-*/().]/.test(expression)) {
                 throw new Error("Invalid Input");
             }
-            
+
             // Sử dụng Function constructor thay vì eval trực tiếp (An toàn hơn)
             // Logic: new Function('return ' + '1+1')() -> 2
             const result = new Function('return ' + expression)();
-            
+
             // Format số đẹp (nếu lẻ)
             const finalResult = Number.isInteger(result) ? result : result.toFixed(2);
-            
+
             historyEl.textContent = expression + ' =';
             display.value = finalResult;
-            
+
         } catch (e) {
             display.value = 'Error';
             setTimeout(() => { display.value = ''; }, 1000);
@@ -201,16 +201,16 @@ const CalculatorWidget = {
     },
 
     // 8. ERP FEATURE: Dán kết quả vào form
-    pasteToInput: function() {
+    pasteToInput: function () {
         this.calculate(); // Tính toán trước khi dán
         const result = document.getElementById('calc-display').value;
         const target = this.config.lastFocusedInput;
 
-        if (target  && result !== 'Error') {
+        if (target && result !== 'Error') {
             target.value = result;
             // Kích hoạt sự kiện change để các hàm tính toán khác trong ERP chạy
             target.dispatchEvent(new Event('change', { bubbles: true }));
-            
+
             // Hiệu ứng Visual báo thành công
             target.classList.add('bg-warning');
             setTimeout(() => target.classList.remove('bg-warning'), 500);
@@ -220,7 +220,7 @@ const CalculatorWidget = {
     },
 
     // 9. Helper: Bật tắt widget với animation
-    toggle: function() {
+    toggle: function () {
         const widget = document.getElementById(this.config.containerId);
         const btn = document.getElementById('btn-toggle-calc');
         const isVisible = widget.style.display !== 'none';
@@ -245,27 +245,27 @@ const CalculatorWidget = {
     },
 
     // 10. DRAG & DROP: Xử lý kéo thả button với smooth movement
-    initDragDrop: function() {
+    initDragDrop: function () {
         const self = this;
         const btn = document.getElementById('btn-toggle-calc');
-        
+
         let isDragging = false;
         let startX = 0;
         let startY = 0;
         let startLeft = 0;
         let startBottom = 0;
-        
+
         // Bắt đầu kéo - Tắt hết transitions để icon di chuyển mượt
-        btn.addEventListener('mousedown', function(e) {
+        btn.addEventListener('mousedown', function (e) {
             isDragging = true;
             startX = e.clientX;
             startY = e.clientY;
-            
+
             // Lấy vị trí hiện tại
             const rect = btn.getBoundingClientRect();
             startLeft = rect.left;
             startBottom = window.innerHeight - rect.bottom;
-            
+
             // Tắt animations ngay lập tức để icon follow cursor mượt mà
             btn.style.transition = 'none';
             btn.style.cursor = 'grabbing';
@@ -273,17 +273,17 @@ const CalculatorWidget = {
         });
 
         // Kéo thả - Icon di chuyển realtime theo cursor
-        document.addEventListener('mousemove', function(e) {
+        document.addEventListener('mousemove', function (e) {
             if (!isDragging) return;
-            
+
             // Tính toán khoảng cách di chuyển trên cả X và Y
             const deltaX = e.clientX - startX;
             const deltaY = e.clientY - startY;
-            
+
             // Cập nhật vị trí mới - NO TRANSITION, SMOOTH FOLLOW
             const newLeft = startLeft + deltaX;
             const newBottom = Math.max(20, startBottom - deltaY);
-            
+
             // Cập nhật position trực tiếp (không có delay)
             btn.style.left = newLeft + 'px';
             btn.style.bottom = newBottom + 'px';
@@ -291,31 +291,31 @@ const CalculatorWidget = {
         });
 
         // Kết thúc kéo - Snap vào cạnh gần nhất với animation
-        btn.addEventListener('mouseup', function(e) {
+        btn.addEventListener('mouseup', function (e) {
             // Kiểm tra xem có phải là click thực sự hay drag
             const isMiniClick = Math.abs(e.clientX - startX) < 5 && Math.abs(e.clientY - startY) < 5;
-            
+
             if (!isDragging) return;
-            
+
             isDragging = false;
             btn.style.cursor = 'pointer';
             btn.style.userSelect = 'auto';
-            
+
             // Nếu là click nhỏ, toggle calculator
             if (isMiniClick) {
                 btn.style.transition = '';
                 self.toggle();
                 return;
             }
-            
+
             // Nếu là drag, snap vào cạnh gần nhất
             const rect = btn.getBoundingClientRect();
             const distanceToLeft = rect.left;
             const distanceToRight = window.innerWidth - rect.right;
-            
+
             // Bật animation để snap mượt mà
             btn.style.transition = `all ${self.config.animationDuration}ms ease`;
-            
+
             // Tự động dính vào cạnh gần nhất
             if (distanceToLeft < distanceToRight) {
                 // Dính vào cạnh trái
@@ -326,7 +326,7 @@ const CalculatorWidget = {
                 btn.style.right = '20px';
                 btn.style.left = 'auto';
             }
-            
+
             // Xóa transition sau khi animation hoàn thành
             setTimeout(() => {
                 btn.style.transition = '';
@@ -339,17 +339,17 @@ const CalculatorWidget = {
 // EXPORT & INITIALIZATION
 // =========================================================================
 // ✅ Support cả ES6 module + Global script loading
-(function(globalObject) {
+(function (globalObject) {
     // ES6 Module export
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = CalculatorWidget;
     }
-    
+
     // CommonJS export
     if (typeof exports !== 'undefined') {
         exports.CalculatorWidget = CalculatorWidget;
     }
-    
+
     // Global window export (for <script> tag loading)
     if (typeof globalObject !== 'undefined') {
         globalObject.CalculatorWidget = CalculatorWidget;

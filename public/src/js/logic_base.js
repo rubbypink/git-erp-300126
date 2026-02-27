@@ -1,4 +1,4 @@
-
+﻿
 
 
 
@@ -20,7 +20,7 @@
  * const container = document.getElementById('detail-tbody');
  * const rowData = getRowData('operator_entries', 1, container);
  */
- function getRowData(collectionName, rowIdorEl, rootIdOrEl) {
+function getRowData(collectionName, rowIdorEl, rootIdOrEl) {
     try {
         // 2. Find the TR element
         let trElement;
@@ -29,15 +29,15 @@
             let root = $(rootIdOrEl);
             if (!root) root = document.body;
             rowId = rowIdorEl;
-        
+
             // Try to find by id first (format: row-{idx})
             trElement = root.querySelector(`tr#row-${rowId}`);
-            
+
             // Fallback: search by data-row-id or similar
             if (!trElement) {
                 trElement = root.querySelector(`tr[data-row-id="${rowId}"]`);
             }
-            
+
             // Fallback: if rowId is numeric, use as nth-child
             if (!trElement && !isNaN(rowId)) {
                 const childIndex = parseInt(rowId) + 1;
@@ -51,8 +51,8 @@
         }
 
         // 3. Get array field names for this collection
-        const fieldNames = getFieldNames(collectionName);
-        
+        const fieldNames = A.DB.schema.getFieldNames(collectionName);
+
         if (fieldNames.length === 0) {
             console.error(`❌ No field mapping found for collection: ${collectionName}`);
             return {};
@@ -60,11 +60,11 @@
 
         // 4. Extract data from TR using data-field attributes
         const rowData = {};
-        
+
         fieldNames.forEach(fieldName => {
             // Find input/select with data-field attribute matching this fieldName
             const field = trElement.querySelector(`[data-field="${fieldName}"]`);
-            
+
             if (field) {
                 rowData[fieldName] = getVal(field);
             } else {
@@ -113,7 +113,7 @@ function getAllRowDataByField(collectionName, rootIdOrEl, skipEmpty = true) {
 
         // 2. Get all TR rows
         const trElements = container.querySelectorAll('tr');
-        
+
         if (trElements.length === 0) {
             console.warn(`⚠️ No rows found in container`);
             return [];
@@ -121,11 +121,11 @@ function getAllRowDataByField(collectionName, rootIdOrEl, skipEmpty = true) {
 
         // 3. Extract data from each row
         const allRowsData = [];
-        const fieldNames = getFieldNames(collectionName);
+        const fieldNames = A.DB.schema.getFieldNames(collectionName);
 
         trElements.forEach((trElement, idx) => {
             const rowData = {};
-            
+
             fieldNames.forEach(fieldName => {
                 const field = trElement.querySelector(`[data-field="${fieldName}"]`);
                 if (field) rowData[fieldName] = getVal(field) || "";
@@ -176,7 +176,7 @@ function setRowDataByField(collectionName, rowData, rootIdOrEl, rowId = null) {
 
         // 2. Find the TR element
         let trElement;
-        
+
         if (rowId !== null) {
             trElement = container.querySelector(`tr#row-${rowId}`);
             if (!trElement) {
@@ -217,7 +217,7 @@ async function onGridRowClick(bkId) {
 
     // --- BƯỚC 1: TÌM TRONG LOCAL (APP_DATA) ---
     const localResult = findBookingInLocal(bkId);
-    
+
     if (localResult) {
         log("✅ Tìm thấy trong APP_DATA (Local Cache)");
         handleSearchResult(localResult);
@@ -227,19 +227,19 @@ async function onGridRowClick(bkId) {
     // --- BƯỚC 2: TÌM TRÊN FIREBASE (Nếu Local không thấy) ---
     // (Trường hợp dữ liệu vừa được người khác thêm mà mình chưa F5)
     log("⚠️ Không thấy trong Local, thử tải lại từ Firebase...", "warning");
-    
+
     try {
         // Gọi hàm load lại dữ liệu (hàm bạn đã viết ở bài trước)
         // Lưu ý: Hàm này cần trả về Promise để dùng await
-        await loadDataFromFirebase(); 
-        
+        await loadDataFromFirebase();
+
         // Tìm lại lần nữa sau khi đã refresh data
         const retryResult = findBookingInLocal(bkId);
-        
+
         if (retryResult) {
-        log("✅ Tìm thấy sau khi đồng bộ Firebase");
-        handleSearchResult(retryResult);
-        return;
+            log("✅ Tìm thấy sau khi đồng bộ Firebase");
+            handleSearchResult(retryResult);
+            return;
         }
     } catch (e) {
         log("Lỗi kết nối Firebase:", e, "error");
@@ -250,13 +250,13 @@ async function onGridRowClick(bkId) {
 /**
  * Hàm hiển thị kết quả lên Form (Dùng chung cho cả Local và Server)
  */
-function handleSearchResult(data) {    
+function handleSearchResult(data) {
     // Kiểm tra Dynamic Dispatch
     if (typeof fillFormFromSearch === 'function') {
-    fillFormFromSearch(data);
+        fillFormFromSearch(data);
     } else {
-    showLoading(false);
-    logError("Lỗi: Chưa có hàm fillFormFromSearch để hiển thị dữ liệu.");
+        showLoading(false);
+        logError("Lỗi: Chưa có hàm fillFormFromSearch để hiển thị dữ liệu.");
     }
 }
 
@@ -274,9 +274,9 @@ function findBookingInLocal(bkId) {
 
 
     // ✅ Guard: đảm bảo các sub-collection đã được load
-    const bookingsMap       = APP_DATA.bookings        || {};
-    const detailsMap        = APP_DATA[detailsSource]  || {};
-    const detailsByBkMap    = APP_DATA[detailsSourceData] || {};
+    const bookingsMap = APP_DATA.bookings || {};
+    const detailsMap = APP_DATA[detailsSource] || {};
+    const detailsByBkMap = APP_DATA[detailsSourceData] || {};
 
     // ✅ Prefer object format if available
     let bookingData = bookingsMap[bkId];
@@ -295,7 +295,7 @@ function findBookingInLocal(bkId) {
     }
 
     if (!bookingData) return null;
-    
+
     // Xử lý số điện thoại
     let phoneRaw;
     if (typeof bookingData === 'object' && !Array.isArray(bookingData)) {
@@ -306,26 +306,25 @@ function findBookingInLocal(bkId) {
     const phone = phoneRaw ? String(phoneRaw).replace(/^'/, "").trim() : "";
 
     let custRow = null;
-    
+
     // 4. Tìm thông tin Customer
-    if (phone !== "" && window.APP_DATA && Array.isArray(Object.values(APP_DATA.customers))) {
-        // Check if customers is object format
-        let customersData = Object.values(APP_DATA.customers) || Object.values(APP_DATA.customers);
-        
+    if (phone !== "" && window.APP_DATA) {
+        const customersData = Object.values(APP_DATA.customers ?? {});
+
         custRow = customersData.find(r => {
             if (!r) return false;
-            
+
             let custPhone;
             if (typeof r === 'object' && !Array.isArray(r)) {
                 custPhone = r.phone;
             } else {
                 custPhone = r[6];
             }
-            
+
             if (!custPhone) return false;
             return String(custPhone).includes(phone);
         });
-        
+
         if (!custRow) {
             log("Local search: Không tìm thấy khách theo SĐT");
         }
@@ -333,11 +332,11 @@ function findBookingInLocal(bkId) {
 
     // 5. Đóng gói kết quả
     return {
-    success: true,
-    bookings: bookingData,     
-    [detailsSource]: detailsData,  
-    customer: custRow,
-    source: 'local' 
+        success: true,
+        bookings: bookingData,
+        [detailsSource]: detailsData,
+        customer: custRow,
+        source: 'local'
     };
 }
 
@@ -363,182 +362,103 @@ function getAllCellValues(row) {
     return String(row ?? '').toLowerCase();
 }
 
+/**
+ * Áp dụng bộ lọc cho bảng hiện tại.
+ *
+ * Luồng xử lý:
+ *   1. Đọc giá trị từ filter-val, filter-col, filter-from, filter-to.
+ *   2. Mỗi tiêu chí chỉ bỏ qua khi field ĐÓ rỗng (không phải tất cả):
+ *      - filter-val rỗng  → bỏ qua lọc keyword.
+ *      - filter-from / filter-to thiếu một trong hai → bỏ qua lọc ngày.
+ *      - Nếu CẢ BA đều rỗng → gọi resetGridData() (về dữ liệu gốc).
+ *   3. Đọc dữ liệu nguồn FRESH từ APP_DATA (KHÔNG dùng PG_DATA) → luôn lọc
+ *      trên toàn bộ tập gốc, không bị ảnh hưởng bởi sort trước đó.
+ *   4. Lưu kết quả vào PG_DATA, đặt FILTER_ACTIVE = true.
+ *   5. Dispatch render qua _renderFromPGData().
+*/
 function applyGridFilter() {
     try {
-    // --- BƯỚC 1: LẤY DỮ LIỆU ĐẦU VÀO (INPUT) ---
-    // Chỉ đọc DOM 1 lần duy nhất ở đây
-    const colSelect = document.getElementById('filter-col');
-    const valInput = document.getElementById('filter-val');
-    const fromInput = document.getElementById('filter-from');
-    const toInput = document.getElementById('filter-to');
+        const colSelect = document.getElementById('filter-col');
+        const valInput = document.getElementById('filter-val');
+        const fromInput = document.getElementById('filter-from');
+        const toInput = document.getElementById('filter-to');
 
-    // Lấy giá trị thô (Raw Value) để làm Signature
-    const rawCol = colSelect ? colSelect.value : '';
-    const rawKeyword = valInput ? valInput.value : ''; // Giữ nguyên chữ hoa thường để so sánh chuẩn
-    const rawFrom = fromInput ? fromInput.value : '';
-    const rawTo = toInput ? toInput.value : '';
+        const rawCol = colSelect ? colSelect.value.trim() : '';
+        const rawKeyword = valInput ? valInput.value : '';
+        const rawFrom = fromInput ? fromInput.value.trim() : '';
+        const rawTo = toInput ? toInput.value.trim() : '';
 
-    // --- BƯỚC 2: XỬ LÝ LOGIC TOGGLE (RESET) ---
-    // Tạo chữ ký từ dữ liệu thô
-    const currentSignature = JSON.stringify({
-        t: CURRENT_TABLE_KEY, // Kèm table key để tránh nhầm giữa các tab
-        c: rawCol,
-        k: rawKeyword,
-        f: rawFrom,
-        to: rawTo
-    });
-
-    const hasDataObj = Object.values(APP_DATA[CURRENT_TABLE_KEY]) && Array.isArray(Object.values(Object.values(APP_DATA[CURRENT_TABLE_KEY]))) && Object.values(Object.values(APP_DATA[CURRENT_TABLE_KEY])).length > 0;
-    
-    if (!hasDataObj) {
-        log('⚠ Không có dữ liệu để lọc', 'warning');
-        return;
-    }
-    
-    // Helpers
-    const isNumericString = (s) => typeof s === 'string' && /^\d+$/.test(s.trim());
-    const stripHeaderIfAny = (arr) => {
-        if (!Array.isArray(arr)) return [];
-        if (arr.length === 0) return [];
-        const first = arr[0];
-        // Header row detection: array with string-ish column names
-        if (Array.isArray(first) && typeof first[0] === 'string' && (first[0].toLowerCase() === 'id' || first[0].toLowerCase() === 'số thứ tự')) {
-            return arr.slice(1);
+        // Tất cả đều rỗng → reset về dữ liệu gốc
+        if (!rawKeyword && !rawFrom && !rawTo) {
+            resetGridData();
+            return;
         }
-        return arr;
-    };
-    const resolveColConfig = (raw) => {
-        if (!GRID_COLS || !Array.isArray(GRID_COLS)) return null;
-        const rawStr = String(raw ?? '').trim();
-        if (!rawStr) return null;
-        return GRID_COLS.find(c => String(c?.i) === rawStr || String(c?.key) === rawStr) || null;
-    };
-    const getCellValue = (row, rawColKey) => {
-        const isObjRow = (row && typeof row === 'object' && !Array.isArray(row));
-        const colCfg = resolveColConfig(rawColKey);
-        if (isObjRow) {
-            const field = colCfg?.key || colCfg?.i || rawColKey;
-            return row ? row[field] : undefined;
+
+        // Read FRESH flat data from APP_DATA (NEVER from PG_DATA)
+        const sourceData = (typeof getAppDataFlat === 'function')
+            ? getAppDataFlat(CURRENT_TABLE_KEY)
+            : Object.values(APP_DATA[CURRENT_TABLE_KEY] ?? {});
+
+        if (!sourceData.length) { log('Không có dữ liệu để lọc', 'warning'); return; }
+
+        const searchKey = rawKeyword.trim().toLowerCase();
+        const resolveCC = (raw) => GRID_COLS?.find(c => String(c?.i) === String(raw) || String(c?.key) === String(raw)) || null;
+        const colConfig = resolveCC(rawCol);
+        const colFieldKey = colConfig?.key || rawCol || '';
+
+        // --- DATE CONFIG ---
+        const definedDateCol = TABLE_DATE_CONFIG[CURRENT_TABLE_KEY];
+        let DATE_FIELD_KEY = definedDateCol ?? null;
+        if (DATE_FIELD_KEY === null || typeof DATE_FIELD_KEY === 'number') {
+            const dateCol = (GRID_COLS || []).find(c => c?.fmt === 'date' && !c.hidden)
+                || (GRID_COLS || []).find(c => c?.fmt === 'date');
+            if (dateCol) DATE_FIELD_KEY = dateCol.key || dateCol.i || DATE_FIELD_KEY;
         }
-        // Array row
-        const idx = isNumericString(String(rawColKey)) ? Number(rawColKey) : (typeof colCfg?.i === 'number' ? colCfg.i : -1);
-        if (idx < 0) return undefined;
-        return row ? row[idx] : undefined;
-    };
 
-    // ✅ FIX: Reset only when explicitly clicking reset with empty input
-    if ((!rawKeyword && !rawFrom && !rawTo)) {
-        log('⚠ Reset bộ lọc...', 'info');
-        LAST_FILTER_SIGNATURE = null; 
-        
-        // Render lại bảng gốc (Reset Table)
-        let originalData;
-        if (hasDataObj) {
-            originalData = Object.values(Object.values(APP_DATA[CURRENT_TABLE_KEY]));
-        } else {
-            originalData = Object.values(Object.values(APP_DATA[CURRENT_TABLE_KEY]));
+        let dStart = null, dEnd = null, isCheckDate = false;
+        if (DATE_FIELD_KEY !== null && rawFrom && rawTo) {
+            isCheckDate = true;
+            dStart = new Date(rawFrom); dStart.setHours(0, 0, 0, 0);
+            dEnd = new Date(rawTo); dEnd.setHours(23, 59, 59, 999);
         }
-        
-        if (typeof initPagination === 'function') initPagination(originalData);
-        if (typeof calculateSummary === 'function') calculateSummary(originalData);
-        
-        return; // <--- KẾT THÚC HÀM NGAY TẠI ĐÂY
-    }
 
-    // Nếu không trùng -> Lưu chữ ký mới và đi tiếp
-    LAST_FILTER_SIGNATURE = currentSignature;
-
-
-    // --- BƯỚC 3: CHUẨN BỊ DỮ LIỆU ĐỂ LỌC (PROCESSING) ---
-    // Bây giờ mới xử lý dữ liệu (Lower case, Date Object...) dùng biến raw ở trên
-    
-    // Config cột ngày (Như đã bàn ở bài trước)
-    const definedDateCol = TABLE_DATE_CONFIG[CURRENT_TABLE_KEY];
-    const DATE_COL_IDX = definedDateCol !== undefined ? definedDateCol : null;
-    
-    // Xử lý keyword
-    const searchKey = rawKeyword.trim().toLowerCase();
-    const searchColKey = rawCol; // can be index string or field name
-
-    // Resolve date field for object format
-    let DATE_FIELD_KEY = DATE_COL_IDX;
-    if (hasDataObj) {
-        // Prefer TABLE_DATE_CONFIG -> header mapping
-        if (typeof DATE_COL_IDX === 'number') {
-            const headerRow = APP_DATA?.header?.[CURRENT_TABLE_KEY];
-            if (Array.isArray(headerRow) && headerRow[DATE_COL_IDX]) DATE_FIELD_KEY = headerRow[DATE_COL_IDX];
-        }
-        // Fallback: first date column in GRID_COLS
-        if (!DATE_FIELD_KEY || typeof DATE_FIELD_KEY === 'number') {
-            const dateCol = (GRID_COLS || []).find(c => c && c.fmt === 'date' && !c.hidden) || (GRID_COLS || []).find(c => c && c.fmt === 'date');
-            DATE_FIELD_KEY = dateCol?.key || dateCol?.i || DATE_FIELD_KEY;
-        }
-    }
-
-    // Xử lý Date
-    let dStart = null, dEnd = null, isCheckDate = false;
-    if (DATE_FIELD_KEY !== null && rawFrom && rawTo) {
-        isCheckDate = true;
-        dStart = new Date(rawFrom); dStart.setHours(0, 0, 0, 0);
-        dEnd = new Date(rawTo); dEnd.setHours(23, 59, 59, 999);
-    }
-
-    // --- BƯỚC 4: THỰC HIỆN FILTER (CORE) ---
-    // ✅ FIX: Get source data from either array or object format
-    let source;
-    if (hasDataObj) {
-        source = Object.values(APP_DATA[CURRENT_TABLE_KEY]);
-    } else if (hasDataArray) {
-        source = stripHeaderIfAny(Object.values(APP_DATA[CURRENT_TABLE_KEY]).slice());
-    } else return;
-
-    const filtered = source.filter(row => {
-        // A. Lọc Keyword
-        let matchKeyword = true;
-        if (searchKey) {
-            // ✅ FIX: Tìm kiếm toàn bảng nếu không chọn cột, hoặc tìm cột nếu có chọn
-            if (!searchColKey || searchColKey === '') {
-                // Không chọn cột → tìm kiếm trên toàn bảng
-                const allValues = getAllCellValues(row);
-                matchKeyword = allValues.includes(searchKey);
-            } else {
-                // Có chọn cột → tìm kiếm trên cột đó
-                const cellData = getCellValue(row, searchColKey);
-                const cellValue = (cellData === undefined || cellData === null) ? "" : String(cellData).toLowerCase();
-                matchKeyword = cellValue.includes(searchKey);
+        // --- FILTER CORE ---
+        const filtered = sourceData.filter(row => {
+            let matchKeyword = true;
+            if (searchKey) {
+                if (!rawCol || rawCol === '') {
+                    matchKeyword = getAllCellValues(row).includes(searchKey);
+                } else {
+                    const cc = resolveCC(rawCol);
+                    const field = cc?.key || cc?.i || rawCol;
+                    matchKeyword = String(row?.[field] ?? '').toLowerCase().includes(searchKey);
+                }
             }
-        }
 
-        // B. Lọc Date
-        let matchDate = true;
-        if (isCheckDate) {
-            let cellDateRaw;
-            if (typeof row === 'object' && !Array.isArray(row)) {
-                cellDateRaw = row[DATE_FIELD_KEY];
-            } else {
-                const dateIdx = (typeof DATE_FIELD_KEY === 'number') ? DATE_FIELD_KEY : (isNumericString(String(DATE_FIELD_KEY)) ? Number(DATE_FIELD_KEY) : DATE_COL_IDX);
-                cellDateRaw = row[dateIdx];
-            }
-            
-            if (cellDateRaw) {
-                const rowDate = new Date(cellDateRaw); 
-                if (!isNaN(rowDate.getTime())) {
-                    matchDate = (rowDate >= dStart && rowDate <= dEnd);
+            let matchDate = true;
+            if (isCheckDate) {
+                const cellDateRaw = row?.[DATE_FIELD_KEY];
+                if (cellDateRaw) {
+                    const rowDate = new Date(cellDateRaw);
+                    matchDate = !isNaN(rowDate) && rowDate >= dStart && rowDate <= dEnd;
                 } else { matchDate = false; }
-            } else { matchDate = false; }
-        }
+            }
 
-        return matchKeyword && matchDate;
-    });
+            return matchKeyword && matchDate;
+        });
 
-    log(`✅ Đã lọc bảng [${CURRENT_TABLE_KEY}]: ${filtered.length} kết quả`, 'success');
+        log(`Đã lọc [${CURRENT_TABLE_KEY}]: ${filtered.length} kết quả`, 'success');
 
-    // --- BƯỚC 5: OUTPUT ---
-    if (typeof initPagination === 'function') initPagination(filtered);
-    if (typeof calculateSummary === 'function') calculateSummary(filtered);
+        // Update PG_DATA with filtered result → sorter and renderer will use this
+        window.PG_DATA = filtered;
+        window.FILTER_ACTIVE = true;
+        LAST_FILTER_SIGNATURE = JSON.stringify({ t: CURRENT_TABLE_KEY, c: rawCol, k: rawKeyword, f: rawFrom, to: rawTo });
+
+        _renderFromPGData();
+        if (typeof calculateSummary === 'function') calculateSummary(filtered);
 
     } catch (err) {
-    log('❌ Lỗi applyGridFilter: ' + err.message, 'error');
+        log('Lỗi applyGridFilter: ' + err.message, 'error');
     }
 }
 
@@ -561,58 +481,68 @@ window.FILTER_THROTTLE_STATE = window.FILTER_THROTTLE_STATE || {
 function applyGridFilterThrottled() {
     const now = Date.now();
     const state = window.FILTER_THROTTLE_STATE;
-    
+
     if (now - state.lastTime >= state.THROTTLE_MS) {
         state.lastTime = now;
         applyGridFilter();
     }
 }
 
-/**
- * Khởi tạo Event Listeners cho Filter
- * Tự động gắn event listener với throttle vào filter-val input
- * Gọi hàm này 1 lần khi trang load (hoặc thêm vào main.js nếu cần)
- */
-function initFilterEventListeners() {
-    const valInput = document.getElementById('filter-val');
-    if (valInput) {
-        // Xóa event listener cũ (nếu có) để tránh duplicate
-        valInput.removeEventListener('input', applyGridFilterThrottled);
-        // Gắn event listener mới với throttle
-        valInput.addEventListener('input', applyGridFilterThrottled);
-    }
-}
+// =========================================================================
+// HELPERS: RENDER DISPATCH & GRID RESET
+// =========================================================================
 
 /**
- * =========================================================================
- * AUTO-INITIALIZATION khi DOM Ready
- * =========================================================================
- * Khởi tạo filter event listeners tự động
+ * Internal dispatcher: render from PG_DATA to the correct table type.
+ * Secondary index → renderSecondaryIndexFromFlat (grouped).
+ * Normal collection → initPagination (flat paginated).
+ *
+ * @param {string} [tblId] - Optional container element ID (default: 'tbl-container-tab2')
  */
-if (typeof document !== 'undefined') {
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof initFilterEventListeners === 'function') {
-                initFilterEventListeners();
-                console.log('✅ Filter event listeners initialized');
-            }
-        });
+function _renderFromPGData(tblId) {
+    const isSecondary = A.DB?.schema?.[CURRENT_TABLE_KEY]?.isSecondaryIndex === true;
+    if (isSecondary) {
+        if (typeof renderSecondaryIndexFromFlat === 'function') {
+            renderSecondaryIndexFromFlat(CURRENT_TABLE_KEY, window.PG_DATA, tblId);
+        }
     } else {
-        // DOM đã ready rồi, gọi ngay lập tức
-        if (typeof initFilterEventListeners === 'function') {
-            initFilterEventListeners();
-            console.log('✅ Filter event listeners initialized immediately');
+        const table = tblId
+            ? document.getElementById(tblId)
+            : document.getElementById('tbl-container-tab2');
+        if (typeof initPagination === 'function') {
+            initPagination(window.PG_DATA, table);
         }
     }
 }
-/**
-     * HÀM XỬ LÝ KHI CLICK NÚT "SẮP XẾP" - FIXED
-     */
 
-    /**
- * Chuyển đổi ngày tháng sang số (timestamp) để so sánh
- * Hỗ trợ: "dd/mm/yyyy", "yyyy-mm-dd", hoặc Date object
+/**
+ * Reset PG_DATA to the full APP_DATA snapshot and re-render the table.
+ * Called when: filter input is cleared, or filter button is clicked a second time.
  */
+function resetGridData() {
+    const freshData = (typeof getAppDataFlat === 'function')
+        ? getAppDataFlat(CURRENT_TABLE_KEY)
+        : Object.values(APP_DATA[CURRENT_TABLE_KEY] ?? {});
+
+    window.PG_DATA = freshData;
+    window.FILTER_ACTIVE = false;
+    LAST_FILTER_SIGNATURE = null;
+    SORT_STATE.col = -1;
+    SORT_STATE.dir = 'asc';
+
+    // Clear filter input
+    const valInput = document.getElementById('filter-val');
+    if (valInput) valInput.value = '';
+
+    _renderFromPGData();
+    if (typeof calculateSummary === 'function') calculateSummary(freshData);
+    log('Đã reset bộ lọc về dữ liệu gốc', 'info');
+}
+
+/**
+* Chuyển đổi ngày tháng sang số (timestamp) để so sánh
+* Hỗ trợ: "dd/mm/yyyy", "yyyy-mm-dd", hoặc Date object
+*/
 function parseDateVal(input) {
     if (!input) return 0; // Rỗng thì cho về 0
 
@@ -620,162 +550,132 @@ function parseDateVal(input) {
     if (input instanceof Date) return input.getTime();
 
     const str = String(input).trim();
-    
+
     // 2. Nếu là format dd/mm/yyyy (Việt Nam)
     if (str.includes('/')) {
-    const parts = str.split('/');
-    if (parts.length === 3) {
-        // new Date(Năm, Tháng - 1, Ngày)
-        return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
-    }
+        const parts = str.split('/');
+        if (parts.length === 3) {
+            // new Date(Năm, Tháng - 1, Ngày)
+            return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+        }
     }
 
     // 3. Nếu là format yyyy-mm-dd (ISO/Database)
     if (str.includes('-')) {
-    const parts = str.split('-');
-    if (parts.length === 3) {
-        return new Date(parts[0], parts[1] - 1, parts[2]).getTime();
-    }
+        const parts = str.split('-');
+        if (parts.length === 3) {
+            return new Date(parts[0], parts[1] - 1, parts[2]).getTime();
+        }
     }
     // 4. Fallback (thử parse mặc định)
     return new Date(str).getTime() || 0;
 }
+/**
+ * Sắp xếp bảng theo cột được chọn trong filter-col.
+ *
+ * Luồng xử lý:
+ *   1. Đọc ONLY từ PG_DATA (không đụng APP_DATA).
+ *   2. Xác định chiều sort:
+ *      - Cùng cột với lần trước → toggle asc/desc đơn giản.
+ *      - Cột mới → đối chiếu với dữ liệu thực tế trong PG_DATA:
+ *          Nếu đang được sắp theo asc  → áp dụng desc.
+ *          Nếu đang được sắp theo desc → áp dụng asc.
+ *          Chưa sorted / ngẫu nhiên    → mặc định desc.
+ *   3. Sort PG_DATA, ghi lại PG_DATA.
+ *   4. Dispatch render qua _renderFromPGData().
+ */
 function applyGridSorter() {
-    // 1. Lấy cột & Validate
     const selectEl = document.getElementById('filter-col');
     if (!selectEl) return;
-        const rawCol = String(selectEl.value ?? '').trim();
-        if (!rawCol) return;
-        const isNumericString = (s) => typeof s === 'string' && /^\d+$/.test(s.trim());
-        const colIndex = isNumericString(rawCol) ? Number(rawCol) : rawCol;
-        const resolveColConfig = (raw) => {
-                if (!GRID_COLS || !Array.isArray(GRID_COLS)) return null;
-                const rawStr = String(raw ?? '').trim();
-                return GRID_COLS.find(c => String(c?.i) === rawStr || String(c?.key) === rawStr) || null;
-        };
-        const colConfig = resolveColConfig(rawCol);
+    const rawCol = String(selectEl.value ?? '').trim();
+    if (!rawCol) return;
 
-    // 4. Chuẩn bị Dữ liệu (Theo logic: Clone -> Assign)
-    if (!PG_STATE.data || PG_STATE.data.length === 0) {
-        
-        // ✅ FIX: Try object format first, fallback to array
-        let rawData = Object.values(APP_DATA[CURRENT_TABLE_KEY]);
-        let isObjectFormat = true;
-        
-        if (!rawData || rawData.length === 0) {
-            rawData = Object.values(APP_DATA[CURRENT_TABLE_KEY]);
-            isObjectFormat = false;
-        }
-        
-        // Kiểm tra an toàn đầu vào
-        if (rawData && Array.isArray(rawData) && rawData.length > 0) {
-            
-            // BƯỚC 1: TẠO BẢN SAO (Deep clone level 1)
-            const workingCopy = [...rawData];
-            
-            // BƯỚC 2: CẮT HEADER (chỉ nếu là array format)
-            if (!isObjectFormat && workingCopy.length > 0 && Array.isArray(workingCopy[0]) && workingCopy[0][0] && typeof workingCopy[0][0] === 'string') {
-                // workingCopy[0] is a header row (contains strings like 'ID', 'Name')
-                workingCopy.shift();
-            }
-            
-            // BƯỚC 3: GỌNG RÁC (filter empty rows)
-            PG_STATE.data = workingCopy.filter(row => {
-                if (!row) return false;
-                if (typeof row === 'object' && !Array.isArray(row)) {
-                    // Object format - has id field
-                    return row.id !== undefined && row.id !== '';
-                } else if (Array.isArray(row)) {
-                    // Array format - has first element
-                    return row[0] !== undefined && row[0] !== '';
-                }
-                return true;
-            });
-        } else {
-            // Xử lý khi không có dữ liệu
-            PG_STATE.data = []; 
-            return;
-        }
-    }
-    // ✅ FIX: Don't blindly shift - check if first row is actually a header
-    var source = PG_STATE.data;
+    const resolveColConfig = (raw) => GRID_COLS?.find(c => String(c?.i) === raw || String(c?.key) === raw) || null;
+    const colConfig = resolveColConfig(rawCol);
+    const fieldName = colConfig?.key || colConfig?.i || rawCol;
+    const format = colConfig?.fmt ?? 'text';
 
-    if (source && source.length > 0) {
-        const firstRow = source[0];
-        // Only shift if it's clearly a header row (array with string values)
-        if (Array.isArray(firstRow) && typeof firstRow[0] === 'string' && (firstRow[0].toLowerCase() === 'id' || firstRow[0].toLowerCase() === 'số thứ tự')) {
-            source.shift();
-            PG_STATE.data = source;
-        }
-        // If object format or data format already clean, don't shift
-    } else {
-        log("Ko sort được do lỗi PG_STATE.data", 'warning');
+    // Work ONLY on PG_DATA — no fallback to APP_DATA
+    const source = (window.PG_DATA || []).filter(r => r?.id != null);
+
+    if (!source.length) {
+        log('Không sort được: PG_DATA trống', 'warning');
         return;
     }
-        // 2. Logic đảo chiều (Toggle)
-    if (SORT_STATE.col === rawCol) {
-        SORT_STATE.dir = (SORT_STATE.dir === 'asc') ? 'desc' : 'asc';
-    } else {
-        SORT_STATE.col = rawCol;
-        log("ko đảo chiều");
-        SORT_STATE.dir = 'desc';
-    }
-    
-    // 5. Lấy format (Fix nguyên nhân 3: Dùng == thay vì ===)
-    const format = colConfig ? colConfig.fmt : 'text';
 
-    // 6. Thực hiện Sort
-    // Hệ số đảo chiều: 1 (asc), -1 (desc)
-    const modifier = (SORT_STATE.dir === 'asc') ? 1 : -1;
+    // ── Xác định chiều sort ───────────────────────────────────────────────
+    let nextDir;
+
+    if (SORT_STATE.col === rawCol) {
+        // Cùng cột: toggle đơn giản
+        nextDir = (SORT_STATE.dir === 'asc') ? 'desc' : 'asc';
+    } else {
+        // Cột mới: đối chiếu với dữ liệu thực tế để không bị nhảy ngược chiều
+        const toNum = v => (typeof getNum === 'function') ? getNum(v) : (Number(String(v).replace(/[^0-9.-]+/g, '')) || 0);
+
+        // Lấy mẫu tối đa 8 phần tử ở giữa mảng để giảm bias đầu/cuối
+        const sampleSize = Math.min(8, source.length);
+        const step = Math.max(1, Math.floor(source.length / sampleSize));
+        const sample = [];
+        for (let i = 0; i < source.length && sample.length < sampleSize; i += step) {
+            sample.push(source[i]);
+        }
+
+        // So sánh cặp liên tiếp → đếm cặp tăng dần vs giảm dần
+        let cntAsc = 0, cntDesc = 0;
+        for (let i = 0; i < sample.length - 1; i++) {
+            let va = sample[i]?.[fieldName] ?? '';
+            let vb = sample[i + 1]?.[fieldName] ?? '';
+            let cmp;
+            if (format === 'date') {
+                cmp = parseDateVal(va) - parseDateVal(vb);
+            } else if (format === 'money' || format === 'number') {
+                cmp = toNum(va) - toNum(vb);
+            } else {
+                cmp = String(va).toLowerCase().localeCompare(String(vb).toLowerCase(), 'vi');
+            }
+            if (cmp < 0) cntAsc++;
+            else if (cmp > 0) cntDesc++;
+        }
+
+        // Phát hiện chiều hiện tại → áp dụng chiều ngược lại
+        // Nếu không rõ ràng (ngẫu nhiên) → mặc định desc
+        if (cntAsc > cntDesc) {
+            nextDir = 'desc';  // đang asc → toggle sang desc
+        } else if (cntDesc > cntAsc) {
+            nextDir = 'asc';   // đang desc → toggle sang asc
+        } else {
+            nextDir = 'desc';  // ngẫu nhiên → mặc định desc (mới nhất/lớn nhất trước)
+        }
+
+        SORT_STATE.col = rawCol;
+    }
+
+    SORT_STATE.dir = nextDir;
+    const modifier = nextDir === 'asc' ? 1 : -1;
 
     source.sort((a, b) => {
-        // ✅ NEW: Support both array and object access
-        let valA, valB;
-        
-        if (typeof a === 'object' && !Array.isArray(a)) {
-            // Object format - use field name
-            const fieldName = colConfig?.key || colConfig?.i || rawCol;
-            valA = a[fieldName];
-            valB = b[fieldName];
-        } else {
-            // Array format
-            const idx = (typeof colIndex === 'number') ? colIndex : (typeof colConfig?.i === 'number' ? colConfig.i : 0);
-            valA = a[idx];
-            valB = b[idx];
-        }
-
-        // Handle null/undefined
-        if (valA === null || valA === undefined) valA = "";
-        if (valB === null || valB === undefined) valB = "";
-
+        const va = a?.[fieldName] ?? '';
+        const vb = b?.[fieldName] ?? '';
         let result = 0;
-
         if (format === 'date') {
-            // FIX NGUYÊN NHÂN 2: Parse date chuẩn
-            const tA = parseDateVal(valA);
-            const tB = parseDateVal(valB);
-            result = tA - tB;
-        } 
-        else if (format === 'money' || format === 'number') {
-            // Parse số an toàn
-            const numA = (typeof getNum === 'function') ? getNum(valA) : (Number(String(valA).replace(/[^0-9.-]+/g, "")) || 0);
-            const numB = (typeof getNum === 'function') ? getNum(valB) : (Number(String(valB).replace(/[^0-9.-]+/g, "")) || 0);
-            result = numA - numB;
-        } 
-        else {
-            // Sort Text
-            result = String(valA).toLowerCase().localeCompare(String(valB).toLowerCase(), 'vi');
+            result = parseDateVal(va) - parseDateVal(vb);
+        } else if (format === 'money' || format === 'number') {
+            const toNum = v => (typeof getNum === 'function') ? getNum(v) : (Number(String(v).replace(/[^0-9.-]+/g, '')) || 0);
+            result = toNum(va) - toNum(vb);
+        } else {
+            result = String(va).toLowerCase().localeCompare(String(vb).toLowerCase(), 'vi');
         }
-
-        // Áp dụng chiều sort
         return result * modifier;
     });
 
-    // 7. Render lại bảng & Reset về trang 1
-    initPagination(source);
-    
-        log(`Đã sort cột [${rawCol}] - ${SORT_STATE.dir}`, 'success');
-    // 3. UI Feedback
+    // Write sorted result back to PG_DATA
+    window.PG_DATA = source;
+
+    // Dispatch render
+    _renderFromPGData();
+
+    log(`Đã sort cột [${rawCol}] - ${SORT_STATE.dir}`, 'success');
     updateSortButtonUI(SORT_STATE.dir);
 }
 
@@ -799,25 +699,17 @@ function updateSortButtonUI(dir) {
     }
 }
 /**
-* HÀM XỬ LÝ TAB 2
-* Hàm này phải nằm ngoài cùng, không được nằm trong window.onload hay hàm khác
-*/
-// 
+ * Xử lý khi người dùng chọn bảng từ select box.
+ * Uỷ toàn bộ xử lý (PG_DATA, GRID_COLS, render) cho renderTableByKey.
+ *
+ * @param {string} key - Collection key hoặc secondary index key
+ */
 function handleTableChange(key) {
-    log("Người dùng đã chọn bảng: " + key);
-
-    // BƯỚC QUAN TRỌNG: LOOKUP DATA (Dùng chìa khóa tìm dữ liệu)
-    // APP_DATA là biến toàn cục chúng ta đã khai báo ở đầu file
-    const selectedData = APP_DATA[key]; 
-
-    if (selectedData) {
-        // Gọi hàm render mà chúng ta đã viết
+    log('Người dùng đã chọn bảng: ' + key);
+    if (typeof renderTableByKey === 'function') {
         renderTableByKey(key);
-        initFilterUI();          
-        // Hoặc xử lý gì đó với selectedData
-        // log("Tìm thấy " + selectedData.length + " dòng dữ liệu.");
     } else {
-        log("Không tìm thấy dữ liệu cho key:" + key);
+        log('Không tìm thấy hàm renderTableByKey', 'error');
     }
 }
 
@@ -825,7 +717,7 @@ function handleTableChange(key) {
  * HÀM TÍNH TOÁN THỐNG KÊ (Sử dụng Index cố định)
  * @param {Array} dataRows - Dữ liệu các dòng cần tính
  */
-calculateSummary = function(dataRows) {
+calculateSummary = function (dataRows) {
     // 1. Guard Clause: Reset về 0 nếu không có dữ liệu
     if (!dataRows || !Array.isArray(dataRows) || dataRows.length === 0) {
         log('calculateSummary lỗi tham số!');
@@ -850,7 +742,7 @@ calculateSummary = function(dataRows) {
         const colQty = GRID_COLS.find(c => {
             const t = String(c.t).toLowerCase().trim();
             return t === 'sl' || t === 'số lượng' || t === 'nl' || t === 'người lớn';
-        });            
+        });
         if (colQty) IDX_QTY = colQty.i;
     } else {
         log("calculateSummary: Chưa định nghĩa GRID_COLS", 'error');
@@ -932,13 +824,13 @@ calculateSummary = function(dataRows) {
  */
 function updateStatUI(total, qty, avg) {
     const elTotal = getE('stat-total');
-    const elQty   = getE('stat-qty');
-    const elAvg   = getE('stat-avg');
+    const elQty = getE('stat-qty');
+    const elAvg = getE('stat-avg');
     // formatMoney là hàm tiện ích dùng chung
     // Nếu chưa load được file utils thì fallback về toLocaleString
     const fmt = (n) => (typeof formatMoney === 'function') ? formatMoney(n) : Number(n).toLocaleString();
     if (elTotal) setVal(elTotal, fmt(total));
-    if (elQty) setVal(elQty, Number(qty).toLocaleString()); 
+    if (elQty) setVal(elQty, Number(qty).toLocaleString());
     if (elAvg) setVal(elAvg, fmt(avg));
 }
 
@@ -953,12 +845,12 @@ async function openSettingsModal() {
         // Render modal template
         await A.UI.renderTemplate('body', 'tmpl-download-library');
         await A.Modal.show(
-            getE('tmpl-settings-form'), 
-            'Cài Đặt Chung', 
+            getE('tmpl-settings-form'),
+            'Cài Đặt Chung',
             saveThemeSettings,           // Save callback (calls THEME_MANAGER.saveSettingsFromForm)
             () => THEME_MANAGER.resetToDefault(true)  // Reset callback with confirmation
         );
-            
+
         // --- DELEGATE ALL THEME LOGIC TO THEME_MANAGER ---
         if (!THEME_MANAGER) {
             logError('Theme manager not initialized');
@@ -981,7 +873,7 @@ async function openSettingsModal() {
             const mainLogo = getE('main-logo');
             getE('st-logo-preview').src = mainLogo ? mainLogo.src : 'https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp';
         }
-        
+
     } catch (e) {
         logError("Lỗi mở Cài Đặt:", e);
     }
@@ -994,8 +886,8 @@ async function openSettingsModal() {
 async function downloadData(type = 'excel') {
     // --- CẤU HÌNH INDEX (HARD-CODED RULES) ---
     // 1. Cột PayType để check VAT: Cột M trong Database -> Index 12 (0-based)
-    const IDX_PAY_TYPE = 12; 
-    
+    const IDX_PAY_TYPE = 12;
+
     // 2. Cột ID dùng để đối chiếu:
     const IDX_BOOKINGS_ID = 0;   // Với Bookings: ID nằm cột đầu tiên
     const IDX_DETAILS_ID = 1;  // Với Details/Admin: ID nằm cột thứ 2
@@ -1010,22 +902,22 @@ async function downloadData(type = 'excel') {
 
     // 2. CHUẨN BỊ TÊN FILE & NGỮ CẢNH
     const selectEl = document.getElementById('btn-select-datalist');
-    let viewType = selectEl ? selectEl.value : 'bookings'; 
+    let viewType = selectEl ? selectEl.value : 'bookings';
     let viewText = selectEl ? selectEl.options[selectEl.selectedIndex].text : 'Export';
-    
+
     const now = new Date();
-    const dateStr = `${String(now.getDate()).padStart(2,'0')}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getFullYear()).slice(2)}`;
+    const dateStr = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getFullYear()).slice(2)}`;
     let fileName = `${viewText}_${dateStr}`;
 
     // Clone dữ liệu gốc để xử lý
-    let dataToProcess = [...PG_STATE.data]; 
+    let dataToProcess = [...PG_STATE.data];
 
     // 3. LOGIC LỌC VAT (INLINE)
     if (['bookings', 'booking_details', 'operator_entries'].includes(viewType)) {
         if (confirm(`Bạn có muốn lọc danh sách xuất Hóa Đơn (VAT, CK CT...) cho bảng [${viewText}] không?`)) {
-            
-            if(typeof showNotify === 'function') showNotify("Đang lọc và xử lý dữ liệu...", true);
-            await new Promise(r => setTimeout(r, 50)); 
+
+            if (typeof showNotify === 'function') showNotify("Đang lọc và xử lý dữ liệu...", true);
+            await new Promise(r => setTimeout(r, 50));
 
             const vatKeywords = ['CK CT', 'Đã Xuất', 'VAT', 'Chờ Xuất'];
             const isVat = (val) => vatKeywords.some(k => String(val || '').toLowerCase().includes(k.toLowerCase()));
@@ -1034,11 +926,11 @@ async function downloadData(type = 'excel') {
             if (viewType === 'bookings') {
                 // BOOKINGS: Lọc trực tiếp cột M (Index 12)
                 dataToProcess = dataToProcess.filter(row => isVat(row[IDX_PAY_TYPE]));
-            } 
+            }
             else {
                 // DETAILS: Phải đối chiếu với Bookings gốc
                 const bookingsrc = (typeof APP_DATA !== 'undefined') ? Object.values(APP_DATA.bookings) : [];
-                
+
                 if (bookingsrc && bookingsrc.length > 0) {
                     // B1: Quét Bookings để lấy danh sách ID hợp lệ
                     const validIds = new Set();
@@ -1046,23 +938,23 @@ async function downloadData(type = 'excel') {
                         // Check cột M (PayType)
                         if (isVat(mRow[IDX_PAY_TYPE])) {
                             // Lấy ID của Bookings (Cột đầu tiên - Index 0)
-                            validIds.add(String(mRow[IDX_BOOKINGS_ID])); 
+                            validIds.add(String(mRow[IDX_BOOKINGS_ID]));
                         }
                     });
 
                     // B2: Lọc bảng Details hiện tại
                     dataToProcess = dataToProcess.filter(dRow => {
                         // Lấy ID tham chiếu của Details (Cột thứ 2 - Index 1)
-                        const refId = String(dRow[IDX_DETAILS_ID]); 
+                        const refId = String(dRow[IDX_DETAILS_ID]);
                         return validIds.has(refId);
                     });
                 } else {
                     console.warn("Cảnh báo: Không tìm thấy Object.values(APP_DATA.bookings) để đối chiếu VAT");
                 }
             }
-            
+
             if (dataToProcess.length === 0) {
-                if(typeof showNotify === 'function') showNotify("Không tìm thấy dữ liệu VAT phù hợp!", false);
+                if (typeof showNotify === 'function') showNotify("Không tìm thấy dữ liệu VAT phù hợp!", false);
                 return;
             }
             fileName += "_VAT_ONLY";
@@ -1079,15 +971,15 @@ async function downloadData(type = 'excel') {
         const rowObj = {};
         GRID_COLS.forEach(col => {
             // Lấy dữ liệu theo index cột đã lưu trong cấu hình (col.i)
-            let val = row[col.i]; 
+            let val = row[col.i];
 
             if (val !== null && val !== undefined && val !== '') {
                 if (col.fmt === 'date') {
                     try {
                         const d = new Date(val);
                         if (!isNaN(d.getTime())) val = d.toLocaleDateString('vi-VN');
-                    } catch(e){}
-                } 
+                    } catch (e) { }
+                }
             } else {
                 val = '';
             }
@@ -1102,7 +994,7 @@ async function downloadData(type = 'excel') {
             if (typeof XLSX === 'undefined') throw new Error("Thư viện SheetJS chưa được tải.");
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.json_to_sheet(exportData);
-            const wscols = Object.keys(exportData[0] || {}).map(() => ({wch: 15}));
+            const wscols = Object.keys(exportData[0] || {}).map(() => ({ wch: 15 }));
             ws['!cols'] = wscols;
             XLSX.utils.book_append_sheet(wb, ws, "Data");
             XLSX.writeFile(wb, `${fileName}.xlsx`);
@@ -1120,12 +1012,12 @@ async function downloadData(type = 'excel') {
                 body: body,
                 startY: 25,
                 theme: 'grid',
-                styles: { font: 'helvetica', fontSize: 8 }, 
+                styles: { font: 'helvetica', fontSize: 8 },
                 headStyles: { fillColor: [44, 62, 80] }
             });
             doc.save(`${fileName}.pdf`);
         }
-        if(typeof showNotify === 'function') showNotify("Đã xuất file thành công!", true);
+        if (typeof showNotify === 'function') showNotify("Đã xuất file thành công!", true);
     } catch (err) {
         logError(err);
         alert("Lỗi khi xuất file: " + err.message);
@@ -1148,7 +1040,7 @@ function handleDashClick(idVal, isServiceId) {
 // ==========================================
 
 // Biến lưu trữ dữ liệu gốc của các dòng đang edit
-var CURRENT_BATCH_DATA = []; 
+var CURRENT_BATCH_DATA = [];
 
 /**
  * 1. Đổ dữ liệu vào Form
@@ -1157,22 +1049,22 @@ var CURRENT_BATCH_DATA = [];
 function openBatchEdit(dataList, title) {
     // A. Lưu bản sao dữ liệu để xử lý sau (Quan trọng)
     // dataList là mảng các dòng (Array) lấy từ Object.values(APP_DATA.booking_details)
-    CURRENT_BATCH_DATA = JSON.parse(JSON.stringify(dataList)); 
+    CURRENT_BATCH_DATA = JSON.parse(JSON.stringify(dataList));
 
     // B. Chuyển Tab & UI Footer (Giữ nguyên)
     activateTab('tab-form');
     setClass('btn-save-form', 'd-none', true);
     setClass('btn-save-batch', 'd-none', false);
     refreshForm();
-    
+
     // C. Render giao diện
     const tbody = getE('detail-tbody');
-    if (tbody) tbody.innerHTML = ''; 
+    if (tbody) tbody.innerHTML = '';
 
     // Duyệt qua dữ liệu đễ vẽ form, dùng index để liên kết với CURRENT_BATCH_DATA
     CURRENT_BATCH_DATA.forEach((row, index) => {
         if (typeof addDetailRow === 'function') {
-            addDetailRow(row); 
+            addDetailRow(row);
         }
     });
 }
@@ -1193,15 +1085,15 @@ function refreshForm() {
 function reverseDetailsRows() {
     // 1. Lấy phần thân bảng (Sử dụng getE helper nếu có, hoặc getElementById)
     const tbody = document.getElementById('detail-tbody');
-    
+
     if (!tbody || tbody.rows.length < 2) {
         // Nếu bảng không có hoặc chỉ có 0-1 dòng thì không cần đảo
-        return; 
+        return;
     }
 
     // 2. Chuyển đổi HTMLCollection sang Array để dùng hàm reverse()
     const rows = Array.from(tbody.rows);
-    
+
     // 3. Đảo ngược mảng
     rows.reverse();
 
@@ -1212,9 +1104,9 @@ function reverseDetailsRows() {
 
     // 5. QUAN TRỌNG: Đánh lại số thứ tự (STT) cột đầu tiên
     _reindexTableRows(tbody);
-    
+
     // (Optional) Hiệu ứng nháy màu để báo hiệu đã đảo xong
-    tbody.classList.add('flash-effect'); 
+    tbody.classList.add('flash-effect');
     setTimeout(() => tbody.classList.remove('flash-effect'), 500);
 }
 
@@ -1228,18 +1120,18 @@ function _reindexTableRows(tbodyObj) {
     for (let i = 0; i < rows.length; i++) {
         // 1. Cập nhật ID của thẻ tr
         rows[i].id = `row-${i + 1}`;
-        
+
         // 2. Cập nhật ô STT (thường là td đầu tiên)
         const firstCell = rows[i].cells[0];
-        if(firstCell) firstCell.innerText = (i + 1);
-        
+        if (firstCell) firstCell.innerText = (i + 1);
+
         // 3. Cập nhật tham số removeRow(idx) cho icon fa-times ở cuối hàng
         const deleteIcon = rows[i].querySelector('i.fa-times');
-        if(deleteIcon) {
+        if (deleteIcon) {
             // Cập nhật onclick attribute với giá trị idx mới
             deleteIcon.setAttribute('onclick', `removeRow(${i})`);
         }
-        
+
         // Nếu STT nằm trong input (trường hợp input hidden lưu order)
         // const inputOrder = rows[i].querySelector('.input-order');
         // if(inputOrder) inputOrder.value = i + 1;
@@ -1257,13 +1149,13 @@ function clearLocalCache() {
 
         log('✅ Local Cache đã được xóa thành công');
         logA('✅ Tất cả dữ liệu Local Cache đã được xóa!\n\nVui lòng reload trang để áp dụng thay đổi.');
-        
+        A.DB.stopNotificationsListener(); // Hủy tất cả subscription trước khi reload
         // Optional: Tự động reload trang
-        // setTimeout(() => location.reload(), 1000);
+        setTimeout(() => location.reload(), 1000);
     } catch (error) {
         console.error('❌ Lỗi khi xóa Local Cache:', error);
         logA('❌ Có lỗi xảy ra khi xóa Local Cache', 'error');
     }
-}  
+}
 
 

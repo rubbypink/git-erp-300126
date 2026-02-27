@@ -17,7 +17,7 @@ class ModalFull extends HTMLElement {
 
     init() {
         const title = this.getAttribute('title') || 'Modal Title';
-         this.showFooter = this.getAttribute('data-ft') !== 'false';
+        this.showFooter = this.getAttribute('data-ft') !== 'false';
 
         this.innerHTML = `
             <div id="dynamic-modal-full" class="modal fade" tabindex="-1" aria-hidden="true">
@@ -65,7 +65,7 @@ class ModalFull extends HTMLElement {
         if (btnResize) {
             btnResize.addEventListener('click', () => this._toggleModalSize());
         }
-        
+
     }
 
     _setupUI() {
@@ -73,11 +73,13 @@ class ModalFull extends HTMLElement {
             new window.DraggableSetup('dynamic-modal-full', { targetSelector: '.modal-dialog', handleSelector: '.modal-header' });
         }
         if (window.Resizable) {
-            new Resizable('dynamic-modal-full', { targetSelector: '.modal-content',
-                minWidth: 400, minHeight: 300 });
+            new Resizable('dynamic-modal-full', {
+                targetSelector: '.modal-content',
+                minWidth: 400, minHeight: 300
+            });
         }
         if (window.WindowMinimizer) {
-            new WindowMinimizer('dynamic-modal-full', {title: 'Data', btnSelector: '.btn-minimize'});
+            new WindowMinimizer('dynamic-modal-full', { title: 'Data', btnSelector: '.btn-minimize' });
         }
     }
 
@@ -111,12 +113,12 @@ class ModalFull extends HTMLElement {
             bodyEl.innerHTML = '';
             bodyEl.className = 'modal-body pt-0 overflow-auto';
         }
-        
+
         const titleEl = this.querySelector('.modal-title');
         if (titleEl) {
             titleEl.textContent = this.getAttribute('title') || 'Modal Title';
         }
-        
+
         console.log('[ModalFull] 🔄 Modal reset to default state');
     }
 
@@ -141,7 +143,7 @@ class ModalFull extends HTMLElement {
 
         const bodyEl = this.querySelector('.modal-body');
         const titleEl = this.querySelector('.modal-title');
-        
+
         if (titleEl) {
             titleEl.textContent = title;
         }
@@ -149,13 +151,13 @@ class ModalFull extends HTMLElement {
             bodyEl.innerHTML = '';
             return;
         }
-        
+
         // Xử lý content type
         let processedContent = htmlContent;
         if (htmlContent instanceof HTMLElement && htmlContent.tagName === 'TEMPLATE') {
             processedContent = htmlContent.content;
         }
-        
+
         const isFragment = processedContent instanceof DocumentFragment;
         const isElement = processedContent instanceof HTMLElement;
         const isString = typeof processedContent === 'string';
@@ -171,7 +173,7 @@ class ModalFull extends HTMLElement {
                 bodyEl.appendChild(processedContent.cloneNode(true));
             } else if (processedContent) {
                 bodyEl.innerHTML = String(processedContent);
-            }     
+            }
             console.log(`[ModalFull] ✏️ Content rendered with title: ${title}`);
         } catch (error) {
             console.error("Error setting modal content:", error);
@@ -198,14 +200,14 @@ class ModalFull extends HTMLElement {
         // Render content nếu có (modal đã sạch từ hide())
         if (htmlContent || title || !this.modal) {
             this.render(htmlContent, title);
-        } 
+        }
         if (saveHandler) this.setSaveHandler(saveHandler);
         if (resetHandler) this.setResetHandler(resetHandler);
         this.modal.show();
     }
 
     hide() {
-        this.modal?.hide();        
+        this.modal?.hide();
     }
 
     getSaveBtn() {
@@ -294,7 +296,7 @@ class ModalFull extends HTMLElement {
     _toggleModalSize() {
         const modalDialog = this.querySelector('#modalFullDialog');
         const btnResize = this.querySelector('#btnResizeModal');
-        
+
         if (!modalDialog || !btnResize) return;
 
         this.isFullscreen = !this.isFullscreen;
@@ -315,7 +317,7 @@ class ModalFull extends HTMLElement {
 
 customElements.define('at-modal-full', ModalFull);
 
-class OffcanvasMenu extends HTMLElement {
+export class OffcanvasMenu extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
@@ -356,7 +358,7 @@ class OffcanvasMenu extends HTMLElement {
         this._attachEvents();
         this._initHoverTrigger();
         this._initResizeHandle();
-        
+
         this.classList.remove('show');
     }
 
@@ -893,7 +895,7 @@ class OffcanvasMenu extends HTMLElement {
         this.dom.closeBtn.addEventListener('click', () => this.close());
         this.dom.btnReset.addEventListener('click', () => this._resetFilters());
 
-        
+
         this.dom.searchInput.addEventListener('input', (e) => {
             this.state.searchQuery = e.target.value.trim();
             this._dispatchUpdate();
@@ -962,22 +964,22 @@ class OffcanvasMenu extends HTMLElement {
         this.state.searchQuery = '';
         this.state.selectedStages.clear();
         this.state.selectedStages.add('all');
-        
+
         this.dom.checkboxes.forEach(c => {
             c.checked = (c.value === 'all');
         });
-        
+
         this._dispatchUpdate();
     }
 
     _test() {
         const val = this.shadowRoot.querySelector('#test-input')?.value || '';
-        
+
         if (!val) {
             log('Vui lòng nhập mã lệnh hoặc tên hàm', 'warning');
             return;
         }
-        
+
         try {
             const fn1 = new Function(`return (${val.trim()})`);
             fn1();
@@ -997,13 +999,13 @@ class OffcanvasMenu extends HTMLElement {
         // Đóng menu sidebar
         const offcanvas = bootstrap.Offcanvas.getInstance(this.shadowRoot.querySelector('#offcanvas-menu'));
         if (offcanvas) offcanvas.hide();
-    
+
         // Mở Modal Báo Cáo
         // Kiểm tra xem ModalFull đã được định nghĩa chưa, nếu chưa thì báo lỗi hoặc fallback
         const modal = document.querySelector('at-modal-full');
         if (modal) {
             // Set tiêu đề và hiển thị
-            
+
             // Gọi hàm show của Report Module
             // Lưu ý: Cần đảm bảo script logic_report.js đã được load
             if (window.ReportModule) {
@@ -1039,7 +1041,7 @@ class OffcanvasMenu extends HTMLElement {
     _togglePin() {
         this.state.isPinned = !this.state.isPinned;
         this.state.isHoverEnabled = !this.state.isPinned;
-        
+
         if (this.state.isPinned) {
             this.dom.btnPin.classList.add('active');
             this.dom.closeBtn.style.display = 'none';
@@ -1047,7 +1049,7 @@ class OffcanvasMenu extends HTMLElement {
             this.dom.btnPin.classList.remove('active');
             this.dom.closeBtn.style.display = '';
         }
-        
+
         this.dispatchEvent(new CustomEvent('pin-changed', {
             detail: { isPinned: this.state.isPinned },
             bubbles: true,
@@ -1055,8 +1057,8 @@ class OffcanvasMenu extends HTMLElement {
         }));
 
         log(
-            this.state.isPinned 
-                ? 'Menu được ghim - không tự động ẩn' 
+            this.state.isPinned
+                ? 'Menu được ghim - không tự động ẩn'
                 : 'Menu có thể tự động ẩn khi hover rời',
             'info'
         );
@@ -1068,7 +1070,7 @@ class OffcanvasMenu extends HTMLElement {
      */
     _toggleSide() {
         this.state.isRightSide = !this.state.isRightSide;
-        
+
         if (this.state.isRightSide) {
             this.classList.add('right-side');
             this.dom.btnToggleSide.classList.add('right-active');
@@ -1084,8 +1086,8 @@ class OffcanvasMenu extends HTMLElement {
         }));
 
         log(
-            this.state.isRightSide 
-                ? 'Sidebar chuyển sang bên phải' 
+            this.state.isRightSide
+                ? 'Sidebar chuyển sang bên phải'
                 : 'Sidebar chuyển sang bên trái',
             'info'
         );
@@ -1094,7 +1096,7 @@ class OffcanvasMenu extends HTMLElement {
     // =========================================================================
     // ★ 4. RESIZE HANDLE LOGIC (FIXED)
     // =========================================================================
-    
+
     /**
      * Initialize resize handle listeners.
      * Attach mousedown events to both left and right resize handles.
@@ -1102,11 +1104,11 @@ class OffcanvasMenu extends HTMLElement {
      */
     _initResizeHandle() {
         if (!this.dom.resizeHandleLeft || !this.dom.resizeHandleRight) return;
-        
+
         this.dom.resizeHandleLeft.addEventListener('mousedown', this._handleResizeStart);
         this.dom.resizeHandleRight.addEventListener('mousedown', this._handleResizeStart);
     }
-    
+
     /**
      * Handle resize start - initialize drag state and attach global listeners.
      * ★ FIX: Correct binding and property access
@@ -1116,26 +1118,26 @@ class OffcanvasMenu extends HTMLElement {
     _handleResizeStart(e) {
         e.preventDefault();
         e.stopPropagation();
-        
+
         // ★ FIX: Access 'this' correctly (bound in constructor)
         this.state.isResizing = true;
         this._resizeStartX = e.clientX;
         this._resizeStartWidth = this.state.menuWidth;
-    
+
         // Visual feedback
         this.dom.resizeHandleLeft?.classList.add('active');
         this.dom.resizeHandleRight?.classList.add('active');
-    
+
         // ★ FIX: Use .style.transition = 'none' NOT .transition('none')
         if (this.dom.wrapper) {
             this.dom.wrapper.style.transition = 'none';
         }
-    
+
         // ★ FIX: Attach with correct binding context
         document.addEventListener('mousemove', this._handleResizing, false);
         document.addEventListener('mouseup', this._handleResizeEnd, false);
     }
-    
+
     /**
      * Handle resizing - update menu width dynamically as user drags.
      * ★ FIX: Arrow function ensures 'this' binding is correct
@@ -1147,27 +1149,27 @@ class OffcanvasMenu extends HTMLElement {
         if (!this.state || !this.state.isResizing) {
             return;
         }
-    
+
         try {
             e.preventDefault();
-            
+
             const deltaX = e.clientX - this._resizeStartX;
             let newWidth = this._resizeStartWidth;
-            
+
             // ★ Correct direction calculation
             if (this.state.isRightSide) {
                 newWidth = this._resizeStartWidth - deltaX;
             } else {
                 newWidth = this._resizeStartWidth + deltaX;
             }
-    
+
             // Apply constraints
             newWidth = Math.max(this.state.minWidth, Math.min(newWidth, this.state.maxWidth));
-    
+
             // Update state and CSS
             this.state.menuWidth = newWidth;
             this.style.setProperty('--w-panel', `${newWidth}px`);
-    
+
             // Dispatch event
             this.dispatchEvent(new CustomEvent('resize-changed', {
                 detail: { width: newWidth },
@@ -1179,7 +1181,7 @@ class OffcanvasMenu extends HTMLElement {
             console.warn('Resize error (non-fatal):', err.message);
         }
     }
-    
+
     /**
      * Handle resize end - cleanup listeners and restore transitions.
      * ★ FIX: Proper cleanup with error handling
@@ -1192,29 +1194,29 @@ class OffcanvasMenu extends HTMLElement {
             if (this.state) {
                 this.state.isResizing = false;
             }
-    
+
             // Remove visual feedback
             this.dom.resizeHandleLeft?.classList.remove('active');
             this.dom.resizeHandleRight?.classList.remove('active');
-    
+
             // ★ FIX: Use .style.transition = '' to restore (empty string = restore CSS default)
             if (this.dom.wrapper) {
                 this.dom.wrapper.style.transition = '';
             }
-    
+
             // ★ FIX: Remove listeners with matching parameters
             document.removeEventListener('mousemove', this._handleResizing, false);
             document.removeEventListener('mouseup', this._handleResizeEnd, false);
-    
+
             // Save state
             this._saveResizeState();
-    
+
             log(`Menu width: ${this.state.menuWidth}px`, 'info');
         } catch (err) {
             console.warn('Resize end error (non-fatal):', err.message);
         }
     }
-    
+
     /**
      * Save resize state to localStorage for persistence.
      * @private
@@ -1228,11 +1230,11 @@ class OffcanvasMenu extends HTMLElement {
             console.warn('State save error:', err.message);
         }
     }
-    
+
     // =========================================================================
     // ★ 5. AUTO HIDE/SHOW TRIGGER LOGIC (ENSURE NO CONFLICTS)
     // =========================================================================
-    
+
     /**
      * Initialize hover trigger - add global mousemove listener for auto-show.
      * ★ IMPORTANT: This runs independently from resize handler
@@ -1242,7 +1244,7 @@ class OffcanvasMenu extends HTMLElement {
         this._hoverTriggerTime = null; // Track when cursor enters trigger zone
         document.addEventListener('mousemove', this._handleMouseMove, false);
     }
-    
+
     /**
      * Handle global mouse move - open menu when cursor near edge for at least 1s.
      * Only works when NOT pinned and NOT resizing.
@@ -1255,20 +1257,20 @@ class OffcanvasMenu extends HTMLElement {
         if (!this || !this.state || this.state.isResizing) {
             return;
         }
-    
+
         if (!this.state.isHoverEnabled) {
             return;
         }
-    
+
         try {
-            const triggerX = this.state.isRightSide 
-                ? window.innerWidth - this.state.triggerWidth 
+            const triggerX = this.state.isRightSide
+                ? window.innerWidth - this.state.triggerWidth
                 : this.state.triggerWidth;
-    
-            const isInTriggerZone = this.state.isRightSide 
+
+            const isInTriggerZone = this.state.isRightSide
                 ? e.clientX >= triggerX
                 : e.clientX <= triggerX;
-            
+
             if (isInTriggerZone) {
                 // Cursor entered trigger zone
                 if (!this._hoverTriggerTime) {
@@ -1287,7 +1289,7 @@ class OffcanvasMenu extends HTMLElement {
             console.warn('Hover trigger error (non-fatal):', err.message);
         }
     }
-    
+
     /**
      * Handle mouse leave from menu wrapper - close after delay and reset hover timer.
      * Only works when NOT pinned.
@@ -1297,27 +1299,27 @@ class OffcanvasMenu extends HTMLElement {
         if (!this.state || !this.state.isHoverEnabled) {
             return;
         }
-        
+
         // Reset hover trigger timer khi chuột rời menu
         this._hoverTriggerTime = null;
         this._isClosing = true;
-        
+
         setTimeout(() => {
             if (this._isClosing) {
                 this.close();
             }
         }, 1500);
     }
-    
+
     // =========================================================================
     // ★ 6. DISCONNECT - PROPER CLEANUP
     // =========================================================================
-    
+
     disconnectedCallback() {
         try {
             // Remove hover trigger
             document.removeEventListener('mousemove', this._handleMouseMove, false);
-            
+
             // Remove any active resize listeners
             document.removeEventListener('mousemove', this._handleResizing, false);
             document.removeEventListener('mouseup', this._handleResizeEnd, false);
@@ -1367,7 +1369,7 @@ class OffcanvasMenu extends HTMLElement {
         if (state.isPinned !== undefined) {
             this.state.isPinned = state.isPinned;
             this.state.isHoverEnabled = !state.isPinned;
-            
+
             if (state.isPinned) {
                 this.dom.btnPin.classList.add('active');
                 this.dom.closeBtn.style.display = 'none';
@@ -1376,15 +1378,15 @@ class OffcanvasMenu extends HTMLElement {
 
         if (state.isRightSide !== undefined) {
             this.state.isRightSide = state.isRightSide;
-            
+
             if (state.isRightSide) {
                 this.classList.add('right-side');
                 this.dom.btnToggleSide.classList.add('right-active');
             }
         }
 
-        if (state.menuWidth !== undefined && 
-            state.menuWidth >= this.state.minWidth && 
+        if (state.menuWidth !== undefined &&
+            state.menuWidth >= this.state.minWidth &&
             state.menuWidth <= this.state.maxWidth) {
             this.state.menuWidth = state.menuWidth;
             this.style.setProperty('--w-panel', `${state.menuWidth}px`);
@@ -1398,10 +1400,10 @@ if (!customElements.get('offcanvas-menu')) {
 }
 
 // AUTO INJECT ON STARTUP
-(function() {
+(function () {
     document.addEventListener('DOMContentLoaded', () => {
         const existingMenu = document.querySelector('offcanvas-menu');
-        
+
         if (!existingMenu) {
             const menu = document.createElement('offcanvas-menu');
             document.body.appendChild(menu);
@@ -1417,8 +1419,12 @@ if (!customElements.get('offcanvas-menu')) {
                 _updateMenuState({ menuWidth: e.detail.width });
             });
             // menu.toggleSide();
-        }        
+        }
     });
+    if (!getE('at-modal-full')) {
+        const modal = document.createElement('at-modal-full');
+        document.body.appendChild(modal);
+    }
 
     function _updateMenuState(updates) {
         const state = JSON.parse(localStorage.getItem('offcanvas-menu-state') || '{}');

@@ -108,7 +108,7 @@ class AtStatus extends HTMLElement {
     // 3. Callback chạy khi Component được gắn vào trang web
     connectedCallback() {
         this.render();
-        
+
         // Watch for child input value changes
         const childEl = this.querySelector('input, select, textarea');
         if (childEl) {
@@ -116,7 +116,7 @@ class AtStatus extends HTMLElement {
             childEl.addEventListener('input', () => this.render());
             childEl.addEventListener('blur', () => this.render());
         }
-        
+
         // Watch for data-value attribute changes on child
         const observer = new MutationObserver(() => this.render());
         observer.observe(this, { attributes: true, subtree: true, attributeFilter: ['status', 'data-value'] });
@@ -137,12 +137,12 @@ class AtStatus extends HTMLElement {
         // 3. .value of input/select/textarea
         // 4. Text content
         // 5. Default: 'new'
-        
+
         // 1. Nếu có attribute status được truyền -> dùng nó
         if (this.hasAttribute('status')) {
             return this.getAttribute('status');
         }
-        
+
         // 2. Tìm input/select/textarea con
         const childEl = this.querySelector('input, select, textarea');
         if (childEl) {
@@ -155,13 +155,13 @@ class AtStatus extends HTMLElement {
                 return childEl.value;
             }
         }
-        
+
         // 3. Lấy text content của element này (nếu không có child element)
         const allText = this.textContent?.trim() || '';
         if (allText && !childEl) {
             return allText;
         }
-        
+
         // 4. Fallback: default 'new'
         return 'new';
     }
@@ -169,15 +169,15 @@ class AtStatus extends HTMLElement {
     // ========== HELPER: Chuyển đổi status Việt → Anh (Case-insensitive) ==========
     _mapStatus(status) {
         if (!status) return 'new';
-        
+
         // Normalize: trim whitespace
         const normalized = status.trim();
-        
+
         // 1. Try direct mapping first (exact match)
         if (STATUS_VI_TO_EN[normalized]) {
             return STATUS_VI_TO_EN[normalized];
         }
-        
+
         // 2. Try case-insensitive match (không phân biệt hoa/thường)
         const lowerStatus = normalized.toLowerCase();
         for (const [key, value] of Object.entries(STATUS_VI_TO_EN)) {
@@ -185,7 +185,7 @@ class AtStatus extends HTMLElement {
                 return value;
             }
         }
-        
+
         // 3. Return as-is (convert to lowercase) nếu không tìm thấy
         return lowerStatus;
     }
@@ -194,7 +194,7 @@ class AtStatus extends HTMLElement {
     render() {
         // Auto-detect status từ attribute, child input/select value, hoặc text content
         let status = this._autoDetectStatus();
-        
+
         // Lấy label từ text content của child elements hoặc status
         let label = status || 'N/A';
 

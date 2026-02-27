@@ -48,8 +48,8 @@ const HEADER_DICT = [
   { k: 'phone', t: 'Số ĐT' }, { k: 'email', t: 'Email' },
   { k: 'checkin', t: 'Ngày Đi' },
   { k: 'checkout', t: 'Ngày Về' },
-  { k: 'paymentmethod', t: 'HTTT'}, { k: 'refcode', t: 'Mã Xác Nhận' },
-  { k: 'supplierid', t: 'Nhà CC'}, { k: 'supplier', t: 'Nhà CC' },{ k: 'debtbalance', t: 'Phải Trả NCC' },
+  { k: 'paymentmethod', t: 'HTTT' }, { k: 'refcode', t: 'Mã Xác Nhận' },
+  { k: 'supplierid', t: 'Nhà CC' }, { k: 'supplier', t: 'Nhà CC' }, { k: 'debtbalance', t: 'Phải Trả NCC' },
 ];
 
 // Library Load Status Cache
@@ -925,18 +925,18 @@ export const Utils = {
       try {
         if (!target) {
           console.warn('onEvent', `Target null for "${eventNames}"`);
-          return () => {};
+          return () => { };
         }
         if (typeof target === 'string') els = document.querySelectorAll(target);
         else if (target.nodeType) els = [target];
         else if (target.length) els = target;
       } catch (err) {
         console.error("onEvent Selector error: " + err);
-        return () => {};
+        return () => { };
       }
     }
 
-    if (!els.length) return () => {};
+    if (!els.length) return () => { };
 
     const events = eventNames.split(' ').filter(e => e.trim());
     const { delegate, ...nativeOpts } = (typeof options === 'object' ? options : {});
@@ -1638,6 +1638,7 @@ export const Utils = {
 
   reloadPage(url) {
     if (!url) {
+      A.DB.stopNotificationsListener(); // Hủy tất cả subscription trước khi reload
       window.location.reload();
     } else {
       window.location.href = url;

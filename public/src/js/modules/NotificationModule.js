@@ -28,7 +28,11 @@ class NotificationModule {
     #firstRenderDone = false;
 
     constructor() {
-        this.notifications = [];
+        // ★ Pre-load cache NGAY TẠI ĐÂY để tránh race condition:
+        //   Khi Firestore onSnapshot bắn 'new-notifications-arrived' TRƯỚC KHI init() chạy,
+        //   dedup check (this.notifications.some) sẽ hoạt động đúng và giữ nguyên isRead state.
+        const cached = this.#loadFromStorage();
+        this.notifications = cached.items;
         this.listener = null;
         this.db = null;
         // ★ KHÔNG gọi init() ở đây vì CURRENT_USER chưa sẵn sàng khi module load.
@@ -40,17 +44,14 @@ class NotificationModule {
     /**
      * Bước 1: Khởi tạo lắng nghe Realtime
      */
-    init () {
+    init() {
         if (!CURRENT_USER || this._initialized) return;
         if (!this.db) this.db = A.DB?.db || window.firebase.firestore();
 
         try {
-            // ★ Tải cache từ Storage trước để hiển thị ngay lập tức
-            this._initialized = true; // Đảm bảo trạng thái chưa initialized khi load cache
-            this._log('🔄 Loading notifications from storage...');
-            const cached = this.#loadFromStorage();
-            this.notifications = cached.items;
-            this.#unreadCount = cached.unreadCount;
+            // ★ Cache đã được pre-load trong constructor → chỉ cần sort + render.
+            this._initialized = true;
+            this._log('🔄 Initializing notifications from pre-loaded cache...');
 
             // ★ Sau snapshot ĐẦU TIÊN: sort lại, tính unread, render toàn bộ
             if (!this.#firstRenderDone) {
@@ -82,13 +83,15 @@ class NotificationModule {
     }
 
     /**
-     * Bước 2: Xử lý thông báo đến.
-     * - Khi init (lần đầu): chỉ tích lũy vào mảng, init() sẽ render toàn bộ sau.
-     * - Khi có thông báo mới từ server: prepend item vào UI, cập nhật badge.
+     * Bước 2: Xử lý thông báo đến – chỉ tích lũy vào mảng, không tự render.
+     * Caller chịu trách nhiệm gọi render() sau khi xử lý toàn bộ batch.
+     *
+     * @param {Object} notifyData - Dữ liệu thông báo từ server/event
+     * @returns {boolean} true nếu notification mới được thêm vào, false nếu đã tồn tại (dedup)
      */
-    async #handleIncoming(notifyData) {
+    #handleIncoming(notifyData) {
         // Kiểm tra trùng lặp
-        if (this.notifications.some(n => n.id === notifyData.id)) return;
+        if (this.notifications.some(n => n.id === notifyData.id)) return false;
 
         // Giữ trạng thái isRead từ server nếu có, mặc định false
         const newNotify = {
@@ -98,15 +101,8 @@ class NotificationModule {
         };
 
         this.notifications.unshift(newNotify);
-        this._saveToStorage();
-
-        // ★ Nếu chưa render lần đầu → chỉ tích lũy, dừng tại đây
-        if (!this.#firstRenderDone) return;
-
-        // ★ Thông báo mới từ server: thêm item vào đầu danh sách UI
-        if (!newNotify.isRead) this.#unreadCount++;
-        NotificationPanelRenderer.appendItem(newNotify, this.#unreadCount);
-        console.log(`🔔 Notify Received: ${newNotify.title}`);
+        console.log(`🔔 Notify Queued: ${newNotify.title}`);
+        return true;
     }
 
     // =========================================================================
@@ -138,7 +134,24 @@ class NotificationModule {
         window.addEventListener('new-notifications-arrived', (e) => {
             const newNotifs = e.detail || [];
             this._log(`📢 ${newNotifs.length} new notification(s) arrived via event`);
-            newNotifs.forEach(notif => this.#handleIncoming(notif));
+
+            // ★ FIX Bug 1: Xử lý toàn bộ batch trước, sau đó mới render MỘT LẦN.
+            // Tránh việc appendItem() từng item riêng lẻ gây mất thông báo khi có race condition.
+            let addedCount = 0;
+            newNotifs.forEach(notif => {
+                if (this.#handleIncoming(notif)) addedCount++;
+            });
+
+            if (addedCount > 0) {
+                this._saveToStorage();
+                this._log(`✅ ${addedCount} new notification(s) added — re-rendering full list`);
+            }
+
+            // ★ Luôn render lại toàn bộ để đảm bảo UI đồng bộ với this.notifications
+            if (this.#firstRenderDone) {
+                this.#unreadCount = this.notifications.filter(n => !n.isRead).length;
+                this.render();
+            }
         });
     }
 
@@ -195,10 +208,15 @@ class NotificationModule {
     markAsRead(id) {
         const index = this.notifications.findIndex(n => n.id === id);
 
-        if (index !== -1) {
+        if (index !== -1 && !this.notifications[index].isRead) {
             this.notifications[index].isRead = true;
-            this.#unreadCount = this.#unreadCount - 1;
+            // ★ Tính lại từ nguồn gốc, tránh giá trị âm khi có lệch trạng thái
+            this.#unreadCount = this.notifications.filter(n => !n.isRead).length;
             this._saveToStorage();
+
+            // ★ FIX Bug 2: Cập nhật trực tiếp DOM item đó (xoá unread class + blue dot)
+            // thay vì chỉ cập nhật badge mà bỏ qua visual của item.
+            NotificationPanelRenderer.markItemAsRead(id);
             NotificationPanelRenderer.updateBadges(this.#unreadCount);
         }
     }
@@ -210,7 +228,7 @@ class NotificationModule {
                 changed = true;
             }
         });
-        
+
         if (changed) {
             this._saveToStorage();
             this.render();
@@ -266,7 +284,7 @@ class NotificationModule {
         this.notifications = [];
         this._saveToStorage();
         this._showNotificationBadge();
-        this.render(); 
+        this.render();
         this._log('✓ All notifications cleared', 'info');
     }
 }

@@ -10,16 +10,16 @@
 export default class ErpFooterMenu {
     constructor(containerId = 'erp-footer-menu-container') {
         this.containerId = containerId;
-        this.buttons = []; 
+        this.buttons = [];
         this.isMobileMenuOpen = false;
         this.role = 'guest';
-        
+
         // Bind context để chống Memory Leak
         this._boundHandleClickOutside = this._handleClickOutside.bind(this);
-        
+
         this.config = {
             height: '3rem',
-            zIndex: '1030', 
+            zIndex: '1030',
             bgColor: `var(--bs-body-bg, #ffffff)`,
             boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.05)'
         };
@@ -35,10 +35,10 @@ export default class ErpFooterMenu {
         try {
             this._injectStyles();
             this._renderBaseLayout();
-            
+
             await new Promise(resolve => requestAnimationFrame(resolve));
             this._ensureInViewport();
-            
+
             document.addEventListener('click', this._boundHandleClickOutside);
             if (this.role) renderRoleBasedFooterButtons(this.role, this);
         } catch (error) {
@@ -50,7 +50,7 @@ export default class ErpFooterMenu {
         try {
             document.removeEventListener('click', this._boundHandleClickOutside);
             const container = document.getElementById(this.containerId);
-            if (container) container.remove(); 
+            if (container) container.remove();
             const style = document.getElementById('erp-footer-styles');
             if (style) style.remove();
             this.buttons = [];
@@ -59,9 +59,9 @@ export default class ErpFooterMenu {
                 this._footerResizeObserver.disconnect();
                 this._footerResizeObserver = null;
             }
-            
+
             document.documentElement.style.removeProperty('--footer-actual-height');
-            
+
         } catch (error) {
             console.error('[9 Trip ERP] Lỗi khi hủy Footer Menu Module:', error);
         }
@@ -70,14 +70,14 @@ export default class ErpFooterMenu {
     // ==========================================
     // WIDGET MODE SUPPORT (Mobile Icon + Drag)
     // ==========================================
-    
+
     /**
      * Setup Widget Icon - Drag & Drop behavior
      */
     _setupWidgetIcon() {
         const btn = document.getElementById('erp-f-mobile-widget-icon');
         if (!btn) return;
-        
+
         let isDragging = false;
         let startX = 0;
         let startY = 0;
@@ -90,15 +90,15 @@ export default class ErpFooterMenu {
             isDragging = true;
             startX = e.clientX;
             startY = e.clientY;
-            
+
             const rect = btn.getBoundingClientRect();
             const computedStyle = window.getComputedStyle(btn);
-            
+
             // Determine current side based on computed values
             const leftVal = computedStyle.left;
             const rightVal = computedStyle.right;
             currentSide = (leftVal !== 'auto' && leftVal !== 'unset') ? 'left' : 'right';
-            
+
             // Set start position based on current side
             if (currentSide === 'left') {
                 startLeft = parseFloat(computedStyle.left);
@@ -107,17 +107,17 @@ export default class ErpFooterMenu {
                 startRight = window.innerWidth - rect.right;
                 startBottom = window.innerHeight - rect.bottom;
             }
-            
+
             btn.style.transition = 'none';
             btn.style.cursor = 'grabbing';
         };
 
         const handleMouseMove = (e) => {
             if (!isDragging) return;
-            
+
             const deltaX = e.clientX - startX;
             const deltaY = e.clientY - startY;
-            
+
             // Only update the property corresponding to current side
             if (currentSide === 'left') {
                 btn.style.left = (startLeft + deltaX) + 'px';
@@ -129,26 +129,26 @@ export default class ErpFooterMenu {
 
         const handleMouseUp = (e) => {
             if (!isDragging) return;
-            
+
             const isMiniClick = Math.abs(e.clientX - startX) < 5 && Math.abs(e.clientY - startY) < 5;
-            
+
             isDragging = false;
             btn.style.cursor = 'grab';
-            
+
             if (isMiniClick) {
                 // Mini-click: Toggle dropup ✓
                 e.stopPropagation();
                 this._toggleWidgetDropup();
                 return;
             }
-            
+
             // Drag: Snap to nearest edge
             const rect = btn.getBoundingClientRect();
             const distToLeft = rect.left;
             const distToRight = window.innerWidth - rect.right;
-            
+
             btn.style.transition = `all 0.3s ease`;
-            
+
             if (distToLeft < distToRight) {
                 // Snap to left
                 btn.style.left = '20px';
@@ -160,7 +160,7 @@ export default class ErpFooterMenu {
                 btn.style.left = 'auto';
                 currentSide = 'right';
             }
-            
+
             setTimeout(() => {
                 btn.style.transition = '';
             }, 300);
@@ -176,16 +176,16 @@ export default class ErpFooterMenu {
             const touch = e.touches[0];
             handleMouseDown({ clientX: touch.clientX, clientY: touch.clientY });
         });
-        
+
         document.addEventListener('touchmove', (e) => {
             if (!isDragging) return;
             const touch = e.touches[0];
             handleMouseMove({ clientX: touch.clientX, clientY: touch.clientY });
         });
-        
+
         document.addEventListener('touchend', (e) => {
             const touch = e.changedTouches[0];
-            handleMouseUp({ clientX: touch.clientX, clientY: touch.clientY, stopPropagation: () => {} });
+            handleMouseUp({ clientX: touch.clientX, clientY: touch.clientY, stopPropagation: () => { } });
         });
     }
 
@@ -197,7 +197,7 @@ export default class ErpFooterMenu {
         const widgetBtn = document.getElementById('erp-f-mobile-widget-icon');
         const regularBtn = document.getElementById('erp-f-mobile-trigger');
         const dropupMenu = document.getElementById('erp-f-mobile-dropup');
-        
+
         if (!dropupMenu || !widgetBtn || !regularBtn) return;
 
         // Close dropup when clicking outside (works for both regular & widget mode)
@@ -205,7 +205,7 @@ export default class ErpFooterMenu {
             const isDropupOpen = dropupMenu.classList.contains('active');
             const isClickOnButton = regularBtn.contains(e.target) || widgetBtn.contains(e.target);
             const isClickOnMenu = dropupMenu.contains(e.target);
-            
+
             // Chỉ đóng nếu click ở ngoài buttons và dropup menu
             if (isDropupOpen && !isClickOnMenu) {
                 this._toggleWidgetDropup();
@@ -226,8 +226,8 @@ export default class ErpFooterMenu {
      */
     _loadWidgetModePreference() {
         // Only load widget mode on mobile (max-width: 991px)
-        if (window.innerWidth >= 992) return; 
-        
+        if (window.innerWidth >= 992) return;
+
         const preference = localStorage.getItem('erp-footer-widget-mode');
         if (preference === 'true') {
             this._setWidgetMode(true);
@@ -244,10 +244,10 @@ export default class ErpFooterMenu {
             console.warn('[ERP Footer] Widget mode không được phép trên desktop');
             return;
         }
-        
+
         const container = document.getElementById(this.containerId);
         const body = document.body;
-        
+
         if (isWidgetMode) {
             container.classList.add('erp-footer-widget-mode');
             body.classList.add('erp-footer-widget-mode');
@@ -422,11 +422,11 @@ export default class ErpFooterMenu {
             e.stopPropagation();
             this._toggleMobileMenu();
         });
-        
+
         // Widget Icon Events
         this._setupWidgetIcon();
         this._setupWidgetDropup();
-        
+
         // Load widget mode from localStorage
         this._loadWidgetModePreference();
         this._syncHeightToCSS();
@@ -435,7 +435,7 @@ export default class ErpFooterMenu {
     _syncHeightToCSS() {
         const container = document.getElementById(this.containerId);
         if (!container) return;
-    
+
         const update = () => {
             const h = container.getBoundingClientRect().height;
             document.documentElement.style.setProperty(
@@ -443,10 +443,10 @@ export default class ErpFooterMenu {
                 h > 0 ? `${h + 4}px` : '0px'
             );
         };
-    
+
         // Chạy ngay lần đầu
         update();
-    
+
         // Theo dõi khi footer thay đổi kích thước (widget mode, responsive, v.v.)
         this._footerResizeObserver = new ResizeObserver(update);
         this._footerResizeObserver.observe(container);
@@ -456,7 +456,7 @@ export default class ErpFooterMenu {
         const container = document.getElementById(this.containerId);
         if (container && container.getBoundingClientRect().bottom > window.innerHeight) {
             container.style.paddingBottom = 'env(safe-area-inset-bottom)';
-            container.style.bottom = '0px'; 
+            container.style.bottom = '0px';
         }
     }
 
@@ -468,7 +468,7 @@ export default class ErpFooterMenu {
     _handleClickOutside(event) {
         const dropup = document.getElementById('erp-f-mobile-dropup');
         const mobileContainer = document.querySelector('.erp-footer-mobile');
-        
+
         // Close menu if clicking outside and menu is open
         if (dropup.classList.contains('active') && mobileContainer && !mobileContainer.contains(event.target)) {
             dropup.classList.remove('active');
@@ -478,7 +478,7 @@ export default class ErpFooterMenu {
     addButton(btnConfig) {
         try {
             const { id, label, iconClass = '', btnClass = 'btn-primary', callback, attributes = {} } = btnConfig;
-            const safeLabel = label || ''; 
+            const safeLabel = label || '';
             if (!id || typeof callback !== 'function') throw new Error(`Thiếu id/callback cho nút: ${safeLabel || id}`);
 
             this.buttons.push(btnConfig);
@@ -521,7 +521,7 @@ export default class ErpFooterMenu {
 export function renderRoleBasedFooterButtons(userRole, footerInstance) {
     try {
         if (userRole === 'acc' || userRole === 'acc_thenice') return; // Tạm ẩn Footer Menu cho kế toán (theo yêu cầu)
-        console.log(`[9 Trip ERP] Đang load Footer Menu cho Role: ${userRole}`);
+
 
         // 1. Chuẩn hóa Role đầu vào (Chống lỗi type mismatch)
         const currentRole = (userRole || CURRENT_USER?.role || 'guest').toLowerCase();
@@ -543,12 +543,12 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
                 id: 'btn-admin-tools', label: '', iconClass: 'fas fa-tools', btnClass: 'btn-secondary admin-only',
                 callback: () => { A.AdminConsole.openAdminSettings(); },
                 // callback: () => { A.UI.renderForm(null, 'form-admin'); },
-                attributes: { 'title': 'Công cụ Admin'},
+                attributes: { 'title': 'Công cụ Admin' },
             },
             // -- SALES --
             {
                 id: 'btn-new-bk', label: 'Tạo Booking', iconClass: 'fa-solid fa-plus-circle', btnClass: 'btn-primary sales-only',
-                callback: () => { if(typeof activateTab === 'function') activateTab('tab-form'); },
+                callback: () => { if (typeof activateTab === 'function') activateTab('tab-form'); },
                 attributes: { 'data-bs-target': '#tab-form', 'data-ontabs': '1 3 4' }
             },
             {
@@ -557,18 +557,18 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
             },
             {
                 id: 'btn-create-contract', label: 'Tạo Hợp Đồng', iconClass: 'fa-solid fa-print', btnClass: 'btn-warning line-clamp-2 sales-only',
-                callback: () => { if(typeof createContract === 'function') createContract(); },
+                callback: () => { if (typeof createContract === 'function') createContract(); },
                 attributes: { 'data-ontabs': '2 4' }
             },
             {
                 id: 'btn-delete-form', label: 'Hủy Booking', iconClass: 'fa-solid fa-trash', btnClass: 'btn-danger sales-only',
-                callback: () => { if(typeof logA === 'function') logA('CẢNH BÁO: Hủy Booking?', 'danger', deleteForm); },
+                callback: () => { if (typeof logA === 'function') logA('CẢNH BÁO: Hủy Booking?', 'danger', deleteForm); },
                 attributes: { 'data-ontabs': '2' }
             },
             // -- OPERATOR --
             {
                 id: 'btn-request-rates', label: 'Gửi Yêu Cầu Báo Giá', iconClass: 'fa-solid fa-palette', btnClass: 'btn-primary op-only',
-                callback: () => { if(typeof PartnerMailModule !== 'undefined') PartnerMailModule.open(); }
+                callback: () => { if (typeof PartnerMailModule !== 'undefined') PartnerMailModule.open(); }
             },
             {
                 id: 'btn-hotel-rate-plans', label: 'Quản lý Giá Hotel', iconClass: 'fa-solid fa-triangle-exclamation', btnClass: 'btn-primary op-only',
@@ -579,49 +579,49 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
                         modal = document.createElement('at-modal-full');
                         document.body.appendChild(modal);
                     }
-                    
+
                     modal.render(null, 'Quản lý Giá Phòng');
                     modal.setFooter?.(false);
-                    
+
                     // ★ Gọi static init() - tự động tạo hoặc reuse instance (dùng cache)
                     // Không cleanup khi close → instance + cache sẽ tồn tại
                     await A.HotelPriceController.init('dynamic-modal-full-body');
-                    
+
                     modal.show();
-                 }                
+                }
             },
             {
                 id: 'btn-service-rate-plans', label: 'Quản lý Giá Dịch Vụ', iconClass: 'fa-solid fa-plus-circle', btnClass: 'btn-primary op-only',
-                callback: async () => { 
+                callback: async () => {
                     let modal = document.querySelector('at-modal-full');
                     if (!modal) {
                         console.warn('[EventManager] Modal not found, creating...');
                         modal = document.createElement('at-modal-full');
                         document.body.appendChild(modal);
                     }
-                                   
+
                     modal.render(null, 'Quản lý Giá Dịch Vụ');
                     modal.setFooter?.(false);
                     // ★ Gọi static init() - tự động tạo hoặc reuse instance (dùng cache)
                     // Không cleanup khi close → instance + cache sẽ tồn tại
                     await A.ServicePriceController.init('dynamic-modal-full-body');
-                    modal.show(); 
+                    modal.show();
                 }
             },
             // -- COMMON (Nút dùng chung, không giới hạn quyền) --
             {
                 id: 'btn-save-batch', label: 'Lưu Theo (List)', iconClass: 'fa-solid fa-check-double', btnClass: 'btn-warning fw-bold d-none line-clamp-2',
-                callback: () => { if(typeof saveBatchDetails === 'function') saveBatchDetails(); },
+                callback: () => { if (typeof saveBatchDetails === 'function') saveBatchDetails(); },
                 attributes: { 'data-ontabs': '' }
             },
             {
                 id: 'btn-save-form', label: 'Lưu Booking', iconClass: 'fa-solid fa-save', btnClass: 'btn-success',
-                callback: () => { if(typeof saveForm === 'function') saveForm(); },
+                callback: () => { if (typeof saveForm === 'function') saveForm(); },
                 attributes: { 'data-ontabs': '2' }
             },
             {
                 id: 'btn-reset-form', label: 'Xóa Form', iconClass: 'fa-solid fa-rotate', btnClass: 'btn-danger',
-                callback: () => { if(typeof logA === 'function') logA('Xóa hết dữ liệu vừa nhập ?', 'warning', refreshForm); },
+                callback: () => { if (typeof logA === 'function') logA('Xóa hết dữ liệu vừa nhập ?', 'warning', refreshForm); },
                 attributes: { 'data-ontabs': '2' }
             },
             // -- WIDGET MODE TOGGLE (Mobile only) --
@@ -644,7 +644,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
             if (currentRole === 'admin') return true;
 
             const btnClass = btn.btnClass || '';
-            
+
             // Kiểm tra xem nút này có bị gán class giới hạn quyền nào không (vd: có chứa 'sales-only' hay 'op-only' không?)
             const hasRoleRestriction = allRestrictedClasses.some(restrictedClass => btnClass.includes(restrictedClass));
 

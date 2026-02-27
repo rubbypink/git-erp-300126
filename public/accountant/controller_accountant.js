@@ -2,6 +2,7 @@
 // ===================================================================
 // IMPORTS (v9 Modular ES6)
 // ===================================================================
+import NotificationManager from '../src/js/modules/NotificationModule.js';
 import { getNewData, migrateBookingTransactions, auditTransactionsChecking } from './accountant_logic.js';
 
 // ===================================================================
@@ -25,7 +26,7 @@ function removeVietnameseTones(str) {
     str = str.replace(/Ỳ|Ý|Ỵ|Ỷ|Ỹ/g, "Y");
     str = str.replace(/Đ/g, "D");
     // Some system encode vietnamese combining accent as individual utf-8 characters
-    str = str.replace(/\u0300|\u0301|\u0303|\u0309|\u0323/g, ""); 
+    str = str.replace(/\u0300|\u0301|\u0303|\u0309|\u0323/g, "");
     str = str.replace(/\u02C6|\u0306|\u031B/g, ""); // ˆ ̆ ̛  Â, Ê, Ă, Ơ, Ư
     // Remove extra spaces
     str = str.replace(/ + /g, " ");
@@ -85,7 +86,7 @@ class AccountantController {
 
     async init() {
         console.log("Accountant Module: Initializing...");
-        
+
         // Fix #3: Đợi DOM load xong mới cache và bind event
         // Nếu file js được load async, có thể body chưa render xong
         if (document.readyState === 'loading') {
@@ -117,7 +118,7 @@ class AccountantController {
         try {
             let userRole = (CURRENT_USER && CURRENT_USER.role) ? CURRENT_USER.role : 'acc';
             if (userRole === 'admin') {
-                if(confirm("Bạn đang đăng nhập với quyền admin. Bạn có muốn xem dữ liệu của The Nice Hotel không? (Chọn 'Cancel' để xem dữ liệu 9 Trip ERP)")) {
+                if (confirm("Bạn đang đăng nhập với quyền admin. Bạn có muốn xem dữ liệu của The Nice Hotel không? (Chọn 'Cancel' để xem dữ liệu 9 Trip ERP)")) {
                     this.setupEntityAccess('acc_thenice');
                 } else {
                     this.setupEntityAccess('acc');
@@ -125,16 +126,16 @@ class AccountantController {
             } else {
                 this.setupEntityAccess(userRole);
             }
-            
+
 
             this.cacheDom();
             this.bindEvents(); // Bind event ngay khi có DOM
 
             await this.refreshData(); // Sau đó mới load data
-            
+
             // Set default date picker values
             this.updateDatePickerUI();
-            
+
             console.log(`Accountant Module: Ready (${this.currentEntity})`);
         } catch (error) {
             console.error("Accountant Init Error:", error);
@@ -145,10 +146,10 @@ class AccountantController {
         const selector = document.getElementById('acc-entity-select');
         if (role === 'acc_thenice') {
             this.currentEntity = 'thenice';
-            if(selector) { selector.value = 'thenice'; selector.disabled = true; }
+            if (selector) { selector.value = 'thenice'; selector.disabled = true; }
         } else {
             this.currentEntity = '9trip';
-            if(selector) selector.value = '9trip';
+            if (selector) selector.value = '9trip';
         }
         this.currentTransCol = this.entityConfig[this.currentEntity].trans || 'transactions';
         this.currentFundCol = this.entityConfig[this.currentEntity].fund || 'fund_accounts';
@@ -161,10 +162,10 @@ class AccountantController {
             netBalance: document.getElementById('d-net-balance'),
             totalIn: document.getElementById('d-total-in'),
             totalOut: document.getElementById('d-total-out'),
-            
+
             tableBody: document.getElementById('acc-table-body'),
             showingCount: document.getElementById('acc-showing-count'),
-            
+
             // Filters
             filterPeriod: document.getElementById('acc-filter-period'),
             filterStart: document.getElementById('acc-filter-start'),
@@ -174,7 +175,7 @@ class AccountantController {
             customDateRow: document.getElementById('acc-custom-date-row'),
             filterSummary: document.getElementById('acc-filter-summary'),
             btnApplyFilter: document.getElementById('btn-apply-filter'), // Cần ID này trong HTML
-            
+
             globalSearch: document.getElementById('acc-global-search')
         };
     }
@@ -183,11 +184,10 @@ class AccountantController {
 
     async getData(collectionName) {
         // Luôn fetch mới nhất để đảm bảo tính đúng đắn của kế toán
-        // Có thể cache nhẹ nếu cần, nhưng kế toán nên ưu tiên real-time
+        // loadCollections viết thẳng vào APP_DATA và trả về số docs đã tải
         console.log(`Fetching data for ${collectionName}...`);
-        const data = await (window.A && window.A.DB ? window.A.DB.loadCollection(collectionName) : []);
-        if (window.A && A.DATA) A.DATA[collectionName] = data;
-        return data;
+        if (window.A && window.A.DB) await window.A.DB.loadCollections(collectionName, { forceNew: true });
+        return APP_DATA?.[collectionName] ?? {};
     }
 
     async refreshData() {
@@ -196,10 +196,10 @@ class AccountantController {
                 this.getData(this.currentFundCol),
                 this.getData(this.currentTransCol)
             ]);
-            
+
             this.funds = fundsData || [];
             this.transactions = transData || [];
-            
+
             // Sort: Mới nhất lên đầu (theo created_at)
             this.transactions.sort((a, b) => new Date(b.created_at || b.transaction_date) - new Date(a.created_at || a.transaction_date));
 
@@ -224,7 +224,7 @@ class AccountantController {
             totalBalance += balance;
             const icon = fund.id === 'cash' ? '<i class="fas fa-money-bill-wave text-success me-2"></i>' : '<i class="fas fa-university text-primary me-2"></i>';
             const name = fund.name || fund.id || 'Quỹ ẩn';
-            
+
             html += `
                 <div class="d-flex justify-content-between align-items-center mb-2 p-2 border-bottom border-light">
                     <div class="d-flex align-items-center small">
@@ -242,18 +242,18 @@ class AccountantController {
     applyFiltersAndRender() {
         // Fix #2: Logic bộ lọc
         this.filterState.period = this.els.filterPeriod ? this.els.filterPeriod.value : 'month';
-        
+
         // Lấy khoảng ngày chuẩn
         const dateRange = this.getDateRange(this.filterState.period);
-        
+
         // Update lại giá trị input date để user thấy
         if (dateRange && this.filterState.period !== 'custom') {
-            if(this.els.filterStart) this.els.filterStart.value = dateRange.start;
-            if(this.els.filterEnd) this.els.filterEnd.value = dateRange.end;
+            if (this.els.filterStart) this.els.filterStart.value = dateRange.start;
+            if (this.els.filterEnd) this.els.filterEnd.value = dateRange.end;
         } else if (this.filterState.period === 'custom') {
-             // Nếu là custom, lấy giá trị từ input
-             dateRange.start = this.els.filterStart.value;
-             dateRange.end = this.els.filterEnd.value;
+            // Nếu là custom, lấy giá trị từ input
+            dateRange.start = this.els.filterStart.value;
+            dateRange.end = this.els.filterEnd.value;
         }
 
         const filtered = this.transactions.filter(item => {
@@ -290,10 +290,10 @@ class AccountantController {
         });
         const net = totalIn - totalOut;
 
-        if(this.els.totalIn) this.els.totalIn.innerText = formatCurrency(totalIn);
-        if(this.els.totalOut) this.els.totalOut.innerText = formatCurrency(totalOut);
-        
-        if(this.els.netBalance) {
+        if (this.els.totalIn) this.els.totalIn.innerText = formatCurrency(totalIn);
+        if (this.els.totalOut) this.els.totalOut.innerText = formatCurrency(totalOut);
+
+        if (this.els.netBalance) {
             this.els.netBalance.innerText = (net >= 0 ? '+' : '-') + formatCurrency(Math.abs(net));
             this.els.netBalance.className = `h4 mb-0 fw-bold ${net >= 0 ? 'text-success' : 'text-danger'}`;
         }
@@ -314,10 +314,10 @@ class AccountantController {
             const sign = isIn ? '+' : '-';
             const typeIcon = item.type === 'IN' ? '📥' : '📤';
             const fundName = this.funds.find(f => f.id === item.fund_source)?.name || item.fund_source || '-';
-            
+
             let statusBadge = '<span class="badge bg-secondary">Khác</span>';
-            if(item.status === 'Completed') statusBadge = '<span class="badge bg-success-subtle text-success">✅ Hoàn thành</span>';
-            else if(item.status === 'Pending') statusBadge = '<span class="badge bg-warning-subtle text-warning">⏳ Chờ duyệt</span>';
+            if (item.status === 'Completed') statusBadge = '<span class="badge bg-success-subtle text-success">✅ Hoàn thành</span>';
+            else if (item.status === 'Pending') statusBadge = '<span class="badge bg-warning-subtle text-warning">⏳ Chờ duyệt</span>';
 
             return `
                 <tr role="button" onclick="window.AccountantCtrl.openEditModal('${item.type}', '${item.id}')" class="text-nowrap">
@@ -381,10 +381,10 @@ class AccountantController {
         if (this.els.globalSearch) {
             this.els.globalSearch.addEventListener('input', (e) => {
                 // Debounce simple: Clear timeout cũ
-                if(this._searchTimeout) clearTimeout(this._searchTimeout);
+                if (this._searchTimeout) clearTimeout(this._searchTimeout);
                 this._searchTimeout = setTimeout(() => {
-                     this.filterState.keyword = e.target.value;
-                     this.applyFiltersAndRender();
+                    this.filterState.keyword = e.target.value;
+                    this.applyFiltersAndRender();
                 }, 300);
             });
         }
@@ -398,8 +398,8 @@ class AccountantController {
 
         switch (period) {
             case 'today': start = now; end = now; break;
-            case 'week': 
-                const day = now.getDay() || 7; 
+            case 'week':
+                const day = now.getDay() || 7;
                 start = new Date(now); start.setDate(now.getDate() - day + 1);
                 end = new Date(now); end.setDate(now.getDate() + (7 - day));
                 break;
@@ -418,8 +418,8 @@ class AccountantController {
 
     updateDatePickerUI() {
         const range = this.getDateRange('month');
-        if(this.els.filterStart) this.els.filterStart.value = range.start;
-        if(this.els.filterEnd) this.els.filterEnd.value = range.end;
+        if (this.els.filterStart) this.els.filterStart.value = range.start;
+        if (this.els.filterEnd) this.els.filterEnd.value = range.end;
     }
 
     updateFilterFieldOptions() {
@@ -447,7 +447,7 @@ class AccountantController {
     openEditModal(type, id) {
         // 1. Tìm giao dịch dựa trên ID (tham số thứ 2)
         const transaction = this.transactions.find(t => t.id === id);
-        
+
         if (!transaction) {
             console.error("❌ Debug: Không tìm thấy giao dịch.", { tim_id: id, trong_list: this.transactions });
             return;
@@ -464,17 +464,17 @@ class AccountantController {
         const existingData = id ? this.transactions.find(t => t.id === id) : null;
         const isEdit = !!existingData;
         const mode = existingData ? existingData.type : type; // Nếu edit thì lấy type cũ
-        
+
         const title = isEdit ? `Sửa Giao Dịch (${id})` : (mode === 'IN' ? 'Lập Phiếu Thu' : 'Lập Phiếu Chi');
         const colorClass = mode === 'IN' ? 'text-success' : 'text-danger';
         const currentUser = window.A && CURRENT_USER ? CURRENT_USER.name || 'Hệ thống' : 'Hệ thống';
-        if (!this.funds || this.funds.length === 0) this.funds = await this.getData('fund_accounts') || []; 
+        if (!this.funds || this.funds.length === 0) this.funds = await this.getData('fund_accounts') || [];
         console.log("Debug: Funds for modal", this.funds);
         // Fund Options
-        let fundOptions = this.funds.map(f => 
+        let fundOptions = this.funds.map(f =>
             `<option value="${f.id}" ${existingData && existingData.fund_source === f.id ? 'selected' : ''}>${f.name} (${formatCurrency(f.balance)})</option>`
         ).join('');
-        if(!fundOptions) fundOptions = '<option disabled selected>Chưa có quỹ</option>';
+        if (!fundOptions) fundOptions = '<option disabled selected>Chưa có quỹ</option>';
         const isManager = CURRENT_USER && (CURRENT_USER.level >= 50 || CURRENT_USER.role === 'admin');
         const html = `
             <div id="acc-modal-form" style="max-height: calc(100vh - 250px); overflow-y: auto; margin: 0 auto;">
@@ -598,10 +598,10 @@ class AccountantController {
         `;
 
         A.Modal.show(html, title);
-        
+
         // Format money input
         const inpMoney = document.getElementById('inp-amount-show');
-        if(inpMoney && !inpMoney.disabled) {
+        if (inpMoney && !inpMoney.disabled) {
             inpMoney.addEventListener('input', (e) => {
                 let val = e.target.value.replace(/\D/g, '');
                 e.target.value = val ? parseInt(val).toLocaleString('vi-VN') : '';
@@ -632,26 +632,15 @@ class AccountantController {
         // 1. Validate
         if (!amount || amount <= 0) return alert("Số tiền không hợp lệ");
         if (!data.fund_source && !isEdit) return alert("Chưa chọn quỹ");
-        
-        // --- 2. XỬ LÝ BOOKING ID (Quan trọng) ---
-        let bookingRef = null;
-        let operatorRef = null;
 
+        // --- 2. XỬ LÝ BOOKING ID (Quan trọng) ---
+        // Đọc từ APP_DATA thay vì gọi Firestore trực tiếp — data đã có trong bộ nhớ
         if (data.booking_id) {
-            // Kiểm tra booking tồn tại
-            const bookingSnap = await window.A.DB.db.collection('bookings').doc(data.booking_id).get();
-            if (!bookingSnap.exists) {
+            const bookingData = window.APP_DATA?.bookings?.[data.booking_id];
+            if (!bookingData) {
                 return alert(`❌ Lỗi: Booking ID [${data.booking_id}] không tồn tại trong hệ thống!`);
             }
-            bookingRef = bookingSnap.ref;
-            
-            // Nếu là Phiếu Chi (OUT), kiểm tra thêm operator_entries
-            if (type === 'OUT') {
-                const opSnap = await window.A.DB.db.collection('operator_entries').doc(data.booking_id).get();
-                // Nếu chưa có doc operator thì có thể cho phép tạo mới hoặc báo lỗi tuỳ logic, ở đây giả sử phải có
-                if (opSnap.exists) operatorRef = opSnap.ref;
-                // Note: Nếu không bắt buộc operator_entries phải có sẵn thì bỏ qua check này
-            }
+            // operatorRef không cần nữa — aggregateBookingBalance đọc từ APP_DATA
         }
 
         // Setup button loading
@@ -661,36 +650,29 @@ class AccountantController {
 
         try {
             const db = window.A.DB.db;
-            const batch = db.batch(); // Dùng Batch Write cho an toàn (Atomicity)
 
             // --- 3. GENERATE ID (Tự động tăng cho cả PT và PC) ---
+            // Dùng Firestore Transaction để tránh trùng số — logic custom PT/PC không có trong DBManager
             let transId = docId; // Mặc định là ID cũ nếu đang Edit
 
             if (!isEdit) {
                 const counterRef = db.collection('transactions').doc('last_invoice_number');
-                
-                // Sử dụng Transaction để đảm bảo không bị trùng số khi nhiều người cùng tạo
                 await db.runTransaction(async (t) => {
                     const cDoc = await t.get(counterRef);
-                    
-                    // Lấy dữ liệu đếm hiện tại (nếu doc chưa tồn tại thì coi như bằng 0)
                     const currentCounts = cDoc.exists ? cDoc.data() : { in: 0, out: 0 };
                     let nextNum = 1;
-
                     if (type === 'IN') {
-                        // Xử lý Phiếu Thu (PT) -> field 'in'
                         nextNum = (currentCounts.in || 0) + 1;
                         t.set(counterRef, { in: nextNum }, { merge: true });
-                        transId = `PT-${nextNum}`; // Ví dụ: PT-101
-                    } 
-                    else if (type === 'OUT') {
-                        // Xử lý Phiếu Chi (PC) -> field 'out'
+                        transId = `PT-${nextNum}`;
+                    } else if (type === 'OUT') {
                         nextNum = (currentCounts.out || 0) + 1;
                         t.set(counterRef, { out: nextNum }, { merge: true });
-                        transId = `PC-${nextNum}`; // Ví dụ: PC-55
+                        transId = `PC-${nextNum}`;
                     }
                 });
             }
+
             const collectionName = this.currentTransCol || 'transactions';
             // --- 4. TẠO RECORD GIAO DỊCH ---
             const transRef = db.collection(collectionName).doc(transId);
@@ -709,8 +691,8 @@ class AccountantController {
                     const fundRef = db.collection(this.currentFundCol || 'fund_accounts').doc(data.fund_source);
                     // IN: Balance + amount, OUT: Balance - amount
                     const change = type === 'IN' ? amount : -amount;
-                    batch.update(fundRef, { 
-                        balance: firebase.firestore.FieldValue.increment(change) 
+                    batch.update(fundRef, {
+                        balance: firebase.firestore.FieldValue.increment(change)
                     });
                 }
             }
@@ -718,9 +700,9 @@ class AccountantController {
             batch.set(transRef, record, { merge: true });
 
             // Commit Batch 1: Lưu giao dịch & Cập nhật Quỹ trước
-            await batch.commit(); 
+            await batch.commit();
             console.log(`Saved Transaction ${transId}`);
-            A.NotificationManager.sendToSales('GIAO DỊCH MỚI', `Giao dịch ${transId} đã được lưu với số tiền ${formatCurrency(amount)} VNĐ.`);
+            A.Notification.sendToSales('GIAO DỊCH MỚI', `Giao dịch ${transId} đã được lưu với số tiền ${formatCurrency(amount)} VNĐ.`);
 
             // --- 5. AGGREGATION (CỘNG DỒN & UPDATE PARENT) ---
             // Bước này chạy riêng sau khi đã lưu transaction thành công
@@ -741,76 +723,62 @@ class AccountantController {
     }
 
     /**
-     * Logic Cộng dồn tiền và Update vào Booking/Operator
+     * Logic Cộng dồn tiền và Update vào Booking/Operator.
+     * Đọc từ APP_DATA (đã được saveRecord cập nhật) — không cần thêm Firestore read.
      */
     async aggregateBookingBalance(bookingId, type, amount) {
-        const db = window.A.DB.db;
         console.log(`Aggregating for Booking: ${bookingId}, Type: ${type}`);
 
         try {
-            // Lấy TẤT CẢ giao dịch của booking này
-            const transSnap = await db.collection(this.currentTransCol)
-                .where('booking_id', '==', bookingId)
-                .where('status', '==', 'Completed') // Chỉ tính cái đã hoàn thành
-                .get();
-
-            let totalIn = 0;
-            let totalOut = 0;
-
-            transSnap.forEach(doc => {
-                const t = doc.data();
+            // Tổng hợp từ APP_DATA — saveRecord đã cập nhật trước đó, không cần query Firestore
+            const allTransData = window.APP_DATA?.[this.currentTransCol] || {};
+            let totalIn = 0, totalOut = 0;
+            Object.values(allTransData).forEach(t => {
+                if (t.booking_id !== bookingId || t.status !== 'Completed') return;
                 const amt = parseFloat(t.amount || 0);
                 if (t.type === 'IN') totalIn += amt;
                 else if (t.type === 'OUT') totalOut += amt;
             });
 
-            // Update Logic
             if (type === 'IN') {
-                totalIn = totalIn/1000;
-                // Cập nhật Collection: BOOKINGS
-                const bookingRef = db.collection('bookings').doc(bookingId);
-                
-                // Lấy total_amount hiện tại để tính balance
-                const bDoc = await bookingRef.get();
-                const totalAmount = parseFloat(bDoc.data().total_amount || 0);
-                const customerName = bDoc.data().customer_full_name || '';
-                
+                totalIn = totalIn / 1000;
+                // Đọc booking từ APP_DATA — không cần .get() Firestore
+                const bookingData = window.APP_DATA?.bookings?.[bookingId] || {};
+                const totalAmount = parseFloat(bookingData.total_amount || 0);
+                const customerName = bookingData.customer_full_name || '';
                 const balance = totalAmount - totalIn;
 
-                await bookingRef.update({
+                // Cập nhật qua DBManager (tự update APP_DATA + audit log)
+                await window.A.DB.updateSingle('bookings', bookingId, {
+                    id: bookingId,
                     deposit_amount: totalIn,
                     balance_amount: balance,
-                    payment_status: balance <= 0 ? 'Thanh Toán' : (totalIn > 0 ? 'Đặt Cọc' : 'Đặt Lịch')
+                    status: balance <= 0 ? 'Thanh Toán' : (totalIn > 0 ? 'Đặt Cọc' : 'Đặt Lịch')
                 });
-                console.log(`Updated Booking ${bookingId}: Paid ${totalIn}, Bal ${balance}`);
-                NotificationModule.sendToSales('THANH TOÁN MỚI CHO BOOKING', `Booking ${bookingId} - ${customerName} đã nhận: ${amount}. Tổng thanh toán: ${formatCurrency(totalIn)} VNĐ. Số dư còn lại: ${formatCurrency(balance)} VNĐ.`);
+
+                NotificationManager.sendToSales('THANH TOÁN MỚI CHO BOOKING', `Booking ${bookingId} - ${customerName} đã nhận: ${amount}. Tổng thanh toán: ${formatCurrency(totalIn)} VNĐ. Số dư còn lại: ${formatCurrency(balance)} VNĐ.`);
 
             } else if (type === 'OUT') {
-                // Cập nhật Collection: OPERATOR_ENTRIES
-                // operator_entries có thể dùng ID là bookingId
-                
-                totalOut = totalOut/1000;
-                const opRef = db.collection('operator_entries').doc(bookingId);
-                const opDoc = await opRef.get();
-                const serviceName = opDoc.data().service_name || '';
+                totalOut = totalOut / 1000;
+                // Đọc operator entry từ APP_DATA
+                const opData = window.APP_DATA?.operator_entries?.[bookingId];
+                if (opData) {
+                    const totalCost = parseFloat(opData.total_cost || 0);
+                    const debt = totalCost - totalOut;
 
-                if (opDoc.exists) {
-                    const totalCost = parseFloat(opDoc.data().total_cost || 0);
-                    const debt = totalCost - totalOut; // debt_balance = cost - paid
-
-                    await opRef.update({
+                    // Cập nhật qua DBManager
+                    await window.A.DB.updateSingle('operator_entries', bookingId, {
+                        id: bookingId,
                         paid_amount: totalOut,
                         debt_balance: debt
                     });
-                    console.log(`Updated Operator ${bookingId}: Paid ${totalOut}, Debt ${debt}`);
-                    window.notifyToOperator('CẬP NHẬT THANH TOÁN', `Đã thanh toán ${bookingId} - ${serviceName} : ${formatCurrency(totalOut)} VNĐ. Số dư còn lại: ${formatCurrency(debt)} VNĐ.`);
+                    NotificationManager.sendToOperator('CẬP NHẬT THANH TOÁN', `Đã thanh toán ${bookingId} - ${opData.service_name || ''} : ${formatCurrency(totalOut)} VNĐ. Số dư còn lại: ${formatCurrency(debt)} VNĐ.`);
                 }
             }
 
         } catch (e) {
-            console.error("Aggregation Error:", e);
-            // Không throw error ra ngoài để tránh báo lỗi cho user khi giao dịch chính đã lưu xong
-            console.warn("Giao dịch đã lưu nhưng cập nhật số dư Booking thất bại. Hãy kiểm tra lại.");
+            console.error('Aggregation Error:', e);
+            console.warn('Giao dịch đã lưu nhưng cập nhật số dư Booking thất bại. Hãy kiểm tra lại.');
         }
     }
 
@@ -833,7 +801,7 @@ class AccountantController {
 
             // Clone template content
             const reportContent = reportTemplate.content.cloneNode(true);
-            
+
             // Tạo modal bootstrap chuẩn
             const modalContainer = document.createElement('div');
             modalContainer.id = 'acc-report-modal';
@@ -841,15 +809,15 @@ class AccountantController {
             modalContainer.tabIndex = -1;
             modalContainer.setAttribute('aria-labelledby', 'reportModalLabel');
             modalContainer.setAttribute('aria-hidden', 'true');
-            
+
             // Modal dialog
             const modalDialog = document.createElement('div');
             modalDialog.className = 'modal-dialog modal-lg modal-dialog-scrollable';
-            
+
             // Modal content
             const modalContent = document.createElement('div');
             modalContent.className = 'modal-content';
-            
+
             // Modal header
             const modalHeader = document.createElement('div');
             modalHeader.className = 'modal-header bg-light border-bottom';
@@ -859,24 +827,24 @@ class AccountantController {
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             `;
-            
+
             // Modal body
             const modalBody = document.createElement('div');
             modalBody.className = 'modal-body p-0';
             modalBody.appendChild(reportContent);
-            
+
             // Assemble modal
             modalContent.appendChild(modalHeader);
             modalContent.appendChild(modalBody);
             modalDialog.appendChild(modalContent);
             modalContainer.appendChild(modalDialog);
-            
+
             // Append vào body
             document.body.appendChild(modalContainer);
 
             // Render dữ liệu
             await this.renderReportData();
-            
+
             // Show modal bằng Bootstrap API
             const bsModal = new bootstrap.Modal(modalContainer, {
                 backdrop: true,
@@ -908,7 +876,7 @@ class AccountantController {
             // Lấy dữ liệu từ cache
             const allTransactions = window.A?.DATA?.checkingTransactions || [];
             const tbody = document.getElementById('report-table-body');
-            
+
             if (!tbody) return;
 
             // Xóa loading state
@@ -921,7 +889,7 @@ class AccountantController {
 
             // Render bảng
             let totalIn = 0, totalOut = 0, totalAmount = 0;
-            
+
             allTransactions.forEach(trans => {
                 const amount = parseFloat(trans.amount || 0);
                 const isIn = trans.type === 'IN';
@@ -1042,7 +1010,7 @@ class AccountantController {
             // Filter by keyword
             if (keyword) {
                 const lowerKeyword = keyword.toLowerCase();
-                filtered = filtered.filter(t => 
+                filtered = filtered.filter(t =>
                     (t.id && t.id.toLowerCase().includes(lowerKeyword)) ||
                     (t.description && t.description.toLowerCase().includes(lowerKeyword)) ||
                     (t.booking_id && t.booking_id.toLowerCase().includes(lowerKeyword))

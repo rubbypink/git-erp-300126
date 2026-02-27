@@ -39,7 +39,7 @@
       --header-bg: #2c37d1;              /* Xanh đậm - Header nổi bật */
       --footer-bg: #4d4d4e;              /* Xanh đen - Footer nhất quán */
       --text-color: #0f141c;             /* Tối - Văn bản chính */
-      --text-secondary: #64748b;         /* Xám - Văn bản phụ */
+      --text-secondary: #3b4450;         /* Xám tối - Văn bản phụ (contrast ≥4.5:1) */
       --border-color: #afb8c4;           /* Xám sáng - Border */
       --surface-color: #e7e7e7;          /* Trắng - Card/Modal */
       --hover-bg: #eaeaeb;               /* Xám siêu nhạt - Hover */
@@ -60,7 +60,7 @@
       --tab-active-bg: #ffffff;
       --tab-active-text: #3b82f6;
       --tab-inactive-bg: #e2e8f0;
-      --tab-inactive-text: #64748b;
+      --tab-inactive-text: #272b30;
 
       /* Glass/Surface Layer - Light */
       --glass-bg: #f1e1e1;
@@ -87,7 +87,7 @@
         --header-bg: #1e293b;              /* Xanh đen - Header */
         --footer-bg: #1e293b;              /* Xanh đen - Footer */
         --text-color: #f1f5f9;             /* Sáng - Văn bản chính */
-        --text-secondary: #cbd5e1;         /* Xám sáng - Văn bản phụ */
+        --text-secondary: #cbd5e1;         /* Xám sáng - Văn bản phụ (contrast ≥4.5:1 on dark bg) */
         --border-color: #334155;           /* Xám tối - Border */
         --surface-color: #1e293b;          /* Xanh đen - Card/Modal */
         --hover-bg: #334155;               /* Xám tối - Hover */

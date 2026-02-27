@@ -19,12 +19,12 @@ class TableResizeManager {
     constructor(tableId) {
         this.tableId = tableId;
         this.table = document.getElementById(tableId);
-        
+
         if (!this.table) {
             console.error(`❌ Table với id "${tableId}" không tìm thấy`);
             return;
         }
-        
+
         this.resizeState = {
             isResizing: false,
             resizeType: null, // 'column' hoặc 'row'
@@ -37,7 +37,7 @@ class TableResizeManager {
             nextColumnIndex: -1,
             nextRowIndex: -1
         };
-        
+
         this.config = {
             handleSize: 8, // pixel
             handleColor: '#999',
@@ -50,16 +50,16 @@ class TableResizeManager {
      */
     init() {
         if (!this.table) return;
-        
+
         // Apply base styles
         this._applyBaseStyles();
-        
+
         // Add column resize handles to thead
         this._addColumnResizeHandles();
-        
+
         // Add row resize handles to first column
         this._addRowResizeHandles();
-        
+
         console.log(`✅ TableResizeManager initialized for #${this.tableId}`);
     }
 
@@ -112,26 +112,26 @@ class TableResizeManager {
     _addColumnResizeHandles() {
         const thead = this.table.querySelector('thead');
         if (!thead) return;
-        
+
         const headerCells = thead.querySelectorAll('th');
-        
+
         headerCells.forEach((th, colIndex) => {
             // Skip last column (không resize được)
             if (colIndex === headerCells.length - 1) return;
-            
+
             // Thiết lập padding-right để có chỗ cho handle
             th.style.paddingRight = '12px';
-            
+
             const handle = document.createElement('div');
             handle.className = 'resize-handle-col';
             th.appendChild(handle);
-            
+
             // Mouse down
             handle.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 this._startColumnResize(e, colIndex);
             });
-            
+
             // Double click - fit content
             handle.addEventListener('dblclick', (e) => {
                 e.preventDefault();
@@ -148,29 +148,29 @@ class TableResizeManager {
     _addRowResizeHandles() {
         const tbody = this.table.querySelector('tbody');
         if (!tbody) return;
-        
+
         const rows = tbody.querySelectorAll('tr');
-        
+
         rows.forEach((tr, rowIndex) => {
             // Skip last row (không resize được)
             if (rowIndex === rows.length - 1) return;
-            
+
             const firstCell = tr.querySelector('td');
             if (!firstCell) return;
-            
+
             // Thiết lập padding-bottom để có chỗ cho handle
             firstCell.style.paddingBottom = '12px';
-            
+
             const handle = document.createElement('div');
             handle.className = 'resize-handle-row';
             firstCell.appendChild(handle);
-            
+
             // Mouse down
             handle.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 this._startRowResize(e, rowIndex);
             });
-            
+
             // Double click - fit content
             handle.addEventListener('dblclick', (e) => {
                 e.preventDefault();
@@ -191,13 +191,13 @@ class TableResizeManager {
         this.resizeState.resizeType = 'column';
         this.resizeState.startX = e.clientX;
         this.resizeState.columnIndex = colIndex;
-        
+
         // Get current width of resizing column
         const colCell = this._getColumnCells(colIndex)[0];
         if (colCell) {
             this.resizeState.startWidth = colCell.offsetWidth;
         }
-        
+
         // ✅ Lock width của TẤT CẢ các cột khác
         // Điều này ngăn browser co lại các cột khác
         this.resizeState.allColumnWidths = {};
@@ -211,12 +211,12 @@ class TableResizeManager {
                 th.style.width = width + 'px';
             });
         }
-        
+
         // Add active class
         this._getColumnCells(colIndex).forEach(cell => {
             cell.classList.add('resizing');
         });
-        
+
         // Mouse move & up
         document.addEventListener('mousemove', this._onMouseMove.bind(this));
         document.addEventListener('mouseup', this._onMouseUp.bind(this));
@@ -232,20 +232,20 @@ class TableResizeManager {
         this.resizeState.startY = e.clientY;
         this.resizeState.rowIndex = rowIndex;
         this.resizeState.nextRowIndex = rowIndex + 1;
-        
+
         // Get current heights
         const rows = this.table.querySelectorAll('tbody tr');
         const row = rows[rowIndex];
         const nextRow = rows[rowIndex + 1];
-        
+
         if (row && nextRow) {
             this.resizeState.startHeight = row.offsetHeight;
             this.resizeState.nextHeight = nextRow.offsetHeight;
         }
-        
+
         // Add active class
         row.classList.add('resizing');
-        
+
         // Mouse move & up
         document.addEventListener('mousemove', this._onMouseMove.bind(this));
         document.addEventListener('mouseup', this._onMouseUp.bind(this));
@@ -257,7 +257,7 @@ class TableResizeManager {
      */
     _onMouseMove(e) {
         if (!this.resizeState.isResizing) return;
-        
+
         if (this.resizeState.resizeType === 'column') {
             this._resizeColumn(e);
         } else if (this.resizeState.resizeType === 'row') {
@@ -274,15 +274,15 @@ class TableResizeManager {
     _resizeColumn(e) {
         const delta = e.clientX - this.resizeState.startX;
         const minWidth = 50; // Minimum width
-        
+
         const newWidth = Math.max(minWidth, this.resizeState.startWidth + delta);
-        
+
         // Update cột đang resize
         this._getColumnCells(this.resizeState.columnIndex).forEach(cell => {
             cell.style.width = newWidth + 'px';
             cell.style.minWidth = newWidth + 'px';
         });
-        
+
         // ✅ Ensure tất cả các cột khác giữ nguyên width (prevent shrinking)
         // Loop qua allColumnWidths và set width cố định cho tất cả
         if (this.resizeState.allColumnWidths) {
@@ -292,7 +292,7 @@ class TableResizeManager {
                 headerCells.forEach((th, idx) => {
                     // Cột đang resize thì bỏ qua (đã update ở trên)
                     if (idx === this.resizeState.columnIndex) return;
-                    
+
                     // Cột khác: set width = original width (lock nó)
                     const originalWidth = this.resizeState.allColumnWidths[idx];
                     if (originalWidth) {
@@ -311,20 +311,20 @@ class TableResizeManager {
     _resizeRow(e) {
         const delta = e.clientY - this.resizeState.startY;
         const minHeight = 30; // Minimum height
-        
+
         const newHeight = Math.max(minHeight, this.resizeState.startHeight + delta);
         const newNextHeight = Math.max(minHeight, this.resizeState.nextHeight - delta);
-        
+
         // Apply height to current row
         const rows = this.table.querySelectorAll('tbody tr');
         const row = rows[this.resizeState.rowIndex];
         const nextRow = rows[this.resizeState.nextRowIndex];
-        
+
         if (row) {
             row.style.height = newHeight + 'px';
             row.style.minHeight = newHeight + 'px';
         }
-        
+
         if (nextRow) {
             nextRow.style.height = newNextHeight + 'px';
             nextRow.style.minHeight = newNextHeight + 'px';
@@ -337,7 +337,7 @@ class TableResizeManager {
      */
     _onMouseUp(e) {
         if (!this.resizeState.isResizing) return;
-        
+
         // Remove active class
         if (this.resizeState.resizeType === 'column') {
             this._getColumnCells(this.resizeState.columnIndex).forEach(cell => {
@@ -347,11 +347,11 @@ class TableResizeManager {
             const rows = this.table.querySelectorAll('tbody tr');
             rows[this.resizeState.rowIndex].classList.remove('resizing');
         }
-        
+
         // Reset state
         this.resizeState.isResizing = false;
         this.resizeState.resizeType = null;
-        
+
         // Remove listeners
         document.removeEventListener('mousemove', this._onMouseMove.bind(this));
         document.removeEventListener('mouseup', this._onMouseUp.bind(this));
@@ -367,9 +367,9 @@ class TableResizeManager {
     _fitColumnContent(colIndex) {
         const cells = this._getColumnCells(colIndex);
         if (cells.length === 0) return;
-        
+
         let maxWidth = 50; // minimum
-        
+
         // Đo content width từ mỗi cell
         cells.forEach(cell => {
             // ✅ Reset để đo chính xác - BỎ step restore originalWidth
@@ -377,13 +377,13 @@ class TableResizeManager {
             cell.style.width = 'min-content';
             cell.style.minWidth = 'auto';
             cell.style.maxWidth = 'none';
-            
+
             // Lấy content width - không cộng 20px vì scrollWidth đã là chính xác
             const contentWidth = cell.scrollWidth;
             maxWidth = Math.max(maxWidth, contentWidth);
-            
+
         });
-        
+
         // Apply width = fit-content (co lại, không giãn)
         // ✅ Chỉ set width, KHÔNG set minWidth/maxWidth
         // Điều này cho phép cột co nhỏ lại mà không bị khóa
@@ -401,15 +401,15 @@ class TableResizeManager {
     _fitRowContent(rowIndex) {
         const rows = this.table.querySelectorAll('tbody tr');
         const row = rows[rowIndex];
-        
+
         if (!row) return;
-        
+
         // Restore auto height để measure
         row.style.height = 'auto';
         row.style.minHeight = 'auto';
-        
+
         const contentHeight = row.scrollHeight;
-        
+
         // Apply new height
         row.style.height = contentHeight + 'px';
         row.style.minHeight = contentHeight + 'px';
@@ -421,7 +421,7 @@ class TableResizeManager {
      */
     _getColumnCells(colIndex) {
         const cells = [];
-        
+
         // Thead cells
         const thead = this.table.querySelector('thead');
         if (thead) {
@@ -430,7 +430,7 @@ class TableResizeManager {
                 cells.push(headerCells[colIndex]);
             }
         }
-        
+
         // Tbody cells
         const tbody = this.table.querySelector('tbody');
         if (tbody) {
@@ -442,7 +442,7 @@ class TableResizeManager {
                 }
             });
         }
-        
+
         return cells;
     }
 
@@ -453,12 +453,12 @@ class TableResizeManager {
         // Remove event listeners
         document.removeEventListener('mousemove', this._onMouseMove.bind(this));
         document.removeEventListener('mouseup', this._onMouseUp.bind(this));
-        
+
         // Remove handles
         this.table.querySelectorAll('.resize-handle-col, .resize-handle-row').forEach(handle => {
             handle.remove();
         });
-        
+
         console.log(`✅ TableResizeManager destroyed for #${this.tableId}`);
     }
 }
@@ -478,7 +478,7 @@ class DraggableSetup {
      * @param {string} elementId - ID của phần tử gốc chứa đối tượng cần kéo
      * @param {Object} options - Cấu hình linh hoạt (targetSelector, handleSelector)
      */
-    constructor(elementId, options = {targetSelector: '.modal-dialog', handleSelector: '.modal-header'}) {
+    constructor(elementId, options = { targetSelector: '.modal-dialog', handleSelector: '.modal-header' }) {
         try {
             this.wrapper = $(elementId);
             if (!this.wrapper) return;
@@ -486,7 +486,7 @@ class DraggableSetup {
             // 1. Xác định CÁI GÌ SẼ DI CHUYỂN (Target)
             // Nếu là Modal thì truyền vào '.modal-dialog', nếu là Widget thì không cần truyền (tự lấy wrapper)
             this.target = options.targetSelector ? this.wrapper.querySelector(options.targetSelector) : this.wrapper;
-            
+
             // 2. Xác định NẮM VÀO ĐÂU ĐỂ KÉO (Handle)
             // Thường là '.modal-header' hoặc '.card-header'. Mặc định là cầm vào đâu cũng kéo được.
             this.handle = options.handleSelector ? this.wrapper.querySelector(options.handleSelector) : this.target;
@@ -500,13 +500,13 @@ class DraggableSetup {
             this.isDragging = false;
             this.currentX = 0; this.currentY = 0;
             this.initialX = 0; this.initialY = 0;
-            this.xOffset = 0;  this.yOffset = 0;
-            
+            this.xOffset = 0; this.yOffset = 0;
+
             // ★ Lưu initial offset (vị trí center ban đầu khi mở modal)
             this.initialCenterOffsetX = 0;
             this.initialCenterOffsetY = 0;
             this.hasInitialOffset = false; // Flag để đánh dấu lần đầu set offset
-            
+
             // ✅ RAF throttle - Tránh schedule RAF liên tục trên mỗi mousemove
             this.rafId = null;
             this.pendingX = 0;
@@ -535,19 +535,18 @@ class DraggableSetup {
         // Chỉ gắn sự kiện vào vùng tay cầm (handle)
         this.handle.addEventListener("mousedown", this.dragStart);
         this.handle.addEventListener("touchstart", this.dragStart, { passive: false });
-        
+
         // CSS báo hiệu cho người dùng
         this.handle.style.cursor = "move";
         this.target.style.willChange = "transform"; // Gợi ý trình duyệt tối ưu GPU trước
-        
+
         // ★ Lưu initial center offset lần đầu (vị trí mặc định khi modal mở)
         if (!this.hasInitialOffset) {
             this.initialCenterOffsetX = this.xOffset;
             this.initialCenterOffsetY = this.yOffset;
             this.hasInitialOffset = true;
-            console.log(`[DraggableSetup] 💾 Saved initial center offset: (${this.initialCenterOffsetX}, ${this.initialCenterOffsetY})`);
         }
-        
+
         // ✅ Set event dblclick TOÀN giao diện - chỉ 1 lần cho toàn bộ class (Desktop)
         // Kiểm tra event.target nằm trong phạm vi element nào để reset
         if (!DraggableSetup.isDblClickListenerAdded) {
@@ -573,15 +572,15 @@ class DraggableSetup {
                 const currentTime = Date.now();
                 const currentX = e.changedTouches[0]?.clientX || 0;
                 const currentY = e.changedTouches[0]?.clientY || 0;
-                
+
                 // Tính khoảng cách từ tap cuối cùng
                 const dx = currentX - DraggableSetup._lastTapX;
                 const dy = currentY - DraggableSetup._lastTapY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                
+
                 // Kiểm tra: time < 300ms và khoảng cách < 20px
                 const isDoubleTap = (currentTime - DraggableSetup._lastTapTime) < 300 && distance < 20 && window.innerWidth < 991; // Chỉ áp dụng trên mobile
-                
+
                 if (isDoubleTap) {
                     // Tìm instance nào chứa event target
                     DraggableSetup.instances.forEach(instance => {
@@ -591,7 +590,7 @@ class DraggableSetup {
                             }
                         }
                     });
-                    
+
                     // Reset lastTap để tránh trigger 3x tap
                     DraggableSetup._lastTapTime = 0;
                 } else {
@@ -601,7 +600,7 @@ class DraggableSetup {
                     DraggableSetup._lastTapY = currentY;
                 }
             }, { passive: true });
-            
+
             // Initialize static tap tracking
             DraggableSetup._lastTapTime = 0;
             DraggableSetup._lastTapX = 0;
@@ -622,10 +621,10 @@ class DraggableSetup {
         // Kiểm tra xem có đúng là click vào handle không (tránh click vào input bên trong)
         if (e.target === this.handle || this.handle.contains(e.target)) {
             // Không chặn sự kiện mặc định ở đây để user vẫn click được input/button nếu có
-            
+
             this.isDragging = true;
             this.target.classList.add('is-moving');
-            
+
             // Lưu lại transition cũ để khôi phục sau khi kéo xong
             this.oldTransition = window.getComputedStyle(this.target).transition;
             this.target.style.transition = "none";
@@ -639,7 +638,7 @@ class DraggableSetup {
 
     dragMove(e) {
         if (!this.isDragging) return;
-        
+
         if (e.type === "touchmove") {
             e.preventDefault();
             this.pendingX = e.touches[0].clientX - this.initialX;
@@ -651,13 +650,13 @@ class DraggableSetup {
 
         // ✅ RAF throttle: Chỉ schedule RAF một lần, không mỗi event
         if (this.rafId) return; // RAF đã scheduled, bỏ qua
-        
+
         this.rafId = requestAnimationFrame(() => {
             this.currentX = this.pendingX;
             this.currentY = this.pendingY;
             this.xOffset = this.currentX;
             this.yOffset = this.currentY;
-            
+
             this.target.style.transform = `translate3d(${this.currentX}px, ${this.currentY}px, 0)`;
             this.rafId = null; // Clear flag để RAF tiếp theo được schedule
         });
@@ -665,19 +664,19 @@ class DraggableSetup {
 
     dragEnd() {
         if (!this.isDragging) return;
-        
+
         // ✅ Cancel RAF nếu còn pending
         if (this.rafId) {
             cancelAnimationFrame(this.rafId);
             this.rafId = null;
         }
-        
+
         this.initialX = this.currentX;
         this.initialY = this.currentY;
         this.isDragging = false;
-        
+
         this.target.classList.remove('is-moving');
-        
+
         // Khôi phục lại transition mặc định của Bootstrap/CSS
         this.target.style.transition = this.oldTransition;
 
@@ -694,7 +693,7 @@ class DraggableSetup {
     _isHeaderHidden() {
         const header = this.target.querySelector('.modal-header') || this.target.querySelector('header');
         if (!header) return false;
-        
+
         const rect = header.getBoundingClientRect();
         // Header bị khuất nếu: top < 0 (kéo lên quá) hoặc top > window.innerHeight (kéo xuống quá)
         return rect.top < 0 || rect.top > window.innerHeight;
@@ -712,7 +711,7 @@ class DraggableSetup {
         this.yOffset = this.initialCenterOffsetY;
         this.currentX = this.initialCenterOffsetX;
         this.currentY = this.initialCenterOffsetY;
-        
+
         // Apply transform
         this.target.style.transform = `translate3d(${this.initialCenterOffsetX}px, ${this.initialCenterOffsetY}px, 0)`;
         console.log(`[DraggableSetup] 🎯 Restored to initial center offset`);
@@ -724,7 +723,7 @@ class DraggableSetup {
  * Tương thích hoàn hảo với FreeMover và Bootstrap
  */
 class Resizable {
-    constructor(elementId, options = {targetSelector: '.modal-dialog', handleSelector: '.modal-header'}) {
+    constructor(elementId, options = { targetSelector: '.modal-dialog', handleSelector: '.modal-header' }) {
         try {
             this.wrapper = $(elementId);
             if (!this.wrapper) return;
@@ -744,7 +743,7 @@ class Resizable {
             this.initialHeight = 0;
             this.startX = 0;
             this.startY = 0;
-            
+
             // ✅ RAF throttle - Tránh schedule RAF liên tục trên mỗi mousemove
             this.rafId = null;
             this.pendingWidth = 0;
@@ -829,7 +828,7 @@ class Resizable {
 
         // ✅ RAF throttle: Chỉ schedule RAF một lần
         if (this.rafId) return; // RAF đã scheduled, bỏ qua
-        
+
         this.rafId = requestAnimationFrame(() => {
             this.target.style.width = `${this.pendingWidth}px`;
             this.target.style.height = `${this.pendingHeight}px`;
@@ -840,13 +839,13 @@ class Resizable {
 
     resizeEnd() {
         if (!this.isResizing) return;
-        
+
         // ✅ Cancel RAF nếu còn pending
         if (this.rafId) {
             cancelAnimationFrame(this.rafId);
             this.rafId = null;
         }
-        
+
         this.isResizing = false;
         this.target.classList.remove('is-resizing');
 
@@ -885,10 +884,10 @@ class WindowMinimizer {
             this.title = this._resolveTitle(options.title);
             this.minimizeBtn = this.target.querySelector(options.btnSelector || '.btn-minimize');
             this.removeCenteredClass = options.removeCenteredClass !== false; // Default true
-            
+
             // ✅ Lưu trạng thái Bootstrap classes để restore nếu cần
             this.savedClasses = null;
-            
+
             this.initTaskbar();
 
             if (this.minimizeBtn) {
@@ -910,18 +909,18 @@ class WindowMinimizer {
     _resolveTitle(providedTitle) {
         // Nếu có truyền title vào options thì dùng luôn
         if (providedTitle) return providedTitle;
-        
+
         // Tự động tìm .modal-header hoặc header trong element
         const headerEl = this.target.querySelector('.modal-header') || this.target.querySelector('header');
         if (headerEl) {
             // ✅ Tối ưu: Clone element, xóa icons/buttons, lấy text
             const cloned = headerEl.cloneNode(true);
             cloned.querySelectorAll('button, i, svg').forEach(el => el.remove());
-            
+
             const titleText = cloned.textContent?.trim();
             if (titleText) return titleText;
         }
-        
+
         // Fallback: mặc định
         return 'Cửa sổ làm việc';
     }
@@ -943,7 +942,7 @@ class WindowMinimizer {
     initTaskbar() {
         this.taskbarId = 'erp-global-taskbar';
         this.taskbar = document.getElementById(this.taskbarId);
-        
+
         if (!this.taskbar) {
             this.taskbar = document.createElement('div');
             this.taskbar.id = this.taskbarId;
@@ -959,7 +958,7 @@ class WindowMinimizer {
     minimize() {
         // 1. Lưu display cũ để phục hồi
         this.oldDisplay = window.getComputedStyle(this.target).display;
-        
+
         // 2. ✅ Loại bỏ modal-dialog-centered nếu có
         // Vì: Modal đã bị drag không cần centered, sẽ xung đột với transform
         const modalDialog = this._getModalDialog();
@@ -970,7 +969,7 @@ class WindowMinimizer {
                 modalDialog.classList.remove('modal-dialog-centered');
             }
         }
-        
+
         // 3. Ẩn cửa sổ
         this.target.style.display = 'none';
 
@@ -979,7 +978,7 @@ class WindowMinimizer {
         this.taskItem.className = 'btn btn-primary btn-sm erp-task-item';
         this.taskItem.innerHTML = `<i class="fa-solid fa-window-restore me-2"></i>${this.title}`;
         this.taskItem.addEventListener('click', () => this.restore());
-        
+
         this.taskbar.appendChild(this.taskItem);
     }
 
@@ -990,7 +989,7 @@ class WindowMinimizer {
     restore() {
         // 1. Hiện lại cửa sổ
         this.target.style.display = this.oldDisplay;
-        
+
         // 2. ✅ Restore modal-dialog-centered nếu nó đã bị loại bỏ
         // (Optional: Chỉ restore nếu cấu hình restoreCenteredClass = true)
         if (this.hadCenteredClass && this.removeCenteredClass) {
@@ -1001,7 +1000,7 @@ class WindowMinimizer {
                 // modalDialog.classList.add('modal-dialog-centered');
             }
         }
-        
+
         // 3. Trigger animation popIn
         requestAnimationFrame(() => {
             this.target.style.animation = 'popIn 0.3s ease forwards';
@@ -1011,7 +1010,7 @@ class WindowMinimizer {
         if (this.taskItem) {
             this.taskItem.remove();
         }
-        
+
         // 5. ✅ Cleanup: Xóa Taskbar nếu không còn item nào
         if (this.taskbar) {
             const remainingItems = this.taskbar.querySelectorAll('.erp-task-item');

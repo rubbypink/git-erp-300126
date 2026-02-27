@@ -14,13 +14,13 @@
  * =========================================================================
  */
 
-const DB_SCHEMA = {
+export const DB_SCHEMA = {
   // =========================================================================
   // 1. BOOKINGS COLLECTION
   // =========================================================================
   bookings: {
     displayNameEng: 'Booking',
-    displayName: 'Đặt Tour',
+    displayName: 'Booking',
     primaryKey: 'id',
     fields: [
       {
@@ -918,6 +918,22 @@ const DB_SCHEMA = {
       },
       {
         index: 3,
+        name: 'password',
+        displayNameEng: 'Password',
+        displayName: 'Mật khẩu',
+        type: 'text',
+        tag: 'input',
+        attrs: ['required'],
+        class: '',
+        placeholder: 'Mật khẩu',
+        validation: {
+          required: true,
+          minLength: 6,
+          maxLength: 20
+        }
+      },
+      {
+        index: 4,
         name: 'user_phone',
         displayNameEng: 'Phone Number',
         displayName: 'Số Điện Thoại',
@@ -928,7 +944,7 @@ const DB_SCHEMA = {
         placeholder: '0xxx-xxx-xxx'
       },
       {
-        index: 4,
+        index: 5,
         name: 'email',
         displayNameEng: 'Email Address',
         displayName: 'Email',
@@ -943,7 +959,7 @@ const DB_SCHEMA = {
         }
       },
       {
-        index: 5,
+        index: 6,
         name: 'role',
         displayNameEng: 'User Role',
         displayName: 'Vai trò',
@@ -957,7 +973,7 @@ const DB_SCHEMA = {
         }
       },
       {
-        index: 6,
+        index: 7,
         name: 'level',
         displayNameEng: 'User Level',
         displayName: 'Cấp độ',
@@ -971,7 +987,7 @@ const DB_SCHEMA = {
         }
       },
       {
-        index: 7,
+        index: 8,
         name: 'group',
         displayNameEng: 'User Group',
         displayName: 'Nhóm',
@@ -982,7 +998,7 @@ const DB_SCHEMA = {
         placeholder: 'Group name'
       },
       {
-        index: 8,
+        index: 9,
         name: 'created_at',
         displayNameEng: 'Created Date',
         displayName: 'Ngày Tạo',
@@ -1224,7 +1240,7 @@ const DB_SCHEMA = {
   // =========================================================================
   transactions: {
     displayNameEng: 'Transaction',
-    displayName: 'Giao dịch',
+    displayName: 'Giao dịch (Thu/Chi)',
     primaryKey: 'id',
     fields: [
       {
@@ -1354,7 +1370,26 @@ const DB_SCHEMA = {
       }
     ]
   },
-
+  // transactions_thenice: cùng cấu trúc transactions, dùng cho công ty The Nice
+  transactions_thenice: {
+    displayNameEng: 'Transaction (The Nice)',
+    displayName: 'Giao dịch (The Nice)',
+    primaryKey: 'id',
+    description: 'Alias collection — cùng cấu trúc với transactions, dùng cho công ty The Nice.',
+    fields: [
+      { index: 0, name: 'id', displayNameEng: 'Transaction ID', displayName: 'Mã GD', type: 'text', tag: 'input', attrs: ['readonly'], class: 'fw-bold text-danger' },
+      { index: 1, name: 'transaction_date', displayNameEng: 'Transaction Date', displayName: 'Ngày GD', type: 'date', tag: 'input', attrs: ['required'], class: '', validation: { required: true }, initial: 'today' },
+      { index: 2, name: 'type', displayNameEng: 'Transaction Type', displayName: 'Loại GD', type: 'select', tag: 'select', attrs: ['required'], class: '', options: ['Thu', 'Chi', 'Chuyển'], validation: { required: true } },
+      { index: 3, name: 'amount', displayNameEng: 'Amount', displayName: 'Số tiền', type: 'text', tag: 'input', attrs: ['required'], class: 'number', validation: { required: true, min: 0 } },
+      { index: 4, name: 'category', displayNameEng: 'Category', displayName: 'Hạng mục', type: 'select', tag: 'select', attrs: [], class: '' },
+      { index: 5, name: 'description', displayNameEng: 'Description', displayName: 'Mô tả', type: 'textarea', tag: 'textarea', attrs: [], class: '' },
+      { index: 6, name: 'booking_id', displayNameEng: 'Related Booking', displayName: 'Booking liên quan', type: 'text', tag: 'input', attrs: [], class: '' },
+      { index: 7, name: 'fund_source', displayNameEng: 'Fund Source', displayName: 'Nguồn tiền', type: 'select', tag: 'select', attrs: [], class: '', dataSource: 'fund_accounts_thenice' },
+      { index: 8, name: 'status', displayNameEng: 'Status', displayName: 'Trạng thái', type: 'select', tag: 'select', attrs: [], class: '', options: ['Hoàn thành', 'Chờ duyệt', 'Từ chối'] },
+      { index: 9, name: 'created_at', displayNameEng: 'Created Date', displayName: 'Ngày tạo', type: 'date', tag: 'input', attrs: ['readonly'], class: '', initial: 'today' },
+      { index: 10, name: 'created_by', displayNameEng: 'Created By', displayName: 'Tạo bởi', type: 'text', tag: 'input', attrs: ['readonly'], class: '' }
+    ]
+  },
   // =========================================================================
   // 9. FUND_ACCOUNTS COLLECTION
   // =========================================================================
@@ -1445,8 +1480,374 @@ const DB_SCHEMA = {
         initial: 'today'
       }
     ]
-  }
+  },
+
+  // fund_accounts_thenice: cùng cấu trúc fund_accounts, dùng cho công ty The Nice
+  fund_accounts_thenice: {
+    displayNameEng: 'Fund Account (The Nice)',
+    displayName: 'Tài khoản quỹ (The Nice)',
+    primaryKey: 'id',
+    description: 'Alias collection — cùng cấu trúc với fund_accounts, dùng cho công ty The Nice.',
+    fields: [
+      { index: 0, name: 'id', displayNameEng: 'Account ID', displayName: 'Mã Tài khoản', type: 'text', tag: 'input', attrs: ['readonly'], class: 'fw-bold text-danger' },
+      { index: 1, name: 'type', displayNameEng: 'Account Type', displayName: 'Loại TK', type: 'select', tag: 'select', attrs: ['required'], class: '', options: ['Tiền mặt', 'Ngân hàng', 'Ví điện tử'], validation: { required: true } },
+      { index: 2, name: 'name', displayNameEng: 'Account Name', displayName: 'Tên TK', type: 'text', tag: 'input', attrs: ['required'], class: '', validation: { required: true } },
+      { index: 3, name: 'code', displayNameEng: 'Account Code', displayName: 'Mã TK', type: 'text', tag: 'input', attrs: [], class: '' },
+      { index: 4, name: 'account_no', displayNameEng: 'Account Number', displayName: 'Số TK', type: 'text', tag: 'input', attrs: [], class: '' },
+      { index: 5, name: 'balance', displayNameEng: 'Current Balance', displayName: 'Số dư', type: 'text', tag: 'input', attrs: ['readonly'], class: 'number', initial: '0' },
+      { index: 6, name: 'created_at', displayNameEng: 'Created Date', displayName: 'Ngày tạo', type: 'date', tag: 'input', attrs: ['readonly'], class: '', initial: 'today' }
+    ]
+  },
+
+  // =========================================================================
+  // 10. HOTEL_PRICE_SCHEDULES COLLECTION
+  // =========================================================================
+  // Cấu trúc Firestore document (nested):
+  //   id        → '{SUPPLIERID}_{HOTELID}_{YEAR}'  (e.g. 'ABC_HOTEL1_2025')
+  //   info      → { supplierId, hotelId, year, status, updatedAt, updatedBy, totalRecords, viewConfig }
+  //   priceData → { [roomId_rateId_periodId_pkgId]: number }  (flat map của giá)
+  //   searchTags → string[]
+  //   created_at → Firestore ServerTimestamp
+  // =========================================================================
+  hotel_price_schedules: {
+    displayNameEng: 'Hotel Price Schedule',
+    displayName: 'Bảng Giá Khách Sạn',
+    primaryKey: 'id',
+    description: 'Bảng giá KS theo NCC × Hotel × Năm. priceData = flat-map {roomId_rateId_periodId_pkgId: number}.',
+    fields: [
+      {
+        index: 0, name: 'id',
+        displayNameEng: 'Schedule ID', displayName: 'Mã Bảng Giá',
+        type: 'text', tag: 'input', attrs: ['readonly'], class: 'fw-bold text-danger',
+        description: 'Auto-generated: {SUPPLIERID}_{HOTELID}_{YEAR}', placeholder: 'Auto-generated'
+      },
+      {
+        index: 1, name: 'supplier_id',
+        displayNameEng: 'Supplier ID', displayName: 'Mã NCC',
+        type: 'select', tag: 'select', attrs: ['required'], class: '',
+        dataSource: 'suppliers', description: 'Firestore: info.supplierId',
+        validation: { required: true }
+      },
+      {
+        index: 2, name: 'hotel_id',
+        displayNameEng: 'Hotel ID', displayName: 'Mã Khách sạn',
+        type: 'select', tag: 'select', attrs: ['required'], class: '',
+        dataSource: 'hotels', description: 'Firestore: info.hotelId',
+        validation: { required: true }
+      },
+      {
+        index: 3, name: 'year',
+        displayNameEng: 'Year', displayName: 'Năm',
+        type: 'number', tag: 'input', attrs: ['required'], class: 'number-only',
+        description: 'Firestore: info.year',
+        validation: { required: true, min: 2020, max: 2099 },
+        initial: new Date().getFullYear()
+      },
+      {
+        index: 4, name: 'status',
+        displayNameEng: 'Status', displayName: 'Trạng thái',
+        type: 'select', tag: 'select', attrs: [], class: '',
+        options: ['actived', 'pending', 'canceled', 'stopped'],
+        description: 'Firestore: info.status', initial: 'actived'
+      },
+      {
+        index: 5, name: 'price_data',
+        displayNameEng: 'Price Data Map', displayName: 'Dữ liệu giá',
+        type: 'json', tag: 'textarea', attrs: ['readonly'], class: '',
+        description: 'Firestore: priceData — {roomId_rateId_periodId_pkgId: number}. Chỉnh qua component at-tbl-hotel-price.'
+      },
+      {
+        index: 6, name: 'view_config',
+        displayNameEng: 'View Config', displayName: 'Cấu hình hiển thị',
+        type: 'json', tag: 'textarea', attrs: [], class: '',
+        description: 'Firestore: info.viewConfig — {periods: string[], packages: string[], priceTypes: string[]}'
+      },
+      {
+        index: 7, name: 'search_tags',
+        displayNameEng: 'Search Tags', displayName: 'Tags tìm kiếm',
+        type: 'text', tag: 'input', attrs: ['readonly'], class: '',
+        description: 'Firestore: searchTags — [supplierId, hotelId, year]. Auto khi lưu.'
+      },
+      {
+        index: 8, name: 'updated_by',
+        displayNameEng: 'Updated By', displayName: 'Cập nhật bởi',
+        type: 'text', tag: 'input', attrs: ['readonly'], class: '',
+        description: 'Firestore: info.updatedBy'
+      },
+      {
+        index: 9, name: 'total_records',
+        displayNameEng: 'Total Price Records', displayName: 'Số dòng giá',
+        type: 'number', tag: 'input', attrs: ['readonly'], class: 'number-only',
+        description: 'Firestore: info.totalRecords'
+      },
+      {
+        index: 10, name: 'created_at',
+        displayNameEng: 'Created Date', displayName: 'Ngày tạo',
+        type: 'date', tag: 'input', attrs: ['readonly'], class: '', initial: 'today'
+      },
+      {
+        index: 11, name: 'updated_at',
+        displayNameEng: 'Updated Date', displayName: 'Ngày cập nhật',
+        type: 'date', tag: 'input', attrs: ['readonly'], class: '',
+        description: 'Firestore: info.updatedAt (ms timestamp)'
+      }
+    ]
+  },
+
+  // =========================================================================
+  // 11. SERVICE_PRICE_SCHEDULES COLLECTION
+  // =========================================================================
+  // Cấu trúc Firestore document (nested):
+  //   id        → '{SUPPLIERID}_{YEAR}'  (e.g. 'ABC_2025')
+  //   info      → { supplierId, supplierName, year, status, updatedAt }
+  //   items     → Array<{ type, name, from, to, adl, chd, note }>
+  //                 type: Loại DV (Vé MB / Vé Tàu / Ăn / ...)
+  //                 name: Tên dịch vụ cụ thể
+  //                 from/to: 'DD/MM' — hiệu lực theo mùa
+  //                 adl: Giá người lớn   chd: Giá trẻ em
+  //   created_at → Firestore ServerTimestamp
+  // =========================================================================
+  service_price_schedules: {
+    displayNameEng: 'Service Price Schedule',
+    displayName: 'Bảng Giá Dịch Vụ',
+    primaryKey: 'id',
+    description: 'Bảng giá dịch vụ (vé, ăn, ...) theo NCC × Năm. items = mảng dòng giá.',
+    fields: [
+      {
+        index: 0, name: 'id',
+        displayNameEng: 'Schedule ID', displayName: 'Mã Bảng Giá',
+        type: 'text', tag: 'input', attrs: ['readonly'], class: 'fw-bold text-danger',
+        description: 'Auto-generated: {SUPPLIERID}_{YEAR}', placeholder: 'Auto-generated'
+      },
+      {
+        index: 1, name: 'supplier_id',
+        displayNameEng: 'Supplier ID', displayName: 'Mã NCC',
+        type: 'select', tag: 'select', attrs: ['required'], class: '',
+        dataSource: 'suppliers', description: 'Firestore: info.supplierId',
+        validation: { required: true }
+      },
+      {
+        index: 2, name: 'supplier_name',
+        displayNameEng: 'Supplier Name', displayName: 'Tên NCC',
+        type: 'text', tag: 'input', attrs: ['readonly'], class: '',
+        description: 'Firestore: info.supplierName — auto-fill từ supplier_id'
+      },
+      {
+        index: 3, name: 'year',
+        displayNameEng: 'Year', displayName: 'Năm',
+        type: 'number', tag: 'input', attrs: ['required'], class: 'number-only',
+        description: 'Firestore: info.year',
+        validation: { required: true, min: 2020, max: 2099 },
+        initial: new Date().getFullYear()
+      },
+      {
+        index: 4, name: 'status',
+        displayNameEng: 'Status', displayName: 'Trạng thái',
+        type: 'select', tag: 'select', attrs: [], class: '',
+        options: ['actived', 'pending', 'canceled', 'stopped'],
+        description: 'Firestore: info.status', initial: 'actived'
+      },
+      {
+        index: 5, name: 'items',
+        displayNameEng: 'Price Items', displayName: 'Danh sách giá dịch vụ',
+        type: 'array', tag: 'textarea', attrs: [], class: '',
+        description: 'Firestore: items[]. Chỉnh qua component at-tbl-service-price.',
+        itemSchema: {
+          type: { displayName: 'Loại DV', type: 'select', dataSource: 'lists.types' },
+          name: { displayName: 'Tên DV', type: 'text' },
+          from: { displayName: 'Từ ngày', type: 'text', placeholder: 'DD/MM' },
+          to: { displayName: 'Đến ngày', type: 'text', placeholder: 'DD/MM' },
+          adl: { displayName: 'Giá NL', type: 'number' },
+          chd: { displayName: 'Giá TE', type: 'number' },
+          note: { displayName: 'Ghi chú', type: 'text' }
+        }
+      },
+      {
+        index: 6, name: 'created_at',
+        displayNameEng: 'Created Date', displayName: 'Ngày tạo',
+        type: 'date', tag: 'input', attrs: ['readonly'], class: '', initial: 'today'
+      },
+      {
+        index: 7, name: 'updated_at',
+        displayNameEng: 'Updated Date', displayName: 'Ngày cập nhật',
+        type: 'date', tag: 'input', attrs: ['readonly'], class: '',
+        description: 'Firestore: info.updatedAt (ms timestamp)'
+      }
+    ]
+  },
+
+  // =========================================================================
+  // SECONDARY INDEXES (in-memory, derived by DBManager.#buildSecondaryIndexes)
+  // Cấu trúc: { [groupByValue]: Array<sourceDoc> }
+  // Không có fields[] → không hiển thị trong getCollectionNames(), không render form.
+  // =========================================================================
+
+  booking_details_by_booking: {
+    displayNameEng: 'Booking Details (by Booking)',
+    displayName: 'Chi tiết DV (theo Booking)',
+    isSecondaryIndex: true,
+    source: 'booking_details',
+    groupBy: 'booking_id',
+    description: 'Secondary index của booking_details, nhóm theo booking_id. ' +
+      'APP_DATA.booking_details_by_booking[bookingId] → BookingDetail[]',
+  },
+
+  operator_entries_by_booking: {
+    displayNameEng: 'Operator Entries (by Booking)',
+    displayName: 'Chi phí Giá Vốn (theo Booking)',
+    isSecondaryIndex: true,
+    source: 'operator_entries',
+    groupBy: 'booking_id',
+    description: 'Secondary index của operator_entries, nhóm theo booking_id. ' +
+      'APP_DATA.operator_entries_by_booking[bookingId] → OperatorEntry[]',
+  },
+
+  transactions_by_booking: {
+    displayNameEng: 'Transactions (by Booking)',
+    displayName: 'Giao dịch (theo Booking)',
+    isSecondaryIndex: true,
+    source: 'transactions',
+    groupBy: 'booking_id',
+    description: 'Secondary index của transactions, nhóm theo booking_id. ' +
+      'APP_DATA.transactions_by_booking[bookingId] → Transaction[]',
+  },
+
+  transactions_by_fund: {
+    displayNameEng: 'Transactions (by Fund)',
+    displayName: 'Giao dịch (theo Quỹ)',
+    isSecondaryIndex: true,
+    source: 'transactions',
+    groupBy: 'fund_source',
+    description: 'Secondary index của transactions, nhóm theo fund_source. ' +
+      'APP_DATA.transactions_by_fund[fundAccountId] → Transaction[]',
+  },
+
+  FIELD_MAP: function (collectionName) {
+    const collection = this[collectionName];
+    if (!collection) return {};
+    const map = {};
+    collection.fields.forEach(field => {
+      if (field?.name) map[field.index] = field.name;
+    });
+    return map;
+  },
+
+
+
+  arrayToObject: function (arrData, collectionName) {
+    const map = A.DB.schema.FIELD_MAP[collectionName];
+    if (!map) return {};
+    const obj = {};
+    Object.keys(map).forEach(index => {
+      let val = arrData[index];
+      if (val === undefined || val === null) val = "";
+      if (val instanceof Date) val = val.toISOString().split('T')[0];
+      obj[map[index]] = val;
+    });
+    return obj;
+  },
+
+  getHeader: function (collectionName) {
+    let map;
+    if (typeof collectionName === 'object') {
+      map = collectionName;
+    } else {
+      map = A.DB.schema.FIELD_MAP[collectionName];
+      if (!map) return {};
+    }
+    if (!map) return [];
+    const maxIdx = Math.max(...Object.keys(map).map(Number));
+    const arr = new Array(maxIdx + 1).fill("");
+    for (let idx in map) arr[idx] = map[idx];
+    return arr;
+  },
+
+  /**
+   * Get all field names for a collection
+   * Usage: getFieldNames('bookings') → ['id', 'created_at', 'customer_id', ...]
+   */
+  // getFieldNames: function (collectionName) {
+  //   const map = A.DB.schema.FIELD_MAP[collectionName];
+  //   if (!map) return [];
+  //   return Object.values(map);
+  // },
+  getFieldNames: function (collectionName) {
+    const collection = this[collectionName];
+    if (!collection?.fields) return []; // guard: secondary indexes và functions không có fields[]
+    return collection.fields.map(field => field.name).filter(Boolean);
+  },
+
+  getCollectionNames: function (collectionNames) {
+    if (!collectionNames || collectionNames.length === 0) {
+      collectionNames = Object.keys(this).filter(key => (typeof this[key] === 'object' && this[key].fields) || this[key].isSecondaryIndex);
+    }
+    const map = {};
+    for (let coll of collectionNames) {
+      map[coll] = this[coll]?.displayName ?? coll;
+    }
+    return map;
+  },
+
+  /**
+   * Create header row for grid display from field names
+   * Usage: createHeaderFromFields('bookings') → { id: 'ID', customer_full_name: 'Tên Khách', ... }
+   */
+  createHeaderFromFields: function (collectionName) {
+    const collection = this[collectionName];
+    if (!collection?.fields) {
+      if (collection?.isSecondaryIndex) {
+        collection = this[collection.source];
+        if (!collection?.fields) return {};
+      }
+    };
+    const headerObj = {};
+    collection.fields.forEach(field => {
+      if (field?.name) {
+        // Dùng displayName từ schema là nguồn chính thức (tiếng Việt)
+        // Fallback: Lang translation → raw field name
+        headerObj[field.name] = field.displayName || A.Lang?.t(field.name) || field.name;
+      }
+    });
+    return headerObj;
+  },
+
+
+
+
+
 };
+
+// =========================================================================
+// A.DB.schema.FIELD_MAP — Derived lazily from DB_SCHEMA via Proxy
+// =========================================================================
+// Thay thế static A.DB.schema.FIELD_MAP trong db_schema.js.
+// Backward compatible 100%: mọi code cũ dùng A.DB.schema.FIELD_MAP[coll][idx] vẫn hoạt động.
+//
+// Cơ chế:
+//   - Proxy intercepts `A.DB.schema.FIELD_MAP['bookings']` → gọi DB_SCHEMA.A.DB.schema.FIELD_MAP('bookings')
+//   - Kết quả được cache vào `_cache` object để tránh tính toán lại
+//   - Collection không tồn tại → trả undefined (falsy) — đúng hành vi cũ
+//
+// Pattern cũ vẫn hoạt động:
+//   A.DB.schema.FIELD_MAP['bookings'][2]              → 'customer_full_name'
+//   A.DB.schema.FIELD_MAP.booking_details[0]          → 'id'
+//   if (A.DB.schema.FIELD_MAP[path]) { ... }          → false nếu collection không tồn tại
+//   Object.values(A.DB.schema.FIELD_MAP[collection])  → ['id', 'created_at', ...]
+// =========================================================================
+const _fieldMapCache = {};
+const FIELD_MAP = new Proxy(_fieldMapCache, {
+  get(cache, collectionName) {
+    if (typeof collectionName !== 'string') return undefined;
+    if (collectionName in cache) return cache[collectionName];
+    const map = DB_SCHEMA.A.DB.schema.FIELD_MAP(collectionName);
+    // Trả undefined (falsy) nếu collection không tồn tại — giữ đúng hành vi cũ
+    const result = Object.keys(map).length > 0 ? map : undefined;
+    cache[collectionName] = result;
+    return result;
+  },
+});
+// Expose globally để code cũ (non-module scripts) vẫn dùng được
+window.FIELD_MAP = FIELD_MAP;
 
 // =========================================================================
 // HELPER FUNCTIONS FOR SCHEMA OPERATIONS
@@ -1455,11 +1856,12 @@ const DB_SCHEMA = {
 /**
  * Get all fields for a collection
  * @param {string} collectionName - Name of the collection
- * @returns {Array} Array of field objects
+ * @returns {Object} Object of field objects by field name
  */
-function getCollectionFields(collectionName) {
-  const collection = DB_SCHEMA[collectionName];
-  return collection ? collection.fields : [];
+function getFieldsSchema(collectionName) {
+  if (!DB_SCHEMA[collectionName]) return {};
+  const fields = DB_SCHEMA[collectionName]?.fields ?? [];
+  return Object.fromEntries(fields.filter(f => f?.name).map(f => [f.name, f]));
 }
 
 
@@ -1494,7 +1896,7 @@ export function createFormBySchema(collectionName, formId) {
     if (!coll) return '';
     collectionName = coll;
   }
-  const fields = getCollectionFields(collectionName);
+  const fields = Object.values(getFieldsSchema(collectionName));
   if (!fields || fields.length === 0) return '';
 
   // Separate fields into categories
@@ -1575,6 +1977,10 @@ export function createFormBySchema(collectionName, formId) {
     justify-content: flex-end;
     flex-wrap: wrap;
   ">
+    <button type="button" class="btn btn-danger me-auto" 
+            onclick="deleteFormDataSchema('${formId}')">
+      <i class="fa-solid fa-trash me-1"></i> Xóa
+    </button>
     <button type="button" class="btn btn-secondary" 
             onclick="resetFormSchema('${formId}')">
       <i class="fa-solid fa-rotate-left me-1"></i> Reset
@@ -1631,17 +2037,17 @@ function _getDataSourceArray(dataSourceName) {
     for (const key in data) {
       if (data.hasOwnProperty(key)) {
         const item = data[key];
-        
+
         // Extract ID: try id, uid, name, or use object key as fallback
         const itemId = item.id || item.uid || item.name || key;
-        
+
         // Extract display text: try name, full_name, display_name, service_name
-        const itemName = item.name || 
-                        item.full_name || 
-                        item.display_name || 
-                        item.service_name || 
-                        itemId;
-        
+        const itemName = item.name ||
+          item.full_name ||
+          item.display_name ||
+          item.service_name ||
+          itemId;
+
         // Create standardized item object
         const convertedItem = {
           id: itemId,
@@ -1652,11 +2058,11 @@ function _getDataSourceArray(dataSourceName) {
           service_name: item.service_name || itemName,
           ...item  // Include all other properties from original item
         };
-        
+
         convertedArray.push(convertedItem);
       }
     }
-    
+
     if (convertedArray.length > 0) {
       return convertedArray;
     }
@@ -1687,28 +2093,28 @@ function _autoPopulateDynamicSelects(formId) {
   selectsWithSource.forEach(select => {
     const dataSourceName = select.dataset.source;
     const fieldName = select.name;
-    
+
     // Skip service_name here - it will be populated on-demand when dependencies change
     if (dataSourceName === 'serviceNames') {
       return;
     }
-    
+
     populateSelectFromSource(fieldName, dataSourceName);
   });
 
   // ===== NEW: Setup cascading dropdown logic =====
   // Find all select fields that have dependsOn attribute (dependent fields)
   const dependentSelects = form.querySelectorAll('select[data-depends-on]');
-  
+
   dependentSelects.forEach(dependentSelect => {
     const dependsOnFields = dependentSelect.dataset.dependsOn.split(',').map(f => f.trim());
     const sourceFieldName = dependentSelect.dataset.source;
-    
+
     // Only handle service_name (which depends on service_type and hotel_name)
     if (sourceFieldName !== 'serviceNames') {
       return;
     }
-    
+
     // Add change listeners to all dependency fields
     dependsOnFields.forEach(fieldName => {
       const depField = form.querySelector(`[name="${fieldName}"]`);
@@ -1719,11 +2125,11 @@ function _autoPopulateDynamicSelects(formId) {
         });
       }
     });
-    
+
     // Initial populate if all dependencies have values
     const serviceTypeField = form.querySelector('[name="service_type"]');
     const hotelNameField = form.querySelector('[name="hotel_name"]');
-    
+
     if (serviceTypeField && serviceTypeField.value && hotelNameField && hotelNameField.value) {
       setTimeout(() => {
         _populateServiceNameSelect(form, dependentSelect.name);
@@ -1744,31 +2150,31 @@ function _autoPopulateDynamicSelects(formId) {
 function _populateServiceNameSelect(form, selectName) {
   const serviceNameSelect = form ? form.querySelector(`[name="${selectName}"]`) : document.querySelector(`[name="${selectName}"]`);
   if (!serviceNameSelect) return;
-  
+
   const serviceTypeField = form ? form.querySelector('[name="service_type"]') : document.querySelector('[name="service_type"]');
   const hotelNameField = form ? form.querySelector('[name="hotel_name"]') : document.querySelector('[name="hotel_name"]');
-  
+
   if (!serviceTypeField || !hotelNameField) return;
-  
+
   const serviceType = serviceTypeField.value;
   const hotelName = hotelNameField.value;
-  
+
   // Get options based on dependencies
   const options = _getServiceNameOptions(serviceType, hotelName);
-  
+
   // Keep current value if still valid
   const currentValue = serviceNameSelect.value;
-  
+
   // Clear and rebuild options
   serviceNameSelect.innerHTML = '<option value="">-- Chọn --</option>';
-  
+
   options.forEach(optName => {
     const optionEl = document.createElement('option');
     optionEl.value = optName;
     optionEl.textContent = optName;
     serviceNameSelect.appendChild(optionEl);
   });
-  
+
   // Restore value if still valid
   if (options.includes(currentValue)) {
     serviceNameSelect.value = currentValue;
@@ -1826,6 +2232,8 @@ function _convertObjectToArray(data) {
   return [data];
 }
 
+
+
 /**
  * Helper: Get select options from dataSource or field.options
  * Supports special dataSource names that require complex logic:
@@ -1841,7 +2249,7 @@ function _getSelectOptions(field, collectionName) {
   if (field.dataSource === 'hotelLocations') {
     return _getHotelLocationOptions();
   }
-  
+
   if (field.dataSource === 'serviceNames') {
     // Will be populated dynamically via _populateServiceNameSelect
     // Return empty for initial render, will be filled on demand
@@ -1876,18 +2284,18 @@ function _getSelectOptions(field, collectionName) {
  */
 function _getHotelLocationOptions() {
   const lists = window.APP_DATA?.lists || {};
-  
+
   // Get hotel names from matrix (column 0)
   const hotelNames = (lists.hotelMatrix || [])
     .map(row => row && row[0] ? row[0] : null)
     .filter(name => name !== null && name !== '');
-  
+
   // Get other locations
   const otherLocs = lists.locOther || [];
-  
+
   // Combine and remove duplicates
   const allLocations = [...new Set([...hotelNames, ...otherLocs])];
-  
+
   return allLocations;
 }
 
@@ -1904,12 +2312,12 @@ function _getHotelLocationOptions() {
 function _getServiceNameOptions(serviceType, hotelName) {
   const lists = window.APP_DATA?.lists || {};
   let options = [];
-  
+
   if (serviceType === 'Phòng') {
     // Room service: lookup hotel matrix by hotel name
     const matrix = lists.hotelMatrix || [];
     const hotelRow = matrix.find(row => row && row[0] === hotelName);
-    
+
     if (hotelRow) {
       // Take columns 2+ (skip col 0=name, col 1=blank), filter empty
       options = hotelRow.slice(2).filter(cell => cell !== '' && cell !== null);
@@ -1922,7 +2330,7 @@ function _getServiceNameOptions(serviceType, hotelName) {
       .map(row => row[1])
       .filter(name => name !== '' && name !== null);
   }
-  
+
   return options;
 }
 
@@ -1994,7 +2402,7 @@ function _createFieldGroup(field, collectionName) {
 
     // Get options from either dataSource or field.options
     const options = _getSelectOptions(field, collectionName);
-    
+
     // Render options
     options.forEach(opt => {
       let optValue = '';
@@ -2008,15 +2416,15 @@ function _createFieldGroup(field, collectionName) {
       } else if (typeof opt === 'object') {
         // Object option: try to get id/uid and display name
         optValue = opt.id || opt.uid || opt.code || opt.value || '';
-        optText = opt.user_name || 
-                 opt.full_name || 
-                 opt.name || 
-                 opt.displayNameEng || 
-                 opt.displayName || 
-                 opt.account || 
-                 opt.value || 
-                 optValue || 
-                 '';
+        optText = opt.user_name ||
+          opt.full_name ||
+          opt.name ||
+          opt.displayNameEng ||
+          opt.displayName ||
+          opt.account ||
+          opt.value ||
+          optValue ||
+          '';
       } else {
         // Fallback
         optValue = String(opt);
@@ -2106,6 +2514,53 @@ function saveFormDataSchema(formId) {
   A.DB.saveRecord(form.dataset.collection, data);
 }
 window.saveFormDataSchema = saveFormDataSchema; // Expose to global scope for button onclick
+
+/**
+ * Xóa record từ collection theo ID.
+ * Nếu form có giá trị id thì dùng làm ID xóa.
+ * Nếu không có, mở prompt để người dùng nhập ID.
+ * @param {string} formId - ID của form
+ */
+async function deleteFormDataSchema(formId) {
+  const form = document.getElementById(formId);
+  if (!form) return;
+
+  const collectionName = form.dataset.collection;
+  if (!collectionName) {
+    alert('⚠️ Form chưa có data-collection!');
+    return;
+  }
+
+  // Đọc id từ field [data-field="id"] trong form
+  const idInput = form.querySelector('[data-field="id"]');
+  let id = idInput?.value?.trim();
+
+  // Nếu không có id trong form, mở prompt
+  if (!id) {
+    id = prompt(`🗑️ Nhập ID cần xóa trong collection [${collectionName}]:`);
+    if (!id?.trim()) return; // hủy nếu trống
+    id = id.trim();
+  }
+
+  const confirmMsg = `⚠️ Xác nhận xóa record:\n\nCollection: ${collectionName}\nID: ${id}\n\nHành động này không thể hoàn tác!`;
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const res = await A.DB.deleteRecord(collectionName, id);
+    if (res?.success) {
+      alert(`✅ Đã xóa thành công: ${collectionName}/${id}`);
+      // Reset form sau khi xóa
+      resetFormSchema(formId);
+    } else {
+      alert(`❌ Xóa thất bại: ${res?.error ?? 'Lỗi không xác định'}`);
+    }
+  } catch (e) {
+    console.error('❌ deleteFormDataSchema error:', e);
+    alert(`❌ Lỗi: ${e.message}`);
+  }
+}
+window.deleteFormDataSchema = deleteFormDataSchema;
+
 /**
  * Load form data from APP_DATA or Firestore
  * 
@@ -2160,7 +2615,7 @@ async function loadFormDataSchema(formId, idorData) {
     if (!data && window.db) {
       try {
         console.log(`📡 Querying Firestore: ${collectionName}/${idorData}`);
-        
+
         // Firebase query pseudo-code
         const docRef = window.db.collection(collectionName).doc(idorData);
         const docSnap = await docRef.get();
@@ -2284,7 +2739,6 @@ window.toggleCollapse = toggleCollapse; // Expose to global scope for header onc
  * @example
  * // For users collection
  * populateSelectFromSource('staff_id', 'users');
- * // Will populate from Object.values(APP_DATA.users)_obj or Object.values(APP_DATA.users)
  * 
  * @example
  * // For hotels collection
@@ -2313,27 +2767,27 @@ function populateSelectFromSource(fieldName, dataSourceName) {
   // Handle both array and object formats
   dataArray.forEach(item => {
     const option = document.createElement('option');
-    
+
     // Get ID/value (handle both object and array formats)
     const itemId = item.id || item.uid || item.code || item.value || '';
-    
+
     // Get display text (try multiple properties based on data type)
     let itemText = '';
     if (typeof item === 'string') {
       itemText = item;
     } else if (typeof item === 'object') {
       // Try common display name properties
-      itemText = item.user_name || 
-                item.full_name || 
-                item.name || 
-                item.displayNameEng || 
-                item.displayName ||
-                item.account ||
-                item.value || 
-                itemId || 
-                '';
+      itemText = item.user_name ||
+        item.full_name ||
+        item.name ||
+        item.displayNameEng ||
+        item.displayName ||
+        item.account ||
+        item.value ||
+        itemId ||
+        '';
     }
-    
+
     if (itemId) {
       option.value = itemId;
       option.textContent = itemText;
@@ -2343,6 +2797,33 @@ function populateSelectFromSource(fieldName, dataSourceName) {
 
   console.log(`✅ Populated '${fieldName}' with ${dataArray.length} options from '${dataSourceName}'`);
 }
+
+const COL_INDEX = {
+  // BOOKINGS
+  M_ID: 0, M_CUSTID: 1, M_CUST: 2, M_PHONE: 3, M_START: 4, M_END: 5,
+  M_ADULT: 6, M_CHILD: 7, M_TOTAL: 8, M_DEPOSIT: 9, M_BALANCE: 10, M_PAYTYPE: 11, M_PAYDUE: 12,
+  M_NOTE: 13, M_STAFF: 14, M_STATUS: 15, M_CREATED: 16,
+
+  // DETAILS
+  D_SID: 0, D_BKID: 1, D_TYPE: 2, D_HOTEL: 3, D_SERVICE: 4, D_IN: 5, D_OUT: 6,
+  D_NIGHT: 7, D_QTY: 8, D_PRICE: 9, D_CHILD: 10, D_PRICEC: 11, D_SUR: 12, D_DISC: 13,
+  D_TOTAL: 14, D_CODE: 15, D_NOTE: 16,
+
+  // OPERATORS
+  OP_SID: 0, OP_BKID: 1, OP_CUST: 2, OP_TYPE: 3, OP_HOTEL: 4, OP_SERVICE: 5,
+  OP_IN: 6, OP_OUT: 7, OP_NIGHT: 8, OP_QTY: 9, OP_COSTA: 10, OP_CHILD: 11,
+  OP_COSTC: 12, OP_SUR: 13, OP_DISC: 14, OP_TOTALSALE: 15, OP_CODE: 16,
+  OP_TOTALCOST: 17, OP_PAID: 18, OP_BALANCE: 19, OP_SUPPLIER: 20, OP_NOTE: 21,
+
+  // CUSTOMERS
+  C_ID: 0, C_NAME: 1, C_DOB: 2, C_CCCD: 3,
+  C_CCCDDATE: 4, C_ADDRESS: 5, C_PHONE: 6, C_MAIL: 7, C_SOURCE: 8, C_TOTALSPEND: 9, C_CREATED: 10,
+  // USERS (Mới bổ sung để lấy Header)
+  U_UID: 0, U_ACCOUNT: 1, U_NAME: 2, U_PHONE: 3, U_EMAIL: 4, U_ROLE: 5,
+  U_LEVEL: 6, U_GROUP: 7, U_CREATED: 8
+};
+
+window.COL_INDEX = COL_INDEX; // Expose to global scope for easy access in other scripts
 
 // Export for module system (if applicable)
 if (typeof module !== 'undefined' && module.exports) {

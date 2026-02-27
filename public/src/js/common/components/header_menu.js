@@ -23,11 +23,9 @@ export default class ErpHeaderMenu {
         }
         this._initialized = true;
         try {
-            if  (!this.currentRole || this.currentRole === 'guest') {
-            this.currentRole = CURRENT_USER.realrole ? CURRENT_USER.realrole : CURRENT_USER.role || 'sale';
-            this._applyRoleFilters(); // Chỉ chạy CSS filter sau khi đã có Role
-            
-            console.log(`[UI] Header Menu initialized for role: ${this.currentRole}`);
+            if (!this.currentRole || this.currentRole === 'guest') {
+                this.currentRole = CURRENT_USER.realrole ? CURRENT_USER.realrole : CURRENT_USER.role || 'sale';
+                this._applyRoleFilters(); // Chỉ chạy CSS filter sau khi đã có Role
             }
         } catch (error) {
             console.error('[9 Trip ERP] Lỗi khởi tạo Header Menu:', error);
@@ -39,7 +37,7 @@ export default class ErpHeaderMenu {
      */
     _injectStyles() {
         if (document.getElementById('erp-header-styles')) return;
-        
+
         const style = document.createElement('style');
         style.id = 'erp-header-styles';
         style.innerHTML = `
@@ -185,7 +183,7 @@ export default class ErpHeaderMenu {
                     
                     <a class="navbar-brand m-0 p-0 me-auto" href="javascript:void(0);">
                         <img id="main-logo" src="https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp" 
-                            class="bg-transparent rounded-circle main-logo" alt="9Trip Logo" onclick="reloadPage()" 
+                            class="bg-transparent rounded-circle main-logo" alt="9Trip Logo" onclick="A.DB.stopNotificationsListener(); reloadPage();"
                             style="height: 40px; width: auto; object-fit: contain;">
                     </a>
 
@@ -231,17 +229,20 @@ export default class ErpHeaderMenu {
         return `
             <div class="d-flex align-items-center gap-2">
                 <div class="d-none" id="datalist-select" data-ontabs="3">
-                    <select id="btn-select-datalist" class="form-select form-select-sm border-0 shadow-sm" style="max-width: 120px;"></select>
+                    <select id="btn-select-datalist" class="form-select form-select-sm border-0 shadow-sm" style="width: 8rem;"></select>
                 </div>
+                
                 
                 <div class="dropdown d-none" id="btn-group-download" data-ontabs="3">
                     <button class="btn btn-warning btn-sm dropdown-toggle shadow-sm" type="button" data-bs-toggle="dropdown" id="download-menu">
-                        <i class="fa-solid fa-download"></i> Tải File
+                        <i class="fa-solid fa-download"></i> Tải...
                     </button>
                     <div class="dropdown-menu border-0 shadow-sm" aria-labelledby="download-menu">
                         <button class="dropdown-item py-2" type="button" onclick="downloadData()"><i class="fa-solid fa-file-excel text-success w-20px"></i> File Excel</button>
                         <button class="dropdown-item py-2" type="button" onclick="downloadData('pdf')"><i class="fa-solid fa-file-pdf text-danger w-20px"></i> File PDF</button>
+                        <button id="btn-reload-collection" class="dropdown-item py-2" type="button"><i class="fa-solid fa-sync-alt"></i> Cập Nhật Dữ Liệu</button>
                     </div>
+                    
                 </div>
 
                 <form class="form-inline m-0">
@@ -324,13 +325,14 @@ export default class ErpHeaderMenu {
                  background-color: var(--erp-menu-bg);
                  border: 1px solid var(--erp-menu-divider);
                  width: 36px;
+                 min-width: 36px;
                  height: 36px;
-                 border-radius: 8px;
+                 border-radius: 50%;
                  display: flex;
                  align-items: center;
                  justify-content: center;
                  color: var(--erp-icon-color);
-                 font-size: 18px;
+                 font-size: 22px;
                  cursor: pointer;
                  transition: background-color 0.2s ease;
              }
@@ -351,7 +353,7 @@ export default class ErpHeaderMenu {
                  border: 1px solid var(--erp-menu-divider);
                  border-radius: 8px;
                  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                 width: 320px;
+                 width: 260px;
                  padding: 8px 0;
                  z-index: 1000;
                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -507,7 +509,7 @@ export default class ErpHeaderMenu {
             const elements = container.querySelectorAll(selector);
             elements.forEach(el => {
                 // Sử dụng !important thông qua style để đè lên các class d-flex nếu có
-                el.style.setProperty('display', 'none', 'important'); 
+                el.style.setProperty('display', 'none', 'important');
             });
         });
 
@@ -517,7 +519,7 @@ export default class ErpHeaderMenu {
             Object.values(roleClassMap).forEach(selector => {
                 const elements = container.querySelectorAll(selector);
                 elements.forEach(el => {
-                    el.style.removeProperty('display'); 
+                    el.style.removeProperty('display');
                 });
             });
         } else {

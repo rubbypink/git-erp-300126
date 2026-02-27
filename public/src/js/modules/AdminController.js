@@ -94,13 +94,13 @@ class FirestoreDataTable extends HTMLElement {
         const bodyHtml = this._data.map((row, idx) => `
             <tr class="data-row">
                 ${this._headers.map(h => {
-                    // Logic check sub để tô màu (chỉ check type string)
-                    const rawVal = row[h];
-                    const isSub = typeof rawVal === 'string' && rawVal.startsWith('sub:');
-                    
-                    // Tuyệt đối KHÔNG ĐỂ value="${...}" ở đây
-                    return `<td><input type="text" class="inp-${h} ${isSub?'inp-sub':''}" data-ridx="${idx}" data-key="${h}"></td>`;
-                }).join('')} 
+            // Logic check sub để tô màu (chỉ check type string)
+            const rawVal = row[h];
+            const isSub = typeof rawVal === 'string' && rawVal.startsWith('sub:');
+
+            // Tuyệt đối KHÔNG ĐỂ value="${...}" ở đây
+            return `<td><input type="text" class="inp-${h} ${isSub ? 'inp-sub' : ''}" data-ridx="${idx}" data-key="${h}"></td>`;
+        }).join('')} 
                 <td class="text-center"><button class="btn-del" data-index="${idx}">X</button></td>
             </tr>
         `).join('');
@@ -112,17 +112,17 @@ class FirestoreDataTable extends HTMLElement {
         this.shadowRoot.querySelectorAll('input[data-ridx]').forEach(inp => {
             const rIdx = parseInt(inp.getAttribute('data-ridx'));
             const key = inp.getAttribute('data-key');
-            
+
             if (this._data[rIdx]) {
                 let val = this._data[rIdx][key];
-                
+
                 if (val === undefined || val === null) {
                     val = '';
                 } else if (typeof val === 'object') {
                     // Tự động stringify Object/Array thành JSON để hiển thị
                     val = JSON.stringify(val);
                 }
-                
+
                 // Gán trực tiếp vào thuộc tính value của DOM Element
                 // Trình duyệt sẽ hiển thị nguyên văn, không cắt bớt bất cứ gì
                 inp.value = val;
@@ -158,15 +158,15 @@ if (!customElements.get('table-db-data')) customElements.define('table-db-data',
 // PHẦN 2: LOGIC XỬ LÝ (Matrix Logic & Form Logic)
 // =============================================================================
 class MatrixLogic {
-    constructor(db) { 
+    constructor(db) {
         this.db = db || A.DB.db || firebase.firestore();
     }
 
     async getHeaders(path, fetchedData = []) {
         let headers = [];
         // 1. Config Global
-        if (typeof FIELD_MAP !== 'undefined' && FIELD_MAP[path]) {
-            const config = FIELD_MAP[path];
+        if (typeof A.DB.schema.FIELD_MAP !== 'undefined' && A.DB.schema.FIELD_MAP[path]) {
+            const config = A.DB.schema.FIELD_MAP[path];
             if (Array.isArray(config)) headers = config;
             else if (typeof config === 'object') headers = Object.values(config);
             return headers;
@@ -180,7 +180,7 @@ class MatrixLogic {
         // 3. User Input
         const customInput = prompt(`Collection [${path}] chưa có cấu hình. Nhập các cột (cách nhau dấu phẩy):`, "id,name,description");
         if (customInput) return customInput.split(',').map(s => s.trim());
-        return ['id', 'name']; 
+        return ['id', 'name'];
     }
 
     async render(container, path) {
@@ -188,14 +188,14 @@ class MatrixLogic {
         try {
             const snapshot = await this.db.collection(path).limit(50).get();
             let data = [];
-            
+
             snapshot.forEach(doc => {
                 // --- SỬA ĐỔI Ở ĐÂY ---
                 // Chỉ lấy dữ liệu thô, KHÔNG JSON.stringify thủ công nữa
                 let row = { id: doc.id, ...doc.data() };
-                
+
                 // (Đã xóa đoạn code Object.keys(row).forEach...)
-                
+
                 data.push(row);
             });
 
@@ -211,7 +211,7 @@ class MatrixLogic {
                     AdminConsole.currentStrategy.decodeSubCollections(AdminConsole.currentPath, 'rooms');
                 }
             }
-            
+
             // Debug: In ra console để kiểm tra dữ liệu gốc có bị lỗi không
             // console.log(`✅ Loaded ${data.length} rows from [${path}]`, data);
 
@@ -228,7 +228,7 @@ class MatrixLogic {
 
         const data = table.getData();
         const btnDecode = document.getElementById('adm-btn-decode');
-        if(btnDecode) btnDecode.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Decoding...';
+        if (btnDecode) btnDecode.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Decoding...';
 
         try {
             const newData = await Promise.all(data.map(async (row) => {
@@ -239,12 +239,12 @@ class MatrixLogic {
                         const subIds = subSnap.docs.map(d => d.id);
                         row[targetField] = `sub: ${subIds.join(', ')}`;
                     } else { row[targetField] = ''; }
-                } catch (e) {}
+                } catch (e) { }
                 return row;
             }));
             table.setSchema(table._headers, newData);
-        } catch (e) { alert("Lỗi: " + e.message); } 
-        finally { if(btnDecode) btnDecode.innerHTML = '<i class="fas fa-network-wired"></i> Decode Sub'; }
+        } catch (e) { alert("Lỗi: " + e.message); }
+        finally { if (btnDecode) btnDecode.innerHTML = '<i class="fas fa-network-wired"></i> Decode Sub'; }
     }
 
     async save(path) {
@@ -271,7 +271,7 @@ class MatrixLogic {
                 const batch = this.db.batch();
                 cleanData.forEach(item => {
                     const ref = item.id ? this.db.collection(path).doc(item.id) : this.db.collection(path).doc();
-                    batch.set(ref, item, {merge: true});
+                    batch.set(ref, item, { merge: true });
                 });
                 await batch.commit();
             }
@@ -279,11 +279,11 @@ class MatrixLogic {
             const batchSub = this.db.batch();
             let countSub = 0;
             rawData.forEach(row => {
-                if(!row.id) return;
+                if (!row.id) return;
                 Object.keys(row).forEach(key => {
                     const val = String(row[key] || "").trim();
-                    if(val.startsWith('sub:')) {
-                        const subIds = val.replace('sub:', '').split(',').map(s=>s.trim()).filter(s=>s);
+                    if (val.startsWith('sub:')) {
+                        const subIds = val.replace('sub:', '').split(',').map(s => s.trim()).filter(s => s);
                         subIds.forEach(subId => {
                             const subRef = this.db.collection(path).doc(row.id).collection(key).doc(subId.replace(/\//g, '-'));
                             batchSub.set(subRef, { id: subId, parentId: row.id }, { merge: true });
@@ -292,7 +292,7 @@ class MatrixLogic {
                     }
                 });
             });
-            if(countSub > 0) await batchSub.commit();
+            if (countSub > 0) await batchSub.commit();
             alert(`✅ Đã lưu Master và ${countSub} Sub-documents!`);
         } catch (e) { alert("❌ Lỗi: " + e.message); }
     }
@@ -318,7 +318,7 @@ class FormLogic {
     async save(path) {
         const form = document.querySelector('#adm-form-editor'); if (!form) return;
         const payload = {}; const inputs = form.querySelectorAll('.adm-input');
-        inputs.forEach(inp => { let val = inp.value; if (val.trim().startsWith('{')||val.trim().startsWith('[')) try{val=JSON.parse(val)}catch(e){} payload[inp.dataset.key] = val; });
+        inputs.forEach(inp => { let val = inp.value; if (val.trim().startsWith('{') || val.trim().startsWith('[')) try { val = JSON.parse(val) } catch (e) { } payload[inp.dataset.key] = val; });
         // ✅ Route qua DBManager để đồng bộ notification
         await A.DB.updateSingle(path, form.dataset.docId, { id: form.dataset.docId, ...payload }); alert("✅ Đã cập nhật Form!");
     }
@@ -332,23 +332,22 @@ class AdminController {
     _initialized = false;
     constructor() {
         this.collections = [
-            { name: '⚙️ Cấu hình Ngôn ngữ (Settings)', path: 'app_config/general/settings', type: 'FORM' },
+            { name: '📦 Booking', path: 'bookings', type: 'MATRIX' },
+            { name: '📋 Chi tiết Booking', path: 'booking_details', type: 'MATRIX' },
+            { name: '📋 Chi tiết Booking NCC', path: 'operator_entries', type: 'MATRIX' },
             { name: '👥 DS Khách hàng', path: 'customers', type: 'MATRIX' },
+            { name: '👤 Người dùng', path: 'users', type: 'MATRIX' },
+            { name: '💸 DS PT/PC', path: 'transactions', type: 'MATRIX' },
+            { name: '🏦 DS Tài khoản', path: 'fund_accounts', type: 'MATRIX' },
             { name: '🏨 DS Khách sạn', path: 'hotels', type: 'MATRIX' },
             { name: '💰 Bảng giá DV', path: 'service_price_schedules', type: 'MATRIX' },
             { name: '🏨 Bảng giá Khách sạn', path: 'app_config/lists/pkg_hotel_price', type: 'MATRIX' },
             { name: '📅 List Giai Đoạn Giá', path: 'app_config/lists/price_periods', type: 'MATRIX' },
             { name: '💳 Loại giá', path: 'app_config/lists/price_type', type: 'MATRIX' },
             { name: '🏢 DS Nhà cung cấp', path: 'suppliers', type: 'MATRIX' },
-            { name: '📦 Booking', path: 'bookings', type: 'MATRIX' },
-            { name: '📋 Chi tiết Booking', path: 'booking_details', type: 'MATRIX' },
-            { name: '📋 Chi tiết Booking NCC', path: 'operator_entries', type: 'MATRIX' },
+            { name: '⚙️ Cấu hình Ngôn ngữ (Settings)', path: 'app_config/general/settings', type: 'FORM' },
             { name: '🔢 Bộ đếm ID', path: 'counters_id', type: 'MATRIX' },
             { name: '⚙️ Cấu hình Ứng dụng', path: 'app_config', type: 'FORM' },
-
-            { name: '👤 Người dùng', path: 'users', type: 'MATRIX' },
-            { name: '💸 DS PT/PC', path: 'transactions', type: 'MATRIX' },
-            { name: '🏦 DS Tài khoản', path: 'fund_accounts', type: 'MATRIX' },
             { name: '💸 DS PT/PC TheNice', path: 'transactions_thenice', type: 'MATRIX' },
             { name: '🏦 DS Tài khoản TheNice', path: 'fund_accounts_thenice', type: 'MATRIX' }
         ];
@@ -369,7 +368,7 @@ class AdminController {
 
         const modal = document.querySelector('at-modal-full');
         if (!modal) return console.error("Missing <at-modal-full>");
-        
+
         modal.render(await this._getLayout(), 'Admin Console (v3.2 Full Fix)');
         modal.setFooter(false);
         this._bindEvents();
@@ -378,11 +377,11 @@ class AdminController {
 
     async _getLayout() {
         const opts = this.collections.map((c, i) => `<option value="${i}">${c.name}</option>`).join('');
-        console.log("⚙️ Đang tải giao diện Settings lần đầu...");
-                
+        // console.log("⚙️ Đang tải giao diện Settings lần đầu...");
+
         // Gọi Fetch lấy file HTML
         const response = await fetch('./src/components/tpl_settings.html');
-        
+
         // Kiểm tra nếu đường dẫn sai (báo lỗi 404)
         if (!response.ok) {
             throw new Error(`Lỗi mạng: ${response?.status} - Không tìm thấy file template!`);
@@ -409,10 +408,10 @@ class AdminController {
             inputPath.value = path;
             inputPath.placeholder = "Nhập path collection...";
             this.isFilterMode = false;
-            
+
             if (type === 'FORM') {
                 this.currentStrategy = new FormLogic(db);
-                btnDecode.disabled = true; 
+                btnDecode.disabled = true;
             } else {
                 this.currentStrategy = new MatrixLogic(db);
                 btnDecode.disabled = false;
@@ -423,15 +422,15 @@ class AdminController {
 
         const applyFilter = (filterValue) => {
             if (!this.currentData.length || !this.currentStrategy) return;
-            
+
             // Lọc dữ liệu từ currentData dựa vào filter value
             const filtered = this.currentData.filter(row => {
                 // Kiểm tra nếu bất kỳ field nào chứa filter value
-                return Object.values(row).some(val => 
+                return Object.values(row).some(val =>
                     String(val).toLowerCase().includes(filterValue.toLowerCase())
                 );
             });
-            
+
             // Update table với dữ liệu đã lọc
             const table = document.querySelector('#adm-matrix-table');
             if (table) {
@@ -440,7 +439,7 @@ class AdminController {
         };
 
         select.addEventListener('change', (e) => {
-            if(e.target.value === "") {
+            if (e.target.value === "") {
                 inputPath.value = '';
                 inputPath.placeholder = "Nhập path collection...";
                 this.selectedCollectionIndex = null;
@@ -452,12 +451,12 @@ class AdminController {
             }
             this.selectedCollectionIndex = parseInt(e.target.value);
             const config = this.collections[this.selectedCollectionIndex];
-            
+
             // Set placeholder thành filter input
             inputPath.value = '';
             inputPath.placeholder = `Lọc danh sách: ${config.name}`;
             this.isFilterMode = false;
-            
+
             // Load dữ liệu của collection được select
             this.currentPath = config.path;
             if (config.type === 'FORM') {
@@ -468,11 +467,11 @@ class AdminController {
                 btnDecode.disabled = false;
             }
             btnSave.disabled = false;
-            
+
             // Ghi lại chiến lược để load dữ liệu
             const strategyToUse = this.currentStrategy;
             const pathToLoad = config.path;
-            
+
             // Nếu là MATRIX, load dữ liệu và lưu vào currentData
             if (config.type === 'MATRIX') {
                 db.collection(pathToLoad).limit(300).get().then(snapshot => {
@@ -481,7 +480,7 @@ class AdminController {
                         let row = { id: doc.id, ...doc.data() };
                         this.currentData.push(row);
                     });
-                    
+
                     // Render dữ liệu đã load
                     strategyToUse.render(workspace, pathToLoad);
                 }).catch(e => {
@@ -513,10 +512,10 @@ class AdminController {
             } else if (!this.selectedCollectionIndex) {
                 // Chế độ input path trực tiếp
                 const path = inputPath.value.trim();
-                if(!path) return alert("Vui lòng nhập Path!");
+                if (!path) return alert("Vui lòng nhập Path!");
                 const type = path.includes('settings') ? 'FORM' : 'MATRIX';
                 this.isFilterMode = false;
-                
+
                 // Load dữ liệu
                 this.currentPath = path;
                 if (type === 'MATRIX') {
@@ -526,7 +525,7 @@ class AdminController {
                             let row = { id: doc.id, ...doc.data() };
                             this.currentData.push(row);
                         });
-                        
+
                         if (type === 'FORM') {
                             this.currentStrategy = new FormLogic(db);
                             btnDecode.disabled = true;
@@ -563,9 +562,9 @@ class AdminController {
         });
 
         btnDecode.addEventListener('click', () => {
-            if(this.currentStrategy && this.currentStrategy instanceof MatrixLogic) {
+            if (this.currentStrategy && this.currentStrategy instanceof MatrixLogic) {
                 const field = prompt("Nhập tên sub-collection cần decode (ví dụ: rooms, details):", "rooms");
-                if(field) this.currentStrategy.decodeSubCollections(this.currentPath, field);
+                if (field) this.currentStrategy.decodeSubCollections(this.currentPath, field);
             }
         });
 
@@ -576,25 +575,25 @@ class AdminController {
         btnDelete.addEventListener('click', () => {
             const table = document.querySelector('#adm-matrix-table');
             if (!table) return alert("Không tìm thấy bảng!");
-            
+
             const tableData = table.getData();
             if (tableData.length === 0) return alert("Bảng không có dữ liệu!");
-            
+
             // Lấy danh sách ID từ bảng
             const listId = tableData.map(row => row.id).filter(id => id);
-            
+
             if (listId.length === 0) return alert("Không tìm thấy ID để xóa!");
-            
+
             // Xác nhận xóa
-            const confirmMsg = listId.length === 1 
+            const confirmMsg = listId.length === 1
                 ? `Bạn có chắc chắn muốn xóa ID: ${listId[0]}?`
                 : `Bạn có chắc chắn muốn xóa ${listId.length} bản ghi?`;
-            
+
             if (confirm(confirmMsg)) {
                 if (typeof A === 'undefined' || !A.DB) {
                     return alert("❌ A.DB không khả dụng!");
                 }
-                
+
                 // Nếu 1 hàng: gọi deleteRecord
                 if (listId.length === 1) {
                     if (A.DB.deleteRecord) {
@@ -632,27 +631,27 @@ class AdminController {
         // =====================================================================
         // 🔧 APP CONFIG MANAGEMENT (Database Control Tab)
         // =====================================================================
-        
+
         const saveCfgBtn = document.getElementById('save-config-btn');
         const resetCfgBtn = document.getElementById('reset-config-btn');
-        
+
         if (saveCfgBtn) {
             saveCfgBtn.addEventListener('click', async () => {
                 saveCfgBtn.disabled = true;
                 saveCfgBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
-                
+
                 const success = await A.saveAppConfig();
-                
+
                 saveCfgBtn.disabled = false;
                 saveCfgBtn.innerHTML = '<i class="fas fa-save"></i> Lưu cài đặt';
-                
+
                 if (success) {
                     // Reload lần nữa để confirm
                     await A.loadAppConfig();
                 }
             });
         }
-        
+
         if (resetCfgBtn) {
             resetCfgBtn.addEventListener('click', () => {
                 if (confirm('🔄 Reset tất cả cài đặt về mặc định?')) {
@@ -692,7 +691,7 @@ class AdminController {
                     // Tải config từ Firestore lên form
                     await A._syncConfigToForm();
                 }
-            }   
+            }
 
         } catch (error) {
             console.error("❌ Lỗi khi mở Modal Settings:", error);
@@ -705,14 +704,14 @@ class AdminController {
         try {
 
             const result = await migrationHelper.migrateField(path, oldName, newName);
-            
+
 
             console.log('✅ Field migrated successfully:', result.data);
             alert('✅ Đã migrate field thành công!');
             return result.data;
         } catch (error) {
             console.error('❌ Error migrating field:', error);
-            
+
             // Chi tiết lỗi
             let errorMsg = 'Lỗi không xác định';
             if (error.code === 'functions/unauthenticated') {
@@ -726,7 +725,7 @@ class AdminController {
             } else {
                 errorMsg = `❌ Lỗi: ${error.message}`;
             }
-            
+
             alert(errorMsg);
             throw error;
         }
