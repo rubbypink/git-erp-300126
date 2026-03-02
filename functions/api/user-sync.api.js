@@ -5,17 +5,20 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-const {logger} = require("firebase-functions");
-const {onDocumentWritten, onDocumentDeleted} =
-    require("firebase-functions/v2/firestore");
-const {onCall} = require("firebase-functions/v2/https");
-const {getFirestore} = require("../utils/firebase-admin.util");
+const { logger } = require('firebase-functions');
+const { onDocumentWritten, onDocumentDeleted } = require('firebase-functions/v2/firestore');
+const { onCall } = require('firebase-functions/v2/https');
+const { getFirestore } = require('../utils/firebase-admin.util');
 const {
   syncUserToAuth,
   syncUsersToAuth,
   deleteUserFromAuth,
-} = require("../services/user-sync.service");
-const config = require("../config/system.config");
+} = require('../services/user-sync.service');
+const config = require('../config/system.config');
+
+// ★ Region must match the Firestore database location.
+//   Mismatched region → triggers NEVER fire.
+const REGION = config.FIREBASE.REGION; // 'asia-southeast1'
 
 /**
  * TRIGGER: On Firestore "users" document write
@@ -28,41 +31,51 @@ const config = require("../config/system.config");
  * Watches fields: phone, email, name, password, status
  */
 exports.syncUserToAuthOnWrite = onDocumentWritten(
-    "users/{uid}",
-    async (event) => {
-      const uid = event.params.uid;
-      const beforeData = event.data.before.data?.();
-      const afterData = event.data.after.data?.();
+  { document: 'users/{docId}', region: REGION },
+  async (event) => {
+    const docId = event.params.docId;
+    const beforeData = event.data.before.data?.();
+    const afterData = event.data.after.data?.();
 
-      // Skip if document was deleted
-      if (!afterData) {
-        logger.info(`ℹ️ User ${uid} deleted from Firestore (no sync needed)`);
-        return {status: "skipped", reason: "document_deleted"};
+    // Skip if document was deleted
+    if (!afterData) {
+      logger.info(`ℹ️ User doc ${docId} deleted from Firestore (no sync needed)`);
+      return { status: 'skipped', reason: 'document_deleted' };
+    }
+
+    // Skip if document is being created with empty data
+    if (!beforeData && !afterData) {
+      logger.info(`ℹ️ Empty document for user doc ${docId}`);
+      return { status: 'skipped', reason: 'empty_document' };
+    }
+
+    // ★ Use the `uid` field inside the document as the Firebase Auth UID.
+    //   The Firestore document ID may differ from the Auth UID.
+    //   Fall back to docId only when uid field is not present.
+    const authUid = afterData?.uid || docId;
+
+    if (!authUid) {
+      logger.warn(`⚠️ Cannot determine Auth UID for doc ${docId} — skipping`);
+      return { status: 'skipped', reason: 'no_uid' };
+    }
+
+    try {
+      const result = await syncUserToAuth(authUid, afterData, beforeData || null);
+
+      if (result.synced) {
+        logger.info(`✅ Firestore trigger: User ${authUid} synced to Auth (doc: ${docId})`);
       }
 
-      // Skip if document is being created with empty data
-      if (!beforeData && !afterData) {
-        logger.info(`ℹ️ Empty document for user ${uid}`);
-        return {status: "skipped", reason: "empty_document"};
-      }
-
-      try {
-        const result = await syncUserToAuth(uid, afterData, beforeData || null);
-
-        if (result.synced) {
-          logger.info(`✅ Firestore trigger: User ${uid} synced to Auth`);
-        }
-
-        return result;
-      } catch (error) {
-        logger.error(`❌ Firestore trigger error for user ${uid}:`, error);
-        return {
-          success: false,
-          error: error.message,
-          uid,
-        };
-      }
-    },
+      return result;
+    } catch (error) {
+      logger.error(`❌ Firestore trigger error for user ${authUid}:`, error);
+      return {
+        success: false,
+        error: error.message,
+        uid: authUid,
+      };
+    }
+  }
 );
 
 /**
@@ -77,35 +90,35 @@ exports.syncUserToAuthOnWrite = onDocumentWritten(
  * - Log the deletion
  */
 exports.syncUserAuthDeleteOnDelete = onDocumentDeleted(
-    "users/{uid}",
-    async (event) => {
-      const uid = event.params.uid;
-      const userData = event.data.data?.();
+  { document: 'users/{uid}', region: REGION },
+  async (event) => {
+    const uid = event.params.uid;
+    const userData = event.data.data?.();
 
-      logger.info(`🗑️ User document deleted from Firestore: ${uid}`);
+    logger.info(`🗑️ User document deleted from Firestore: ${uid}`);
 
-      try {
-        // Delete corresponding Firebase Auth user
-        const result = await deleteUserFromAuth(uid);
+    try {
+      // Delete corresponding Firebase Auth user
+      const result = await deleteUserFromAuth(uid);
 
-        if (result.deleted) {
-          logger.info(`✅ Firestore trigger: User ${uid} deleted from Firebase Auth`);
-        } else if (result.success && !result.deleted) {
-          logger.info(`ℹ️ User ${uid} was not in Firebase Auth (already deleted or never synced)`);
-        }
-
-        return result;
-      } catch (error) {
-        logger.error(`❌ Firestore delete trigger error for user ${uid}:`, error);
-        // Note: We don't throw error here because Firestore document is already deleted
-        // Just log it to monitor for issues
-        return {
-          success: false,
-          error: error.message,
-          uid,
-        };
+      if (result.deleted) {
+        logger.info(`✅ Firestore trigger: User ${uid} deleted from Firebase Auth`);
+      } else if (result.success && !result.deleted) {
+        logger.info(`ℹ️ User ${uid} was not in Firebase Auth (already deleted or never synced)`);
       }
-    },
+
+      return result;
+    } catch (error) {
+      logger.error(`❌ Firestore delete trigger error for user ${uid}:`, error);
+      // Note: We don't throw error here because Firestore document is already deleted
+      // Just log it to monitor for issues
+      return {
+        success: false,
+        error: error.message,
+        uid,
+      };
+    }
+  }
 );
 
 /**
@@ -120,10 +133,10 @@ exports.syncUserAuthDeleteOnDelete = onDocumentDeleted(
  * Example:
  *   const result = await runSyncUserToAuth({uid: 'user123'});
  */
-exports.runSyncUserToAuth = onCall(async (request) => {
+exports.runSyncUserToAuth = onCall({ region: REGION }, async (request) => {
   // Verify user is authenticated
   if (!request.auth) {
-    throw new Error("Bạn phải đăng nhập để sử dụng chức năng này.");
+    throw new Error('Bạn phải đăng nhập để sử dụng chức năng này.');
   }
 
   try {
@@ -131,24 +144,18 @@ exports.runSyncUserToAuth = onCall(async (request) => {
     const db = getFirestore();
 
     // Get current user data from Firestore
-    const userDoc = await db.collection("users").doc(targetUid).get();
+    const userDoc = await db.collection('users').doc(targetUid).get();
 
     if (!userDoc.exists) {
       throw new Error(`User ${targetUid} not found in Firestore`);
     }
 
     // Sync to Firebase Auth
-    const result = await syncUserToAuth(
-        targetUid,
-        userDoc.data(),
-    );
+    const result = await syncUserToAuth(targetUid, userDoc.data());
 
     return result;
   } catch (error) {
-    logger.error(
-        `❌ Manual sync error for user ${request.data?.uid}:`,
-        error,
-    );
+    logger.error(`❌ Manual sync error for user ${request.data?.uid}:`, error);
     throw new Error(`Lỗi khi đồng bộ dữ liệu người dùng: ${error.message}`);
   }
 });
@@ -165,22 +172,22 @@ exports.runSyncUserToAuth = onCall(async (request) => {
  * Example:
  *   const result = await runBatchSyncUsers({uids: ['user1', 'user2']});
  */
-exports.runBatchSyncUsers = onCall(async (request) => {
+exports.runBatchSyncUsers = onCall({ region: REGION }, async (request) => {
   // Verify user is authenticated
   if (!request.auth) {
-    throw new Error("Bạn phải đăng nhập để sử dụng chức năng này.");
+    throw new Error('Bạn phải đăng nhập để sử dụng chức năng này.');
   }
 
   try {
     if (!Array.isArray(request.data?.uids) || request.data.uids.length === 0) {
-      throw new Error("Please provide array of UIDs");
+      throw new Error('Please provide array of UIDs');
     }
 
     const result = await syncUsersToAuth(request.data.uids);
 
     return result;
   } catch (error) {
-    logger.error("❌ Batch sync error:", error);
+    logger.error('❌ Batch sync error:', error);
     throw new Error(`Lỗi khi đồng bộ dữ liệu hàng loạt: ${error.message}`);
   }
 });

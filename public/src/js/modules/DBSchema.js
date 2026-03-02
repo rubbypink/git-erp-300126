@@ -968,7 +968,7 @@ export const DB_SCHEMA = {
         tag: 'select',
         attrs: ['required'],
         class: '',
-        options: ['admin', 'operator', 'sales', 'accountant'],
+        options: ['admin', 'op', 'sale', 'acc'],
         validation: {
           required: true,
         },
@@ -984,7 +984,7 @@ export const DB_SCHEMA = {
         class: '',
         validation: {
           min: 1,
-          max: 5,
+          max: 100,
         },
       },
       {
@@ -992,7 +992,7 @@ export const DB_SCHEMA = {
         name: 'group',
         displayNameEng: 'User Group',
         displayName: 'Nhóm',
-        type: 'text',
+        type: 'checkbox',
         tag: 'input',
         attrs: [],
         class: '',
@@ -1675,16 +1675,6 @@ export const DB_SCHEMA = {
     ],
   },
 
-  // =========================================================================
-  // 10. HOTEL_PRICE_SCHEDULES COLLECTION
-  // =========================================================================
-  // Cấu trúc Firestore document (nested):
-  //   id        → '{SUPPLIERID}_{HOTELID}_{YEAR}'  (e.g. 'ABC_HOTEL1_2025')
-  //   info      → { supplierId, hotelId, year, status, updatedAt, updatedBy, totalRecords, viewConfig }
-  //   priceData → { [roomId_rateId_periodId_pkgId]: number }  (flat map của giá)
-  //   searchTags → string[]
-  //   created_at → Firestore ServerTimestamp
-  // =========================================================================
   hotel_price_schedules: {
     displayNameEng: 'Hotel Price Schedule',
     displayName: 'Bảng Giá Khách Sạn',
@@ -1839,18 +1829,6 @@ export const DB_SCHEMA = {
   },
 
   // =========================================================================
-  // 11. SERVICE_PRICE_SCHEDULES COLLECTION
-  // =========================================================================
-  // Cấu trúc Firestore document (nested):
-  //   id        → '{SUPPLIERID}_{YEAR}'  (e.g. 'ABC_2025')
-  //   info      → { supplierId, supplierName, year, status, updatedAt }
-  //   items     → Array<{ type, name, from, to, adl, chd, note }>
-  //                 type: Loại DV (Vé MB / Vé Tàu / Ăn / ...)
-  //                 name: Tên dịch vụ cụ thể
-  //                 from/to: 'DD/MM' — hiệu lực theo mùa
-  //                 adl: Giá người lớn   chd: Giá trẻ em
-  //   created_at → Firestore ServerTimestamp
-  // =========================================================================
   service_price_schedules: {
     displayNameEng: 'Service Price Schedule',
     displayName: 'Bảng Giá Dịch Vụ',
@@ -1963,12 +1941,6 @@ export const DB_SCHEMA = {
       },
     ],
   },
-
-  // =========================================================================
-  // SECONDARY INDEXES (in-memory, derived by DBManager.#buildSecondaryIndexes)
-  // Cấu trúc: { [groupByValue]: Array<sourceDoc> }
-  // Không có fields[] → không hiển thị trong getCollectionNames(), không render form.
-  // =========================================================================
 
   booking_details_by_booking: {
     displayNameEng: 'Booking Details (by Booking)',
@@ -2181,6 +2153,7 @@ export function createFormBySchema(collectionName, formId) {
     if (!coll) return '';
     collectionName = coll;
   }
+  if (!formId) formId = `${collectionName}-schema-form`;
   const fields = Object.values(getFieldsSchema(collectionName));
   if (!fields || fields.length === 0) return '';
 
@@ -2194,7 +2167,10 @@ export function createFormBySchema(collectionName, formId) {
   );
 
   // Start building form HTML
-  let html = `<form id="${formId}" class="db-schema-form" data-collection="${A.Lang?.t(collectionName) || collectionName}" style="max-width: 800px; margin: auto; padding: 16px; min-height: 400px;">`;
+  // IMPORTANT: data-collection must store the raw collection name (not translated),
+  // because saveRecord / deleteRecord / loadFormDataSchema use it as Firestore collection key.
+  const displayCollectionName = A.Lang?.t(collectionName) || collectionName;
+  let html = `<form id="${formId}" class="db-schema-form" data-collection="${collectionName}" style="max-width: 800px; margin: auto; padding: 16px; min-height: 400px;">`;
 
   // ===== MAIN EDITABLE FIELDS SECTION =====
   // Mobile-first responsive grid: 2 cols mobile, auto-fit desktop
@@ -2205,7 +2181,7 @@ export function createFormBySchema(collectionName, formId) {
   //   margin-bottom: 16px;
   // ">`;
   html += `<fieldset class="border p-3 mb-3" data-collection="${collectionName}" style="border-radius: 4px; border-color: #ced4da;">`;
-  html += `<legend class="w-auto px-2" style="font-size: 1.1em;">${A.Lang?.t(collectionName) || collectionName}</legend>
+  html += `<legend class="w-auto px-2" style="font-size: 1.1em;">${displayCollectionName}</legend>
     `;
 
   editableFields.forEach((field) => {
@@ -2283,10 +2259,11 @@ export function createFormBySchema(collectionName, formId) {
 
   html += `</form>`;
 
-  // Auto-populate dynamic selects and wire up action buttons after DOM is updated
+  // Auto-populate dynamic selects after DOM is updated.
+  // _setupFormActions is no longer needed here — handled by document-level delegation
+  // (see _initDocumentFormActions, called once at module load).
   setTimeout(() => {
     _autoPopulateDynamicSelects(formId);
-    _setupFormActions(formId);
   }, 100);
 
   return html;
@@ -2371,37 +2348,73 @@ function _getDataSourceArray(dataSourceName) {
  * @private
  * @param {string} formId - ID of the form
  */
+/**
+ * Document-level delegation for all [data-db-action] clicks inside any .db-schema-form.
+ * Registered ONCE at module load — survives modal re-renders, innerHTML replacements, etc.
+ * @private
+ */
 function _setupFormActions(formId) {
-  const form = document.getElementById(formId);
-  if (!form) return;
+  // Legacy shim kept for any direct callers — now a no-op because
+  // _initDocumentFormActions() handles everything at document level.
+  _initDocumentFormActions();
+}
 
-  // Single delegated listener on the form — no global window.* needed
-  A.Event.on(form, 'click', (e) => {
+// Flag so we only attach the document listener a single time.
+let _docFormActionsReady = false;
+
+function _initDocumentFormActions() {
+  if (_docFormActionsReady) return;
+  _docFormActionsReady = true;
+
+  document.addEventListener('click', (e) => {
+    // Only handle clicks inside a .db-schema-form
+    const form = e.target.closest('form.db-schema-form');
+    if (!form) return;
+
     const el = e.target.closest('[data-db-action]');
     if (!el) return;
 
-    const action = el.dataset.dbAction;
-    switch (action) {
-      case 'reset':
-        resetFormSchema(formId);
-        break;
-      case 'save':
-        saveFormDataSchema(formId);
-        break;
-      case 'load':
-        handleLoadFormDataSchema(formId);
-        break;
-      case 'delete':
-        deleteFormDataSchema(formId);
-        break;
-      case 'toggle-collapse': {
-        const collapseId = el.dataset.target;
-        if (collapseId) toggleCollapse(collapseId, el);
-        break;
+    // Resolve formId from the closest form
+    const formId = form.id;
+    if (!formId) {
+      console.warn('[DBSchema] db-schema-form has no id, cannot dispatch action.');
+      return;
+    }
+
+    const action = el.getAttribute('data-db-action');
+
+    try {
+      switch (action) {
+        case 'reset':
+          resetFormSchema(formId);
+          break;
+        case 'save':
+          saveFormDataSchema(formId);
+          break;
+        case 'load':
+          handleLoadFormDataSchema(formId);
+          break;
+        case 'delete':
+          deleteFormDataSchema(formId);
+          break;
+        case 'toggle-collapse': {
+          const collapseId = el.dataset?.target;
+          if (collapseId) toggleCollapse(collapseId, el);
+          break;
+        }
+        default:
+          console.warn(`[DBSchema] Unknown db-action: "${action}"`);
       }
+    } catch (err) {
+      console.error(`[DBSchema] db-action error (action="${action}", form="${formId}"):`, err);
+      if (typeof log === 'function')
+        log(`❌ Lỗi khi thực hiện "${action}": ${err.message}`, 'error');
     }
   });
 }
+
+// Initialize immediately when module loads
+_initDocumentFormActions();
 
 /**
  * Helper: Auto-populate all dynamic selects in a form
@@ -2730,7 +2743,7 @@ function _createFieldGroup(field, collectionName) {
       name="${field.name}"
       class="form-select form-select-sm ${field.class || ''}"
       data-field="${field.name}"
-      data-initial="${initialValue}"
+      value="${initialValue}"
       ${isRequired ? 'required' : ''}
       ${isReadonly ? 'disabled' : ''}
       ${dataSourceAttr}
@@ -2785,7 +2798,7 @@ function _createFieldGroup(field, collectionName) {
       name="${field.name}"
       class="form-control form-control-sm ${field.class || ''}"
       data-field="${field.name}"
-      data-initial="${initialValue}"
+      value="${initialValue}"
       rows="3"
       ${isRequired ? 'required' : ''}
       ${isReadonly ? 'readonly' : ''}
@@ -2801,7 +2814,7 @@ function _createFieldGroup(field, collectionName) {
       name="${field.name}"
       class="form-control form-control-sm ${field.class || ''}"
       data-field="${field.name}"
-      data-initial="${initialValue}"
+      value="${initialValue}"
       ${isRequired ? 'required' : ''}
       ${isReadonly ? 'readonly' : ''}
       ${field.placeholder ? `placeholder="${field.placeholder}"` : ''}

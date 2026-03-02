@@ -401,8 +401,8 @@ class EventManager {
       '#btn-reload-collection',
       'click',
       () => {
-        if (typeof A.DB.loadCollections === 'function') {
-          A.DB.loadCollections(getVal('btn-select-datalist') || null, { forceNew: true });
+        if (typeof A.DB.syncDelta === 'function') {
+          A.DB.syncDelta(getVal('btn-select-datalist') || null, { forceFullLoad: true });
         }
       },
       true

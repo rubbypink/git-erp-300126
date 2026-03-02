@@ -218,7 +218,7 @@ class AccountantController {
     console.log(`Fetching data for ${collectionName}...`);
     if (window.A && window.A.DB)
       await window.A.DB.loadCollections(collectionName, { forceNew: true });
-    return APP_DATA?.[collectionName] ?? {};
+    return Object.values(APP_DATA?.[collectionName] ?? {});
   }
 
   async refreshData() {
@@ -542,8 +542,8 @@ class AccountantController {
       this.funds = (await this.getData('fund_accounts')) || [];
     console.log('Debug: Funds for modal', this.funds);
     // Fund Options
-    let fundOptions = this.funds
-      ?.map(
+    let fundOptions = (this.funds || [])
+      .map(
         (f) =>
           `<option value="${f.id}" ${existingData && existingData.fund_source === f.id ? 'selected' : ''}>${f.name} (${formatCurrency(f.balance)})</option>`
       )

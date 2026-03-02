@@ -40,6 +40,19 @@
  *       </tr>
  *     </tbody>
  *   </table>
+ *
+ * Field Alias (FIELD_ALIAS):
+ *   Một số fieldset dùng prefix trong data-field (vd. "customer_full_name") nhưng
+ *   collection schema dùng tên khác ("full_name"). StateProxy xử lý tự động bằng
+ *   FIELD_ALIAS config — không cần sửa HTML. Hiện tại áp dụng cho:
+ *     • customers collection: prefix "customer_" → stripped khi ghi vào proxy/dirty
+ *
+ *   Ví dụ fieldset customers:
+ *   <fieldset data-collection="customers">
+ *     <input data-field="customer_id" />          ← alias → 'id' (dùng để resolve doc ID)
+ *     <input data-field="customer_full_name" />   ← alias → 'full_name'
+ *     <input data-field="customer_phone" />       ← alias → 'phone'
+ *   </fieldset>
  * =============================================================================
  */
 const StateProxy = (() => {
@@ -59,6 +72,59 @@ const StateProxy = (() => {
     'operator_entries',
     'transactions',
   ]);
+
+  // ─── Field Alias ────────────────────────────────────────────────────────────
+  // Maps HTML data-field attribute names → actual collection schema field names.
+  // Required when a form uses a prefix convention (e.g. "customer_full_name" in
+  // HTML) that differs from the Firestore schema (e.g. "full_name" in customers).
+  // WITHOUT changing any HTML, StateProxy internally normalises field names so
+  // proxy tracking, dirty marking, and DOM sync all work with schema names while
+  // the DOM retains its prefixed attribute names.
+  const FIELD_ALIAS = {
+    customers: {
+      customer_id: 'id',
+      customer_full_name: 'full_name',
+      customer_dob: 'dob',
+      customer_id_card: 'id_card',
+      customer_id_card_date: 'id_card_date',
+      customer_phone: 'phone',
+      customer_email: 'email',
+      customer_source: 'source',
+      customer_total_spend: 'total_spend',
+      customer_address: 'address',
+    },
+  };
+
+  // Reverse alias: schema field name → HTML data-field name (for DOM sync / dirty marking).
+  // Auto-computed from FIELD_ALIAS.
+  const _FIELD_ALIAS_REV = {};
+  for (const [coll, map] of Object.entries(FIELD_ALIAS)) {
+    _FIELD_ALIAS_REV[coll] = Object.fromEntries(
+      Object.entries(map).map(([htmlF, schemaF]) => [schemaF, htmlF])
+    );
+  }
+
+  /**
+   * Resolve schema field name from an HTML data-field attribute value.
+   * Returns the mapped schema name if an alias exists, otherwise the original.
+   * @param {string} coll
+   * @param {string} htmlField
+   * @returns {string}
+   */
+  function _resolveField(coll, htmlField) {
+    return FIELD_ALIAS[coll]?.[htmlField] ?? htmlField;
+  }
+
+  /**
+   * Reverse-resolve the HTML data-field for a schema field (for DOM queries).
+   * Returns the aliased HTML attribute name if one exists, otherwise the schema name.
+   * @param {string} coll
+   * @param {string} schemaField
+   * @returns {string}
+   */
+  function _htmlFieldOf(coll, schemaField) {
+    return _FIELD_ALIAS_REV[coll]?.[schemaField] ?? schemaField;
+  }
 
   //  Computed Rules
   // key = 'collection::outputField'
@@ -264,14 +330,24 @@ const StateProxy = (() => {
       if (!fields?.length) continue;
       for (const field of fields) {
         const val = doc?.[field] ?? '';
-        // data-field + data-doc-id (form inputs)
+        // Resolve the HTML data-field name (may differ from schema field via alias)
+        const htmlField = _htmlFieldOf(coll, field);
+        // data-field + data-doc-id (form inputs) — query by HTML field name first
         document
-          .querySelectorAll(`[data-field="${field}"][data-doc-id="${id}"]`)
+          .querySelectorAll(`[data-field="${htmlField}"][data-doc-id="${id}"]`)
           .forEach((el) => _writeEl(el, val));
-        // grid row cell
+        // Also catch any element using the raw schema field name (non-aliased collections)
+        if (htmlField !== field) {
+          document
+            .querySelectorAll(`[data-field="${field}"][data-doc-id="${id}"]`)
+            .forEach((el) => _writeEl(el, val));
+        }
+        // grid row cell — prefer HTML alias, fall back to schema name
         const row = document.querySelector(`tr[data-id="${id}"]`);
         if (row) {
-          const cell = row.querySelector(`[data-field="${field}"]`);
+          const cell =
+            row.querySelector(`[data-field="${htmlField}"]`) ??
+            (htmlField !== field ? row.querySelector(`[data-field="${field}"]`) : null);
           if (cell) _writeEl(cell, val);
         }
       }
@@ -304,9 +380,16 @@ const StateProxy = (() => {
     }
     for (const f of fields) {
       s.add(f);
+      // Mark by HTML alias name (covers prefixed fields like customer_full_name)
+      const htmlF = _htmlFieldOf(coll, f);
       document
-        .querySelectorAll(`[data-field="${f}"][data-doc-id="${id}"]`)
+        .querySelectorAll(`[data-field="${htmlF}"][data-doc-id="${id}"]`)
         .forEach((el) => el.classList.add('is-dirty'));
+      if (htmlF !== f) {
+        document
+          .querySelectorAll(`[data-field="${f}"][data-doc-id="${id}"]`)
+          .forEach((el) => el.classList.add('is-dirty'));
+      }
     }
     document
       .querySelectorAll(`[data-bind-dirty="${key}"]`)
@@ -318,9 +401,16 @@ const StateProxy = (() => {
     const s = _dirty.get(key);
     if (s) {
       for (const f of s) {
+        // Clear by HTML alias name so class is removed from prefixed elements
+        const htmlF = _htmlFieldOf(coll, f);
         document
-          .querySelectorAll(`[data-field="${f}"][data-doc-id="${id}"]`)
+          .querySelectorAll(`[data-field="${htmlF}"][data-doc-id="${id}"]`)
           .forEach((el) => el.classList.remove('is-dirty'));
+        if (htmlF !== f) {
+          document
+            .querySelectorAll(`[data-field="${f}"][data-doc-id="${id}"]`)
+            .forEach((el) => el.classList.remove('is-dirty'));
+        }
       }
     }
     _dirty.delete(key);
@@ -532,18 +622,27 @@ const StateProxy = (() => {
     const coll = container.dataset.collection;
     if (!coll) return null;
 
+    // Build an ID-field selector that also handles aliased id fields.
+    // e.g. for "customers" collection the HTML uses data-field="customer_id"
+    // instead of data-field="id", so we check via the reverse alias map.
+    const idHtmlField = _FIELD_ALIAS_REV[coll]?.['id'] ?? 'id';
+    const idSelector =
+      idHtmlField !== 'id'
+        ? `[data-field="id"], [data-field="${idHtmlField}"]`
+        : '[data-field="id"]';
+
     let id = null;
     // 1. Table row: same <tr>
     const tr = el.closest('tr');
     if (tr && container.contains(tr)) {
-      const idEl = tr.querySelector('[data-field="id"]');
+      const idEl = tr.querySelector(idSelector);
       if (idEl) id = (typeof getVal === 'function' ? getVal(idEl) : idEl.value) || null;
     }
     // 2. Explicit container override
     if (!id) id = container.dataset.docId ?? null;
-    // 3. Fallback: first [data-field="id"] in container
+    // 3. Fallback: first id-field anywhere inside container
     if (!id) {
-      const idEl = container.querySelector('[data-field="id"]');
+      const idEl = container.querySelector(idSelector);
       if (idEl) id = (typeof getVal === 'function' ? getVal(idEl) : idEl.value) || null;
     }
     return coll && id ? { coll, id } : null;
@@ -577,10 +676,14 @@ const StateProxy = (() => {
   function _tryAutoBind(el, value) {
     if (!_isBindableEl(el)) return;
     if (value === '' || value === null || value === undefined) return;
-    const field = el.dataset.field;
-    if (!field || field === 'id') return; // id field is the key, not tracked payload
+    const htmlField = el.dataset.field;
+    if (!htmlField || htmlField === 'id') return; // fast-path: literal "id" skipped before alias lookup
+    // Resolve ctx so we know the collection (required before alias lookup)
     const ctx = _resolveCollId(el);
     if (!ctx) return;
+    // Normalise HTML field name → schema field name via alias
+    const field = _resolveField(ctx.coll, htmlField);
+    if (field === 'id') return; // aliased id field (e.g. customer_id → id), skip
     _ensureTracked(ctx.coll, ctx.id); // idempotent
     api.bindElement(el, ctx.coll, ctx.id, field);
   }
@@ -703,26 +806,24 @@ const StateProxy = (() => {
     },
 
     /**
-     * Discard all tracking and remove all installed proxies.
-     * No Firestore write. Call on: tab change, load new booking, app reload.
+     * Discard all session tracking state (dirty marks, baseline, undo stack).
+     *
+     * Proxies are deliberately kept installed — the proxy `set` handler checks
+     * `_session` membership before recording writes, so untracked docs are
+     * silently ignored.  Proxies are only removed by `destroy()`.
+     *
+     * No Firestore write. Call on: load new booking, app reload.
      */
     clearSession() {
       clearTimeout(_dashTimer);
       _session.forEach(({ coll, id }) => _clearDirty(coll, id));
-
-      // Determine which collections had all session docs removed
-      const activeColl = new Set();
-      _session.forEach(({ coll }) => activeColl.add(coll));
-
       _session.clear();
       _baseline.clear();
       _undoStack.clear();
       _dirty.clear();
       _pendingHist.clear();
       _batchQ = [];
-
-      // Uninstall proxies
-      activeColl.forEach((c) => _uninstallProxy(c));
+      // Proxies intentionally kept — _uninstallProxy is called only by destroy().
     },
 
     /**
@@ -827,12 +928,14 @@ const StateProxy = (() => {
      * Install all auto-tracking hooks. Call once in app.js before any form renders.
      *
      * Hooks installed:
-     *   1. window.setToEl     → _tryAutoBind (auto-track + bind on every setVal call)
-     *   2. window.setNum      → _tryAutoBind (auto-track + bind on every setNum call)
-     *   3. window.activateTab → clearSession() when navigating AWAY from tab-form
-     *   4. A.UI.renderForm    → clearSession() before rendering a new admin form
-     *   5. tabchange event    → clearSession() unless tabId === 'tab-form' (navigating away only)
-     *   6. paginationchange   → clearSession()
+     *   1. window.setToEl  → _tryAutoBind (auto-track + bind on every setVal call)
+     *   2. window.setNum   → _tryAutoBind (auto-track + bind on every setNum call)
+     *   3. A.UI.renderForm → clearSession() before rendering a new admin form
+     *
+     * Tab navigation (activateTab, tabchange) and paginationchange no longer
+     * clear the session.  Proxies survive tab switches and grid pagination;
+     * they are only removed by destroy() or when `beginEdit()` re-registers
+     * after a fresh `clearSession()` call inside `loadBookingToUI`.
      *
      * Idempotent — safe to call multiple times; hooks installed exactly once.
      * All patches are fully restored by destroy().
@@ -871,18 +974,7 @@ const StateProxy = (() => {
         };
       }
 
-      // ── 3. Hook activateTab ────────────────────────────────────────────────
-      // clearSession when navigating AWAY from tab-form.
-      // Navigating TO tab-form starts a fresh session (proxy installed lazily).
-      if (typeof window.activateTab === 'function' && !_origActivateTab) {
-        _origActivateTab = window.activateTab;
-        window.activateTab = function (tabId) {
-          if (tabId !== 'tab-form') api.clearSession();
-          return _origActivateTab.call(this, tabId);
-        };
-      }
-
-      // ── 4. Hook A.UI.renderForm ────────────────────────────────────────────
+      // ── 3. Hook A.UI.renderForm ────────────────────────────────────────────
       // clearSession before rendering a new admin form into a modal.
       // Deferred so A.UI is guaranteed to exist when first renderForm() is called.
       const _patchRenderForm = () => {
@@ -897,23 +989,6 @@ const StateProxy = (() => {
       };
       _patchRenderForm();
       setTimeout(_patchRenderForm, 0); // retry after current task (A.UI may not exist yet)
-
-      // ── 5 & 6. DOM lifecycle events ────────────────────────────────────────
-      if (!_hooksInstalled) {
-        _hooksInstalled = true;
-        const { signal } = _lifecycleAC;
-        // tabchange fires from toggleContextUI() after every Bootstrap tab switch.
-        // Guard: do NOT clear session when navigating TO tab-form (form stays active).
-        document.addEventListener(
-          'tabchange',
-          (e) => {
-            if (e.detail?.tabId !== 'tab-form') api.clearSession();
-          },
-          { signal }
-        );
-        // paginationchange fires when grid page changes (different document context)
-        document.addEventListener('paginationchange', () => api.clearSession(), { signal });
-      }
     },
 
     /**
@@ -934,12 +1009,17 @@ const StateProxy = (() => {
       // ── 1. Global stats bar ───────────────────────────────────────────
       const totalSubs = [..._subs.values()].reduce((n, s) => n + s.size, 0);
       const totalPending = [..._pendingHist.values()].reduce((n, a) => n + a.length, 0);
+      const totalAliases = Object.values(FIELD_ALIAS).reduce(
+        (n, m) => n + Object.keys(m).length,
+        0
+      );
       const statsHtml = `
         <div class="d-flex flex-wrap gap-2 mb-3" style="font-size:.82rem">
           ${badge(_proxyCache.size + ' proxy active', _proxyCache.size ? 'primary' : 'secondary')}
           ${badge(_session.size + ' session docs', _session.size ? 'info' : 'secondary')}
           ${badge(totalPending + ' pending hist', totalPending ? 'warning' : 'secondary')}
           ${badge(totalSubs + ' subscribers', totalSubs ? 'success' : 'secondary')}
+          ${badge(Object.keys(FIELD_ALIAS).length + ' alias colls (' + totalAliases + ' fields)', totalAliases ? 'info' : 'secondary')}
           ${badge('hookSetters: ' + (window._stateProxyHooked ? 'ON' : 'OFF'), window._stateProxyHooked ? 'success' : 'secondary')}
           ${badge('lifecycleHooks: ' + (_hooksInstalled ? 'ON' : 'OFF'), _hooksInstalled ? 'success' : 'secondary')}
         </div>`;
@@ -1070,6 +1150,8 @@ const StateProxy = (() => {
      */
     destroy() {
       api.clearSession();
+      // Explicitly uninstall all proxies — clearSession() no longer does this.
+      [..._proxyCache.keys()].forEach((c) => _uninstallProxy(c));
       _subs.clear();
       _pendingHist.clear();
       clearTimeout(_dashTimer);
@@ -1084,10 +1166,6 @@ const StateProxy = (() => {
       if (_origSetNum) {
         window.setNum = _origSetNum;
         _origSetNum = null;
-      }
-      if (_origActivateTab) {
-        window.activateTab = _origActivateTab;
-        _origActivateTab = null;
       }
       if (window.A?.UI?._spPatched) delete window.A.UI._spPatched;
       window._stateProxyHooked = false;
