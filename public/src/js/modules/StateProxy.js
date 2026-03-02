@@ -904,9 +904,13 @@ const StateProxy = (() => {
         const { signal } = _lifecycleAC;
         // tabchange fires from toggleContextUI() after every Bootstrap tab switch.
         // Guard: do NOT clear session when navigating TO tab-form (form stays active).
-        document.addEventListener('tabchange', (e) => {
-          if (e.detail?.tabId !== 'tab-form') api.clearSession();
-        }, { signal });
+        document.addEventListener(
+          'tabchange',
+          (e) => {
+            if (e.detail?.tabId !== 'tab-form') api.clearSession();
+          },
+          { signal }
+        );
         // paginationchange fires when grid page changes (different document context)
         document.addEventListener('paginationchange', () => api.clearSession(), { signal });
       }

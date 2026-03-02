@@ -165,10 +165,7 @@
         <div class="card-body d-flex justify-content-around my-0" id="sub-booking-form">
           <fieldset name="customers" id="fs_customer_info" class="col-12 col-md-4" data-collection="customers">
             <legend>Thông tin Khách Hàng</legend>
-            <div class="d-none">
-              <!-- data-field="customer_id": mapping sang booking.customer_id (cho setFormData/findCustByPhone).
-                   StateProxy resolve document ID qua data-doc-id set động trên fieldset này khi tìm được khách. -->
-              <input type="text" class="form-control form-control-sm" id="Cust_Id"
+            <div class="d-none"><input type="text" class="form-control form-control-sm" id="Cust_Id"
                 data-field="customer_id" value="">
             </div>
 
@@ -274,9 +271,6 @@
 
           <fieldset class="col-12 col-md-3" data-collection="bookings">
             <legend>Thanh Toán</legend>
-            <!-- data-field="id": StateProxy dùng để resolve booking document ID.
-                 Giá trị được gán động bởi loadBookingToUI cùng lúc với BK_ID. -->
-            <input type="hidden" id="BK_ID_pay" data-field="id" value="">
             <div class="col-auto"><label class="form-label small fw-bold text-success">Đặt Cọc</label><input
                 type="number" class="form-control form-control-sm text-end border-success number" id="BK_Deposit"
                 data-field="deposit_amount" value="0"></div>

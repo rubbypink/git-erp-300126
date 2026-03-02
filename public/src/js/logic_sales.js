@@ -20,14 +20,6 @@ window.loadBookingToUI = function (bkData, customerData, detailsData) {
     if (!getE('main-form')) activateTab('tab-form');
     if (isBkObj) HD.setFormData('sub-booking-form', bkData);
 
-    // StateProxy: gán data-doc-id trên customers fieldset ngay từ bkData.customer_id
-    // để _resolveCollId có thể resolve document ID ngay khi setFormData chạy.
-    // findCustByPhone() sẽ override lại bằng ID chính xác nếu tìm được khách.
-    const fsCust = getE('fs_customer_info');
-    if (fsCust && isBkObj && bkData.customer_id) {
-      fsCust.dataset.docId = bkData.customer_id;
-    }
-
     let tbody = getE('detail-tbody');
     if (tbody) {
       tbody.innerHTML = '';
@@ -899,10 +891,6 @@ async function findCustByPhone(customerData = null, e) {
         setVal(el, custData[key]);
       }
     });
-
-    // StateProxy: gán data-doc-id trên fieldset để _resolveCollId có thể xác định document ID
-    // khi auto-bind xảy ra từ setVal() trên các field bên trong fieldset này.
-    if (custData.id) custFieldset.dataset.docId = custData.id;
   }
 }
 

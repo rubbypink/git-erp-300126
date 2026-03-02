@@ -16,25 +16,24 @@ var detailRowCount = 0;
 window.loadBookingToUI = function (bkData, detailsData) {
   if (!bkData) return;
   try {
-    log("Loading Booking...:", detailsData);
+    log('Loading Booking...:', detailsData);
 
     // --- HANDLE CUSTOMER SOURCE ---
-    let custSource = "";
+    let custSource = '';
 
     // Get phone from booking (handle both object and array formats for compatibility)
-    const phone = typeof bkData === 'object' && !Array.isArray(bkData)
-      ? bkData.customer_phone
-      : bkData[5];
+    const phone =
+      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.customer_phone : bkData[5];
 
-    const phoneStr = phone ? String(phone).replace(/^'/, "").trim() : "";
+    const phoneStr = phone ? String(phone).replace(/^'/, '').trim() : '';
 
     // Find customer by phone to get source
-    if (phoneStr !== "" && window.APP_DATA) {
-      const custRow = Object.values(APP_DATA.customers ?? {}).find(c =>
-        c && c.phone && String(c.phone).includes(phoneStr)
+    if (phoneStr !== '' && window.APP_DATA) {
+      const custRow = Object.values(APP_DATA.customers ?? {}).find(
+        (c) => c && c.phone && String(c.phone).includes(phoneStr)
       );
       if (custRow) {
-        custSource = custRow.source || "";
+        custSource = custRow.source || '';
       }
     }
 
@@ -42,48 +41,31 @@ window.loadBookingToUI = function (bkData, detailsData) {
 
     // --- POPULATE BOOKING HEADER FIELDS ---
     // Using object format field names directly
-    const bookingId = typeof bkData === 'object' && !Array.isArray(bkData)
-      ? bkData.id
-      : bkData[0];
-    const createdDate = typeof bkData === 'object' && !Array.isArray(bkData)
-      ? bkData.created_at
-      : bkData[16];
-    const custName = typeof bkData === 'object' && !Array.isArray(bkData)
-      ? bkData.customer_full_name
-      : bkData[2];
-    const custPhone = typeof bkData === 'object' && !Array.isArray(bkData)
-      ? bkData.customer_phone
-      : bkData[3];
-    const startDate = typeof bkData === 'object' && !Array.isArray(bkData)
-      ? bkData.start_date
-      : bkData[4];
-    const endDate = typeof bkData === 'object' && !Array.isArray(bkData)
-      ? bkData.end_date
-      : bkData[5];
-    const adults = typeof bkData === 'object' && !Array.isArray(bkData)
-      ? bkData.adults
-      : bkData[6];
-    const children = typeof bkData === 'object' && !Array.isArray(bkData)
-      ? bkData.children
-      : bkData[7];
-    const totalAmount = typeof bkData === 'object' && !Array.isArray(bkData)
-      ? bkData.total_amount
-      : bkData[8];
-    const status = typeof bkData === 'object' && !Array.isArray(bkData)
-      ? bkData.status
-      : bkData[15];
-    const paymentMethod = typeof bkData === 'object' && !Array.isArray(bkData)
-      ? bkData.payment_method
-      : bkData[11];
-    const paymentDueDate = typeof bkData === 'object' && !Array.isArray(bkData)
-      ? bkData.payment_due_date
-      : bkData[12];
-    const note = typeof bkData === 'object' && !Array.isArray(bkData)
-      ? bkData.note
-      : bkData[13];
-    const staffId = typeof bkData === 'object' && !Array.isArray(bkData)
-      ? bkData.staff_id
-      : bkData[14];
+    const bookingId = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.id : bkData[0];
+    const createdDate =
+      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.created_at : bkData[16];
+    const custName =
+      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.customer_full_name : bkData[2];
+    const custPhone =
+      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.customer_phone : bkData[3];
+    const startDate =
+      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.start_date : bkData[4];
+    const endDate =
+      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.end_date : bkData[5];
+    const adults = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.adults : bkData[6];
+    const children =
+      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.children : bkData[7];
+    const totalAmount =
+      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.total_amount : bkData[8];
+    const status =
+      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.status : bkData[15];
+    const paymentMethod =
+      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.payment_method : bkData[11];
+    const paymentDueDate =
+      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.payment_due_date : bkData[12];
+    const note = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.note : bkData[13];
+    const staffId =
+      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.staff_id : bkData[14];
 
     setVal('BK_ID', bookingId);
     setVal('BK_Date', createdDate);
@@ -121,7 +103,7 @@ window.loadBookingToUI = function (bkData, detailsData) {
     if (detailsArr.length > 0) {
       // Sắp xếp chi tiết theo thứ tự service_type và check_in
       const sortedDetails = sortDetailsData(detailsArr);
-      sortedDetails.forEach(row => {
+      sortedDetails.forEach((row) => {
         // Gọi hàm thêm dòng
         addDetailRow(row);
       });
@@ -137,7 +119,7 @@ window.loadBookingToUI = function (bkData, detailsData) {
       const bk_id = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.id : bkData[0];
       if (bk_id) StateProxy.beginEdit('bookings', bk_id);
       // detailsArr đã được normalize từ detailsData ở trên (hỗ trợ cả Array & Object format)
-      detailsArr.forEach(row => {
+      detailsArr.forEach((row) => {
         const sid = typeof row === 'object' && !Array.isArray(row) ? row.id : row[0];
         if (sid) StateProxy.beginEdit('operator_entries', sid);
       });
@@ -149,14 +131,12 @@ window.loadBookingToUI = function (bkData, detailsData) {
       if (tabTrigger) bootstrap.Tab.getOrCreateInstance(tabTrigger).show();
       if (typeof toggleContextUI === 'function') toggleContextUI('tab-form');
     } catch (e) {
-      log("Tab switch error: " + e.message, "error");
+      log('Tab switch error: ' + e.message, 'error');
     }
   } catch (e) {
-    log("ERROR in loadBookingToUI: " + e.message, "error");
+    log('ERROR in loadBookingToUI: ' + e.message, 'error');
   }
-}
-
-
+};
 
 /**
  * sortDetailsData: Sắp xếp dữ liệu chi tiết theo thứ tự service_type và check_in
@@ -220,8 +200,8 @@ function sortDetailsData(detailsData) {
 window.fillFormFromSearch = function (res) {
   if (!res || !res.success) {
     showLoading(false);
-    logA(res?.message || "No matching data found!");
-    log("Search failed: " + (res ? res.message : "No Data"), "warning");
+    logA(res?.message || 'No matching data found!');
+    log('Search failed: ' + (res ? res.message : 'No Data'), 'warning');
     return;
   }
 
@@ -231,19 +211,15 @@ window.fillFormFromSearch = function (res) {
   if (typeof loadBookingToUI === 'function') {
     loadBookingToUI(bkData, detailsData);
     const sourceMsg = res.source === 'local' ? ' (⚡ Local)' : ' (🐢 Database)';
-    const bookingId = typeof bkData === 'object' && !Array.isArray(bkData)
-      ? bkData.id
-      : bkData[0];
-    const custName = typeof bkData === 'object' && !Array.isArray(bkData)
-      ? bkData.customer_full_name
-      : bkData[2];
-    log(`Loaded Booking: ${bookingId} - ${custName}${sourceMsg}`, "success");
+    const bookingId = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.id : bkData[0];
+    const custName =
+      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.customer_full_name : bkData[2];
+    log(`Loaded Booking: ${bookingId} - ${custName}${sourceMsg}`, 'success');
   } else {
-    logA("System error: Cannot display data in form.", "error");
+    logA('System error: Cannot display data in form.', 'error');
   }
   showLoading(false);
-}
-
+};
 
 /**
  * Add a detail row to the operator entries table
@@ -257,18 +233,19 @@ function addDetailRow(data = null) {
   const lists = window.APP_DATA.lists || {};
 
   // Options for service types
-  const optsType = (lists.types || []).map(x => `<option value="${x}">${x}</option>`).join('');
+  const optsType = (lists.types || []).map((x) => `<option value="${x}">${x}</option>`).join('');
 
   // Options for suppliers
   const suppliers = lists.supplier || [];
-  const optsSupplier = suppliers.length > 0
-    ? suppliers.map(s => `<option value="${s}">${s}</option>`).join('')
-    : `<option value="">(No suppliers)</option>`;
+  const optsSupplier =
+    suppliers.length > 0
+      ? suppliers.map((s) => `<option value="${s}">${s}</option>`).join('')
+      : `<option value="">(No suppliers)</option>`;
 
   // 2. BUILD HTML TABLE ROW
   const tr = document.createElement('tr');
   tr.id = `row-${idx}`;
-  tr.className = "align-middle";
+  tr.className = 'align-middle';
   tr.innerHTML = `
     <td class="text-center text-muted small">${idx} <input type="hidden" class="d-sid" data-field="id"></td>
     
@@ -336,12 +313,11 @@ function addDetailRow(data = null) {
     const surcharge = isObject ? data.surcharge : data[13];
     const discount = isObject ? data.discount : data[14];
     const totalSale = isObject ? data.total_sale : data[15] || 0;
-    const refCode = isObject ? data.ref_code : data[16] || "";
+    const refCode = isObject ? data.ref_code : data[16] || '';
     const totalCost = isObject ? data.total_cost : data[17] || 0;
     const paidAmount = isObject ? data.paid_amount : data[18] || 0;
-    const supplier = isObject ? data.supplier : data[20] || "";
-    const note = isObject ? data.operator_note : data[21] || "";
-
+    const supplier = isObject ? data.supplier : data[20] || '';
+    const note = isObject ? data.operator_note : data[21] || '';
 
     setVal('.d-sid', id, tr);
     setVal('.d-idbk', bookingId, tr);
@@ -361,10 +337,10 @@ function addDetailRow(data = null) {
     setVal('.d-sur', surcharge, tr);
     setVal('.d-disc', discount, tr);
     setVal('.d-totalSales', totalSale, tr);
-    setVal('.d-code', refCode || "", tr);
+    setVal('.d-code', refCode || '', tr);
     setVal('.d-paid', paidAmount, tr);
-    setVal('.d-supplier', supplier || "", tr);
-    setVal('.d-note', note || "", tr);
+    setVal('.d-supplier', supplier || '', tr);
+    setVal('.d-note', note || '', tr);
 
     calcRow(idx);
   } else {
@@ -384,7 +360,7 @@ function onTypeChange(idx, resetChildren = true) {
   if (!tr) return;
   // 1. Logic cũ: Reset Location & Name
   if (resetChildren) {
-    tr.querySelector('.d-loc').value = "";
+    tr.querySelector('.d-loc').value = '';
     // Gọi hàm updateServiceNameList (như đã làm ở bước trước)
     updateLocationList(idx);
   } else {
@@ -399,7 +375,9 @@ async function onSupplierChange(idx) {
   const supplier = tr.querySelector('select[data-field="supplier"]').value;
   const service = tr.querySelector('select[data-field="service_name"]').value;
   const type = tr.querySelector('select[data-field="service_type"]').value;
-  log(`Fetching prices for service: ${service}, date: ${useDate}, supplier: ${supplier}, type: ${type}`);
+  log(
+    `Fetching prices for service: ${service}, date: ${useDate}, supplier: ${supplier}, type: ${type}`
+  );
   if (service && useDate && type) {
     if (type === 'Phòng') {
       const hotel = tr.querySelector('select[data-field="hotel_name"]').value;
@@ -423,20 +401,22 @@ function onLocationChange(idx, resetName = true) {
   const type = getVal('.d-type', tr);
   if (type === 'Phòng') {
     updateServiceNameList(idx); // Load hạng phòng của KS này
-    if (resetName) setVal('.d-name', "", tr);
+    if (resetName) setVal('.d-name', '', tr);
   }
 }
 // C. Hàm Fill Location (Gộp Hotel Matrix Col 1 + Other)
 function updateLocationList(idx) {
   const lists = window.APP_DATA.lists;
   // Lấy tên các KS từ Matrix (Cột 0)
-  const hotels = (lists.hotelMatrix || []).map(r => r[0]);
+  const hotels = (lists.hotelMatrix || []).map((r) => r[0]);
   const others = lists.locOther || [];
   // Gộp và loại trùng
   const allLocs = [...new Set([...hotels, ...others])];
   const elLoc = getE(`row-${idx}`).querySelector('.d-loc');
   let currentVal = getVal('.d-loc', getE(`row-${idx}`));
-  elLoc.innerHTML = '<option value="">-</option>' + allLocs.map(x => `<option value="${x}">${x}</option>`).join('');
+  elLoc.innerHTML =
+    '<option value="">-</option>' +
+    allLocs.map((x) => `<option value="${x}">${x}</option>`).join('');
   setVal('.d-loc', currentVal, getE(`row-${idx}`));
 }
 // D. Hàm Fill Service Name / Room Type (CORE LOGIC)
@@ -450,26 +430,27 @@ function updateServiceNameList(idx) {
     // Tra cứu trong Matrix
     const matrix = window.APP_DATA.lists.hotelMatrix || [];
     // Tìm dòng có tên KS khớp với Location
-    const hotelRow = matrix.find(r => r[0] === loc);
+    const hotelRow = matrix.find((r) => r[0] === loc);
     if (hotelRow) {
       // Lấy từ cột 3 đến hết (Index 2 trở đi trong mảng JS - vì JS start 0)
       // Excel: Cột A(0)=Tên. Cột C(2) -> L(11) là hạng phòng.
       // Chú ý: getMatrixData trả về mảng giá trị của row.
       // Ta lấy các ô có dữ liệu từ index 2 trở đi
-      options = hotelRow.slice(2).filter(c => c !== "" && c !== null);
+      options = hotelRow.slice(2).filter((c) => c !== '' && c !== null);
     }
   } else {
     const svcMatrix = window.APP_DATA.lists.serviceMatrix || [];
     options = svcMatrix
-      .filter(r => r[0] === type) // Cột 0 là Loại
-      .map(r => r[1]);            // Cột 1 là Tên
+      .filter((r) => r[0] === type) // Cột 0 là Loại
+      .map((r) => r[1]); // Cột 1 là Tên
   }
   const currentVal = elName.value;
-  elName.innerHTML = '<option value="">-</option>' + options.map(x => `<option value="${x}">${x}</option>`).join('');
+  elName.innerHTML =
+    '<option value="">-</option>' +
+    options.map((x) => `<option value="${x}">${x}</option>`).join('');
   // Cố gắng giữ lại giá trị cũ nếu có trong list mới
   if (options.includes(currentVal)) elName.value = currentVal;
 }
-
 
 async function syncRow(sourceRow = null) {
   setBtnLoading('btn-sync-row', true);
@@ -485,7 +466,7 @@ async function syncRow(sourceRow = null) {
           const newSnap = await db.collection('operator_entries').doc(sid).get();
           const newData = newSnap.data();
           const inputs = sourceRow.querySelectorAll('[data-field]');
-          inputs.forEach(input => {
+          inputs.forEach((input) => {
             const fieldName = input.dataset.field; // Lấy tên field từ data-field
             if (!fieldName) return;
             let value = newData[fieldName];
@@ -498,9 +479,8 @@ async function syncRow(sourceRow = null) {
           return;
         }
       }
-    }
-    else {
-      rows.forEach(async r => {
+    } else {
+      rows.forEach(async (r) => {
         if (r.style.display !== 'none') sourceRow = r;
         const sid = sourceRow ? getVal('input[data-field="id"]', sourceRow) : null;
         if (sid) {
@@ -510,7 +490,7 @@ async function syncRow(sourceRow = null) {
             const newSnap = await db.collection('operator_entries').doc(sid).get();
             const newData = newSnap.data();
             const inputs = sourceRow.querySelectorAll('[data-field]');
-            inputs.forEach(input => {
+            inputs.forEach((input) => {
               const fieldName = input.dataset.field; // Lấy tên field từ data-field
               if (!fieldName) return;
               let value = newData[fieldName];
@@ -525,11 +505,9 @@ async function syncRow(sourceRow = null) {
         }
       });
     }
-  }
-  catch (e) {
-    logA("Lỗi đồng bộ dòng: " + e.message, 'error');
-  }
-  finally {
+  } catch (e) {
+    logA('Lỗi đồng bộ dòng: ' + e.message, 'error');
+  } finally {
     setBtnLoading('btn-sync-row', false);
   }
 }
@@ -562,7 +540,7 @@ function calcRow(idx) {
     const dIn = new Date(dInStr);
     const dOut = new Date(dOutStr);
     const diff = (dOut - dIn) / 86400000;
-    night = (type !== 'Phòng' || diff <= 0) ? 1 : diff;
+    night = type !== 'Phòng' || diff <= 0 ? 1 : diff;
   }
   tr.querySelector('.d-night').value = night;
 
@@ -575,9 +553,9 @@ function calcRow(idx) {
   // Calculate total cost
   const costA = getVal('.d-costA', tr);
   const costC = getVal('.d-costC', tr);
-  const multiplier = (type === 'Phòng') ? Math.max(1, night) : 1;
+  const multiplier = type === 'Phòng' ? Math.max(1, night) : 1;
 
-  const totalCost = ((qtyA * costA) + (qtyC * costC) + sur - disc) * multiplier;
+  const totalCost = (qtyA * costA + qtyC * costC + sur - disc) * multiplier;
   setVal('.d-totalCost', totalCost, tr);
 
   // Calculate remaining debt
@@ -605,7 +583,7 @@ function getRawVal(val) {
  * Calculate and display grand totals for entire form
  */
 function calcGrandTotal() {
-  log("🚀 Running calcGrandTotal...");
+  log('🚀 Running calcGrandTotal...');
 
   let totalSales = 0;
   let totalCost = 0;
@@ -630,7 +608,7 @@ function calcGrandTotal() {
     totalCost += rowCost;
 
     // Calculate stats
-    const type = elType ? elType.value : "";
+    const type = elType ? elType.value : '';
     const elQty = tr.querySelector('.d-qty');
     const elQtyC = tr.querySelector('.d-qtyC');
     const elCostA = tr.querySelector('.d-costA');
@@ -643,12 +621,12 @@ function calcGrandTotal() {
     const priC = elCostC ? getRawVal(elCostC.value) : 0;
 
     if (type === 'Vé MB' || type === 'Vé Tàu') {
-      transportA += (qtyA * priA);
+      transportA += qtyA * priA;
       transportTotal += rowSales;
     } else {
       const nightVal = elNight ? Number(elNight.value) || 0 : 0;
-      const multiplier = (type === 'Phòng') ? Math.max(1, nightVal) : 1;
-      landChildTotal += (qtyC * priC * multiplier);
+      const multiplier = type === 'Phòng' ? Math.max(1, nightVal) : 1;
+      landChildTotal += qtyC * priC * multiplier;
     }
   });
 
@@ -670,7 +648,7 @@ function calcGrandTotal() {
   calcBalanceInternal(totalSales, totalCost);
 
   // Update stats if function exists
-  if (typeof updateStatsUI === "function") {
+  if (typeof updateStatsUI === 'function') {
     updateStatsUI(totalSales, transportTotal, transportA, landChildTotal);
   }
 }
@@ -688,14 +666,14 @@ function calcBalanceInternal(total, cost) {
     elBkBalance.value = formatMoney(profit);
     elBkBalance.dataset.val = profit;
 
-    elBkBalance.className = "form-control form-control-sm text-end fw-bold bg-light";
+    elBkBalance.className = 'form-control form-control-sm text-end fw-bold bg-light';
 
     if (profit >= 0) {
-      elBkBalance.classList.add("text-success");
-      elBkBalance.classList.remove("text-danger");
+      elBkBalance.classList.add('text-success');
+      elBkBalance.classList.remove('text-danger');
     } else {
-      elBkBalance.classList.add("text-danger");
-      elBkBalance.classList.remove("text-success");
+      elBkBalance.classList.add('text-danger');
+      elBkBalance.classList.remove('text-success');
     }
   }
 }
@@ -714,8 +692,8 @@ function updateStatsUI(grandTotal, transportTotal, transportA, landChildTotal) {
   const landTotal = grandTotal - transportTotal;
   const landAdultTotal = landTotal - landChildTotal;
 
-  const avgAdult = (countAdult > 0) ? (landAdultTotal / countAdult) : 0;
-  const avgChild = (countChild > 0) ? (landChildTotal / countChild) : 0;
+  const avgAdult = countAdult > 0 ? landAdultTotal / countAdult : 0;
+  const avgChild = countChild > 0 ? landChildTotal / countChild : 0;
 
   if (document.getElementById('Stats_AvgAdult')) {
     document.getElementById('Stats_AvgAdult').innerText = formatMoney(Math.round(avgAdult));
@@ -793,7 +771,7 @@ function findCustByPhone(e) {
   const nameInput = getE('Cust_Name').value.trim();
 
   if (phoneInput.length < 3 && nameInput.length < 3) {
-    log("⚠️ Please enter at least 3 characters", "warning");
+    log('⚠️ Please enter at least 3 characters', 'warning');
     return;
   }
 
@@ -803,20 +781,20 @@ function findCustByPhone(e) {
 
   // Search by phone first
   if (phoneInput.length >= 3) {
-    found = customers.find(c => c && c.phone && String(c.phone).includes(phoneInput));
+    found = customers.find((c) => c && c.phone && String(c.phone).includes(phoneInput));
   }
 
   // Search by name if phone search failed
   if (!found && nameInput.length >= 3) {
-    found = customers.find(c => c && c.full_name && String(c.full_name).includes(nameInput));
+    found = customers.find((c) => c && c.full_name && String(c.full_name).includes(nameInput));
   }
 
   if (found) {
-    getE('Cust_Phone').value = found.phone || "";
-    getE('Cust_Name').value = found.full_name || "";
-    log("✅ Customer found:", found);
+    getE('Cust_Phone').value = found.phone || '';
+    getE('Cust_Name').value = found.full_name || '';
+    log('✅ Customer found:', found);
   } else {
-    log("⚠️ No matching customer found", "warning");
+    log('⚠️ No matching customer found', 'warning');
   }
 }
 
@@ -830,7 +808,7 @@ function findCustByPhone(e) {
  * @returns {Object} - Form data object with bookings, customer, and operator_entries
  */
 window.getFormData = function () {
-  log("🚀 Starting form data extraction...");
+  log('🚀 Starting form data extraction...');
 
   try {
     // 1. Extract booking data using object field names
@@ -851,18 +829,18 @@ window.getFormData = function () {
       payment_due_date: getVal('BK_PayDue'),
       note: getVal('BK_Note'),
       staff_id: getVal('BK_Staff'),
-      status: getVal('BK_Status')
+      status: getVal('BK_Status'),
     };
 
     // 2. Extract customer data
     const customer = {
       full_name: getVal('Cust_Name'),
       phone: getVal('Cust_Phone'),
-      source: getVal('Cust_Source')
+      source: getVal('Cust_Source'),
     };
 
     // 3. Extract operator entries using object format
-    const operator_entries = []
+    const operator_entries = [];
     const rows = document.querySelectorAll('#detail-tbody tr');
 
     rows.forEach((tr) => {
@@ -897,7 +875,7 @@ window.getFormData = function () {
         supplier: getRowVal('d-supplier'),
         operator_note: getRowVal('d-note'),
         paid_amount: getRowVal('d-paid'),
-        debt_balance: getRowVal('d-remain')
+        debt_balance: getRowVal('d-remain'),
       };
 
       operator_entries.push(entry);
@@ -905,13 +883,12 @@ window.getFormData = function () {
 
     log(`✅ Form data extracted successfully! (${operator_entries.length} detail rows)`);
     return { bookings, customer, operator_entries };
-
   } catch (e) {
-    log("❌ Error extracting form data: " + e.message, "error");
+    log('❌ Error extracting form data: ' + e.message, 'error');
     console.error(e);
     return null;
   }
-}
+};
 
 // =========================================================================
 // 5. BATCH OPERATIONS & MODALS
@@ -934,7 +911,7 @@ function handleAggClick(key, filterType) {
 
   const source = Object.values(APP_DATA.operator_entries ?? {});
 
-  const batchData = source.filter(row => {
+  const batchData = source.filter((row) => {
     if (!row) return false;
 
     // Check date
@@ -946,10 +923,10 @@ function handleAggClick(key, filterType) {
 
     // Check filter key
     if (filterType === 'supplier') {
-      const supplier = row.supplier || "(No supplier)";
+      const supplier = row.supplier || '(No supplier)';
       return String(supplier) === String(key);
     } else if (filterType === 'type') {
-      const type = row.service_type || "Other";
+      const type = row.service_type || 'Other';
       return String(type) === String(key);
     }
 
@@ -957,7 +934,7 @@ function handleAggClick(key, filterType) {
   });
 
   if (batchData.length === 0) {
-    logA("No data found in this date range.", "warning");
+    logA('No data found in this date range.', 'warning');
     return;
   }
 
@@ -970,15 +947,14 @@ function handleAggClick(key, filterType) {
  * Partner mail sending module
  */
 const PartnerMailModule = (function () {
-
   async function open() {
-    const newModal = await A.UI.renderModal('tmpl-partner-mail', "Send Partner Proposal", send);
+    const newModal = await A.UI.renderModal('tmpl-partner-mail', 'Send Partner Proposal', send);
     const hotelEl = getE('pm-name');
     const hotelData = window.APP_DATA.lists?.hotelMatrix || [];
 
     if (hotelEl) {
-      const hotelNames = hotelData.map(r => r[0]);
-      fillSelect(hotelEl, hotelNames, "--Select Hotel--");
+      const hotelNames = hotelData.map((r) => r[0]);
+      fillSelect(hotelEl, hotelNames, '--Select Hotel--');
     }
 
     newModal.show();
@@ -998,7 +974,7 @@ const PartnerMailModule = (function () {
     const btnSend = getE('btn-save-modal');
 
     if (!name || !email) {
-      return logA("Please enter name and email!", "warning");
+      return logA('Please enter name and email!', 'warning');
     }
 
     const originalText = btnSend.innerHTML;
@@ -1009,11 +985,11 @@ const PartnerMailModule = (function () {
       const res = await requestAPI('sendPartnerProposalAPI', name, email, cc, bcc);
 
       if (res) {
-        logA("Email sent successfully!", "success");
+        logA('Email sent successfully!', 'success');
       }
     } catch (e) {
       logError(e);
-      logA("System error: " + e.message, "danger");
+      logA('System error: ' + e.message, 'danger');
     } finally {
       if (btnSend) {
         btnSend.disabled = false;
@@ -1028,6 +1004,3 @@ const PartnerMailModule = (function () {
 
   return { open, send };
 })();
-
-
-
