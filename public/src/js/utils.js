@@ -2775,8 +2775,10 @@ const HD = {
  * và trả về object chứa các field đã thay đổi.
  *
  * @param {string} containerId - ID của container chứa các input
- * @returns {object} - Object chứa các field có giá trị khác nhau
- *                     Format: { fieldName: newValue, ... }
+ * @param {Document|HTMLElement} root - Root để tìm container (mặc định document)
+ * @param {boolean} isCollection - true: ghi Firestore collection (xử lý record mới)
+ * @returns {Promise<object>} - Object chứa các field có giá trị thay đổi thực sự
+ *                              Format: { fieldName: newValue, ... }
  *
  * @example
  * // HTML:
@@ -2786,7 +2788,7 @@ const HD = {
  * // </div>
  *
  * // JavaScript:
- * const changes = filterUpdatedData('form-container');
+ * const changes = await filterUpdatedData('form-container');
  * // Returns: { phone: "0909123456" } (chỉ field phone thay đổi)
  */
 async function filterUpdatedData(containerId, root = document, isCollection = true) {
@@ -2800,14 +2802,36 @@ async function filterUpdatedData(containerId, root = document, isCollection = tr
   const SYSTEM_FIELDS = new Set(['updated_at', 'created_at']);
   const inputs = container.querySelectorAll('input, select, textarea');
 
+  // ── HELPER: Chuẩn hoá giá trị trước khi so sánh ─────────────────────────
+  // Mục tiêu: tránh false-positive do null/undefined/khoảng trắng/kiểu dữ liệu
+  //
+  // Quy tắc chuẩn hoá:
+  //  1. null / undefined → chuỗi rỗng ""
+  //  2. Boolean → "true" / "false"
+  //  3. Cắt khoảng trắng đầu/cuối
+  //  4. Số có định dạng ("1,500,000") → "1500000" để so sánh nhất quán
+  //     (chỉ áp dụng khi toàn bộ chuỗi sau khi bỏ dấu phẩy là số thuần)
+  const _normalize = (val) => {
+    if (val === null || val === undefined) return '';
+    const str = String(val).trim();
+    // Chuẩn hoá số có format dấu phẩy ngàn: "1,500,000" → "1500000"
+    const stripped = str.replace(/,/g, '');
+    if (stripped !== '' && !isNaN(stripped) && isFinite(stripped)) return stripped;
+    return str;
+  };
+
   // ── EARLY EXIT: Phát hiện trường hợp TẠO MỚI ────────────────────────────
   // Chỉ áp dụng khi isCollection = true (ghi collection Firestore).
   // Tìm field 'id' trong container: nếu không có hoặc giá trị rỗng
   // → đây là record mới → trả về toàn bộ data (bỏ qua so sánh data-initial).
   if (isCollection) {
-    const idEl = container.querySelector('[data-field="id"]');
-    const idValue = idEl ? getFromEl(idEl) : null;
-    if (!idEl || !idValue || idValue === '' || idValue === '0') {
+    const idEl =
+      container.querySelector('[data-field="id"]') ||
+      container.querySelector('[data-field="customer_id"]') ||
+      container.querySelector('[data-field="uid"]');
+
+    const idValue = idEl ? _normalize(getFromEl(idEl)) : '';
+    if (!idEl || !idValue || idValue === '0') {
       const allData = {};
       inputs.forEach((el) => {
         const fieldName = el.getAttribute('data-field') || el.id;
@@ -2827,9 +2851,8 @@ async function filterUpdatedData(containerId, root = document, isCollection = tr
   let hasRealChanges = false;
 
   inputs.forEach((el) => {
-    const currentValue = getFromEl(el);
-    const initialAttr = el.getAttribute('data-initial') || null;
-    const fieldName = el.getAttribute('data-field') || el.id;
+    const rawCurrent = getFromEl(el);
+    const fieldName = el.dataset.field || el.id;
 
     if (!fieldName) return;
 
@@ -2838,12 +2861,25 @@ async function filterUpdatedData(containerId, root = document, isCollection = tr
 
     const isExactId = fieldName === 'id';
     const isRelatedId = fieldName.endsWith('_id');
-    // Nếu data-initial không tồn tại → luôn coi là đã thay đổi
-    const isChanged = initialAttr === null || currentValue !== initialAttr;
+
+    // ── SO SÁNH CHẶT CHẼ ──────────────────────────────────────────────────
+    // FIX: dùng `initialAttr !== undefined` thay vì `!initialAttr`
+    //      để tránh false-positive khi data-initial="" (chuỗi rỗng hợp lệ)
+    const initialAttr = el.dataset.initial; // undefined nếu attribute chưa được set
+    const hasInitialSet = initialAttr !== undefined;
+
+    let isChanged;
+    if (!hasInitialSet) {
+      // data-initial chưa được inject → coi là đã thay đổi (an toàn hơn)
+      isChanged = true;
+    } else {
+      // So sánh sau khi chuẩn hoá cả hai vế
+      isChanged = _normalize(rawCurrent) !== _normalize(initialAttr);
+    }
 
     // Luôn lấy field id/..._id (làm khoá tham chiếu); các field khác chỉ lấy khi thay đổi
     if (isExactId || isRelatedId || isChanged) {
-      updatedData[fieldName] = currentValue;
+      updatedData[fieldName] = rawCurrent;
     }
 
     // Có thay đổi thực sự = field không phải id thuần, và giá trị khác data-initial

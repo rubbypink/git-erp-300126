@@ -129,6 +129,12 @@ export const ChromeMenuController = {
           actionCode:
             "if(typeof StateProxy.showProxyDebug === 'function') StateProxy.showProxyDebug()",
         },
+        {
+          type: 'item',
+          label: 'Mở Form Tùy Chỉnh',
+          icon: 'fa-solid fa-wrench text-warning',
+          actionCode: "if(typeof A.UI.renderForm === 'function') A.UI.renderForm()",
+        },
       ],
     },
   ],
