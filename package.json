@@ -19,6 +19,7 @@
     },
     "dependencies": {
         "choices.js": "^11.1.0",
-        "dayjs": "^1.11.19"
+        "dayjs": "^1.11.19",
+        "sweetalert2": "^11.26.21"
     }
 }

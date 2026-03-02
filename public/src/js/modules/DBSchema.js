@@ -1,12 +1,12 @@
 /**
  * =========================================================================
  * DB_SCHEMA_DETAILED.JS - Comprehensive Field Metadata Schema
- * 
+ *
  * Purpose:
  *   - Provides detailed field metadata for all collections in the system
  *   - Each field includes: index, name, type, tag, attributes, CSS, validation rules
  *   - Enables dynamic form generation, validation, and data transformation
- * 
+ *
  * Usage:
  *   DB_SCHEMA['bookings'] → Collection with field definitions
  *   DB_SCHEMA['bookings'].fields → Array of field objects
@@ -34,9 +34,9 @@ export const DB_SCHEMA = {
         class: 'fw-bold text-danger',
         validation: {
           required: true,
-          pattern: '^BK\\d{4,}$' // e.g., BK0001
+          pattern: '^BK\\d{4,}$', // e.g., BK0001
         },
-        placeholder: 'Auto-generated'
+        placeholder: 'Auto-generated',
       },
       {
         index: 16,
@@ -47,7 +47,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: ['readonly'],
         class: '',
-        initial: 'today'
+        initial: 'today',
       },
       {
         index: 1,
@@ -58,7 +58,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: [],
         class: 'd-none',
-        placeholder: ''
+        placeholder: '',
       },
       {
         index: 2,
@@ -73,8 +73,8 @@ export const DB_SCHEMA = {
         validation: {
           required: true,
           minLength: 2,
-          maxLength: 100
-        }
+          maxLength: 100,
+        },
       },
       {
         index: 3,
@@ -90,8 +90,8 @@ export const DB_SCHEMA = {
           required: true,
           pattern: '^0\\d{8,}$',
           minLength: 9,
-          maxLength: 15
-        }
+          maxLength: 15,
+        },
       },
       {
         index: 4,
@@ -103,8 +103,8 @@ export const DB_SCHEMA = {
         attrs: [],
         class: 'border-primary',
         validation: {
-          required: true
-        }
+          required: true,
+        },
       },
       {
         index: 5,
@@ -116,8 +116,8 @@ export const DB_SCHEMA = {
         attrs: [],
         class: 'border-primary',
         validation: {
-          required: true
-        }
+          required: true,
+        },
       },
       {
         index: 6,
@@ -131,9 +131,9 @@ export const DB_SCHEMA = {
         validation: {
           required: true,
           min: 1,
-          max: 100
+          max: 100,
         },
-        initial: 1
+        initial: 1,
       },
       {
         index: 7,
@@ -146,9 +146,9 @@ export const DB_SCHEMA = {
         class: 'number-only',
         validation: {
           min: 0,
-          max: 50
+          max: 50,
         },
-        initial: 0
+        initial: 0,
       },
       {
         index: 8,
@@ -160,9 +160,9 @@ export const DB_SCHEMA = {
         attrs: ['readonly'],
         class: 'fw-bold text-end bg-warning number',
         validation: {
-          min: 0
+          min: 0,
         },
-        initial: '0'
+        initial: '0',
       },
       {
         index: 9,
@@ -174,9 +174,9 @@ export const DB_SCHEMA = {
         attrs: ['readonly'],
         class: 'text-end border-success number',
         validation: {
-          min: 0
+          min: 0,
         },
-        initial: '0'
+        initial: '0',
       },
       {
         index: 10,
@@ -188,9 +188,9 @@ export const DB_SCHEMA = {
         attrs: ['readonly'],
         class: 'text-end fw-bold text-danger number',
         validation: {
-          min: 0
+          min: 0,
         },
-        initial: '0'
+        initial: '0',
       },
       {
         index: 11,
@@ -202,7 +202,7 @@ export const DB_SCHEMA = {
         attrs: [],
         class: '',
         options: ['TM', 'CK CN', 'CK CT', 'Công Nợ', 'Thẻ tín dụng'],
-        dataSource: 'lists.payment'
+        dataSource: 'lists.payment',
       },
       {
         index: 12,
@@ -213,7 +213,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: [],
         class: '',
-        validation: {}
+        validation: {},
       },
       {
         index: 13,
@@ -226,8 +226,8 @@ export const DB_SCHEMA = {
         class: '',
         placeholder: 'Ghi chú thêm...',
         validation: {
-          maxLength: 1000
-        }
+          maxLength: 1000,
+        },
       },
       {
         index: 14,
@@ -238,7 +238,7 @@ export const DB_SCHEMA = {
         tag: 'select',
         attrs: [],
         class: '',
-        dataSource: 'lists.staff'
+        dataSource: 'lists.staff',
       },
       {
         index: 15,
@@ -251,9 +251,9 @@ export const DB_SCHEMA = {
         class: 'fw-bold bg-warning bg-opacity-25',
         options: ['Đặt Lịch', 'Xác Nhận', 'Thanh Toán', 'Xong BK', 'Hủy'],
         initial: 'Đặt Lịch',
-        dataSource: 'lists.status'
-      }
-    ]
+        dataSource: 'lists.status',
+      },
+    ],
   },
 
   // =========================================================================
@@ -273,7 +273,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: ['readonly'],
         class: 'd-sid',
-        placeholder: 'Auto-generated'
+        placeholder: 'Auto-generated',
       },
       {
         index: 1,
@@ -284,7 +284,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: ['hidden'],
         class: 'd-bkid',
-        placeholder: ''
+        placeholder: '',
       },
       {
         index: 2,
@@ -298,8 +298,8 @@ export const DB_SCHEMA = {
         options: ['Phòng', 'Vé MB', 'Vé Tàu', 'Ăn'],
         dataSource: 'lists.types',
         validation: {
-          required: true
-        }
+          required: true,
+        },
       },
       {
         index: 3,
@@ -311,10 +311,10 @@ export const DB_SCHEMA = {
         attrs: [],
         class: 'd-hotel',
         validation: {
-          required: true
+          required: true,
         },
         dataSource: 'hotelLocations',
-        description: 'Extracted from lists.hotelMatrix[col0] + lists.locOther'
+        description: 'Extracted from lists.hotelMatrix[col0] + lists.locOther',
       },
       {
         index: 4,
@@ -326,11 +326,12 @@ export const DB_SCHEMA = {
         attrs: [],
         class: 'd-service',
         validation: {
-          required: true
+          required: true,
         },
         dataSource: 'serviceNames',
         dependsOn: ['service_type', 'hotel_name'],
-        description: 'Depends on service_type and hotel_name - if Phòng: use hotelMatrix[hotel].slice(2), else use serviceMatrix'
+        description:
+          'Depends on service_type and hotel_name - if Phòng: use hotelMatrix[hotel].slice(2), else use serviceMatrix',
       },
       {
         index: 5,
@@ -340,7 +341,7 @@ export const DB_SCHEMA = {
         type: 'date',
         tag: 'input',
         attrs: [],
-        class: 'd-in'
+        class: 'd-in',
       },
       {
         index: 6,
@@ -350,7 +351,7 @@ export const DB_SCHEMA = {
         type: 'date',
         tag: 'input',
         attrs: [],
-        class: 'd-out'
+        class: 'd-out',
       },
       {
         index: 7,
@@ -362,8 +363,8 @@ export const DB_SCHEMA = {
         attrs: ['readonly'],
         class: 'd-nights number-only',
         validation: {
-          min: 0
-        }
+          min: 0,
+        },
       },
       {
         index: 8,
@@ -375,8 +376,8 @@ export const DB_SCHEMA = {
         attrs: [],
         class: 'd-qty number-only',
         validation: {
-          min: 1
-        }
+          min: 1,
+        },
       },
       {
         index: 9,
@@ -386,7 +387,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: [],
-        class: 'd-price number'
+        class: 'd-price number',
       },
       {
         index: 10,
@@ -396,7 +397,7 @@ export const DB_SCHEMA = {
         type: 'number',
         tag: 'input',
         attrs: [],
-        class: 'd-qtyC number-only'
+        class: 'd-qtyC number-only',
       },
       {
         index: 11,
@@ -406,7 +407,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: [],
-        class: 'd-priceC number'
+        class: 'd-priceC number',
       },
       {
         index: 12,
@@ -417,7 +418,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: [],
         class: 'd-sur number',
-        initial: '0'
+        initial: '0',
       },
       {
         index: 13,
@@ -428,7 +429,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: [],
         class: 'd-disc number',
-        initial: '0'
+        initial: '0',
       },
       {
         index: 14,
@@ -439,7 +440,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: ['readonly'],
         class: 'd-total text-primary number',
-        initial: '0'
+        initial: '0',
       },
       {
         index: 15,
@@ -449,7 +450,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: [],
-        class: 'd-code'
+        class: 'd-code',
       },
       {
         index: 16,
@@ -459,9 +460,9 @@ export const DB_SCHEMA = {
         type: 'textarea',
         tag: 'textarea',
         attrs: [],
-        class: 'd-note'
-      }
-    ]
+        class: 'd-note',
+      },
+    ],
   },
 
   // =========================================================================
@@ -481,7 +482,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: ['readonly'],
         class: 'd-sid',
-        placeholder: 'Auto-generated'
+        placeholder: 'Auto-generated',
       },
       {
         index: 1,
@@ -491,7 +492,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: ['hidden'],
-        class: 'd-idbk'
+        class: 'd-idbk',
       },
       {
         index: 2,
@@ -501,7 +502,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
-        class: 'd-cust'
+        class: 'd-cust',
       },
       {
         index: 3,
@@ -514,8 +515,8 @@ export const DB_SCHEMA = {
         class: 'd-type',
         options: ['Phòng', 'Vé MB', 'Vé Tàu', 'Ăn'],
         validation: {
-          required: true
-        }
+          required: true,
+        },
       },
       {
         index: 4,
@@ -527,7 +528,7 @@ export const DB_SCHEMA = {
         attrs: ['readonly'],
         class: 'd-loc',
         dataSource: 'hotelLocations',
-        description: 'Extracted from lists.hotelMatrix[col0] + lists.locOther'
+        description: 'Extracted from lists.hotelMatrix[col0] + lists.locOther',
       },
       {
         index: 5,
@@ -540,7 +541,7 @@ export const DB_SCHEMA = {
         class: 'd-name',
         dataSource: 'serviceNames',
         dependsOn: ['service_type', 'hotel_name'],
-        description: 'Depends on service_type and hotel_name'
+        description: 'Depends on service_type and hotel_name',
       },
       {
         index: 6,
@@ -550,7 +551,7 @@ export const DB_SCHEMA = {
         type: 'date',
         tag: 'input',
         attrs: ['readonly'],
-        class: 'd-in'
+        class: 'd-in',
       },
       {
         index: 7,
@@ -560,7 +561,7 @@ export const DB_SCHEMA = {
         type: 'date',
         tag: 'input',
         attrs: ['readonly'],
-        class: 'd-out'
+        class: 'd-out',
       },
       {
         index: 8,
@@ -572,8 +573,8 @@ export const DB_SCHEMA = {
         attrs: ['readonly'],
         class: 'd-night',
         validation: {
-          min: 0
-        }
+          min: 0,
+        },
       },
       {
         index: 9,
@@ -585,8 +586,8 @@ export const DB_SCHEMA = {
         attrs: [],
         class: 'd-qty number-only',
         validation: {
-          min: 1
-        }
+          min: 1,
+        },
       },
       {
         index: 10,
@@ -598,8 +599,8 @@ export const DB_SCHEMA = {
         attrs: [],
         class: 'd-costA bg-warning bg-opacity-10 number',
         validation: {
-          min: 0
-        }
+          min: 0,
+        },
       },
       {
         index: 11,
@@ -611,8 +612,8 @@ export const DB_SCHEMA = {
         attrs: [],
         class: 'd-qtyC number-only',
         validation: {
-          min: 0
-        }
+          min: 0,
+        },
       },
       {
         index: 12,
@@ -622,7 +623,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: [],
-        class: 'd-costC bg-warning bg-opacity-10 number'
+        class: 'd-costC bg-warning bg-opacity-10 number',
       },
       {
         index: 13,
@@ -633,7 +634,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: [],
         class: 'd-sur number',
-        initial: '0'
+        initial: '0',
       },
       {
         index: 14,
@@ -644,7 +645,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: [],
         class: 'd-disc number',
-        initial: '0'
+        initial: '0',
       },
       {
         index: 15,
@@ -654,7 +655,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
-        class: 'd-totalSales text-primary number'
+        class: 'd-totalSales text-primary number',
       },
       {
         index: 16,
@@ -664,7 +665,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: [],
-        class: 'd-code'
+        class: 'd-code',
       },
       {
         index: 17,
@@ -674,7 +675,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
-        class: 'd-totalCost bg-danger bg-opacity-10 number'
+        class: 'd-totalCost bg-danger bg-opacity-10 number',
       },
       {
         index: 18,
@@ -684,7 +685,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: [],
-        class: 'd-paid text-success number'
+        class: 'd-paid text-success number',
       },
       {
         index: 19,
@@ -694,7 +695,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
-        class: 'd-remain text-danger number'
+        class: 'd-remain text-danger number',
       },
       {
         index: 20,
@@ -705,7 +706,7 @@ export const DB_SCHEMA = {
         tag: 'select',
         attrs: [],
         class: 'd-supplier',
-        dataSource: 'suppliers'
+        dataSource: 'suppliers',
       },
       {
         index: 21,
@@ -715,9 +716,9 @@ export const DB_SCHEMA = {
         type: 'textarea',
         tag: 'textarea',
         attrs: [],
-        class: 'd-note'
-      }
-    ]
+        class: 'd-note',
+      },
+    ],
   },
 
   // =========================================================================
@@ -737,7 +738,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: ['readonly'],
         class: 'fw-bold text-danger',
-        placeholder: 'Auto-generated'
+        placeholder: 'Auto-generated',
       },
       {
         index: 1,
@@ -752,8 +753,8 @@ export const DB_SCHEMA = {
         validation: {
           required: true,
           minLength: 2,
-          maxLength: 100
-        }
+          maxLength: 100,
+        },
       },
       {
         index: 2,
@@ -763,7 +764,7 @@ export const DB_SCHEMA = {
         type: 'date',
         tag: 'input',
         attrs: [],
-        class: ''
+        class: '',
       },
       {
         index: 3,
@@ -774,7 +775,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: [],
         class: '',
-        placeholder: '012345678901'
+        placeholder: '012345678901',
       },
       {
         index: 4,
@@ -784,7 +785,7 @@ export const DB_SCHEMA = {
         type: 'date',
         tag: 'input',
         attrs: [],
-        class: ''
+        class: '',
       },
       {
         index: 5,
@@ -797,8 +798,8 @@ export const DB_SCHEMA = {
         class: '',
         placeholder: 'Số nhà, đường, phường, quận...',
         validation: {
-          maxLength: 500
-        }
+          maxLength: 500,
+        },
       },
       {
         index: 6,
@@ -812,8 +813,8 @@ export const DB_SCHEMA = {
         placeholder: '0xxx-xxx-xxx',
         validation: {
           required: true,
-          pattern: '^0\\d{8,}$'
-        }
+          pattern: '^0\\d{8,}$',
+        },
       },
       {
         index: 7,
@@ -826,8 +827,8 @@ export const DB_SCHEMA = {
         class: '',
         placeholder: 'abc@gmail.com',
         validation: {
-          pattern: '^[^@]+@[^@]+\\.[^@]+$'
-        }
+          pattern: '^[^@]+@[^@]+\\.[^@]+$',
+        },
       },
       {
         index: 8,
@@ -838,7 +839,7 @@ export const DB_SCHEMA = {
         tag: 'select',
         attrs: [],
         class: '',
-        dataSource: 'sources'
+        dataSource: 'lists.source',
       },
       {
         index: 9,
@@ -849,7 +850,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: ['readonly'],
         class: 'number',
-        initial: '0'
+        initial: '0',
       },
       {
         index: 10,
@@ -860,9 +861,9 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: ['readonly'],
         class: '',
-        initial: 'today'
-      }
-    ]
+        initial: 'today',
+      },
+    ],
   },
 
   // =========================================================================
@@ -882,7 +883,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: ['readonly'],
         class: 'fw-bold text-danger',
-        placeholder: 'Firebase UID'
+        placeholder: 'Firebase UID',
       },
       {
         index: 1,
@@ -897,8 +898,8 @@ export const DB_SCHEMA = {
         validation: {
           required: true,
           minLength: 3,
-          maxLength: 50
-        }
+          maxLength: 50,
+        },
       },
       {
         index: 2,
@@ -913,8 +914,8 @@ export const DB_SCHEMA = {
         validation: {
           required: true,
           minLength: 2,
-          maxLength: 100
-        }
+          maxLength: 100,
+        },
       },
       {
         index: 3,
@@ -929,8 +930,8 @@ export const DB_SCHEMA = {
         validation: {
           required: true,
           minLength: 6,
-          maxLength: 20
-        }
+          maxLength: 20,
+        },
       },
       {
         index: 4,
@@ -941,7 +942,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: [],
         class: 'phone_number',
-        placeholder: '0xxx-xxx-xxx'
+        placeholder: '0xxx-xxx-xxx',
       },
       {
         index: 5,
@@ -955,8 +956,8 @@ export const DB_SCHEMA = {
         placeholder: 'user@company.com',
         validation: {
           required: true,
-          pattern: '^[^@]+@[^@]+\\.[^@]+$'
-        }
+          pattern: '^[^@]+@[^@]+\\.[^@]+$',
+        },
       },
       {
         index: 6,
@@ -969,8 +970,8 @@ export const DB_SCHEMA = {
         class: '',
         options: ['admin', 'operator', 'sales', 'accountant'],
         validation: {
-          required: true
-        }
+          required: true,
+        },
       },
       {
         index: 7,
@@ -983,8 +984,8 @@ export const DB_SCHEMA = {
         class: '',
         validation: {
           min: 1,
-          max: 5
-        }
+          max: 5,
+        },
       },
       {
         index: 8,
@@ -995,7 +996,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: [],
         class: '',
-        placeholder: 'Group name'
+        placeholder: 'Group name',
       },
       {
         index: 9,
@@ -1006,9 +1007,9 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: ['readonly'],
         class: '',
-        initial: 'today'
-      }
-    ]
+        initial: 'today',
+      },
+    ],
   },
 
   // =========================================================================
@@ -1027,7 +1028,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
-        class: 'fw-bold text-danger'
+        class: 'fw-bold text-danger',
       },
       {
         index: 1,
@@ -1041,8 +1042,8 @@ export const DB_SCHEMA = {
         validation: {
           required: true,
           minLength: 2,
-          maxLength: 200
-        }
+          maxLength: 200,
+        },
       },
       {
         index: 2,
@@ -1052,7 +1053,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: [],
-        class: ''
+        class: '',
       },
       {
         index: 3,
@@ -1062,7 +1063,7 @@ export const DB_SCHEMA = {
         type: 'phone',
         tag: 'input',
         attrs: [],
-        class: 'phone_number'
+        class: 'phone_number',
       },
       {
         index: 4,
@@ -1072,7 +1073,7 @@ export const DB_SCHEMA = {
         type: 'email',
         tag: 'input',
         attrs: [],
-        class: ''
+        class: '',
       },
       {
         index: 5,
@@ -1082,7 +1083,7 @@ export const DB_SCHEMA = {
         type: 'url',
         tag: 'input',
         attrs: [],
-        class: ''
+        class: '',
       },
       {
         index: 6,
@@ -1093,7 +1094,7 @@ export const DB_SCHEMA = {
         tag: 'select',
         attrs: [],
         class: '',
-        options: ['1', '2', '3', '4', '5']
+        options: ['1', '2', '3', '4', '5'],
       },
       {
         index: 7,
@@ -1103,7 +1104,7 @@ export const DB_SCHEMA = {
         type: 'file',
         tag: 'input',
         attrs: [],
-        class: 'd-none'
+        class: 'd-none',
       },
       {
         index: 8,
@@ -1113,9 +1114,9 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'textarea',
         attrs: [],
-        class: ''
-      }
-    ]
+        class: '',
+      },
+    ],
   },
 
   // =========================================================================
@@ -1134,7 +1135,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
-        class: 'fw-bold text-danger'
+        class: 'fw-bold text-danger',
       },
       {
         index: 1,
@@ -1148,8 +1149,8 @@ export const DB_SCHEMA = {
         validation: {
           required: true,
           minLength: 2,
-          maxLength: 200
-        }
+          maxLength: 200,
+        },
       },
       {
         index: 2,
@@ -1159,7 +1160,7 @@ export const DB_SCHEMA = {
         type: 'phone',
         tag: 'input',
         attrs: [],
-        class: 'phone_number'
+        class: 'phone_number',
       },
       {
         index: 3,
@@ -1169,7 +1170,7 @@ export const DB_SCHEMA = {
         type: 'email',
         tag: 'input',
         attrs: [],
-        class: ''
+        class: '',
       },
       {
         index: 4,
@@ -1179,7 +1180,7 @@ export const DB_SCHEMA = {
         type: 'textarea',
         tag: 'textarea',
         attrs: [],
-        class: ''
+        class: '',
       },
       {
         index: 5,
@@ -1189,7 +1190,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: [],
-        class: ''
+        class: '',
       },
       {
         index: 6,
@@ -1199,7 +1200,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: [],
-        class: ''
+        class: '',
       },
       {
         index: 7,
@@ -1209,7 +1210,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: [],
-        class: ''
+        class: '',
       },
       {
         index: 8,
@@ -1219,7 +1220,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: [],
-        class: ''
+        class: '',
       },
       {
         index: 9,
@@ -1230,9 +1231,9 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: ['readonly'],
         class: 'number',
-        initial: '0'
-      }
-    ]
+        initial: '0',
+      },
+    ],
   },
 
   // =========================================================================
@@ -1251,7 +1252,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
-        class: 'fw-bold text-danger'
+        class: 'fw-bold text-danger',
       },
       {
         index: 1,
@@ -1263,9 +1264,9 @@ export const DB_SCHEMA = {
         attrs: ['required'],
         class: '',
         validation: {
-          required: true
+          required: true,
         },
-        initial: 'today'
+        initial: 'today',
       },
       {
         index: 2,
@@ -1278,8 +1279,8 @@ export const DB_SCHEMA = {
         class: '',
         options: ['Thu', 'Chi', 'Chuyển'],
         validation: {
-          required: true
-        }
+          required: true,
+        },
       },
       {
         index: 3,
@@ -1292,8 +1293,8 @@ export const DB_SCHEMA = {
         class: 'number',
         validation: {
           required: true,
-          min: 0
-        }
+          min: 0,
+        },
       },
       {
         index: 4,
@@ -1303,7 +1304,7 @@ export const DB_SCHEMA = {
         type: 'select',
         tag: 'select',
         attrs: [],
-        class: ''
+        class: '',
       },
       {
         index: 5,
@@ -1313,7 +1314,7 @@ export const DB_SCHEMA = {
         type: 'textarea',
         tag: 'textarea',
         attrs: [],
-        class: ''
+        class: '',
       },
       {
         index: 6,
@@ -1323,7 +1324,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: [],
-        class: ''
+        class: '',
       },
       {
         index: 7,
@@ -1334,7 +1335,7 @@ export const DB_SCHEMA = {
         tag: 'select',
         attrs: [],
         class: '',
-        dataSource: 'fund_accounts'
+        dataSource: 'fund_accounts',
       },
       {
         index: 8,
@@ -1345,7 +1346,7 @@ export const DB_SCHEMA = {
         tag: 'select',
         attrs: [],
         class: '',
-        options: ['Hoàn thành', 'Chờ duyệt', 'Từ chối']
+        options: ['Hoàn thành', 'Chờ duyệt', 'Từ chối'],
       },
       {
         index: 9,
@@ -1356,7 +1357,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: ['readonly'],
         class: '',
-        initial: 'today'
+        initial: 'today',
       },
       {
         index: 10,
@@ -1366,9 +1367,9 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
-        class: ''
-      }
-    ]
+        class: '',
+      },
+    ],
   },
   // transactions_thenice: cùng cấu trúc transactions, dùng cho công ty The Nice
   transactions_thenice: {
@@ -1377,18 +1378,125 @@ export const DB_SCHEMA = {
     primaryKey: 'id',
     description: 'Alias collection — cùng cấu trúc với transactions, dùng cho công ty The Nice.',
     fields: [
-      { index: 0, name: 'id', displayNameEng: 'Transaction ID', displayName: 'Mã GD', type: 'text', tag: 'input', attrs: ['readonly'], class: 'fw-bold text-danger' },
-      { index: 1, name: 'transaction_date', displayNameEng: 'Transaction Date', displayName: 'Ngày GD', type: 'date', tag: 'input', attrs: ['required'], class: '', validation: { required: true }, initial: 'today' },
-      { index: 2, name: 'type', displayNameEng: 'Transaction Type', displayName: 'Loại GD', type: 'select', tag: 'select', attrs: ['required'], class: '', options: ['Thu', 'Chi', 'Chuyển'], validation: { required: true } },
-      { index: 3, name: 'amount', displayNameEng: 'Amount', displayName: 'Số tiền', type: 'text', tag: 'input', attrs: ['required'], class: 'number', validation: { required: true, min: 0 } },
-      { index: 4, name: 'category', displayNameEng: 'Category', displayName: 'Hạng mục', type: 'select', tag: 'select', attrs: [], class: '' },
-      { index: 5, name: 'description', displayNameEng: 'Description', displayName: 'Mô tả', type: 'textarea', tag: 'textarea', attrs: [], class: '' },
-      { index: 6, name: 'booking_id', displayNameEng: 'Related Booking', displayName: 'Booking liên quan', type: 'text', tag: 'input', attrs: [], class: '' },
-      { index: 7, name: 'fund_source', displayNameEng: 'Fund Source', displayName: 'Nguồn tiền', type: 'select', tag: 'select', attrs: [], class: '', dataSource: 'fund_accounts_thenice' },
-      { index: 8, name: 'status', displayNameEng: 'Status', displayName: 'Trạng thái', type: 'select', tag: 'select', attrs: [], class: '', options: ['Hoàn thành', 'Chờ duyệt', 'Từ chối'] },
-      { index: 9, name: 'created_at', displayNameEng: 'Created Date', displayName: 'Ngày tạo', type: 'date', tag: 'input', attrs: ['readonly'], class: '', initial: 'today' },
-      { index: 10, name: 'created_by', displayNameEng: 'Created By', displayName: 'Tạo bởi', type: 'text', tag: 'input', attrs: ['readonly'], class: '' }
-    ]
+      {
+        index: 0,
+        name: 'id',
+        displayNameEng: 'Transaction ID',
+        displayName: 'Mã GD',
+        type: 'text',
+        tag: 'input',
+        attrs: ['readonly'],
+        class: 'fw-bold text-danger',
+      },
+      {
+        index: 1,
+        name: 'transaction_date',
+        displayNameEng: 'Transaction Date',
+        displayName: 'Ngày GD',
+        type: 'date',
+        tag: 'input',
+        attrs: ['required'],
+        class: '',
+        validation: { required: true },
+        initial: 'today',
+      },
+      {
+        index: 2,
+        name: 'type',
+        displayNameEng: 'Transaction Type',
+        displayName: 'Loại GD',
+        type: 'select',
+        tag: 'select',
+        attrs: ['required'],
+        class: '',
+        options: ['Thu', 'Chi', 'Chuyển'],
+        validation: { required: true },
+      },
+      {
+        index: 3,
+        name: 'amount',
+        displayNameEng: 'Amount',
+        displayName: 'Số tiền',
+        type: 'text',
+        tag: 'input',
+        attrs: ['required'],
+        class: 'number',
+        validation: { required: true, min: 0 },
+      },
+      {
+        index: 4,
+        name: 'category',
+        displayNameEng: 'Category',
+        displayName: 'Hạng mục',
+        type: 'select',
+        tag: 'select',
+        attrs: [],
+        class: '',
+      },
+      {
+        index: 5,
+        name: 'description',
+        displayNameEng: 'Description',
+        displayName: 'Mô tả',
+        type: 'textarea',
+        tag: 'textarea',
+        attrs: [],
+        class: '',
+      },
+      {
+        index: 6,
+        name: 'booking_id',
+        displayNameEng: 'Related Booking',
+        displayName: 'Booking liên quan',
+        type: 'text',
+        tag: 'input',
+        attrs: [],
+        class: '',
+      },
+      {
+        index: 7,
+        name: 'fund_source',
+        displayNameEng: 'Fund Source',
+        displayName: 'Nguồn tiền',
+        type: 'select',
+        tag: 'select',
+        attrs: [],
+        class: '',
+        dataSource: 'fund_accounts_thenice',
+      },
+      {
+        index: 8,
+        name: 'status',
+        displayNameEng: 'Status',
+        displayName: 'Trạng thái',
+        type: 'select',
+        tag: 'select',
+        attrs: [],
+        class: '',
+        options: ['Hoàn thành', 'Chờ duyệt', 'Từ chối'],
+      },
+      {
+        index: 9,
+        name: 'created_at',
+        displayNameEng: 'Created Date',
+        displayName: 'Ngày tạo',
+        type: 'date',
+        tag: 'input',
+        attrs: ['readonly'],
+        class: '',
+        initial: 'today',
+      },
+      {
+        index: 10,
+        name: 'created_by',
+        displayNameEng: 'Created By',
+        displayName: 'Tạo bởi',
+        type: 'text',
+        tag: 'input',
+        attrs: ['readonly'],
+        class: '',
+      },
+    ],
   },
   // =========================================================================
   // 9. FUND_ACCOUNTS COLLECTION
@@ -1406,7 +1514,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
-        class: 'fw-bold text-danger'
+        class: 'fw-bold text-danger',
       },
       {
         index: 1,
@@ -1419,8 +1527,8 @@ export const DB_SCHEMA = {
         class: '',
         options: ['Tiền mặt', 'Ngân hàng', 'Ví điện tử'],
         validation: {
-          required: true
-        }
+          required: true,
+        },
       },
       {
         index: 2,
@@ -1434,8 +1542,8 @@ export const DB_SCHEMA = {
         validation: {
           required: true,
           minLength: 2,
-          maxLength: 100
-        }
+          maxLength: 100,
+        },
       },
       {
         index: 3,
@@ -1445,7 +1553,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: [],
-        class: ''
+        class: '',
       },
       {
         index: 4,
@@ -1455,7 +1563,7 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: [],
-        class: ''
+        class: '',
       },
       {
         index: 5,
@@ -1466,7 +1574,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: ['readonly'],
         class: 'number',
-        initial: '0'
+        initial: '0',
       },
       {
         index: 6,
@@ -1477,9 +1585,9 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: ['readonly'],
         class: '',
-        initial: 'today'
-      }
-    ]
+        initial: 'today',
+      },
+    ],
   },
 
   // fund_accounts_thenice: cùng cấu trúc fund_accounts, dùng cho công ty The Nice
@@ -1489,14 +1597,82 @@ export const DB_SCHEMA = {
     primaryKey: 'id',
     description: 'Alias collection — cùng cấu trúc với fund_accounts, dùng cho công ty The Nice.',
     fields: [
-      { index: 0, name: 'id', displayNameEng: 'Account ID', displayName: 'Mã Tài khoản', type: 'text', tag: 'input', attrs: ['readonly'], class: 'fw-bold text-danger' },
-      { index: 1, name: 'type', displayNameEng: 'Account Type', displayName: 'Loại TK', type: 'select', tag: 'select', attrs: ['required'], class: '', options: ['Tiền mặt', 'Ngân hàng', 'Ví điện tử'], validation: { required: true } },
-      { index: 2, name: 'name', displayNameEng: 'Account Name', displayName: 'Tên TK', type: 'text', tag: 'input', attrs: ['required'], class: '', validation: { required: true } },
-      { index: 3, name: 'code', displayNameEng: 'Account Code', displayName: 'Mã TK', type: 'text', tag: 'input', attrs: [], class: '' },
-      { index: 4, name: 'account_no', displayNameEng: 'Account Number', displayName: 'Số TK', type: 'text', tag: 'input', attrs: [], class: '' },
-      { index: 5, name: 'balance', displayNameEng: 'Current Balance', displayName: 'Số dư', type: 'text', tag: 'input', attrs: ['readonly'], class: 'number', initial: '0' },
-      { index: 6, name: 'created_at', displayNameEng: 'Created Date', displayName: 'Ngày tạo', type: 'date', tag: 'input', attrs: ['readonly'], class: '', initial: 'today' }
-    ]
+      {
+        index: 0,
+        name: 'id',
+        displayNameEng: 'Account ID',
+        displayName: 'Mã Tài khoản',
+        type: 'text',
+        tag: 'input',
+        attrs: ['readonly'],
+        class: 'fw-bold text-danger',
+      },
+      {
+        index: 1,
+        name: 'type',
+        displayNameEng: 'Account Type',
+        displayName: 'Loại TK',
+        type: 'select',
+        tag: 'select',
+        attrs: ['required'],
+        class: '',
+        options: ['Tiền mặt', 'Ngân hàng', 'Ví điện tử'],
+        validation: { required: true },
+      },
+      {
+        index: 2,
+        name: 'name',
+        displayNameEng: 'Account Name',
+        displayName: 'Tên TK',
+        type: 'text',
+        tag: 'input',
+        attrs: ['required'],
+        class: '',
+        validation: { required: true },
+      },
+      {
+        index: 3,
+        name: 'code',
+        displayNameEng: 'Account Code',
+        displayName: 'Mã TK',
+        type: 'text',
+        tag: 'input',
+        attrs: [],
+        class: '',
+      },
+      {
+        index: 4,
+        name: 'account_no',
+        displayNameEng: 'Account Number',
+        displayName: 'Số TK',
+        type: 'text',
+        tag: 'input',
+        attrs: [],
+        class: '',
+      },
+      {
+        index: 5,
+        name: 'balance',
+        displayNameEng: 'Current Balance',
+        displayName: 'Số dư',
+        type: 'text',
+        tag: 'input',
+        attrs: ['readonly'],
+        class: 'number',
+        initial: '0',
+      },
+      {
+        index: 6,
+        name: 'created_at',
+        displayNameEng: 'Created Date',
+        displayName: 'Ngày tạo',
+        type: 'date',
+        tag: 'input',
+        attrs: ['readonly'],
+        class: '',
+        initial: 'today',
+      },
+    ],
   },
 
   // =========================================================================
@@ -1513,85 +1689,153 @@ export const DB_SCHEMA = {
     displayNameEng: 'Hotel Price Schedule',
     displayName: 'Bảng Giá Khách Sạn',
     primaryKey: 'id',
-    description: 'Bảng giá KS theo NCC × Hotel × Năm. priceData = flat-map {roomId_rateId_periodId_pkgId: number}.',
+    description:
+      'Bảng giá KS theo NCC × Hotel × Năm. priceData = flat-map {roomId_rateId_periodId_pkgId: number}.',
     fields: [
       {
-        index: 0, name: 'id',
-        displayNameEng: 'Schedule ID', displayName: 'Mã Bảng Giá',
-        type: 'text', tag: 'input', attrs: ['readonly'], class: 'fw-bold text-danger',
-        description: 'Auto-generated: {SUPPLIERID}_{HOTELID}_{YEAR}', placeholder: 'Auto-generated'
+        index: 0,
+        name: 'id',
+        displayNameEng: 'Schedule ID',
+        displayName: 'Mã Bảng Giá',
+        type: 'text',
+        tag: 'input',
+        attrs: ['readonly'],
+        class: 'fw-bold text-danger',
+        description: 'Auto-generated: {SUPPLIERID}_{HOTELID}_{YEAR}',
+        placeholder: 'Auto-generated',
       },
       {
-        index: 1, name: 'supplier_id',
-        displayNameEng: 'Supplier ID', displayName: 'Mã NCC',
-        type: 'select', tag: 'select', attrs: ['required'], class: '',
-        dataSource: 'suppliers', description: 'Firestore: info.supplierId',
-        validation: { required: true }
+        index: 1,
+        name: 'supplier_id',
+        displayNameEng: 'Supplier ID',
+        displayName: 'Mã NCC',
+        type: 'select',
+        tag: 'select',
+        attrs: ['required'],
+        class: '',
+        dataSource: 'suppliers',
+        description: 'Firestore: info.supplierId',
+        validation: { required: true },
       },
       {
-        index: 2, name: 'hotel_id',
-        displayNameEng: 'Hotel ID', displayName: 'Mã Khách sạn',
-        type: 'select', tag: 'select', attrs: ['required'], class: '',
-        dataSource: 'hotels', description: 'Firestore: info.hotelId',
-        validation: { required: true }
+        index: 2,
+        name: 'hotel_id',
+        displayNameEng: 'Hotel ID',
+        displayName: 'Mã Khách sạn',
+        type: 'select',
+        tag: 'select',
+        attrs: ['required'],
+        class: '',
+        dataSource: 'hotels',
+        description: 'Firestore: info.hotelId',
+        validation: { required: true },
       },
       {
-        index: 3, name: 'year',
-        displayNameEng: 'Year', displayName: 'Năm',
-        type: 'number', tag: 'input', attrs: ['required'], class: 'number-only',
+        index: 3,
+        name: 'year',
+        displayNameEng: 'Year',
+        displayName: 'Năm',
+        type: 'number',
+        tag: 'input',
+        attrs: ['required'],
+        class: 'number-only',
         description: 'Firestore: info.year',
         validation: { required: true, min: 2020, max: 2099 },
-        initial: new Date().getFullYear()
+        initial: new Date().getFullYear(),
       },
       {
-        index: 4, name: 'status',
-        displayNameEng: 'Status', displayName: 'Trạng thái',
-        type: 'select', tag: 'select', attrs: [], class: '',
+        index: 4,
+        name: 'status',
+        displayNameEng: 'Status',
+        displayName: 'Trạng thái',
+        type: 'select',
+        tag: 'select',
+        attrs: [],
+        class: '',
         options: ['actived', 'pending', 'canceled', 'stopped'],
-        description: 'Firestore: info.status', initial: 'actived'
+        description: 'Firestore: info.status',
+        initial: 'actived',
       },
       {
-        index: 5, name: 'price_data',
-        displayNameEng: 'Price Data Map', displayName: 'Dữ liệu giá',
-        type: 'json', tag: 'textarea', attrs: ['readonly'], class: '',
-        description: 'Firestore: priceData — {roomId_rateId_periodId_pkgId: number}. Chỉnh qua component at-tbl-hotel-price.'
+        index: 5,
+        name: 'price_data',
+        displayNameEng: 'Price Data Map',
+        displayName: 'Dữ liệu giá',
+        type: 'json',
+        tag: 'textarea',
+        attrs: ['readonly'],
+        class: '',
+        description:
+          'Firestore: priceData — {roomId_rateId_periodId_pkgId: number}. Chỉnh qua component at-tbl-hotel-price.',
       },
       {
-        index: 6, name: 'view_config',
-        displayNameEng: 'View Config', displayName: 'Cấu hình hiển thị',
-        type: 'json', tag: 'textarea', attrs: [], class: '',
-        description: 'Firestore: info.viewConfig — {periods: string[], packages: string[], priceTypes: string[]}'
+        index: 6,
+        name: 'view_config',
+        displayNameEng: 'View Config',
+        displayName: 'Cấu hình hiển thị',
+        type: 'json',
+        tag: 'textarea',
+        attrs: [],
+        class: '',
+        description:
+          'Firestore: info.viewConfig — {periods: string[], packages: string[], priceTypes: string[]}',
       },
       {
-        index: 7, name: 'search_tags',
-        displayNameEng: 'Search Tags', displayName: 'Tags tìm kiếm',
-        type: 'text', tag: 'input', attrs: ['readonly'], class: '',
-        description: 'Firestore: searchTags — [supplierId, hotelId, year]. Auto khi lưu.'
+        index: 7,
+        name: 'search_tags',
+        displayNameEng: 'Search Tags',
+        displayName: 'Tags tìm kiếm',
+        type: 'text',
+        tag: 'input',
+        attrs: ['readonly'],
+        class: '',
+        description: 'Firestore: searchTags — [supplierId, hotelId, year]. Auto khi lưu.',
       },
       {
-        index: 8, name: 'updated_by',
-        displayNameEng: 'Updated By', displayName: 'Cập nhật bởi',
-        type: 'text', tag: 'input', attrs: ['readonly'], class: '',
-        description: 'Firestore: info.updatedBy'
+        index: 8,
+        name: 'updated_by',
+        displayNameEng: 'Updated By',
+        displayName: 'Cập nhật bởi',
+        type: 'text',
+        tag: 'input',
+        attrs: ['readonly'],
+        class: '',
+        description: 'Firestore: info.updatedBy',
       },
       {
-        index: 9, name: 'total_records',
-        displayNameEng: 'Total Price Records', displayName: 'Số dòng giá',
-        type: 'number', tag: 'input', attrs: ['readonly'], class: 'number-only',
-        description: 'Firestore: info.totalRecords'
+        index: 9,
+        name: 'total_records',
+        displayNameEng: 'Total Price Records',
+        displayName: 'Số dòng giá',
+        type: 'number',
+        tag: 'input',
+        attrs: ['readonly'],
+        class: 'number-only',
+        description: 'Firestore: info.totalRecords',
       },
       {
-        index: 10, name: 'created_at',
-        displayNameEng: 'Created Date', displayName: 'Ngày tạo',
-        type: 'date', tag: 'input', attrs: ['readonly'], class: '', initial: 'today'
+        index: 10,
+        name: 'created_at',
+        displayNameEng: 'Created Date',
+        displayName: 'Ngày tạo',
+        type: 'date',
+        tag: 'input',
+        attrs: ['readonly'],
+        class: '',
+        initial: 'today',
       },
       {
-        index: 11, name: 'updated_at',
-        displayNameEng: 'Updated Date', displayName: 'Ngày cập nhật',
-        type: 'date', tag: 'input', attrs: ['readonly'], class: '',
-        description: 'Firestore: info.updatedAt (ms timestamp)'
-      }
-    ]
+        index: 11,
+        name: 'updated_at',
+        displayNameEng: 'Updated Date',
+        displayName: 'Ngày cập nhật',
+        type: 'date',
+        tag: 'input',
+        attrs: ['readonly'],
+        class: '',
+        description: 'Firestore: info.updatedAt (ms timestamp)',
+      },
+    ],
   },
 
   // =========================================================================
@@ -1614,43 +1858,76 @@ export const DB_SCHEMA = {
     description: 'Bảng giá dịch vụ (vé, ăn, ...) theo NCC × Năm. items = mảng dòng giá.',
     fields: [
       {
-        index: 0, name: 'id',
-        displayNameEng: 'Schedule ID', displayName: 'Mã Bảng Giá',
-        type: 'text', tag: 'input', attrs: ['readonly'], class: 'fw-bold text-danger',
-        description: 'Auto-generated: {SUPPLIERID}_{YEAR}', placeholder: 'Auto-generated'
+        index: 0,
+        name: 'id',
+        displayNameEng: 'Schedule ID',
+        displayName: 'Mã Bảng Giá',
+        type: 'text',
+        tag: 'input',
+        attrs: ['readonly'],
+        class: 'fw-bold text-danger',
+        description: 'Auto-generated: {SUPPLIERID}_{YEAR}',
+        placeholder: 'Auto-generated',
       },
       {
-        index: 1, name: 'supplier_id',
-        displayNameEng: 'Supplier ID', displayName: 'Mã NCC',
-        type: 'select', tag: 'select', attrs: ['required'], class: '',
-        dataSource: 'suppliers', description: 'Firestore: info.supplierId',
-        validation: { required: true }
+        index: 1,
+        name: 'supplier_id',
+        displayNameEng: 'Supplier ID',
+        displayName: 'Mã NCC',
+        type: 'select',
+        tag: 'select',
+        attrs: ['required'],
+        class: '',
+        dataSource: 'suppliers',
+        description: 'Firestore: info.supplierId',
+        validation: { required: true },
       },
       {
-        index: 2, name: 'supplier_name',
-        displayNameEng: 'Supplier Name', displayName: 'Tên NCC',
-        type: 'text', tag: 'input', attrs: ['readonly'], class: '',
-        description: 'Firestore: info.supplierName — auto-fill từ supplier_id'
+        index: 2,
+        name: 'supplier_name',
+        displayNameEng: 'Supplier Name',
+        displayName: 'Tên NCC',
+        type: 'text',
+        tag: 'input',
+        attrs: ['readonly'],
+        class: '',
+        description: 'Firestore: info.supplierName — auto-fill từ supplier_id',
       },
       {
-        index: 3, name: 'year',
-        displayNameEng: 'Year', displayName: 'Năm',
-        type: 'number', tag: 'input', attrs: ['required'], class: 'number-only',
+        index: 3,
+        name: 'year',
+        displayNameEng: 'Year',
+        displayName: 'Năm',
+        type: 'number',
+        tag: 'input',
+        attrs: ['required'],
+        class: 'number-only',
         description: 'Firestore: info.year',
         validation: { required: true, min: 2020, max: 2099 },
-        initial: new Date().getFullYear()
+        initial: new Date().getFullYear(),
       },
       {
-        index: 4, name: 'status',
-        displayNameEng: 'Status', displayName: 'Trạng thái',
-        type: 'select', tag: 'select', attrs: [], class: '',
+        index: 4,
+        name: 'status',
+        displayNameEng: 'Status',
+        displayName: 'Trạng thái',
+        type: 'select',
+        tag: 'select',
+        attrs: [],
+        class: '',
         options: ['actived', 'pending', 'canceled', 'stopped'],
-        description: 'Firestore: info.status', initial: 'actived'
+        description: 'Firestore: info.status',
+        initial: 'actived',
       },
       {
-        index: 5, name: 'items',
-        displayNameEng: 'Price Items', displayName: 'Danh sách giá dịch vụ',
-        type: 'array', tag: 'textarea', attrs: [], class: '',
+        index: 5,
+        name: 'items',
+        displayNameEng: 'Price Items',
+        displayName: 'Danh sách giá dịch vụ',
+        type: 'array',
+        tag: 'textarea',
+        attrs: [],
+        class: '',
         description: 'Firestore: items[]. Chỉnh qua component at-tbl-service-price.',
         itemSchema: {
           type: { displayName: 'Loại DV', type: 'select', dataSource: 'lists.types' },
@@ -1659,21 +1936,32 @@ export const DB_SCHEMA = {
           to: { displayName: 'Đến ngày', type: 'text', placeholder: 'DD/MM' },
           adl: { displayName: 'Giá NL', type: 'number' },
           chd: { displayName: 'Giá TE', type: 'number' },
-          note: { displayName: 'Ghi chú', type: 'text' }
-        }
+          note: { displayName: 'Ghi chú', type: 'text' },
+        },
       },
       {
-        index: 6, name: 'created_at',
-        displayNameEng: 'Created Date', displayName: 'Ngày tạo',
-        type: 'date', tag: 'input', attrs: ['readonly'], class: '', initial: 'today'
+        index: 6,
+        name: 'created_at',
+        displayNameEng: 'Created Date',
+        displayName: 'Ngày tạo',
+        type: 'date',
+        tag: 'input',
+        attrs: ['readonly'],
+        class: '',
+        initial: 'today',
       },
       {
-        index: 7, name: 'updated_at',
-        displayNameEng: 'Updated Date', displayName: 'Ngày cập nhật',
-        type: 'date', tag: 'input', attrs: ['readonly'], class: '',
-        description: 'Firestore: info.updatedAt (ms timestamp)'
-      }
-    ]
+        index: 7,
+        name: 'updated_at',
+        displayNameEng: 'Updated Date',
+        displayName: 'Ngày cập nhật',
+        type: 'date',
+        tag: 'input',
+        attrs: ['readonly'],
+        class: '',
+        description: 'Firestore: info.updatedAt (ms timestamp)',
+      },
+    ],
   },
 
   // =========================================================================
@@ -1688,7 +1976,8 @@ export const DB_SCHEMA = {
     isSecondaryIndex: true,
     source: 'booking_details',
     groupBy: 'booking_id',
-    description: 'Secondary index của booking_details, nhóm theo booking_id. ' +
+    description:
+      'Secondary index của booking_details, nhóm theo booking_id. ' +
       'APP_DATA.booking_details_by_booking[bookingId] → BookingDetail[]',
   },
 
@@ -1698,7 +1987,8 @@ export const DB_SCHEMA = {
     isSecondaryIndex: true,
     source: 'operator_entries',
     groupBy: 'booking_id',
-    description: 'Secondary index của operator_entries, nhóm theo booking_id. ' +
+    description:
+      'Secondary index của operator_entries, nhóm theo booking_id. ' +
       'APP_DATA.operator_entries_by_booking[bookingId] → OperatorEntry[]',
   },
 
@@ -1708,7 +1998,8 @@ export const DB_SCHEMA = {
     isSecondaryIndex: true,
     source: 'transactions',
     groupBy: 'booking_id',
-    description: 'Secondary index của transactions, nhóm theo booking_id. ' +
+    description:
+      'Secondary index của transactions, nhóm theo booking_id. ' +
       'APP_DATA.transactions_by_booking[bookingId] → Transaction[]',
   },
 
@@ -1718,7 +2009,8 @@ export const DB_SCHEMA = {
     isSecondaryIndex: true,
     source: 'transactions',
     groupBy: 'fund_source',
-    description: 'Secondary index của transactions, nhóm theo fund_source. ' +
+    description:
+      'Secondary index của transactions, nhóm theo fund_source. ' +
       'APP_DATA.transactions_by_fund[fundAccountId] → Transaction[]',
   },
 
@@ -1726,21 +2018,19 @@ export const DB_SCHEMA = {
     const collection = this[collectionName];
     if (!collection) return {};
     const map = {};
-    collection.fields.forEach(field => {
+    collection.fields.forEach((field) => {
       if (field?.name) map[field.index] = field.name;
     });
     return map;
   },
 
-
-
   arrayToObject: function (arrData, collectionName) {
-    const map = A.DB.schema.FIELD_MAP[collectionName];
-    if (!map) return {};
+    const map = this.FIELD_MAP(collectionName);
+    if (!map || Object.keys(map).length === 0) return {};
     const obj = {};
-    Object.keys(map).forEach(index => {
+    Object.keys(map).forEach((index) => {
       let val = arrData[index];
-      if (val === undefined || val === null) val = "";
+      if (val === undefined || val === null) val = '';
       if (val instanceof Date) val = val.toISOString().split('T')[0];
       obj[map[index]] = val;
     });
@@ -1752,12 +2042,12 @@ export const DB_SCHEMA = {
     if (typeof collectionName === 'object') {
       map = collectionName;
     } else {
-      map = A.DB.schema.FIELD_MAP[collectionName];
-      if (!map) return {};
+      map = this.FIELD_MAP(collectionName);
+      if (!map || Object.keys(map).length === 0) return {};
     }
     if (!map) return [];
     const maxIdx = Math.max(...Object.keys(map).map(Number));
-    const arr = new Array(maxIdx + 1).fill("");
+    const arr = new Array(maxIdx + 1).fill('');
     for (let idx in map) arr[idx] = map[idx];
     return arr;
   },
@@ -1774,12 +2064,14 @@ export const DB_SCHEMA = {
   getFieldNames: function (collectionName) {
     const collection = this[collectionName];
     if (!collection?.fields) return []; // guard: secondary indexes và functions không có fields[]
-    return collection.fields.map(field => field.name).filter(Boolean);
+    return collection.fields.map((field) => field.name).filter(Boolean);
   },
 
   getCollectionNames: function (collectionNames) {
     if (!collectionNames || collectionNames.length === 0) {
-      collectionNames = Object.keys(this).filter(key => (typeof this[key] === 'object' && this[key].fields) || this[key].isSecondaryIndex);
+      collectionNames = Object.keys(this).filter(
+        (key) => (typeof this[key] === 'object' && this[key].fields) || this[key].isSecondaryIndex
+      );
     }
     const map = {};
     for (let coll of collectionNames) {
@@ -1799,9 +2091,9 @@ export const DB_SCHEMA = {
         collection = this[collection.source];
         if (!collection?.fields) return {};
       }
-    };
+    }
     const headerObj = {};
-    collection.fields.forEach(field => {
+    collection.fields.forEach((field) => {
       if (field?.name) {
         // Dùng displayName từ schema là nguồn chính thức (tiếng Việt)
         // Fallback: Lang translation → raw field name
@@ -1810,11 +2102,6 @@ export const DB_SCHEMA = {
     });
     return headerObj;
   },
-
-
-
-
-
 };
 
 // =========================================================================
@@ -1839,7 +2126,7 @@ const FIELD_MAP = new Proxy(_fieldMapCache, {
   get(cache, collectionName) {
     if (typeof collectionName !== 'string') return undefined;
     if (collectionName in cache) return cache[collectionName];
-    const map = DB_SCHEMA.A.DB.schema.FIELD_MAP(collectionName);
+    const map = DB_SCHEMA.FIELD_MAP(collectionName);
     // Trả undefined (falsy) nếu collection không tồn tại — giữ đúng hành vi cũ
     const result = Object.keys(map).length > 0 ? map : undefined;
     cache[collectionName] = result;
@@ -1861,10 +2148,8 @@ window.FIELD_MAP = FIELD_MAP;
 function getFieldsSchema(collectionName) {
   if (!DB_SCHEMA[collectionName]) return {};
   const fields = DB_SCHEMA[collectionName]?.fields ?? [];
-  return Object.fromEntries(fields.filter(f => f?.name).map(f => [f.name, f]));
+  return Object.fromEntries(fields.filter((f) => f?.name).map((f) => [f.name, f]));
 }
-
-
 
 // =========================================================================
 // FORM BUILDER FUNCTIONS
@@ -1872,7 +2157,7 @@ function getFieldsSchema(collectionName) {
 
 /**
  * Create a complete, responsive form from schema
- * 
+ *
  * Features:
  *   - Mobile-first: 2-column grid on mobile, flexible on desktop
  *   - All fields same size with auto-adjustment
@@ -1881,11 +2166,11 @@ function getFieldsSchema(collectionName) {
  *   - All fields have data-field and data-initial attributes
  *   - Dynamic dropdowns with data-source support
  *   - Footer with Reset, Save, Load buttons
- * 
+ *
  * @param {string} collectionName - Name of the collection (e.g., 'bookings')
  * @param {string} formId - ID for the form element
  * @returns {string} Complete form HTML
- * 
+ *
  * @example
  * const formHtml = createFormBySchema('bookings', 'booking-form');
  * document.getElementById('form-container').innerHTML = formHtml;
@@ -1900,9 +2185,13 @@ export function createFormBySchema(collectionName, formId) {
   if (!fields || fields.length === 0) return '';
 
   // Separate fields into categories
-  const editableFields = fields.filter(f => !f.attrs?.includes('readonly') && !f.attrs?.includes('hidden'));
-  const readonlyFields = fields.filter(f => f.attrs?.includes('readonly'));
-  const hiddenFields = fields.filter(f => f.attrs?.includes('hidden') || f.class?.includes('d-none'));
+  const editableFields = fields.filter(
+    (f) => !f.attrs?.includes('readonly') && !f.attrs?.includes('hidden')
+  );
+  const readonlyFields = fields.filter((f) => f.attrs?.includes('readonly'));
+  const hiddenFields = fields.filter(
+    (f) => f.attrs?.includes('hidden') || f.class?.includes('d-none')
+  );
 
   // Start building form HTML
   let html = `<form id="${formId}" class="db-schema-form" data-collection="${A.Lang?.t(collectionName) || collectionName}" style="max-width: 800px; margin: auto; padding: 16px; min-height: 400px;">`;
@@ -1915,18 +2204,18 @@ export function createFormBySchema(collectionName, formId) {
   //   gap: 12px;
   //   margin-bottom: 16px;
   // ">`;
-  html += `<fieldset class="border p-3 mb-3">
-    <legend class="w-auto px-2" style="font-size: 1.1em;">${A.Lang?.t(collectionName) || collectionName}</legend>
-    `
+  html += `<fieldset class="border p-3 mb-3" data-collection="${collectionName}" style="border-radius: 4px; border-color: #ced4da;">`;
+  html += `<legend class="w-auto px-2" style="font-size: 1.1em;">${A.Lang?.t(collectionName) || collectionName}</legend>
+    `;
 
-  editableFields.forEach(field => {
+  editableFields.forEach((field) => {
     html += _createFieldGroup(field, collectionName);
   });
 
   html += `</fieldset>`;
 
   // ===== HIDDEN FIELDS SECTION =====
-  hiddenFields.forEach(field => {
+  hiddenFields.forEach((field) => {
     html += `<input type="hidden" id="${field.name}" name="${field.name}" data-field="${field.name}" data-initial="" />`;
   });
 
@@ -1942,7 +2231,7 @@ export function createFormBySchema(collectionName, formId) {
         display: flex;
         justify-content: space-between;
         align-items: center;
-      " onclick="toggleCollapse('${collapseId}', this)">
+      " data-db-action="toggle-collapse" data-target="${collapseId}">
         <small class="fw-bold">
           <i class="fa-solid fa-circle-info me-2 text-info"></i>
           Thông tin bổ sung (${readonlyFields.length} fields)
@@ -1958,7 +2247,7 @@ export function createFormBySchema(collectionName, formId) {
       ">
     `;
 
-    readonlyFields.forEach(field => {
+    readonlyFields.forEach((field) => {
       html += _createFieldGroup(field, collectionName);
     });
 
@@ -1977,20 +2266,16 @@ export function createFormBySchema(collectionName, formId) {
     justify-content: flex-end;
     flex-wrap: wrap;
   ">
-    <button type="button" class="btn btn-danger me-auto" 
-            onclick="deleteFormDataSchema('${formId}')">
+    <button type="button" class="btn btn-danger me-auto" data-db-action="delete">
       <i class="fa-solid fa-trash me-1"></i> Xóa
     </button>
-    <button type="button" class="btn btn-secondary" 
-            onclick="resetFormSchema('${formId}')">
+    <button type="button" class="btn btn-secondary" data-db-action="reset">
       <i class="fa-solid fa-rotate-left me-1"></i> Reset
     </button>
-    <button type="button" class="btn btn-primary" 
-            onclick="saveFormDataSchema('${formId}')">
+    <button type="button" class="btn btn-primary" data-db-action="save">
       <i class="fa-solid fa-save me-1"></i> Save
     </button>
-    <button type="button" class="btn btn-info" 
-            onclick="handleLoadFormDataSchema('${formId}')">
+    <button type="button" class="btn btn-info" data-db-action="load">
       <i class="fa-solid fa-download me-1"></i> Load
     </button>
   </div>
@@ -1998,8 +2283,11 @@ export function createFormBySchema(collectionName, formId) {
 
   html += `</form>`;
 
-  // Auto-populate dynamic selects after a short delay (to ensure DOM is updated)
-  setTimeout(() => _autoPopulateDynamicSelects(formId), 100);
+  // Auto-populate dynamic selects and wire up action buttons after DOM is updated
+  setTimeout(() => {
+    _autoPopulateDynamicSelects(formId);
+    _setupFormActions(formId);
+  }, 100);
 
   return html;
 }
@@ -2042,11 +2330,8 @@ function _getDataSourceArray(dataSourceName) {
         const itemId = item.id || item.uid || item.name || key;
 
         // Extract display text: try name, full_name, display_name, service_name
-        const itemName = item.name ||
-          item.full_name ||
-          item.display_name ||
-          item.service_name ||
-          itemId;
+        const itemName =
+          item.name || item.full_name || item.display_name || item.service_name || itemId;
 
         // Create standardized item object
         const convertedItem = {
@@ -2056,7 +2341,7 @@ function _getDataSourceArray(dataSourceName) {
           full_name: item.full_name || itemName,
           display_name: item.display_name || itemName,
           service_name: item.service_name || itemName,
-          ...item  // Include all other properties from original item
+          ...item, // Include all other properties from original item
         };
 
         convertedArray.push(convertedItem);
@@ -2070,6 +2355,52 @@ function _getDataSourceArray(dataSourceName) {
 
   console.warn(`⚠️ Data source '${dataSourceName}' not found in APP_DATA`);
   return [];
+}
+
+/**
+ * Setup delegated event listeners for all data-db-action elements inside a form.
+ * Eliminates the need for inline onclick handlers and window.* assignments.
+ *
+ * Supported actions (set via data-db-action attribute):
+ *   - "reset"            → resetFormSchema(formId)
+ *   - "save"             → saveFormDataSchema(formId)
+ *   - "load"             → handleLoadFormDataSchema(formId)
+ *   - "delete"           → deleteFormDataSchema(formId)
+ *   - "toggle-collapse"  → toggleCollapse(data-target, element)
+ *
+ * @private
+ * @param {string} formId - ID of the form
+ */
+function _setupFormActions(formId) {
+  const form = document.getElementById(formId);
+  if (!form) return;
+
+  // Single delegated listener on the form — no global window.* needed
+  A.Event.on(form, 'click', (e) => {
+    const el = e.target.closest('[data-db-action]');
+    if (!el) return;
+
+    const action = el.dataset.dbAction;
+    switch (action) {
+      case 'reset':
+        resetFormSchema(formId);
+        break;
+      case 'save':
+        saveFormDataSchema(formId);
+        break;
+      case 'load':
+        handleLoadFormDataSchema(formId);
+        break;
+      case 'delete':
+        deleteFormDataSchema(formId);
+        break;
+      case 'toggle-collapse': {
+        const collapseId = el.dataset.target;
+        if (collapseId) toggleCollapse(collapseId, el);
+        break;
+      }
+    }
+  });
 }
 
 /**
@@ -2090,7 +2421,7 @@ function _autoPopulateDynamicSelects(formId) {
     return; // No dynamic selects
   }
 
-  selectsWithSource.forEach(select => {
+  selectsWithSource.forEach((select) => {
     const dataSourceName = select.dataset.source;
     const fieldName = select.name;
 
@@ -2106,8 +2437,8 @@ function _autoPopulateDynamicSelects(formId) {
   // Find all select fields that have dependsOn attribute (dependent fields)
   const dependentSelects = form.querySelectorAll('select[data-depends-on]');
 
-  dependentSelects.forEach(dependentSelect => {
-    const dependsOnFields = dependentSelect.dataset.dependsOn.split(',').map(f => f.trim());
+  dependentSelects.forEach((dependentSelect) => {
+    const dependsOnFields = dependentSelect.dataset.dependsOn.split(',').map((f) => f.trim());
     const sourceFieldName = dependentSelect.dataset.source;
 
     // Only handle service_name (which depends on service_type and hotel_name)
@@ -2116,7 +2447,7 @@ function _autoPopulateDynamicSelects(formId) {
     }
 
     // Add change listeners to all dependency fields
-    dependsOnFields.forEach(fieldName => {
+    dependsOnFields.forEach((fieldName) => {
       const depField = form.querySelector(`[name="${fieldName}"]`);
       if (depField) {
         depField.addEventListener('change', () => {
@@ -2148,11 +2479,17 @@ function _autoPopulateDynamicSelects(formId) {
  * @param {string} selectName - Name of the service_name select element
  */
 function _populateServiceNameSelect(form, selectName) {
-  const serviceNameSelect = form ? form.querySelector(`[name="${selectName}"]`) : document.querySelector(`[name="${selectName}"]`);
+  const serviceNameSelect = form
+    ? form.querySelector(`[name="${selectName}"]`)
+    : document.querySelector(`[name="${selectName}"]`);
   if (!serviceNameSelect) return;
 
-  const serviceTypeField = form ? form.querySelector('[name="service_type"]') : document.querySelector('[name="service_type"]');
-  const hotelNameField = form ? form.querySelector('[name="hotel_name"]') : document.querySelector('[name="hotel_name"]');
+  const serviceTypeField = form
+    ? form.querySelector('[name="service_type"]')
+    : document.querySelector('[name="service_type"]');
+  const hotelNameField = form
+    ? form.querySelector('[name="hotel_name"]')
+    : document.querySelector('[name="hotel_name"]');
 
   if (!serviceTypeField || !hotelNameField) return;
 
@@ -2168,7 +2505,7 @@ function _populateServiceNameSelect(form, selectName) {
   // Clear and rebuild options
   serviceNameSelect.innerHTML = '<option value="">-- Chọn --</option>';
 
-  options.forEach(optName => {
+  options.forEach((optName) => {
     const optionEl = document.createElement('option');
     optionEl.value = optName;
     optionEl.textContent = optName;
@@ -2232,8 +2569,6 @@ function _convertObjectToArray(data) {
   return [data];
 }
 
-
-
 /**
  * Helper: Get select options from dataSource or field.options
  * Supports special dataSource names that require complex logic:
@@ -2257,7 +2592,11 @@ function _getSelectOptions(field, collectionName) {
   }
 
   // PRIORITY 2: Standard dataSource (with path support)
-  if (field.dataSource && field.dataSource !== 'hotelLocations' && field.dataSource !== 'serviceNames') {
+  if (
+    field.dataSource &&
+    field.dataSource !== 'hotelLocations' &&
+    field.dataSource !== 'serviceNames'
+  ) {
     const data = _getDataByPath(field.dataSource);
     const dataArray = _convertObjectToArray(data);
 
@@ -2287,8 +2626,8 @@ function _getHotelLocationOptions() {
 
   // Get hotel names from matrix (column 0)
   const hotelNames = (lists.hotelMatrix || [])
-    .map(row => row && row[0] ? row[0] : null)
-    .filter(name => name !== null && name !== '');
+    .map((row) => (row && row[0] ? row[0] : null))
+    .filter((name) => name !== null && name !== '');
 
   // Get other locations
   const otherLocs = lists.locOther || [];
@@ -2316,19 +2655,19 @@ function _getServiceNameOptions(serviceType, hotelName) {
   if (serviceType === 'Phòng') {
     // Room service: lookup hotel matrix by hotel name
     const matrix = lists.hotelMatrix || [];
-    const hotelRow = matrix.find(row => row && row[0] === hotelName);
+    const hotelRow = matrix.find((row) => row && row[0] === hotelName);
 
     if (hotelRow) {
       // Take columns 2+ (skip col 0=name, col 1=blank), filter empty
-      options = hotelRow.slice(2).filter(cell => cell !== '' && cell !== null);
+      options = hotelRow.slice(2).filter((cell) => cell !== '' && cell !== null);
     }
   } else {
     // Service type: lookup service matrix
     const svcMatrix = lists.serviceMatrix || [];
     options = svcMatrix
-      .filter(row => row && row[0] === serviceType)
-      .map(row => row[1])
-      .filter(name => name !== '' && name !== null);
+      .filter((row) => row && row[0] === serviceType)
+      .map((row) => row[1])
+      .filter((name) => name !== '' && name !== null);
   }
 
   return options;
@@ -2404,7 +2743,7 @@ function _createFieldGroup(field, collectionName) {
     const options = _getSelectOptions(field, collectionName);
 
     // Render options
-    options.forEach(opt => {
+    options.forEach((opt) => {
       let optValue = '';
       let optText = '';
 
@@ -2416,7 +2755,8 @@ function _createFieldGroup(field, collectionName) {
       } else if (typeof opt === 'object') {
         // Object option: try to get id/uid and display name
         optValue = opt.id || opt.uid || opt.code || opt.value || '';
-        optText = opt.user_name ||
+        optText =
+          opt.user_name ||
           opt.full_name ||
           opt.name ||
           opt.displayNameEng ||
@@ -2481,7 +2821,7 @@ function resetFormSchema(formId) {
   if (!form) return;
 
   const inputs = form.querySelectorAll('[data-field]');
-  inputs.forEach(el => {
+  inputs.forEach((el) => {
     if (!el.hasAttribute('readonly') && !el.hasAttribute('disabled')) {
       el.value = el.dataset.initial || '';
     }
@@ -2489,7 +2829,7 @@ function resetFormSchema(formId) {
 
   console.log(`Form '${formId}' has been reset to initial values`);
 }
-window.resetFormSchema = resetFormSchema; // Expose to global scope for button onclick
+// window.resetFormSchema exposed via _setupFormActions event delegation
 /**
  * Save form data and log to console
  * @param {string} formId - ID of the form
@@ -2501,19 +2841,19 @@ function saveFormDataSchema(formId) {
   const data = {};
   const inputs = form.querySelectorAll('[data-field]');
 
-  inputs.forEach(el => {
+  inputs.forEach((el) => {
     const fieldName = el.dataset.field;
     data[fieldName] = el.value;
   });
   if (Object.keys(data).length === 0) {
-    alert('⚠️ No data to save!');
+    logA('⚠️ No data to save!', 'warning', 'alert');
     return;
   }
   console.log(`Form Data from '${formId}':`, data);
   console.log('JSON:', JSON.stringify(data, null, 2));
   A.DB.saveRecord(form.dataset.collection, data);
 }
-window.saveFormDataSchema = saveFormDataSchema; // Expose to global scope for button onclick
+// window.saveFormDataSchema exposed via _setupFormActions event delegation
 
 /**
  * Xóa record từ collection theo ID.
@@ -2527,7 +2867,7 @@ async function deleteFormDataSchema(formId) {
 
   const collectionName = form.dataset.collection;
   if (!collectionName) {
-    alert('⚠️ Form chưa có data-collection!');
+    logA('⚠️ Form chưa có data-collection!', 'warning', 'alert');
     return;
   }
 
@@ -2548,37 +2888,37 @@ async function deleteFormDataSchema(formId) {
   try {
     const res = await A.DB.deleteRecord(collectionName, id);
     if (res?.success) {
-      alert(`✅ Đã xóa thành công: ${collectionName}/${id}`);
+      logA(`✅ Đã xóa thành công: ${collectionName}/${id}`, 'warning', 'alert');
       // Reset form sau khi xóa
       resetFormSchema(formId);
     } else {
-      alert(`❌ Xóa thất bại: ${res?.error ?? 'Lỗi không xác định'}`);
+      logA(`❌ Xóa thất bại: ${res?.error ?? 'Lỗi không xác định'}`, 'error', 'alert');
     }
   } catch (e) {
     console.error('❌ deleteFormDataSchema error:', e);
-    alert(`❌ Lỗi: ${e.message}`);
+    logA(`❌ Lỗi: ${e.message}`, 'error', 'alert');
   }
 }
-window.deleteFormDataSchema = deleteFormDataSchema;
+// window.deleteFormDataSchema exposed via _setupFormActions event delegation
 
 /**
  * Load form data from APP_DATA or Firestore
- * 
+ *
  * @param {string} formId - ID of the form
  * @param {string|Object} idorData - Either:
  *   - A string ID: will query APP_DATA or Firestore
  *   - An object with data: will load directly into form
- * 
+ *
  * @example
  * // Load by ID (query APP_DATA or Firestore)
  * loadFormDataSchema('booking-form', 'BK0001');
- * 
+ *
  * @example
  * // Load from object directly
- * loadFormDataSchema('booking-form', { 
- *   id: 'BK0001', 
+ * loadFormDataSchema('booking-form', {
+ *   id: 'BK0001',
  *   customer_full_name: 'Nguyễn A',
- *   ... 
+ *   ...
  * });
  */
 async function loadFormDataSchema(formId, idorData) {
@@ -2604,7 +2944,7 @@ async function loadFormDataSchema(formId, idorData) {
     const collectionObjName = `${collectionName}_obj`;
     if (window.APP_DATA && window.APP_DATA[collectionObjName]) {
       const collection = window.APP_DATA[collectionObjName];
-      data = collection.find(item => item.id === idorData || item.uid === idorData);
+      data = collection.find((item) => item.id === idorData || item.uid === idorData);
 
       if (data) {
         console.log(`✅ Found in APP_DATA.${collectionObjName}:`, data);
@@ -2625,17 +2965,17 @@ async function loadFormDataSchema(formId, idorData) {
           console.log(`✅ Loaded from Firestore:`, data);
         } else {
           console.warn(`⚠️ Document '${idorData}' not found in Firestore`);
-          alert(`❌ No data found for ID: ${idorData}`);
+          logA(`❌ No data found for ID: ${idorData}`, 'warning', 'alert');
           return;
         }
       } catch (error) {
         console.error(`🚨 Error loading from Firestore:`, error);
-        alert(`❌ Error loading data: ${error.message}`);
+        logA(`❌ Error loading data: ${error.message}`, 'error', 'alert');
         return;
       }
     } else if (!data && !window.db) {
       console.error(`⚠️ Firestore not available and data not in APP_DATA`);
-      alert(`❌ No data found for ID: ${idorData}`);
+      logA(`❌ No data found for ID: ${idorData}`, 'warning', 'alert');
       return;
     }
   }
@@ -2646,8 +2986,11 @@ async function loadFormDataSchema(formId, idorData) {
   }
   // ===== INVALID PARAMETER =====
   else {
-    console.error(`Invalid parameter. Expected string (ID) or object (data), got:`, typeof idorData);
-    alert(`❌ Invalid parameter type: ${typeof idorData}`);
+    console.error(
+      `Invalid parameter. Expected string (ID) or object (data), got:`,
+      typeof idorData
+    );
+    logA(`❌ Invalid parameter type: ${typeof idorData}`, 'warning', 'alert');
     return;
   }
 
@@ -2660,7 +3003,7 @@ async function loadFormDataSchema(formId, idorData) {
   const inputs = form.querySelectorAll('[data-field]');
   let fieldsPopulated = 0;
 
-  inputs.forEach(el => {
+  inputs.forEach((el) => {
     const fieldName = el.dataset.field;
     if (fieldName && data.hasOwnProperty(fieldName)) {
       el.value = data[fieldName] || '';
@@ -2671,18 +3014,18 @@ async function loadFormDataSchema(formId, idorData) {
 
   console.log(`✅ Form '${formId}' loaded successfully! (${fieldsPopulated} fields populated)`);
   console.log(`📋 Loaded data:`, data);
-  alert(`✅ Data loaded into form (${fieldsPopulated} fields)`);
+  logA(`✅ Data loaded into form (${fieldsPopulated} fields, "warning", "alert")`);
 }
 
-window.loadFormDataSchema = loadFormDataSchema; // Expose to global scope for button onclick
+// window.loadFormDataSchema exposed via _setupFormActions event delegation
 
 /**
  * Helper: Handle Load button click (prompts user for ID)
- * 
+ *
  * Called by Load button in createFormBySchema
- * 
+ *
  * @param {string} formId - ID of the form
- * 
+ *
  * @example
  * // User clicks Load button
  * // System prompts for ID
@@ -2707,7 +3050,7 @@ function handleLoadFormDataSchema(formId) {
   loadFormDataSchema(formId, id.trim());
 }
 
-window.handleLoadFormDataSchema = handleLoadFormDataSchema; // Expose to global scope for button onclick
+// window.handleLoadFormDataSchema exposed via _setupFormActions event delegation
 
 /**
  * Toggle collapse section
@@ -2727,19 +3070,18 @@ function toggleCollapse(collapseId, headerEl) {
     icon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
   }
 }
-window.toggleCollapse = toggleCollapse; // Expose to global scope for header onclick
 
 /**
  * Populate select field with data from dataSource
  * Handles both array and object formats
- * 
+ *
  * @param {string} fieldName - Name of the field (select id)
  * @param {string} dataSourceName - Name of the data source collection
- * 
+ *
  * @example
  * // For users collection
  * populateSelectFromSource('staff_id', 'users');
- * 
+ *
  * @example
  * // For hotels collection
  * populateSelectFromSource('hotel_name', 'hotels');
@@ -2761,11 +3103,11 @@ function populateSelectFromSource(fieldName, dataSourceName) {
 
   // Clear existing options (keep the placeholder)
   const existingOptions = selectEl.querySelectorAll('option:not(:first-child)');
-  existingOptions.forEach(opt => opt.remove());
+  existingOptions.forEach((opt) => opt.remove());
 
   // Add new options from data source
   // Handle both array and object formats
-  dataArray.forEach(item => {
+  dataArray.forEach((item) => {
     const option = document.createElement('option');
 
     // Get ID/value (handle both object and array formats)
@@ -2777,7 +3119,8 @@ function populateSelectFromSource(fieldName, dataSourceName) {
       itemText = item;
     } else if (typeof item === 'object') {
       // Try common display name properties
-      itemText = item.user_name ||
+      itemText =
+        item.user_name ||
         item.full_name ||
         item.name ||
         item.displayNameEng ||
@@ -2795,32 +3138,96 @@ function populateSelectFromSource(fieldName, dataSourceName) {
     }
   });
 
-  console.log(`✅ Populated '${fieldName}' with ${dataArray.length} options from '${dataSourceName}'`);
+  console.log(
+    `✅ Populated '${fieldName}' with ${dataArray.length} options from '${dataSourceName}'`
+  );
 }
 
 const COL_INDEX = {
   // BOOKINGS
-  M_ID: 0, M_CUSTID: 1, M_CUST: 2, M_PHONE: 3, M_START: 4, M_END: 5,
-  M_ADULT: 6, M_CHILD: 7, M_TOTAL: 8, M_DEPOSIT: 9, M_BALANCE: 10, M_PAYTYPE: 11, M_PAYDUE: 12,
-  M_NOTE: 13, M_STAFF: 14, M_STATUS: 15, M_CREATED: 16,
+  M_ID: 0,
+  M_CUSTID: 1,
+  M_CUST: 2,
+  M_PHONE: 3,
+  M_START: 4,
+  M_END: 5,
+  M_ADULT: 6,
+  M_CHILD: 7,
+  M_TOTAL: 8,
+  M_DEPOSIT: 9,
+  M_BALANCE: 10,
+  M_PAYTYPE: 11,
+  M_PAYDUE: 12,
+  M_NOTE: 13,
+  M_STAFF: 14,
+  M_STATUS: 15,
+  M_CREATED: 16,
 
   // DETAILS
-  D_SID: 0, D_BKID: 1, D_TYPE: 2, D_HOTEL: 3, D_SERVICE: 4, D_IN: 5, D_OUT: 6,
-  D_NIGHT: 7, D_QTY: 8, D_PRICE: 9, D_CHILD: 10, D_PRICEC: 11, D_SUR: 12, D_DISC: 13,
-  D_TOTAL: 14, D_CODE: 15, D_NOTE: 16,
+  D_SID: 0,
+  D_BKID: 1,
+  D_TYPE: 2,
+  D_HOTEL: 3,
+  D_SERVICE: 4,
+  D_IN: 5,
+  D_OUT: 6,
+  D_NIGHT: 7,
+  D_QTY: 8,
+  D_PRICE: 9,
+  D_CHILD: 10,
+  D_PRICEC: 11,
+  D_SUR: 12,
+  D_DISC: 13,
+  D_TOTAL: 14,
+  D_CODE: 15,
+  D_NOTE: 16,
 
   // OPERATORS
-  OP_SID: 0, OP_BKID: 1, OP_CUST: 2, OP_TYPE: 3, OP_HOTEL: 4, OP_SERVICE: 5,
-  OP_IN: 6, OP_OUT: 7, OP_NIGHT: 8, OP_QTY: 9, OP_COSTA: 10, OP_CHILD: 11,
-  OP_COSTC: 12, OP_SUR: 13, OP_DISC: 14, OP_TOTALSALE: 15, OP_CODE: 16,
-  OP_TOTALCOST: 17, OP_PAID: 18, OP_BALANCE: 19, OP_SUPPLIER: 20, OP_NOTE: 21,
+  OP_SID: 0,
+  OP_BKID: 1,
+  OP_CUST: 2,
+  OP_TYPE: 3,
+  OP_HOTEL: 4,
+  OP_SERVICE: 5,
+  OP_IN: 6,
+  OP_OUT: 7,
+  OP_NIGHT: 8,
+  OP_QTY: 9,
+  OP_COSTA: 10,
+  OP_CHILD: 11,
+  OP_COSTC: 12,
+  OP_SUR: 13,
+  OP_DISC: 14,
+  OP_TOTALSALE: 15,
+  OP_CODE: 16,
+  OP_TOTALCOST: 17,
+  OP_PAID: 18,
+  OP_BALANCE: 19,
+  OP_SUPPLIER: 20,
+  OP_NOTE: 21,
 
   // CUSTOMERS
-  C_ID: 0, C_NAME: 1, C_DOB: 2, C_CCCD: 3,
-  C_CCCDDATE: 4, C_ADDRESS: 5, C_PHONE: 6, C_MAIL: 7, C_SOURCE: 8, C_TOTALSPEND: 9, C_CREATED: 10,
+  C_ID: 0,
+  C_NAME: 1,
+  C_DOB: 2,
+  C_CCCD: 3,
+  C_CCCDDATE: 4,
+  C_ADDRESS: 5,
+  C_PHONE: 6,
+  C_MAIL: 7,
+  C_SOURCE: 8,
+  C_TOTALSPEND: 9,
+  C_CREATED: 10,
   // USERS (Mới bổ sung để lấy Header)
-  U_UID: 0, U_ACCOUNT: 1, U_NAME: 2, U_PHONE: 3, U_EMAIL: 4, U_ROLE: 5,
-  U_LEVEL: 6, U_GROUP: 7, U_CREATED: 8
+  U_UID: 0,
+  U_ACCOUNT: 1,
+  U_NAME: 2,
+  U_PHONE: 3,
+  U_EMAIL: 4,
+  U_ROLE: 5,
+  U_LEVEL: 6,
+  U_GROUP: 7,
+  U_CREATED: 8,
 };
 
 window.COL_INDEX = COL_INDEX; // Expose to global scope for easy access in other scripts

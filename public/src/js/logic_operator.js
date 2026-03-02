@@ -13,24 +13,24 @@ var detailRowCount = 0;
  * @param {Object} bkData - Booking object with field names (object format)
  * @param {Array<Object>} detailsData - Array of operator entry objects
  */
-window.loadBookingToUI = function(bkData, detailsData) {
+window.loadBookingToUI = function (bkData, detailsData) {
   if (!bkData) return;
   try {
     log("Loading Booking...:", detailsData);
 
     // --- HANDLE CUSTOMER SOURCE ---
     let custSource = "";
-    
+
     // Get phone from booking (handle both object and array formats for compatibility)
-    const phone = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.customer_phone 
+    const phone = typeof bkData === 'object' && !Array.isArray(bkData)
+      ? bkData.customer_phone
       : bkData[5];
-    
+
     const phoneStr = phone ? String(phone).replace(/^'/, "").trim() : "";
 
     // Find customer by phone to get source
     if (phoneStr !== "" && window.APP_DATA) {
-      const custRow = Object.values(APP_DATA.customers ?? {}).find(c => 
+      const custRow = Object.values(APP_DATA.customers ?? {}).find(c =>
         c && c.phone && String(c.phone).includes(phoneStr)
       );
       if (custRow) {
@@ -38,51 +38,51 @@ window.loadBookingToUI = function(bkData, detailsData) {
       }
     }
 
-    if (!getE('main-form')) activateTab('tab-form'); 
-    
+    if (!getE('main-form')) activateTab('tab-form');
+
     // --- POPULATE BOOKING HEADER FIELDS ---
     // Using object format field names directly
-    const bookingId = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.id 
+    const bookingId = typeof bkData === 'object' && !Array.isArray(bkData)
+      ? bkData.id
       : bkData[0];
-    const createdDate = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.created_at 
+    const createdDate = typeof bkData === 'object' && !Array.isArray(bkData)
+      ? bkData.created_at
       : bkData[16];
-    const custName = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.customer_full_name 
+    const custName = typeof bkData === 'object' && !Array.isArray(bkData)
+      ? bkData.customer_full_name
       : bkData[2];
-    const custPhone = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.customer_phone 
+    const custPhone = typeof bkData === 'object' && !Array.isArray(bkData)
+      ? bkData.customer_phone
       : bkData[3];
-    const startDate = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.start_date 
+    const startDate = typeof bkData === 'object' && !Array.isArray(bkData)
+      ? bkData.start_date
       : bkData[4];
-    const endDate = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.end_date 
+    const endDate = typeof bkData === 'object' && !Array.isArray(bkData)
+      ? bkData.end_date
       : bkData[5];
-    const adults = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.adults 
+    const adults = typeof bkData === 'object' && !Array.isArray(bkData)
+      ? bkData.adults
       : bkData[6];
-    const children = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.children 
+    const children = typeof bkData === 'object' && !Array.isArray(bkData)
+      ? bkData.children
       : bkData[7];
-    const totalAmount = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.total_amount 
+    const totalAmount = typeof bkData === 'object' && !Array.isArray(bkData)
+      ? bkData.total_amount
       : bkData[8];
-    const status = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.status 
+    const status = typeof bkData === 'object' && !Array.isArray(bkData)
+      ? bkData.status
       : bkData[15];
-    const paymentMethod = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.payment_method 
+    const paymentMethod = typeof bkData === 'object' && !Array.isArray(bkData)
+      ? bkData.payment_method
       : bkData[11];
-    const paymentDueDate = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.payment_due_date 
+    const paymentDueDate = typeof bkData === 'object' && !Array.isArray(bkData)
+      ? bkData.payment_due_date
       : bkData[12];
-    const note = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.note 
+    const note = typeof bkData === 'object' && !Array.isArray(bkData)
+      ? bkData.note
       : bkData[13];
-    const staffId = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.staff_id 
+    const staffId = typeof bkData === 'object' && !Array.isArray(bkData)
+      ? bkData.staff_id
       : bkData[14];
 
     setVal('BK_ID', bookingId);
@@ -104,32 +104,51 @@ window.loadBookingToUI = function(bkData, detailsData) {
 
     // --- CLEAR AND LOAD DETAIL ROWS ---
     const tbody = document.getElementById('detail-tbody');
-    if(tbody) {
+    if (tbody) {
       tbody.innerHTML = '';
       tbody.style.display = 'none'; // Hide temporarily for faster rendering
     }
-    
+
     detailRowCount = 0;
 
-    if (Array.isArray(detailsData)) {
+    // Chuẩn hóa detailsData về mảng: hỗ trợ cả Array và Object format {docId: doc}
+    const detailsArr = Array.isArray(detailsData)
+      ? detailsData
+      : detailsData && typeof detailsData === 'object'
+        ? Object.values(detailsData)
+        : [];
+
+    if (detailsArr.length > 0) {
       // Sắp xếp chi tiết theo thứ tự service_type và check_in
-      const sortedDetails = sortDetailsData(detailsData);
+      const sortedDetails = sortDetailsData(detailsArr);
       sortedDetails.forEach(row => {
-          // Gọi hàm thêm dòng
-          addDetailRow(row);
+        // Gọi hàm thêm dòng
+        addDetailRow(row);
       });
     }
 
-    if(tbody) tbody.style.display = 'table-row-group'; // Show again
-    
+    if (tbody) tbody.style.display = 'table-row-group'; // Show again
+
     calcGrandTotal();
+
+    // StateProxy v3: beginEdit = snapshot baseline + install lazy collection proxy
+    if (window.StateProxy) {
+      StateProxy.clearSession(); // discard any previous form's tracking
+      const bk_id = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.id : bkData[0];
+      if (bk_id) StateProxy.beginEdit('bookings', bk_id);
+      // detailsArr đã được normalize từ detailsData ở trên (hỗ trợ cả Array & Object format)
+      detailsArr.forEach(row => {
+        const sid = typeof row === 'object' && !Array.isArray(row) ? row.id : row[0];
+        if (sid) StateProxy.beginEdit('operator_entries', sid);
+      });
+    }
 
     // Switch to form tab
     try {
       const tabTrigger = document.querySelector('#mainTabs button[data-bs-target="#tab-form"]');
-      if(tabTrigger) bootstrap.Tab.getOrCreateInstance(tabTrigger).show();
-      if(typeof toggleContextUI === 'function') toggleContextUI('tab-form');
-    } catch(e) {
+      if (tabTrigger) bootstrap.Tab.getOrCreateInstance(tabTrigger).show();
+      if (typeof toggleContextUI === 'function') toggleContextUI('tab-form');
+    } catch (e) {
       log("Tab switch error: " + e.message, "error");
     }
   } catch (e) {
@@ -198,25 +217,25 @@ function sortDetailsData(detailsData) {
  * Called by search form when server returns results
  * @param {Object} res - Server response { success, bookings, operator_entries, ... }
  */
-window.fillFormFromSearch = function(res) {
+window.fillFormFromSearch = function (res) {
   if (!res || !res.success) {
     showLoading(false);
     logA(res?.message || "No matching data found!");
     log("Search failed: " + (res ? res.message : "No Data"), "warning");
     return;
   }
-  
+
   const bkData = res.bookings;
   const detailsData = res.operator_entries;
-  
+
   if (typeof loadBookingToUI === 'function') {
     loadBookingToUI(bkData, detailsData);
     const sourceMsg = res.source === 'local' ? ' (⚡ Local)' : ' (🐢 Database)';
-    const bookingId = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.id 
+    const bookingId = typeof bkData === 'object' && !Array.isArray(bkData)
+      ? bkData.id
       : bkData[0];
-    const custName = typeof bkData === 'object' && !Array.isArray(bkData) 
-      ? bkData.customer_full_name 
+    const custName = typeof bkData === 'object' && !Array.isArray(bkData)
+      ? bkData.customer_full_name
       : bkData[2];
     log(`Loaded Booking: ${bookingId} - ${custName}${sourceMsg}`, "success");
   } else {
@@ -236,13 +255,13 @@ function addDetailRow(data = null) {
 
   // 1. PREPARE DATA LISTS
   const lists = window.APP_DATA.lists || {};
-  
+
   // Options for service types
   const optsType = (lists.types || []).map(x => `<option value="${x}">${x}</option>`).join('');
-  
+
   // Options for suppliers
   const suppliers = lists.supplier || [];
-  const optsSupplier = suppliers.length > 0 
+  const optsSupplier = suppliers.length > 0
     ? suppliers.map(s => `<option value="${s}">${s}</option>`).join('')
     : `<option value="">(No suppliers)</option>`;
 
@@ -288,23 +307,23 @@ function addDetailRow(data = null) {
     <td><input type="text" class="form-control form-control-sm d-note" data-field="operator_note"></td>
     <td class="text-center align-middle"><i class="fa-solid fa-times text-danger" style="cursor:pointer" onclick="removeRow(${idx})"></i></td>
   `;
-  
+
   const container = getE('tab-form');
   container.querySelector('tbody').appendChild(tr);
   updateLocationList(idx);
-  
+
   if (data) {
     // Handle both object and array formats for compatibility
     const isObject = typeof data === 'object' && !Array.isArray(data);
     log(`Filling row ${idx} with data:`, data);
-    
+
     // Extract values using object fields
     const id = isObject ? data.id : data[0];
     const bookingId = isObject ? data.booking_id : data[1];
     const customerName = isObject ? data.customer_full_name : data[2];
 
     const serviceType = isObject ? data.service_type : data[3];
-    const hotelName = isObject ? data.hotel_name : data[4];    
+    const hotelName = isObject ? data.hotel_name : data[4];
     const serviceName = isObject ? data.service_name : data[5];
     const checkIn = isObject ? data.check_in : data[6];
     const checkOut = isObject ? data.check_out : data[7];
@@ -312,7 +331,7 @@ function addDetailRow(data = null) {
     const quantity = isObject ? data.adults : data[9];
 
     const costAdult = isObject ? data.cost_adult : data[10];
-    const childQty = isObject ? data.children : data[11] || 0;    
+    const childQty = isObject ? data.children : data[11] || 0;
     const costChild = isObject ? data.cost_child : data[12];
     const surcharge = isObject ? data.surcharge : data[13];
     const discount = isObject ? data.discount : data[14];
@@ -322,8 +341,8 @@ function addDetailRow(data = null) {
     const paidAmount = isObject ? data.paid_amount : data[18] || 0;
     const supplier = isObject ? data.supplier : data[20] || "";
     const note = isObject ? data.operator_note : data[21] || "";
-    
-    
+
+
     setVal('.d-sid', id, tr);
     setVal('.d-idbk', bookingId, tr);
     setVal('.d-cust', customerName, tr);
@@ -337,7 +356,7 @@ function addDetailRow(data = null) {
     setVal('.d-night', nights, tr);
     setVal('.d-qty', quantity, tr);
     setVal('.d-costA', costAdult, tr);
-    setVal('.d-qtyC', childQty, tr);    
+    setVal('.d-qtyC', childQty, tr);
     setVal('.d-costC', costChild, tr);
     setVal('.d-sur', surcharge, tr);
     setVal('.d-disc', discount, tr);
@@ -345,14 +364,14 @@ function addDetailRow(data = null) {
     setVal('.d-code', refCode || "", tr);
     setVal('.d-paid', paidAmount, tr);
     setVal('.d-supplier', supplier || "", tr);
-    setVal('.d-note', note || "", tr);    
+    setVal('.d-note', note || "", tr);
 
     calcRow(idx);
   } else {
     // New row default values
     setVal('.d-idbk', getVal('BK_ID'), tr);
     setVal('.d-cust', getVal('Cust_Name'), tr);
-  } 
+  }
 }
 
 /**
@@ -381,7 +400,7 @@ async function onSupplierChange(idx) {
   const service = tr.querySelector('select[data-field="service_name"]').value;
   const type = tr.querySelector('select[data-field="service_type"]').value;
   log(`Fetching prices for service: ${service}, date: ${useDate}, supplier: ${supplier}, type: ${type}`);
-  if(service && useDate && type) {
+  if (service && useDate && type) {
     if (type === 'Phòng') {
       const hotel = tr.querySelector('select[data-field="hotel_name"]').value;
       const checkOut = tr.querySelector('input[data-field="check_out"]').value;
@@ -404,7 +423,7 @@ function onLocationChange(idx, resetName = true) {
   const type = getVal('.d-type', tr);
   if (type === 'Phòng') {
     updateServiceNameList(idx); // Load hạng phòng của KS này
-    if(resetName) setVal('.d-name', "", tr);
+    if (resetName) setVal('.d-name', "", tr);
   }
 }
 // C. Hàm Fill Location (Gộp Hotel Matrix Col 1 + Other)
@@ -428,27 +447,27 @@ function updateServiceNameList(idx) {
   const elName = tr.querySelector('.d-name');
   let options = [];
   if (type === 'Phòng') {
-      // Tra cứu trong Matrix
-      const matrix = window.APP_DATA.lists.hotelMatrix || [];
-      // Tìm dòng có tên KS khớp với Location
-      const hotelRow = matrix.find(r => r[0] === loc);
-      if (hotelRow) {
-        // Lấy từ cột 3 đến hết (Index 2 trở đi trong mảng JS - vì JS start 0)
-        // Excel: Cột A(0)=Tên. Cột C(2) -> L(11) là hạng phòng.
-        // Chú ý: getMatrixData trả về mảng giá trị của row.
-        // Ta lấy các ô có dữ liệu từ index 2 trở đi
-        options = hotelRow.slice(2).filter(c => c !== "" && c !== null);
-      }
+    // Tra cứu trong Matrix
+    const matrix = window.APP_DATA.lists.hotelMatrix || [];
+    // Tìm dòng có tên KS khớp với Location
+    const hotelRow = matrix.find(r => r[0] === loc);
+    if (hotelRow) {
+      // Lấy từ cột 3 đến hết (Index 2 trở đi trong mảng JS - vì JS start 0)
+      // Excel: Cột A(0)=Tên. Cột C(2) -> L(11) là hạng phòng.
+      // Chú ý: getMatrixData trả về mảng giá trị của row.
+      // Ta lấy các ô có dữ liệu từ index 2 trở đi
+      options = hotelRow.slice(2).filter(c => c !== "" && c !== null);
+    }
   } else {
-      const svcMatrix = window.APP_DATA.lists.serviceMatrix || [];
-      options = svcMatrix
-          .filter(r => r[0] === type) // Cột 0 là Loại
-          .map(r => r[1]);            // Cột 1 là Tên
+    const svcMatrix = window.APP_DATA.lists.serviceMatrix || [];
+    options = svcMatrix
+      .filter(r => r[0] === type) // Cột 0 là Loại
+      .map(r => r[1]);            // Cột 1 là Tên
   }
   const currentVal = elName.value;
   elName.innerHTML = '<option value="">-</option>' + options.map(x => `<option value="${x}">${x}</option>`).join('');
   // Cố gắng giữ lại giá trị cũ nếu có trong list mới
-  if(options.includes(currentVal)) elName.value = currentVal;
+  if (options.includes(currentVal)) elName.value = currentVal;
 }
 
 
@@ -505,7 +524,7 @@ async function syncRow(sourceRow = null) {
           }
         }
       });
-    }  
+    }
   }
   catch (e) {
     logA("Lỗi đồng bộ dòng: " + e.message, 'error');
@@ -517,10 +536,10 @@ async function syncRow(sourceRow = null) {
 
 function removeRow(idx) {
   const row = getE(`row-${idx}`);
-  if(row) row.remove();
+  if (row) row.remove();
   calcGrandTotal();
 }
-  
+
 // =========================================================================
 // 2. CALCULATION FUNCTIONS
 // =========================================================================
@@ -537,7 +556,7 @@ function calcRow(idx) {
   const dInStr = tr.querySelector('.d-in').value;
   const dOutStr = tr.querySelector('.d-out').value;
   const type = tr.querySelector('.d-type').value;
-  
+
   let night = 0;
   if (dInStr && dOutStr) {
     const dIn = new Date(dInStr);
@@ -552,15 +571,15 @@ function calcRow(idx) {
   const qtyC = getVal('.d-qtyC', tr);
   const sur = getVal('.d-sur', tr);
   const disc = getVal('.d-disc', tr);
-  
+
   // Calculate total cost
   const costA = getVal('.d-costA', tr);
   const costC = getVal('.d-costC', tr);
   const multiplier = (type === 'Phòng') ? Math.max(1, night) : 1;
-  
+
   const totalCost = ((qtyA * costA) + (qtyC * costC) + sur - disc) * multiplier;
   setVal('.d-totalCost', totalCost, tr);
-  
+
   // Calculate remaining debt
   const paid = getVal('.d-paid', tr);
   const remain = totalCost - paid;
@@ -568,7 +587,7 @@ function calcRow(idx) {
   if (remain === 0) {
     setStyle(tr, 'backgroundColor: #c0ab4d');
   }
-  
+
   calcGrandTotal();
 }
 
@@ -590,7 +609,7 @@ function calcGrandTotal() {
 
   let totalSales = 0;
   let totalCost = 0;
-  
+
   // Stats for separate calculations
   let transportTotal = 0;
   let transportA = 0;
@@ -598,15 +617,15 @@ function calcGrandTotal() {
 
   // Loop through all detail rows
   const rows = document.querySelectorAll('#detail-tbody tr');
-  
+
   rows.forEach((tr) => {
     const elSales = tr.querySelector('.d-totalSales');
     const elCost = tr.querySelector('.d-totalCost');
     const elType = tr.querySelector('.d-type');
-    
+
     const rowSales = elSales ? getRawVal(elSales.value) : 0;
     const rowCost = elCost ? getRawVal(elCost.value) : 0;
-    
+
     totalSales += rowSales;
     totalCost += rowCost;
 
@@ -664,13 +683,13 @@ function calcGrandTotal() {
 function calcBalanceInternal(total, cost) {
   const profit = total - cost;
   const elBkBalance = document.getElementById('BK_Balance');
-  
+
   if (elBkBalance) {
     elBkBalance.value = formatMoney(profit);
     elBkBalance.dataset.val = profit;
 
     elBkBalance.className = "form-control form-control-sm text-end fw-bold bg-light";
-    
+
     if (profit >= 0) {
       elBkBalance.classList.add("text-success");
       elBkBalance.classList.remove("text-danger");
@@ -694,14 +713,14 @@ function updateStatsUI(grandTotal, transportTotal, transportA, landChildTotal) {
 
   const landTotal = grandTotal - transportTotal;
   const landAdultTotal = landTotal - landChildTotal;
-  
+
   const avgAdult = (countAdult > 0) ? (landAdultTotal / countAdult) : 0;
   const avgChild = (countChild > 0) ? (landChildTotal / countChild) : 0;
-  
-  if(document.getElementById('Stats_AvgAdult')) {
+
+  if (document.getElementById('Stats_AvgAdult')) {
     document.getElementById('Stats_AvgAdult').innerText = formatMoney(Math.round(avgAdult));
   }
-  if(document.getElementById('Stats_AvgChild')) {
+  if (document.getElementById('Stats_AvgChild')) {
     document.getElementById('Stats_AvgChild').innerText = formatMoney(Math.round(avgChild));
   }
 }
@@ -712,7 +731,7 @@ function updateStatsUI(grandTotal, transportTotal, transportA, landChildTotal) {
  */
 function updateBkStatus() {
   const curStatus = getVal('BK_Status');
-  
+
   if (curStatus === 'Hủy' || curStatus === 'Xong BK') {
     return curStatus;
   }
@@ -729,7 +748,7 @@ function updateBkStatus() {
   } else {
     setVal('BK_Status', 'LỜI TO');
   }
-  
+
   return getVal('BK_Status');
 }
 
@@ -772,21 +791,21 @@ function autoSetOrCalcDate(start, end) {
 function findCustByPhone(e) {
   const phoneInput = getE('Cust_Phone').value.trim();
   const nameInput = getE('Cust_Name').value.trim();
-  
+
   if (phoneInput.length < 3 && nameInput.length < 3) {
     log("⚠️ Please enter at least 3 characters", "warning");
     return;
   }
 
   const customers = window.APP_DATA ? Object.values(APP_DATA.customers ?? {}) : [];
-  
+
   let found = null;
-  
+
   // Search by phone first
   if (phoneInput.length >= 3) {
     found = customers.find(c => c && c.phone && String(c.phone).includes(phoneInput));
   }
-  
+
   // Search by name if phone search failed
   if (!found && nameInput.length >= 3) {
     found = customers.find(c => c && c.full_name && String(c.full_name).includes(nameInput));
@@ -810,14 +829,14 @@ function findCustByPhone(e) {
  * Called when Save button is clicked
  * @returns {Object} - Form data object with bookings, customer, and operator_entries
  */
-window.getFormData = function() {
+window.getFormData = function () {
   log("🚀 Starting form data extraction...");
 
   try {
     // 1. Extract booking data using object field names
     const bookings = {
       id: getVal('BK_ID'),
-      customer_id: getVal('BK_CustID') || '',
+      customer_id: getVal('Cust_Id') || '',
       customer_full_name: getVal('Cust_Name'),
       customer_phone: getVal('Cust_Phone'),
       created_at: getVal('BK_Date'),
@@ -851,7 +870,7 @@ window.getFormData = function() {
         const el = tr.querySelector('.' + cls);
         return el ? getVal(el) : '';
       };
-      
+
       // Skip empty rows
       if (!getRowVal('d-name')) return;
 
@@ -909,12 +928,12 @@ function handleAggClick(key, filterType) {
   // Filter data by date range
   const dFrom = new Date(getVal('dash-filter-from'));
   dFrom.setHours(0, 0, 0, 0);
-  
+
   const dTo = new Date(getVal('dash-filter-to'));
   dTo.setHours(23, 59, 59, 999);
-  
+
   const source = Object.values(APP_DATA.operator_entries ?? {});
-  
+
   const batchData = source.filter(row => {
     if (!row) return false;
 
@@ -933,7 +952,7 @@ function handleAggClick(key, filterType) {
       const type = row.service_type || "Other";
       return String(type) === String(key);
     }
-    
+
     return false;
   });
 
@@ -950,23 +969,23 @@ function handleAggClick(key, filterType) {
 /**
  * Partner mail sending module
  */
-const PartnerMailModule = (function() {
-  
+const PartnerMailModule = (function () {
+
   async function open() {
     const newModal = await A.UI.renderModal('tmpl-partner-mail', "Send Partner Proposal", send);
     const hotelEl = getE('pm-name');
     const hotelData = window.APP_DATA.lists?.hotelMatrix || [];
-    
+
     if (hotelEl) {
       const hotelNames = hotelData.map(r => r[0]);
       fillSelect(hotelEl, hotelNames, "--Select Hotel--");
     }
-    
+
     newModal.show();
-    
+
     setTimeout(() => {
       const inputName = getE('pm-name');
-      if(inputName) inputName.focus();
+      if (inputName) inputName.focus();
     }, 500);
   }
 
@@ -1006,7 +1025,7 @@ const PartnerMailModule = (function() {
       }
     }
   }
-  
+
   return { open, send };
 })();
 

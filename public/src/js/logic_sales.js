@@ -1,4 +1,3 @@
-
 // =========================================================================
 // 1. BIẾN & INIT
 
@@ -8,42 +7,26 @@ var detailRowCount = 0;
 window.loadBookingToUI = function (bkData, customerData, detailsData) {
   if (!bkData) return;
   try {
-    log("Loading Booking...:", detailsData);
-
     // --- NEW LOGIC: TÌM CUSTOMER SOURCE ---
-    let custSource = "";
+    let custSource = '';
 
     // Helper: đọc booking theo cả array/object format
-    const isBkObj = (bkData && typeof bkData === 'object' && !Array.isArray(bkData));
+    const isBkObj = bkData && typeof bkData === 'object' && !Array.isArray(bkData);
     const bk = (idx) => {
-      const field = A.DB.schema.FIELD_MAP?.bookings?.[idx];
+      const field = A.DB?.schema.FIELD_MAP?.bookings?.[idx];
       return isBkObj ? (bkData[field] ?? bkData[idx]) : bkData[idx];
     };
 
     if (!getE('main-form')) activateTab('tab-form');
     if (isBkObj) HD.setFormData('sub-booking-form', bkData);
-    // else {
-    //   log('Data booking ko phải object, sử dụng method setVal thủ công theo index');
-    //   setVal('BK_ID', bk(COL_INDEX.M_ID));
-    //   setVal('BK_Date', bk(COL_INDEX.M_CREATED));
-    //   setVal('Cust_Phone', bk(COL_INDEX.M_PHONE));
-    //   setVal('Cust_Name', bk(COL_INDEX.M_CUST));
-    //   setVal('Cust_Source', custSource);
-    //   setVal('BK_Start', bk(COL_INDEX.M_START));
-    //   setVal('BK_End', bk(COL_INDEX.M_END));
-    //   setVal('BK_Adult', bk(COL_INDEX.M_ADULT));
-    //   setVal('BK_Child', bk(COL_INDEX.M_CHILD));
-    //   // Tiền tệ & Trạng thái
-    //   setVal('BK_Status', bk(COL_INDEX.M_STATUS));
-    //   setVal('BK_PayType', bk(COL_INDEX.M_PAYTYPE));
-    //   setVal('BK_PayDue', bk(COL_INDEX.M_PAYDUE));
-    //   setNum('BK_Total', bk(COL_INDEX.M_TOTAL));
-    //   setNum('BK_Deposit', bk(COL_INDEX.M_DEPOSIT));
-    //   setVal('BK_Note', bk(COL_INDEX.M_NOTE));
-    //   setVal('BK_Staff', bk(COL_INDEX.M_STAFF));
-    // }
 
-
+    // StateProxy: gán data-doc-id trên customers fieldset ngay từ bkData.customer_id
+    // để _resolveCollId có thể resolve document ID ngay khi setFormData chạy.
+    // findCustByPhone() sẽ override lại bằng ID chính xác nếu tìm được khách.
+    const fsCust = getE('fs_customer_info');
+    if (fsCust && isBkObj && bkData.customer_id) {
+      fsCust.dataset.docId = bkData.customer_id;
+    }
 
     let tbody = getE('detail-tbody');
     if (tbody) {
@@ -56,7 +39,7 @@ window.loadBookingToUI = function (bkData, customerData, detailsData) {
         tbody.innerHTML = '';
         tbody.style.display = 'none'; // Ẩn tạm thời để tăng tốc render
       } else {
-        log("Ko tìm thấy detail-tbody", "error");
+        log('Ko tìm thấy detail-tbody', 'error');
         return;
       }
     }
@@ -75,10 +58,9 @@ window.loadBookingToUI = function (bkData, customerData, detailsData) {
     }
 
     if (detailsArr.length > 0) {
-      log(`Loading ${detailsArr.length} detail rows...`);
       // Sắp xếp chi tiết theo thứ tự service_type và check_in
       const sortedDetails = sortDetailsData(detailsArr);
-      sortedDetails.forEach(row => {
+      sortedDetails.forEach((row) => {
         // Gọi hàm thêm dòng
         addDetailRow(row);
       });
@@ -88,14 +70,29 @@ window.loadBookingToUI = function (bkData, customerData, detailsData) {
 
     calcGrandTotal();
 
+    // StateProxy v3: snapshot baseline + install lazy proxy for active form docs
+    if (window.StateProxy) {
+      StateProxy.clearSession();
+      const isBkObj = typeof bkData === 'object' && !Array.isArray(bkData);
+      const bkId = isBkObj ? bkData.id : bkData?.[0];
+      if (bkId) StateProxy.beginEdit('bookings', bkId);
+      // detailsArr đã được normalize từ detailsData ở trên (hỗ trợ cả Array & Object format)
+      detailsArr.forEach((row) => {
+        const sid = typeof row === 'object' && !Array.isArray(row) ? row.id : row?.[0];
+        if (sid) StateProxy.beginEdit('booking_details', sid);
+      });
+    }
+
     // 4. Chuyển Tab về Form (nếu cần thiết)
     try {
       const tabTrigger = document.querySelector('#mainTabs button[data-bs-target="#tab-form"]');
       if (tabTrigger) bootstrap.Tab.getOrCreateInstance(tabTrigger).show();
       toggleContextUI('tab-form');
-    } catch (e) { log("error", e.message); }
+    } catch (e) {
+      logError('LỖI khi chuyển tab về Form', e.message);
+    }
   } catch (e) {
-    log("LỖI hàm loadBookingToUI", e.message, "error");
+    logError('LỖI hàm loadBookingToUI', e.message);
   } finally {
     showLoading(false);
   }
@@ -109,7 +106,7 @@ function addDetailRow(data = null) {
   const idx = detailRowCount;
   const lists = APP_DATA.lists;
   // Dropdown Loại DV (NR_LIST_TYPE)
-  const optsType = (lists.types || []).map(x => `<option value="${x}">${x}</option>`).join('');
+  const optsType = (lists.types || []).map((x) => `<option value="${x}">${x}</option>`).join('');
   // Dropdown Địa điểm (Hotel + Other)
   // Lưu ý: Ta sẽ fill data vào Location sau khi tạo row xong để dễ xử lý logic
   const tr = document.createElement('tr');
@@ -134,14 +131,14 @@ function addDetailRow(data = null) {
         </td>
         <td><input type="date" class="form-control form-control-sm d-in" data-field="check_in" onchange="autoSetOrCalcDate(this.value, $('.d-out', $('#row-${idx}')))" style="cursor:pointer"></td>
         <td><input type="date" class="form-control form-control-sm d-out" data-field="check_out" onchange="calcRow(${idx})"></td>
-        <td><input type="number" class="form-control form-control-sm d-night number bg-light text-center" data-field="nights" readonly value="1"></td>
+        <td><input type="number" class="form-control form-control-sm d-night number bg-light text-center" data-field="nights" readonly></td>
         <td><input type="number" class="form-control form-control-sm d-qty number" data-field="quantity" value="1"></td>
         <td><input type="number" class="form-control form-control-sm d-pri number" data-field="unit_price" placeholder="-"></td>
         <td><input type="number" class="form-control form-control-sm d-qtyC number" data-field="child_qty" placeholder="-"></td>
         <td><input type="number" class="form-control form-control-sm d-priC number" data-field="child_price" placeholder="-"></td>
         <td><input type="number" class="form-control form-control-sm d-sur number" data-field="surcharge" placeholder="-"></td>
         <td><input type="number" class="form-control form-control-sm d-disc number" data-field="discount" placeholder="-"></td>
-        <td><input type="text" class="form-control form-control-sm d-total number fw-bold text-end" data-field="total" readonly value="0" data-val="0"></td>
+        <td><input type="text" class="form-control form-control-sm d-total number fw-bold text-end" data-field="total" readonly data-val="0"></td>
         <td><input type="text" class="form-control form-control-sm d-code" data-field="ref_code"></td>
         <td><input type="text" class="form-control form-control-sm d-note" data-field="note"></td>
         <td class="text-center align-middle"><i class="fa-solid fa-times text-danger" style="cursor:pointer" onclick="removeRow(${idx})"></i></td>
@@ -172,6 +169,11 @@ function addDetailRow(data = null) {
     setVal('.d-code', data.ref_code, tr);
     setVal('.d-note', data.note, tr);
     calcRow(idx);
+    // Snapshot initial values so filterUpdatedData can detect only actual changes.
+    // Must run AFTER calcRow() so derived fields (nights, total) are also captured.
+    tr.querySelectorAll('input, select').forEach((el) => {
+      el.setAttribute('data-initial', el.value);
+    });
   }
   if (idx === 1 && !data) {
     setVal('.d-type', 'Phòng', tr);
@@ -229,20 +231,19 @@ function sortDetailsData(detailsData) {
   });
 }
 /**
-* copyRow: Lấy dữ liệu từ dòng cuối cùng và tạo dòng mới
-* Logic:
-* 1. Tìm dòng cuối cùng trong bảng.
-* 2. Extract giá trị từ các input/select.
-* 3. Reset ID (để tránh trùng lặp khi lưu).
-* 4. Gọi addDetailRow để render.
-*/
+ * copyRow: Lấy dữ liệu từ dòng cuối cùng và tạo dòng mới
+ * Logic:
+ * 1. Tìm dòng cuối cùng trong bảng.
+ * 2. Extract giá trị từ các input/select.
+ * 3. Reset ID (để tránh trùng lặp khi lưu).
+ * 4. Gọi addDetailRow để render.
+ */
 function copyRow(sourceRow, addToEnd = true) {
   const tbody = getE('detail-tbody');
   const rows = tbody.querySelectorAll('tr');
 
   // Guard clause: Nếu chưa có dòng nào thì không copy được -> Thêm mới dòng trắng
   if (rows.length === 0) {
-    log("Copy Row: Bảng trống, thực hiện thêm mới.");
     addDetailRow();
     return;
   }
@@ -275,8 +276,6 @@ function copyRow(sourceRow, addToEnd = true) {
     note: getRowVal('d-note'),
   };
 
-  log("Copy Row: Sao chép dữ liệu từ dòng " + lastRow.id);
-
   // 3. Gọi hàm tạo dòng với data đã chuẩn bị
   if (addToEnd) {
     addDetailRow(rowData);
@@ -293,7 +292,7 @@ function onTypeChange(idx, resetChildren = true) {
   if (!tr) return;
   // 1. Logic cũ: Reset Location & Name
   if (resetChildren) {
-    tr.querySelector('.d-loc').value = "";
+    tr.querySelector('.d-loc').value = '';
     // Gọi hàm updateServiceNameList (như đã làm ở bước trước)
     updateServiceNameList(idx);
     // 2. LOGIC MỚI: Tự động điền dữ liệu thông minh
@@ -319,13 +318,11 @@ function autoFillRowData(idx) {
     // Phòng = Người lớn / 2 (Làm tròn lên, ví dụ 3 người -> 2 phòng)
     newQtyA = Math.ceil(mainAdults / 2);
     newQtyC = mainChild; // Trẻ em giữ nguyên
-  }
-  else if (['Xe', 'HDV'].includes(type)) {
+  } else if (['Xe', 'HDV'].includes(type)) {
     // Xe, HDV -> Mặc định 1
     newQtyA = 1;
     newQtyC = 0; // Trẻ em = 0
-  }
-  else {
+  } else {
     // Các loại khác (Vé, Ăn uống...) -> Bằng số người
     newQtyA = mainAdults;
     newQtyC = mainChild;
@@ -336,14 +333,14 @@ function autoFillRowData(idx) {
   // ---------------------------------------------------------
   // 2. XỬ LÝ NGÀY ĐI / NGÀY VỀ (DATE IN/OUT)
   // ---------------------------------------------------------
-  let newIn = "";
-  let newOut = "";
+  let newIn = '';
+  let newOut = '';
   // Tìm hàng phía trên (Previous Row) để lấy tham chiếu
   // Dùng previousElementSibling để lấy đúng hàng hiển thị bên trên (bất kể ID là gì)
   const prevRow = tr.previousElementSibling;
-  let prevOutDate = "";
-  let prevInDate = "";
-  let preType = "";
+  let prevOutDate = '';
+  let prevInDate = '';
+  let preType = '';
   // Kiểm tra xem hàng trên có phải là data row không (hay là header/trống)
   if (prevRow && prevRow.querySelector('.d-out')) {
     prevOutDate = prevRow.querySelector('.d-out').value;
@@ -355,14 +352,12 @@ function autoFillRowData(idx) {
     // Giống ngày đi/về chung
     newIn = mainStart;
     newOut = mainEnd;
-  }
-  else if (type === 'Phòng') {
+  } else if (type === 'Phòng') {
     // Check In: Nếu có hàng trên -> lấy ngày Check Out của hàng trên. Nếu không (hàng đầu) -> Lấy ngày đi chung
     newIn = prevOutDate ? prevOutDate : mainStart;
     // Check Out: Luôn bằng ngày về chung (Mặc định check out cuối tour)
     newOut = mainEnd;
-  }
-  else {
+  } else {
     // Các dạng khác (Ăn, Tour ngày...):
     // Ngày đi & về = Ngày về hàng trên (nối tiếp).
     // Nếu là hàng đầu -> Bằng ngày đi chung.
@@ -376,8 +371,8 @@ function autoFillRowData(idx) {
     newOut = refDate;
   }
   // Gán giá trị vào ô input
-  if (newIn) tr.querySelector('.d-in').value = newIn;
-  if (newOut) tr.querySelector('.d-out').value = newOut;
+  if (newIn) setVal($('.d-in', tr), newIn);
+  if (newOut) setVal($('.d-out', tr), newOut);
   // ---------------------------------------------------------
   // 3. TÍNH TOÁN LẠI (Trigger Calc)
   // ---------------------------------------------------------
@@ -390,20 +385,22 @@ function onLocationChange(idx, resetName = true) {
   const type = tr.querySelector('.d-type').value;
   if (type === 'Phòng') {
     updateServiceNameList(idx); // Load hạng phòng của KS này
-    if (resetName) tr.querySelector('.d-name').value = "";
+    if (resetName) tr.querySelector('.d-name').value = '';
   }
 }
 // C. Hàm Fill Location (Gộp Hotel Matrix Col 1 + Other)
 function updateLocationList(idx) {
   const lists = window.APP_DATA.lists;
   // Lấy tên các KS từ Matrix (Cột 0)
-  const hotels = (lists.hotelMatrix || []).map(r => r[0]);
+  const hotels = (lists.hotelMatrix || []).map((r) => r[0]);
   const others = lists.locOther || [];
   // Gộp và loại trùng
   const allLocs = [...new Set([...hotels, ...others])];
   const elLoc = getE(`row-${idx}`).querySelector('.d-loc');
   let currentVal = elLoc.value;
-  elLoc.innerHTML = '<option value="">-</option>' + allLocs.map(x => `<option value="${x}">${x}</option>`).join('');
+  elLoc.innerHTML =
+    '<option value="">-</option>' +
+    allLocs.map((x) => `<option value="${x}">${x}</option>`).join('');
   elLoc.value = currentVal;
 }
 // D. Hàm Fill Service Name / Room Type (CORE LOGIC)
@@ -417,22 +414,24 @@ function updateServiceNameList(idx) {
     // Tra cứu trong Matrix
     const matrix = window.APP_DATA.lists.hotelMatrix || [];
     // Tìm dòng có tên KS khớp với Location
-    const hotelRow = matrix.find(r => r[0] === loc);
+    const hotelRow = matrix.find((r) => r[0] === loc);
     if (hotelRow) {
       // Lấy từ cột 3 đến hết (Index 2 trở đi trong mảng JS - vì JS start 0)
       // Excel: Cột A(0)=Tên. Cột C(2) -> L(11) là hạng phòng.
       // Chú ý: getMatrixData trả về mảng giá trị của row.
       // Ta lấy các ô có dữ liệu từ index 2 trở đi
-      options = hotelRow.slice(2).filter(c => c !== "" && c !== null);
+      options = hotelRow.slice(2).filter((c) => c !== '' && c !== null);
     }
   } else {
     const svcMatrix = window.APP_DATA.lists.serviceMatrix || [];
     options = svcMatrix
-      .filter(r => r[0] === type) // Cột 0 là Loại
-      .map(r => r[1]);            // Cột 1 là Tên
+      .filter((r) => r[0] === type) // Cột 0 là Loại
+      .map((r) => r[1]); // Cột 1 là Tên
   }
   const currentVal = elName.value;
-  elName.innerHTML = '<option value="">-</option>' + options.map(x => `<option value="${x}">${x}</option>`).join('');
+  elName.innerHTML =
+    '<option value="">-</option>' +
+    options.map((x) => `<option value="${x}">${x}</option>`).join('');
   // Cố gắng giữ lại giá trị cũ nếu có trong list mới
   if (options.includes(currentVal)) elName.value = currentVal;
 }
@@ -441,7 +440,7 @@ function updateServiceNameList(idx) {
 // =========================================================================
 // 1. Cập nhật hàm calcRow (Fix lỗi tính Đêm)
 function calcRow(idx) {
-  if (getVal('BK_Status') === "Hủy") return;
+  if (getVal('BK_Status') === 'Hủy') return;
   const tr = getE(`row-${idx}`);
   if (!tr) return;
   const dInStr = tr.querySelector('.d-in').value;
@@ -473,8 +472,8 @@ function calcRow(idx) {
   // Nếu là Phòng thì nhân số đêm, Dịch vụ khác thì night=1 (đã set ở trên) nên nhân 1 cũng đúng
   // Tuy nhiên để an toàn logic hiển thị:
   // Nếu type=Phòng, multiplier = night. Nếu khác, multiplier = 1 (vì bản chất dịch vụ tính theo lượt)
-  const multiplier = (type === 'Phòng') ? Math.max(1, night) : 1;
-  const total = ((qtyA * priA) + (qtyC * priC)) * multiplier + sur - disc;
+  const multiplier = type === 'Phòng' ? Math.max(1, night) : 1;
+  const total = (qtyA * priA + qtyC * priC) * multiplier + sur - disc;
   const elTotal = tr.querySelector('.d-total');
   elTotal.value = formatMoney(total);
   elTotal.dataset.val = total;
@@ -485,7 +484,7 @@ function calcRow(idx) {
 // CẬP NHẬT: calcGrandTotal (Tính Tổng & Phân tích giá TB)
 // =========================================================================
 function calcGrandTotal() {
-  if (getVal('BK_Status') === "Hủy") return;
+  if (getVal('BK_Status') === 'Hủy') return;
   let grandTotal = 0;
 
   // Các biến tích lũy để tính AVG
@@ -495,7 +494,7 @@ function calcGrandTotal() {
   let landChildTotal = 0; // Tổng tiền Landtour của Trẻ em
 
   // 1. Quét qua tất cả các ô Thành tiền (.d-total)
-  document.querySelectorAll('.d-total').forEach(elTotal => {
+  document.querySelectorAll('.d-total').forEach((elTotal) => {
     const rowTotal = Number(elTotal.dataset.val) || 0;
     grandTotal += rowTotal;
 
@@ -512,8 +511,8 @@ function calcGrandTotal() {
         const priC = getVal('.d-priC', tr) ? Number(getVal('.d-priC', tr)) : 0;
         const sur = getVal('.d-sur', tr) ? Number(getVal('.d-sur', tr)) : 0;
         const disc = getVal('.d-disc', tr) ? Number(getVal('.d-disc', tr)) : 0;
-        transportA += (qtyA * priA + sur - disc);
-        transportC += (priC * qtyC);
+        transportA += qtyA * priA + sur - disc;
+        transportC += priC * qtyC;
         transportTotal += rowTotal;
       }
       // Nhóm 2: Landtour -> Tính tách chi phí Trẻ em
@@ -524,10 +523,10 @@ function calcGrandTotal() {
         // Xác định hệ số nhân (Multiplier) giống logic calcRow
         // Nếu là Phòng thì nhân số đêm, loại khác nhân 1
         const nightVal = getVal('.d-night', tr) || 1;
-        const multiplier = (type === 'Phòng') ? Math.max(1, nightVal) : 1;
+        const multiplier = type === 'Phòng' ? Math.max(1, nightVal) : 1;
 
         // Cộng dồn chi phí trẻ em dòng này
-        landChildTotal += (qtyC * priC * multiplier);
+        landChildTotal += qtyC * priC * multiplier;
       }
     }
   });
@@ -545,15 +544,15 @@ function calcGrandTotal() {
 
   // A. Giá TB Trẻ em (Landtour) = Tổng tiền land TE / Số TE
   // Nếu logic của bạn chỉ cần Tổng tiền thì bỏ đoạn chia countChild
-  const avgChildPrice = (countChild > 0) ? (landChildTotal / countChild) : 0;
+  const avgChildPrice = countChild > 0 ? landChildTotal / countChild : 0;
 
   // B. Giá TB Người lớn (Landtour)
   // = (Tổng Booking - Tiền Transport - Tiền Land Trẻ em) / Số NL
   const landTotal = grandTotal - transportTotal;
   const landAdultTotal = landTotal - landChildTotal;
-  const avgAdultPrice = (countAdult > 0) ? (landAdultTotal / countAdult) : 0;
-  const transAdultPrice = (countAdult > 0) ? (transportA / countAdult) : 0;
-  const transChildPrice = (countChild > 0) ? (transportC / countChild) : 0;
+  const avgAdultPrice = countAdult > 0 ? landAdultTotal / countAdult : 0;
+  const transAdultPrice = countAdult > 0 ? transportA / countAdult : 0;
+  const transChildPrice = countChild > 0 ? transportC / countChild : 0;
 
   // 4. Hiển thị lên thẻ Stats
   const elStatsA = getE('Stats_AvgAdult');
@@ -568,7 +567,7 @@ function calcGrandTotal() {
 
   const balance = grandTotal - getNum('BK_Deposit');
   setNum('BK_Balance', balance);
-
+  updateBkStatus();
 }
 
 async function updateDeposit() {
@@ -580,7 +579,7 @@ async function updateDeposit() {
     }
 
     // Firestore operator: '==' (không phải '=')
-    const result = await A.DB.runQuery('transactions', 'booking_id', '==', bkId);
+    const result = await A.DB?.runQuery('transactions', 'booking_id', '==', bkId);
 
     if (!result || !Array.isArray(result)) {
       log('⚠️ Không tìm thấy giao dịch cho booking này', 'warning');
@@ -589,8 +588,8 @@ async function updateDeposit() {
     }
 
     const total = result.reduce((sum, tx) => sum + (tx.amount || 0), 0) / 1000;
-    setVal('BK_Deposit', total);
-    trigger('BK_Deposit', 'change'); // Trigger event để cập nhật UI liên quan (nếu có)
+    setNum('BK_Deposit', total);
+    calcGrandTotal(); // Cập nhật lại tổng tiền sau khi có deposit mới
     return total;
   } catch (e) {
     log(`❌ Lỗi cập nhật Deposit: ${e.message}`, 'error');
@@ -629,8 +628,6 @@ function autoSetOrCalcDate(start, end) {
     // --- TRƯỜNG HỢP: end LÀ ID ---
     // Gán giá trị start cho element tìm thấy
     targetElement.value = start;
-    log(`Đã gán giá trị ${start} vào element có id="${end}"`);
-
   } else {
     // --- TRƯỜNG HỢP: end KHÔNG PHẢI ID (Giả định là Ngày tháng) ---
     // Chuyển đổi sang đối tượng Date để tính toán
@@ -641,11 +638,8 @@ function autoSetOrCalcDate(start, end) {
     if (!isNaN(endDate.getTime())) {
       // Tính hiệu số mili-giây
       const diffTime = endDate - startDate;
-
       // Chuyển mili-giây sang số ngày (chia cho 1000ms * 60s * 60m * 24h)
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      log(`Khoảng cách là: ${diffDays} ngày`);
       return diffDays;
     } else {
       log("Tham số 'end' không phải là ID tồn tại, cũng không phải ngày hợp lệ.", 'error');
@@ -655,13 +649,21 @@ function autoSetOrCalcDate(start, end) {
 /**
  * HÀM TRÍCH XUẤT DỮ LIỆU: Được BaseForm gọi khi nhấn nút SAVE
  * Nhiệm vụ: Gom toàn bộ dữ liệu trên Form thành JSON để gửi về Server
+ *
+ * @param {boolean} [update=false]
+ *   - false (default): trả về toàn bộ dữ liệu (tạo mới)
+ *   - true: chỉ trả về các phần có dữ liệu thực sự thay đổi (cập nhật)
+ *           Dùng filterUpdatedData để phát hiện thay đổi.
+ *           Trả về null nếu không có gì thay đổi.
  */
-window.getFormData = function () {
+window.getFormData = async function (update = false) {
   try {
-    // 1. Bookings Data
+    // ── 1. Thu thập toàn bộ dữ liệu (dùng cho cả 2 mode) ─────────────
+
+    // Bookings Data
     const bookings = {
       id: getVal('BK_ID'),
-      customer_id: getVal('BK_CustID') || '',
+      customer_id: getVal('Cust_Id'),
       customer_full_name: getVal('Cust_Name'),
       customer_phone: formatPhone(getVal('Cust_Phone')),
       startDate: getVal('BK_Start'),
@@ -677,22 +679,23 @@ window.getFormData = function () {
       staff: getVal('BK_Staff') || CURRENT_USER.name || '',
       status: '',
       bkDate: getVal('BK_Date'),
-      tourName: getVal('BK_TourName'), // Thêm Tour Name          
+      tourName: getVal('BK_TourName'), // Thêm Tour Name
     };
 
     bookings.balance = Number(bookings.total) - Number(bookings.deposit);
     bookings.status = updateBkStatus();
 
-    // 2. Customer Data
+    // Customer Data
     const customer = {
+      id: getVal('Cust_Id') || '',
       full_name: getVal('Cust_Name'),
       phone: formatPhone(getVal('Cust_Phone')),
-      source: getVal('Cust_Source')
+      source: getVal('Cust_Source'),
     };
 
-    // 3. Details Data
+    // Details Data
     const booking_details = [];
-    document.querySelectorAll('#detail-tbody tr').forEach(tr => {
+    document.querySelectorAll('#detail-tbody tr').forEach((tr) => {
       booking_details.push({
         sid: getVal('.d-sid', tr),
         booking_id: bookings.id,
@@ -710,13 +713,49 @@ window.getFormData = function () {
         disc: getVal('.d-disc', tr),
         total: getVal('.d-total', tr),
         code: getVal('.d-code', tr),
-        note: getVal('.d-note', tr)
+        note: getVal('.d-note', tr),
       });
     });
-    log("Dữ liệu trích xuất từ Form OK!");
-    return { bookings, customer, booking_details };
+
+    // ── 2. NON-UPDATE MODE: trả về toàn bộ ───────────────────────────
+    if (!update) {
+      return { bookings, customer, booking_details };
+    }
+
+    // ── 3. UPDATE MODE: dùng filterUpdatedData để phát hiện thay đổi ─
+
+    // 3a. Kiểm tra thay đổi riêng cho booking và customer (2 fieldset khác nhau)
+    const bookingChanges = await filterUpdatedData('fs_booking_info');
+    const customerChanges = await filterUpdatedData('fs_customer_info');
+    const hasBookingChanges = Object.keys(bookingChanges).length > 0;
+    const hasCustomerChanges = Object.keys(customerChanges).length > 0;
+
+    // 3b. Kiểm tra từng dòng detail — chỉ giữ row có thay đổi
+    const detailRows = [...document.querySelectorAll('#detail-tbody tr')];
+    const changedDetails = [];
+    for (let i = 0; i < detailRows.length; i++) {
+      const tr = detailRows[i];
+      if (!tr.id) continue;
+      const rowChanges = await filterUpdatedData(tr.id, $('#detail-tbody'));
+      if (Object.values(rowChanges).length > 0) {
+        changedDetails.push(booking_details[i]);
+      }
+    }
+
+    // 3c. Không có gì thay đổi → trả về null
+    if (!hasBookingChanges && !hasCustomerChanges && changedDetails.length === 0) {
+      log('⚠️ Không có dữ liệu nào thay đổi', 'warning');
+      return null;
+    }
+
+    log('Dữ liệu cập nhật (chỉ thay đổi) trích xuất từ Form OK!');
+    return {
+      bookings: hasBookingChanges ? bookings : { id: bookings.id }, // Nếu không có thay đổi nào, vẫn trả về ID để server biết update bản ghi nào
+      customer: hasCustomerChanges ? customer : { id: customer.id }, // Nếu không có thay đổi nào, vẫn trả về ID để server biết update bản ghi nào
+      booking_details: changedDetails,
+    };
   } catch (error) {
-    logError("Lỗi khi trích xuất dữ liệu từ Form: " + error.message);
+    logError('Lỗi khi trích xuất dữ liệu từ Form: ' + error.message);
     return null;
   }
 };
@@ -729,14 +768,12 @@ function fillFormFromSearch(res) {
   showLoading(false);
   // 1. Kiểm tra lỗi từ Server
   if (!res) {
-    logError("Không tìm thấy dữ liệu phù hợp! - Lỗi biến res");
+    logError('Không tìm thấy dữ liệu phù hợp! - Lỗi biến res');
     return;
   }
 
   try {
-    // log("FillForm running");
     const bkData = res.bookings;
-    log(Object.values(bkData));
     const detailsData = res.booking_details;
     const customerData = res.customer;
 
@@ -744,13 +781,12 @@ function fillFormFromSearch(res) {
       loadBookingToUI(bkData, customerData, detailsData);
       // Log thông báo
       const sourceMsg = res.source === 'local' ? ' (⚡ Local)' : ' (🐢 Database)';
-      log(`Đã tải Booking: ${bkData.customer_full_name} - ${bkData.id} ${sourceMsg}`, "success");
     } else {
-      logA("Lỗi hệ thống: Không thể hiển thị dữ liệu lên Form.", "error");
+      logA('Lỗi hệ thống: Không thể hiển thị dữ liệu lên Form.', 'error');
     }
     // log("FillForm end");
   } catch (e) {
-    log("Lỗi:", e.message, "error");
+    logError('Lỗi khi điền dữ liệu vào Form: ' + e.message, e);
   } finally {
     showLoading(false);
   }
@@ -764,10 +800,9 @@ async function findCustByPhone(customerData = null, e) {
   }
 
   if (!custFieldset) {
-    log("Không tìm thấy fieldset customers", "warning");
+    log('Không tìm thấy fieldset customers', 'warning');
     return;
   }
-
 
   // 2. Lấy giá trị input từ fieldset
   const phoneEl = custFieldset.querySelector('[data-field="customer_phone"]');
@@ -785,7 +820,7 @@ async function findCustByPhone(customerData = null, e) {
   if (!customerData) {
     // --- BƯỚC 1: TÌM THEO SỐ ĐIỆN THOẠI ---
     if (phoneInput.length >= 3) {
-      found = customers.find(c => {
+      found = customers.find((c) => {
         if (!c) return false;
 
         // Object format: c.phone hoặc c.customer_phone
@@ -805,7 +840,7 @@ async function findCustByPhone(customerData = null, e) {
 
     // --- BƯỚC 2: NẾU CHƯA TÌM THẤY => TÌM THEO TÊN ---
     if (!found && nameInput.length >= 3) {
-      found = customers.find(c => {
+      found = customers.find((c) => {
         if (!c) return false;
 
         // Object format: c.full_name hoặc c.customer_full_name
@@ -824,13 +859,13 @@ async function findCustByPhone(customerData = null, e) {
     }
   } else found = customerData; // Nếu đã có data từ search thì dùng luôn, không cần tìm nữa
 
-
   if (found) {
     // 3. Trích xuất dữ liệu theo format
     let custData = {};
     if (typeof found === 'object' && !Array.isArray(found)) {
       // Object format
       custData = {
+        id: found.id || '', // ← customer_id cho Cust_Id hidden field
         full_name: found.full_name || found.customer_full_name || '',
         phone: found.phone || found.customer_phone || '',
         email: found.email || found.customer_email || '',
@@ -838,11 +873,12 @@ async function findCustByPhone(customerData = null, e) {
         id_card_date: found.id_card_date || found.cccd_date || '',
         dob: found.dob || found.date_of_birth || '',
         address: found.address || '',
-        source: found.source || found.customer_source || ''
+        source: found.source || found.customer_source || '',
       };
     } else if (Array.isArray(found)) {
       // Array format - adjust theo cấu trúc thực tế
       custData = {
+        id: found[0] || '', // ← customer_id cho Cust_Id hidden field
         full_name: found[1] || '',
         phone: found[6] || '',
         email: found[7] || '',
@@ -850,22 +886,23 @@ async function findCustByPhone(customerData = null, e) {
         id_card_date: found[4] || '',
         dob: found[2] || '',
         address: found[5] || '',
-        source: found[8] || ''
+        source: found[8] || '',
       };
     }
 
     // 4. Cập nhật các element trong fieldset dựa vào data-field
     // Looping qua custData và tìm element tương ứng (với prefix customer_)
-    Object.keys(custData).forEach(key => {
-      const fieldName = 'customer_' + key; // Thêm prefix
+    Object.keys(custData).forEach((key) => {
+      const fieldName = 'customer_' + key; // Thêm prefix → 'customer_id', 'customer_full_name', ...
       const el = custFieldset.querySelector(`[data-field="${fieldName}"]`);
       if (el && custData[key]) {
         setVal(el, custData[key]);
       }
     });
 
-    log("✅ Tìm thấy khách hàng và cập nhật dữ liệu vào fieldset", "success");
-    log("Dữ liệu:", found);
+    // StateProxy: gán data-doc-id trên fieldset để _resolveCollId có thể xác định document ID
+    // khi auto-bind xảy ra từ setVal() trên các field bên trong fieldset này.
+    if (custData.id) custFieldset.dataset.docId = custData.id;
   }
 }
 
@@ -877,7 +914,7 @@ async function findCustByPhone(customerData = null, e) {
  * @param {number} newAdult - Số người lớn mới
  */
 function processAndFillTemplate(booking_details, anchorDateStr, newStartStr, newAdult) {
-  log("run processAndFillTemplate");
+  log('run processAndFillTemplate');
   // A. Tính toán Offset (Độ lệch ngày)
   // Chuyển đổi an toàn sang Date Object
   // Lưu ý: new Date("YYYY-MM-DD") mặc định là UTC. Ta cần xử lý cẩn thận để tránh lệch múi giờ.
@@ -896,10 +933,10 @@ function processAndFillTemplate(booking_details, anchorDateStr, newStartStr, new
   getE('detail-tbody').innerHTML = '';
   detailRowCount = 0;
   // C. Duyệt từng dòng và add vào bảng
-  booking_details.forEach(row => {
+  booking_details.forEach((row) => {
     // 1. Xử lý Ngày (Date Shifting)
-    let shiftedIn = "";
-    let shiftedOut = "";
+    let shiftedIn = '';
+    let shiftedOut = '';
     if (row.in) {
       const rIn = parseDate(row.in);
       const newInDate = new Date(rIn.getTime() + diffTime);
@@ -911,13 +948,13 @@ function processAndFillTemplate(booking_details, anchorDateStr, newStartStr, new
       shiftedOut = newOutDate.toISOString().split('T')[0];
     }
     // 2. Xử lý Số lượng (Scale theo người lớn)
-    // Logic: Nếu Template set số lượng == 0 hoặc 1 thì giữ nguyên? 
+    // Logic: Nếu Template set số lượng == 0 hoặc 1 thì giữ nguyên?
     // Hay là override bằng số khách hiện tại?
     // Theo yêu cầu: "Cập nhật ngày... yêu cầu điền thông tin 3 ô (Start, End, Adult)..."
     // => Ngầm hiểu là cần update số lượng theo Adult mới.
     let finalQtyA = row.qtyA;
     let finalQtyC = row.qtyC; // Trẻ em thường giữ nguyên theo template hoặc set 0
-    // Logic thông minh: 
+    // Logic thông minh:
     // Nếu là Phòng: Có thể giữ nguyên logic chia phòng hoặc lấy từ template
     // Nếu là Ăn/Vé/Tour: Thường bằng số khách.
     // Ở đây ta ưu tiên logic: Sử dụng hàm autoFillRowData có sẵn hoặc gán trực tiếp.
@@ -938,35 +975,34 @@ function processAndFillTemplate(booking_details, anchorDateStr, newStartStr, new
     // Mapping lại format mảng mà addDetailRow mong đợi:
     // [sid, null, type, loc, name, in, out, null, qty, pri, qtyC, priC, sur, disc, null, code, note]
     const rowData = [
-      "", // 0: SID (Mới nên rỗng)
-      "", // 1: Blank
-      row.type,     // 2
+      '', // 0: SID (Mới nên rỗng)
+      '', // 1: Blank
+      row.type, // 2
       row.location, // 3
-      row.name,     // 4
-      shiftedIn,    // 5: Date In (Đã tịnh tiến)
-      shiftedOut,   // 6: Date Out (Đã tịnh tiến)
-      "",           // 7: Time/Note
-      finalQtyA,    // 8: Qty A (Đã update)
-      row.priA,     // 9: Price A (Giữ nguyên)
-      row.qtyC,     // 10: Qty C
-      row.priC,     // 11: Price C
-      row.sur,      // 12
-      row.disc,     // 13
-      "",           // 14: Total (Tự tính lại)
-      row.code,     // 15
-      row.note      // 16
+      row.name, // 4
+      shiftedIn, // 5: Date In (Đã tịnh tiến)
+      shiftedOut, // 6: Date Out (Đã tịnh tiến)
+      '', // 7: Time/Note
+      finalQtyA, // 8: Qty A (Đã update)
+      row.priA, // 9: Price A (Giữ nguyên)
+      row.qtyC, // 10: Qty C
+      row.priC, // 11: Price C
+      row.sur, // 12
+      row.disc, // 13
+      '', // 14: Total (Tự tính lại)
+      row.code, // 15
+      row.note, // 16
     ];
     // Gọi hàm có sẵn để render lên UI
     addDetailRow(rowData);
   });
-  logA("Đã tải Template và cập nhật ngày tháng thành công!", "success");
+  logA('Đã tải Template và cập nhật ngày tháng thành công!', 'success');
 }
-
 
 // /**
 //  * Hàm lấy dữ liệu đầy đủ từ Tab này để phục vụ Export
 //  */
-getCustomerData = function () {
+getCustomerData = function (update = false) {
   try {
     // 1. Lấy fieldset với name="customers" (hoặc fallback id="fs_customer_info")
     let custFieldset = $('fieldset[name="customers"]');
@@ -975,13 +1011,29 @@ getCustomerData = function () {
     }
 
     if (!custFieldset) {
-      logA("Không tìm thấy fieldset khách hàng!", "warning");
+      logA('Không tìm thấy fieldset khách hàng!', 'warning');
       return null;
+    }
+
+    let hasChange = false; // Flag để kiểm tra có thay đổi nào không
+    if (update) {
+      const changes = filterUpdatedData(custFieldset);
+      hasChange =
+        Object.keys(changes || {}).filter((k) => k !== 'id' && k !== 'customer_id').length > 0;
+      if (hasChange) {
+        // Xóa prefix "customer_" khỏi tên field trước khi trả về
+        const normalized = {};
+        Object.entries(changes).forEach(([key, val]) => {
+          normalized[key.replace(/^customer_/, '')] = val;
+        });
+        return normalized;
+      }
     }
 
     // 2. Trích xuất dữ liệu từ tất cả input/select/textarea trong fieldset
     const data = {};
-    custFieldset.querySelectorAll('input, select, textarea').forEach(el => {
+
+    custFieldset.querySelectorAll('input, select, textarea').forEach((el) => {
       if (el.hasAttribute('data-field')) {
         let fieldName = el.getAttribute('data-field');
         // Xóa prefix "customer_" nếu có
@@ -993,16 +1045,16 @@ getCustomerData = function () {
 
     // 3. Validation cơ bản
     if (!data.full_name || !data.phone) {
-      logA("Vui lòng nhập Tên và Số điện thoại!", "warning");
-      return;
+      logA('Vui lòng nhập Tên và Số điện thoại!', 'warning');
+      return null;
     }
+
     return data;
   } catch (e) {
-    log("Lỗi hàm getCustomerData", e.message, 'error');
+    log('Lỗi hàm getCustomerData', e.message, 'error');
     return null;
   }
 };
-
 
 /**
  * 1. Xử lý khi click vào dòng trong Bảng Tổng hợp (Bảng 3, 4)
@@ -1010,8 +1062,6 @@ getCustomerData = function () {
  * @param {string} filterType - Loại lọc ('staff' hoặc 'type')
  */
 function handleAggClick(key, filterType) {
-  log(`📂 Mở chế độ Batch Edit: [${filterType}] ${key}`);
-
   // 1. CHỈNH SỬA: Đổi nguồn dữ liệu sang Object.values(APP_DATA.booking_details)
   if (!APP_DATA.booking_details) APP_DATA.booking_details = {};
   const source = Object.values(APP_DATA.booking_details).slice();
@@ -1022,8 +1072,8 @@ function handleAggClick(key, filterType) {
 
   if (filterType === 'staff') {
     const bookings = Object.values(APP_DATA.bookings).slice();
-    bookings.forEach(mRow => {
-      const mId = mRow[COL_INDEX.M_ID];     // ID trong Bookings
+    bookings.forEach((mRow) => {
+      const mId = mRow[COL_INDEX.M_ID]; // ID trong Bookings
       const mStaff = mRow[COL_INDEX.M_STAFF]; // Tên Staff
       // Lưu vào Map: Key là ID (chuyển về string cho chắc chắn), Value là Staff
       staffMap.set(String(mId), mStaff);
@@ -1031,10 +1081,12 @@ function handleAggClick(key, filterType) {
   }
 
   // 3. Lọc dữ liệu
-  const dFrom = new Date(getVal('dash-filter-from')); dFrom.setHours(0, 0, 0, 0);
-  const dTo = new Date(getVal('dash-filter-to')); dTo.setHours(23, 59, 59, 999);
+  const dFrom = new Date(getVal('dash-filter-from'));
+  dFrom.setHours(0, 0, 0, 0);
+  const dTo = new Date(getVal('dash-filter-to'));
+  dTo.setHours(23, 59, 59, 999);
 
-  const batchData = source.filter(row => {
+  const batchData = source.filter((row) => {
     // A. Check Ngày (Check-in) - Giữ nguyên
     const dIn = row[COL_INDEX.D_IN] ? new Date(row[COL_INDEX.D_IN]) : null;
     if (!dIn || dIn < dFrom || dIn > dTo) return false;
@@ -1049,7 +1101,7 @@ function handleAggClick(key, filterType) {
       let staffName = staffMap.get(String(bkId));
 
       // Xử lý dữ liệu null/undefined để so sánh chính xác với key
-      if (staffName === undefined || staffName === null) staffName = "";
+      if (staffName === undefined || staffName === null) staffName = '';
 
       // So sánh
       return String(staffName) === String(key);
@@ -1058,11 +1110,10 @@ function handleAggClick(key, filterType) {
     // (Giữ lại logic cũ cho supplier/type nếu bạn vẫn dùng, nếu không có thể xóa đoạn else if này)
     else if (filterType === 'supplier') {
       let v = row[COL_INDEX.D_SUPPLIER];
-      if (!v || String(v).trim() === '') v = "(Chưa gán NCC)";
+      if (!v || String(v).trim() === '') v = '(Chưa gán NCC)';
       return String(v) === String(key);
-    }
-    else if (filterType === 'type') {
-      let t = row[COL_INDEX.D_TYPE] || "Khác";
+    } else if (filterType === 'type') {
+      let t = row[COL_INDEX.D_TYPE] || 'Khác';
       return String(t) === String(key);
     }
 
@@ -1072,9 +1123,9 @@ function handleAggClick(key, filterType) {
   if (batchData.length === 0) {
     // logA là hàm thông báo (giả định)
     if (typeof logA === 'function') {
-      logA("Không có dữ liệu chi tiết trong khoảng thời gian này.", "warning");
+      logA('Không có dữ liệu chi tiết trong khoảng thời gian này.', 'warning');
     } else {
-      console.warn("Không có dữ liệu chi tiết trong khoảng thời gian này.");
+      console.warn('Không có dữ liệu chi tiết trong khoảng thời gian này.');
     }
     return;
   }
@@ -1083,54 +1134,80 @@ function handleAggClick(key, filterType) {
   openBatchEdit(batchData, key);
 }
 
-
 /**
  * MODULE: CONFIRMATION RENDERER
  * Nhiệm vụ: Xử lý logic hiển thị mẫu xác nhận, in ấn và đa ngôn ngữ.
  */
 const ConfirmationModule = (function () {
-
   // 1. CONFIG & STATE
   let _currentData = null; // Dữ liệu Booking đang xem
-  let _lang = 'vi';        // Ngôn ngữ hiện tại
-  let _mode = 'service';   // Chế độ xem: 'service' (chi tiết) hoặc 'tour' (rút gọn)
-  let _showPrice = true;   // Cờ hiển thị giá
+  let _lang = 'vi'; // Ngôn ngữ hiện tại
+  let _mode = 'service'; // Chế độ xem: 'service' (chi tiết) hoặc 'tour' (rút gọn)
+  let _showPrice = true; // Cờ hiển thị giá
 
   // Từ điển ngôn ngữ
   const DICT = {
     vi: {
-      title: "XÁC NHẬN ĐẶT DỊCH VỤ",
-      ref: "Mã Booking:",
-      confirm_date: "Ngày xác nhận:",
-      cust_info: "THÔNG TIN KHÁCH HÀNG",
-      cust_name: "Khách hàng:", cust_email: "Email:", cust_phone: "Điện thoại:", cust_add: "Địa chỉ:",
-      adult: "Người lớn:", child: "Trẻ em:",
-      svc_details: "CHI TIẾT DỊCH VỤ",
-      col_desc: "Dịch vụ / Diễn giải", col_date: "Ngày sử dụng", col_out: "Ngày về", col_qty: "SL", col_price: "Đơn giá", col_total: "Thành tiền",
-      note: "GHI CHÚ:",
-      lbl_total: "TỔNG CỘNG:", lbl_paid: "ĐÃ THANH TOÁN:", lbl_due: "CÒN LẠI:",
-      sign_cust: "KHÁCH HÀNG", sign_comp: "CÔNG TY TNHH 9 TRIP PHÚ QUỐC", signature: "(Ký tên)", sign_status: "(Đã xác nhận)"
+      title: 'XÁC NHẬN ĐẶT DỊCH VỤ',
+      ref: 'Mã Booking:',
+      confirm_date: 'Ngày xác nhận:',
+      cust_info: 'THÔNG TIN KHÁCH HÀNG',
+      cust_name: 'Khách hàng:',
+      cust_email: 'Email:',
+      cust_phone: 'Điện thoại:',
+      cust_add: 'Địa chỉ:',
+      adult: 'Người lớn:',
+      child: 'Trẻ em:',
+      svc_details: 'CHI TIẾT DỊCH VỤ',
+      col_desc: 'Dịch vụ / Diễn giải',
+      col_date: 'Ngày sử dụng',
+      col_out: 'Ngày về',
+      col_qty: 'SL',
+      col_price: 'Đơn giá',
+      col_total: 'Thành tiền',
+      note: 'GHI CHÚ:',
+      lbl_total: 'TỔNG CỘNG:',
+      lbl_paid: 'ĐÃ THANH TOÁN:',
+      lbl_due: 'CÒN LẠI:',
+      sign_cust: 'KHÁCH HÀNG',
+      sign_comp: 'CÔNG TY TNHH 9 TRIP PHÚ QUỐC',
+      signature: '(Ký tên)',
+      sign_status: '(Đã xác nhận)',
     },
     en: {
-      title: "SERVICE CONFIRMATION",
-      ref: "Booking ID:",
-      confirm_date: "Date:",
-      cust_info: "CUSTOMER INFORMATION",
-      cust_name: "Customer:", cust_email: "Email:", cust_phone: "Phone:", cust_add: "Address:",
-      adult: "Adults:", child: "Children:",
-      svc_details: "SERVICE DETAILS",
-      col_desc: "Service Name", col_date: "Check-In", col_out: "Check-Out", col_qty: "Qty", col_price: "Price", col_total: "Amount",
-      note: "NOTES / POLICY:",
-      lbl_total: "TOTAL AMOUNT:", lbl_paid: "DEPOSIT / PAID:", lbl_due: "BALANCE DUE:",
-      sign_cust: "CUSTOMER", sign_comp: "9 TRIP PHU QUOC CO., LTD", signature: "(Signature)", sign_status: "(Confirmed)"
-    }
+      title: 'SERVICE CONFIRMATION',
+      ref: 'Booking ID:',
+      confirm_date: 'Date:',
+      cust_info: 'CUSTOMER INFORMATION',
+      cust_name: 'Customer:',
+      cust_email: 'Email:',
+      cust_phone: 'Phone:',
+      cust_add: 'Address:',
+      adult: 'Adults:',
+      child: 'Children:',
+      svc_details: 'SERVICE DETAILS',
+      col_desc: 'Service Name',
+      col_date: 'Check-In',
+      col_out: 'Check-Out',
+      col_qty: 'Qty',
+      col_price: 'Price',
+      col_total: 'Amount',
+      note: 'NOTES / POLICY:',
+      lbl_total: 'TOTAL AMOUNT:',
+      lbl_paid: 'DEPOSIT / PAID:',
+      lbl_due: 'BALANCE DUE:',
+      sign_cust: 'CUSTOMER',
+      sign_comp: '9 TRIP PHU QUOC CO., LTD',
+      signature: '(Signature)',
+      sign_status: '(Confirmed)',
+    },
   };
 
   // 2. CORE FUNCTIONS
 
   // Hàm mở Modal (Entry Point)
   async function openModal(bookingId) {
-    if (!bookingId) return logA("Không có mã Booking!", "warning");
+    if (!bookingId) return logA('Không có mã Booking!', 'warning');
 
     try {
       // Gọi API lấy dữ liệu chi tiết
@@ -1147,12 +1224,11 @@ const ConfirmationModule = (function () {
           A.Modal.show();
         }
       } else {
-        logA(`Không tìm thấy Booking ID: ${bookingId}`, "error");
+        logA(`Không tìm thấy Booking ID: ${bookingId}`, 'error');
       }
-
     } catch (e) {
       logError(e);
-      logA(`Lỗi: ${e.message}`, "error");
+      logA(`Lỗi: ${e.message}`, 'error');
     }
   }
 
@@ -1172,9 +1248,9 @@ const ConfirmationModule = (function () {
     setVal('conf-cust-child', m.children || m[COL_INDEX.M_CHILD]); // Số trẻ em
     setVal('conf-cust-name', m.customer_full_name || c[1]);
     setVal('conf-cust-phone', m.customer_phone || c[6]);
-    setVal('conf-cust-email', (c && c.email) ? c.email : ""); // Email từ bảng Customer
-    setVal('conf-cust-add', (c && c.address) ? c.address : "");   // Địa chỉ
-    setVal('conf-staff', "Sales Executive"); // Nhân viên
+    setVal('conf-cust-email', c && c.email ? c.email : ''); // Email từ bảng Customer
+    setVal('conf-cust-add', c && c.address ? c.address : ''); // Địa chỉ
+    setVal('conf-staff', 'Sales Executive'); // Nhân viên
 
     // 3. Điền bảng dữ liệu (Table)
     await _renderTable();
@@ -1191,7 +1267,6 @@ const ConfirmationModule = (function () {
 
   // Hàm render bảng chi tiết (Xử lý 2 chế độ: Service & Tour)
   async function _renderTable() {
-
     const booking_details = _currentData.booking_details || [];
     const tbodySvc = document.getElementById('conf-tbody-service');
     const tbodyTour = document.getElementById('conf-tbody-tour');
@@ -1247,27 +1322,35 @@ const ConfirmationModule = (function () {
                   </tr>
                   `;
       tbodySvc.insertAdjacentHTML('beforeend', rowHtml);
-    });      // ============================================================
+    }); // ============================================================
     // MODE 2: TOUR / COMBO (Logic Mới: Dựa trên Stats)
     // ============================================================
 
     // Lưu ý: _currentData phải có field adults/children. Nếu không có thì lấy từ giao diện.
     const qtyAdult = parseInt(_currentData.bookings[COL_INDEX.M_ADULT]) || getVal('BK_Adult') || 0;
     const qtyChild = parseInt(_currentData.bookings[COL_INDEX.M_CHILD]) || getVal('BK_Child') || 0;
-    const priceTourA = getNum(getVal('Stats_AvgAdult')) * 1000;      // Giá Tour/Combo NL
-    const priceTourC = getNum(getVal('Stats_AvgChild')) * 1000;      // Giá Tour/Combo TE
+    const priceTourA = getNum(getVal('Stats_AvgAdult')) * 1000; // Giá Tour/Combo NL
+    const priceTourC = getNum(getVal('Stats_AvgChild')) * 1000; // Giá Tour/Combo TE
     const priceTransA = getNum(getVal('Stats_TransportAdult')) * 1000; // Giá Vận chuyển NL
     const priceTransC = getNum(getVal('Stats_TransportChild')) * 1000; // Giá Vận chuyển TE
 
     // 3. Xác định tên loại vận chuyển (Máy bay hay Tàu?)
     // Quét nhẹ qua list detail để xem có từ khóa nào
-    let transName = "Vé vận chuyển";
-    const hasFlight = booking_details.some(d => String(d.service_type).toLowerCase().includes('vé mb') || String(d.service_name).toLowerCase().includes('bay'));
-    const hasTrain = booking_details.some(d => String(d.service_type).toLowerCase().includes('vé tàu') || String(d.service_name).toLowerCase().includes('tàu'));
+    let transName = 'Vé vận chuyển';
+    const hasFlight = booking_details.some(
+      (d) =>
+        String(d.service_type).toLowerCase().includes('vé mb') ||
+        String(d.service_name).toLowerCase().includes('bay')
+    );
+    const hasTrain = booking_details.some(
+      (d) =>
+        String(d.service_type).toLowerCase().includes('vé tàu') ||
+        String(d.service_name).toLowerCase().includes('tàu')
+    );
 
-    if (hasFlight && !hasTrain) transName = "Vé máy bay";
-    else if (!hasFlight && hasTrain) transName = "Vé tàu cao tốc";
-    else if (hasFlight && hasTrain) transName = "Vé máy bay & Tàu cao tốc";
+    if (hasFlight && !hasTrain) transName = 'Vé máy bay';
+    else if (!hasFlight && hasTrain) transName = 'Vé tàu cao tốc';
+    else if (hasFlight && hasTrain) transName = 'Vé máy bay & Tàu cao tốc';
 
     // 4. Tạo mảng các dòng hiển thị
     let tourRows = [];
@@ -1278,7 +1361,7 @@ const ConfirmationModule = (function () {
         name: `Người lớn`,
         qty: qtyAdult,
         price: priceTourA,
-        total: qtyAdult * priceTourA
+        total: qtyAdult * priceTourA,
       });
     }
 
@@ -1288,7 +1371,7 @@ const ConfirmationModule = (function () {
         name: `Trẻ em`,
         qty: qtyChild,
         price: priceTourC,
-        total: qtyChild * priceTourC
+        total: qtyChild * priceTourC,
       });
     }
 
@@ -1298,7 +1381,7 @@ const ConfirmationModule = (function () {
         name: `${transName} (Người lớn)`,
         qty: qtyAdult,
         price: priceTransA,
-        total: qtyAdult * priceTransA
+        total: qtyAdult * priceTransA,
       });
     }
 
@@ -1308,11 +1391,9 @@ const ConfirmationModule = (function () {
         name: `${transName} (Trẻ em)`,
         qty: qtyChild,
         price: priceTransC,
-        total: qtyChild * priceTransC
+        total: qtyChild * priceTransC,
       });
     }
-    log("Tour Rows:", tourRows[0]);
-
     // 5. Render ra HTML
     // Xóa nội dung cũ
     tbodyTour.innerHTML = '';
@@ -1321,7 +1402,7 @@ const ConfirmationModule = (function () {
     const dataCount = tourRows.length;
 
     // Bước A: Render dữ liệu thật (nếu có)
-    tourRows.forEach(r => {
+    tourRows.forEach((r) => {
       const html = `
                 <tr>
                   <td><span class="fw-bold">${r.name}</span></td>
@@ -1387,13 +1468,13 @@ const ConfirmationModule = (function () {
   function _applySettings() {
     // 1. Translate
     const dict = DICT[_lang];
-    document.querySelectorAll('[data-i18n]').forEach(el => {
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
       const key = el.dataset.i18n;
       if (dict[key]) el.textContent = dict[key];
     });
 
     // 2. Toggle Price Column
-    document.querySelectorAll('.col-price').forEach(el => {
+    document.querySelectorAll('.col-price').forEach((el) => {
       el.style.display = _showPrice ? '' : 'none';
     });
   }
@@ -1413,7 +1494,10 @@ const ConfirmationModule = (function () {
     element.classList.add('pdf-compact-mode');
 
     // Tên file
-    const bookingId = (typeof _currentData !== 'undefined' && _currentData.bookings) ? _currentData.bookings[0] : 'Booking';
+    const bookingId =
+      typeof _currentData !== 'undefined' && _currentData.bookings
+        ? _currentData.bookings[0]
+        : 'Booking';
     const fileName = `Booking_${bookingId}.pdf`;
 
     const opt = {
@@ -1424,23 +1508,23 @@ const ConfirmationModule = (function () {
         scale: 2,
         useCORS: true, // Vẫn giữ, nhưng khuyến khích dùng Base64 cho Logo
         scrollY: 0,
-        logging: false
+        logging: false,
       },
       jsPDF: {
         unit: 'mm',
         format: 'a4',
-        orientation: 'landscape'
+        orientation: 'landscape',
       },
       // Tắt ngắt trang tự động để ép dồn (hoặc dùng avoid-all nếu muốn đẹp)
       // Ở đây ta đã thu nhỏ nội dung nên khả năng cao sẽ vừa 1 trang
-      pagebreak: { mode: ['css', 'legacy'] }
+      pagebreak: { mode: ['css', 'legacy'] },
     };
 
     try {
       await html2pdf().set(opt).from(element).save();
     } catch (e) {
       console.error(e);
-      alert("Lỗi: " + e.message);
+      logA('Lỗi: ' + e.message, 'error', 'alert');
     } finally {
       // --- HOÀN TÁC: TRẢ LẠI GIAO DIỆN CŨ ---
       // Gỡ class compact để trên màn hình web nhìn vẫn to rõ
@@ -1452,9 +1536,9 @@ const ConfirmationModule = (function () {
   }
 
   async function sendEmail() {
-
-    const email = document.getElementById('conf-cust-email').textContent || "9tripphuquoc@gmail.com";
-    if (!email || email.length < 5) return logA("Booking này chưa có Email khách hàng.", "warning");
+    const email =
+      document.getElementById('conf-cust-email').textContent || '9tripphuquoc@gmail.com';
+    if (!email || email.length < 5) return logA('Booking này chưa có Email khách hàng.', 'warning');
 
     const subject = `[9 TRIP] XÁC NHẬN ĐẶT DỊCH VỤ - CODE ${document.getElementById('conf-id').textContent}`;
     var data = getFormData();
@@ -1470,20 +1554,23 @@ const ConfirmationModule = (function () {
 
     // Gọi Server
     const res = await requestAPI('sendConfirmationEmailAPI', email, subject, data);
-    if (res) logA("Đã gửi email!", "success");
+    if (res) logA('Đã gửi email!', 'success');
   }
 
   // Public Methods
   return {
-    openModal, setLang, togglePrice, setMode, exportPDF, sendEmail
+    openModal,
+    setLang,
+    togglePrice,
+    setMode,
+    exportPDF,
+    sendEmail,
   };
-
 })();
 
 // Gán sự kiện cho nút "Tạo Hợp Đồng" (hoặc tạo nút mới "Xác nhận")
 function createConfirmation(bkId) {
   if (!bkId) bkId = getVal('BK_ID');
-  if (!bkId) return logA("Vui lòng chọn Booking trước.", "warning");
+  if (!bkId) return logA('Vui lòng chọn Booking trước.', 'warning');
   ConfirmationModule.openModal(bkId);
 }
-

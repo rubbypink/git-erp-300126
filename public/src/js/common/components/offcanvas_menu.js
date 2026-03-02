@@ -1,25 +1,26 @@
+import { DraggableSetup, Resizable, WindowMinimizer } from '../../libs/ui_helper.js';
 // =========================================================================
 // MODAL FULL COMPONENT
 // =========================================================================
 class ModalFull extends HTMLElement {
-    constructor() {
-        super();
-        this.modal = null;
-        this.isFullscreen = true;
-        this.showFooter = false;
-    }
+  constructor() {
+    super();
+    this.modal = null;
+    this.isFullscreen = true;
+    this.showFooter = false;
+  }
 
-    connectedCallback() {
-        this.init();
-        this.setupModal();
-        this._setupUI();
-    }
+  connectedCallback() {
+    this.init();
+    this.setupModal();
+    this._setupUI();
+  }
 
-    init() {
-        const title = this.getAttribute('title') || 'Modal Title';
-        this.showFooter = this.getAttribute('data-ft') !== 'false';
+  init() {
+    const title = this.getAttribute('title') || 'Modal Title';
+    this.showFooter = this.getAttribute('data-ft') !== 'false';
 
-        this.innerHTML = `
+    this.innerHTML = `
             <div id="dynamic-modal-full" class="modal fade" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-fullscreen" id="modalFullDialog">
                     <div class="modal-content">
@@ -34,344 +35,351 @@ class ModalFull extends HTMLElement {
                             </div>
                         </div>
                         <div id="dynamic-modal-full-body" class="modal-body pt-0 overflow-auto"></div>
-                        ${this.showFooter ? `
+                        ${
+                          this.showFooter
+                            ? `
                             <div class="modal-footer gap-2">
                                 <button type="button" class="btn btn-secondary">Xoá</button>
                                 <button type="button" class="btn btn-primary">Lưu</button>
                             </div>
-                        ` : ''}
+                        `
+                            : ''
+                        }
                     </div>
                 </div>
             </div>
         `;
+  }
+
+  setupModal() {
+    const modalEl = this.querySelector('#dynamic-modal-full');
+    this.modal = new bootstrap.Modal(modalEl, { backdrop: false, keyboard: false });
+
+    const dataLoad = this.getAttribute('data-body');
+    if (dataLoad) {
+      this._loadContent(dataLoad);
     }
 
-    setupModal() {
-        const modalEl = this.querySelector('#dynamic-modal-full');
-        this.modal = new bootstrap.Modal(modalEl, { backdrop: false, keyboard: false });
-
-        const dataLoad = this.getAttribute('data-body');
-        if (dataLoad) {
-            this._loadContent(dataLoad);
-        }
-
-        const dataAtSubmit = this.getAttribute('data-at-submit');
-        if (dataAtSubmit && typeof window[dataAtSubmit] === 'function') {
-            this.setSaveHandler(window[dataAtSubmit]);
-        }
-
-        // Setup resize toggle button
-        const btnResize = this.querySelector('#btnResizeModal');
-        if (btnResize) {
-            btnResize.addEventListener('click', () => this._toggleModalSize());
-        }
-
+    const dataAtSubmit = this.getAttribute('data-at-submit');
+    if (dataAtSubmit && typeof window[dataAtSubmit] === 'function') {
+      this.setSaveHandler(window[dataAtSubmit]);
     }
 
-    _setupUI() {
-        if (window.DraggableSetup) {
-            new window.DraggableSetup('dynamic-modal-full', { targetSelector: '.modal-dialog', handleSelector: '.modal-header' });
-        }
-        if (window.Resizable) {
-            new Resizable('dynamic-modal-full', {
-                targetSelector: '.modal-content',
-                minWidth: 400, minHeight: 300
-            });
-        }
-        if (window.WindowMinimizer) {
-            new WindowMinimizer('dynamic-modal-full', { title: 'Data', btnSelector: '.btn-minimize' });
-        }
+    // Setup resize toggle button
+    const btnResize = this.querySelector('#btnResizeModal');
+    if (btnResize) {
+      btnResize.addEventListener('click', () => this._toggleModalSize());
+    }
+  }
+
+  _setupUI() {
+    if (DraggableSetup) {
+      new DraggableSetup('dynamic-modal-full', {
+        targetSelector: '.modal-dialog',
+        handleSelector: '.modal-header',
+      });
+    }
+    if (Resizable) {
+      new Resizable('dynamic-modal-full', {
+        targetSelector: '.modal-content',
+        minWidth: 400,
+        minHeight: 300,
+      });
+    }
+    if (WindowMinimizer) {
+      new WindowMinimizer('dynamic-modal-full', { title: 'Data', btnSelector: '.btn-minimize' });
+    }
+  }
+
+  _loadContent(dataLoad) {
+    let content = '';
+
+    if (typeof window[dataLoad] === 'function') {
+      try {
+        content = window[dataLoad]();
+      } catch (error) {
+        log(`Error executing function "${dataLoad}": ${error.message}`, 'error');
+        return;
+      }
+    } else {
+      content = dataLoad;
     }
 
-    _loadContent(dataLoad) {
-        let content = '';
+    if (content) {
+      this.render(content);
+    }
+  }
 
-        if (typeof window[dataLoad] === 'function') {
-            try {
-                content = window[dataLoad]();
-            } catch (error) {
-                log(`Error executing function "${dataLoad}": ${error.message}`, 'error');
-                return;
-            }
-        } else {
-            content = dataLoad;
-        }
-
-        if (content) {
-            this.render(content);
-        }
+  /**
+   * Reset modal về trạng thái nguyên bản
+   * Xoá nội dung, reset title, clear styles
+   * @public
+   */
+  reset() {
+    const bodyEl = this.querySelector('#dynamic-modal-full-body');
+    if (bodyEl) {
+      bodyEl.innerHTML = '';
+      bodyEl.className = 'modal-body pt-0 overflow-auto';
     }
 
-    /**
-     * Reset modal về trạng thái nguyên bản
-     * Xoá nội dung, reset title, clear styles
-     * @public
-     */
-    reset() {
-        const bodyEl = this.querySelector('#dynamic-modal-full-body');
-        if (bodyEl) {
-            bodyEl.innerHTML = '';
-            bodyEl.className = 'modal-body pt-0 overflow-auto';
-        }
-
-        const titleEl = this.querySelector('.modal-title');
-        if (titleEl) {
-            titleEl.textContent = this.getAttribute('title') || 'Modal Title';
-        }
-
-        console.log('[ModalFull] 🔄 Modal reset to default state');
+    const titleEl = this.querySelector('.modal-title');
+    if (titleEl) {
+      titleEl.textContent = this.getAttribute('title') || 'Modal Title';
     }
 
-    /**
-     * Render nội dung vào modal
-     * @param {*} htmlContent - HTML content (string, Element, hoặc DocumentFragment)
-     * @param {string} [title='9 Trip Dynamic Form'] - Modal title
-     * 
-     * ★ FLOW CHỦ YẾU:
-     * 1. Controller render: new A.HotelPriceController('dynamic-modal-full-body')
-     *    └─ Controller thêm HTML vào #dynamic-modal-full-body
-     * 2. Gọi show(): modal.show(null, 'Title')
-     *    └─ show() KHÔNG reset (DOM đã sạch từ hide())
-     *    └─ show() KHÔNG render nếu htmlContent = null
-     *    └─ Chỉ update title → display modal
-     * 3. Khi close: hide() → reset() xóa sạch DOM cho lần mở tiếp
-     */
-    render(htmlContent, title = "9 Trip Dynamic Form") {
-        if (!this.modal) {
-            this.connectedCallback();
-        }
+    console.log('[ModalFull] 🔄 Modal reset to default state');
+  }
 
-        const bodyEl = this.querySelector('.modal-body');
-        const titleEl = this.querySelector('.modal-title');
-
-        if (titleEl) {
-            titleEl.textContent = title;
-        }
-        if (!htmlContent) {
-            bodyEl.innerHTML = '';
-            return;
-        }
-
-        // Xử lý content type
-        let processedContent = htmlContent;
-        if (htmlContent instanceof HTMLElement && htmlContent.tagName === 'TEMPLATE') {
-            processedContent = htmlContent.content;
-        }
-
-        const isFragment = processedContent instanceof DocumentFragment;
-        const isElement = processedContent instanceof HTMLElement;
-        const isString = typeof processedContent === 'string';
-
-        try {
-            if (isString) {
-                bodyEl.innerHTML = processedContent;
-            } else if (isFragment) {
-                bodyEl.innerHTML = '';
-                bodyEl.appendChild(processedContent.cloneNode(true));
-            } else if (isElement) {
-                bodyEl.innerHTML = '';
-                bodyEl.appendChild(processedContent.cloneNode(true));
-            } else if (processedContent) {
-                bodyEl.innerHTML = String(processedContent);
-            }
-            console.log(`[ModalFull] ✏️ Content rendered with title: ${title}`);
-        } catch (error) {
-            console.error("Error setting modal content:", error);
-        }
-        this.addEventListener('hidden.bs.modal', () => {
-            log('[ModalFull] Modal hidden, disposing instance and cleaning up DOM');
-            this.reset();
-        }, { once: true });
+  /**
+   * Render nội dung vào modal
+   * @param {*} htmlContent - HTML content (string, Element, hoặc DocumentFragment)
+   * @param {string} [title='9 Trip Dynamic Form'] - Modal title
+   *
+   * ★ FLOW CHỦ YẾU:
+   * 1. Controller render: new A.HotelPriceController('dynamic-modal-full-body')
+   *    └─ Controller thêm HTML vào #dynamic-modal-full-body
+   * 2. Gọi show(): modal.show(null, 'Title')
+   *    └─ show() KHÔNG reset (DOM đã sạch từ hide())
+   *    └─ show() KHÔNG render nếu htmlContent = null
+   *    └─ Chỉ update title → display modal
+   * 3. Khi close: hide() → reset() xóa sạch DOM cho lần mở tiếp
+   */
+  render(htmlContent, title = '9 Trip Dynamic Form') {
+    if (!this.modal) {
+      this.connectedCallback();
     }
 
-    /**
-     * Show modal với nội dung mới
-     * @param {*} [htmlContent=null] - HTML content để render
-     * @param {string} [title=null] - Modal title
-     * @param {Function} [saveHandler=null] - Save button handler
-     * @param {Function} [resetHandler=null] - Reset button handler
-     * 
-     * ★ FLOW: show() được gọi SAU khi controller đã inject content
-     * - Không gọi reset() (vì DOM đã sạch từ hide() lần trước)
-     * - Chỉ render nếu htmlContent được truyền
-     * - Render title lúc nào cũng cập nhật
-     */
-    show(htmlContent = null, title = null, saveHandler = null, resetHandler = null) {
-        // Render content nếu có (modal đã sạch từ hide())
-        if (htmlContent || title || !this.modal) {
-            this.render(htmlContent, title);
-        }
-        if (saveHandler) this.setSaveHandler(saveHandler);
-        if (resetHandler) this.setResetHandler(resetHandler);
-        this.modal.show();
+    const bodyEl = this.querySelector('.modal-body');
+    const titleEl = this.querySelector('.modal-title');
+
+    if (titleEl) {
+      titleEl.textContent = title;
+    }
+    if (!htmlContent) {
+      bodyEl.innerHTML = '';
+      return;
     }
 
-    hide() {
-        this.modal?.hide();
+    // Xử lý content type
+    let processedContent = htmlContent;
+    if (htmlContent instanceof HTMLElement && htmlContent.tagName === 'TEMPLATE') {
+      processedContent = htmlContent.content;
     }
 
-    getSaveBtn() {
-        return this.querySelector('.btn-primary');
+    const isFragment = processedContent instanceof DocumentFragment;
+    const isElement = processedContent instanceof HTMLElement;
+    const isString = typeof processedContent === 'string';
+
+    try {
+      if (isString) {
+        bodyEl.innerHTML = processedContent;
+      } else if (isFragment) {
+        bodyEl.innerHTML = '';
+        bodyEl.appendChild(processedContent.cloneNode(true));
+      } else if (isElement) {
+        bodyEl.innerHTML = '';
+        bodyEl.appendChild(processedContent.cloneNode(true));
+      } else if (processedContent) {
+        bodyEl.innerHTML = String(processedContent);
+      }
+    } catch (error) {
+      console.error('Error setting modal content:', error);
     }
+    this.addEventListener(
+      'hidden.bs.modal',
+      () => {
+        this.reset();
+      },
+      { once: true }
+    );
+  }
 
-    getCloseBtn() {
-        return this.querySelector('[data-bs-dismiss="modal"]');
+  /**
+   * Show modal với nội dung mới
+   * @param {*} [htmlContent=null] - HTML content để render
+   * @param {string} [title=null] - Modal title
+   * @param {Function} [saveHandler=null] - Save button handler
+   * @param {Function} [resetHandler=null] - Reset button handler
+   *
+   * ★ FLOW: show() được gọi SAU khi controller đã inject content
+   * - Không gọi reset() (vì DOM đã sạch từ hide() lần trước)
+   * - Chỉ render nếu htmlContent được truyền
+   * - Render title lúc nào cũng cập nhật
+   */
+  show(htmlContent = null, title = null, saveHandler = null, resetHandler = null) {
+    // Render content nếu có (modal đã sạch từ hide())
+    if (htmlContent || title || !this.modal) {
+      this.render(htmlContent, title);
     }
+    if (saveHandler) this.setSaveHandler(saveHandler);
+    if (resetHandler) this.setResetHandler(resetHandler);
+    this.modal.show();
+  }
 
-    setSaveHandler(handler) {
-        this.setFooter(true); // Hiển thị footer nếu có nút save
-        const saveBtn = this.getSaveBtn();
-        if (!saveBtn || typeof handler !== 'function') return;
+  hide() {
+    this.modal?.hide();
+  }
 
-        const newBtn = saveBtn.cloneNode(true);
-        saveBtn.parentNode.replaceChild(newBtn, saveBtn);
+  getSaveBtn() {
+    return this.querySelector('.btn-primary');
+  }
 
-        newBtn.addEventListener('click', () => {
-            handler.call(this);
+  getCloseBtn() {
+    return this.querySelector('[data-bs-dismiss="modal"]');
+  }
+
+  setSaveHandler(handler) {
+    this.setFooter(true); // Hiển thị footer nếu có nút save
+    const saveBtn = this.getSaveBtn();
+    if (!saveBtn || typeof handler !== 'function') return;
+
+    const newBtn = saveBtn.cloneNode(true);
+    saveBtn.parentNode.replaceChild(newBtn, saveBtn);
+
+    newBtn.addEventListener('click', () => {
+      handler.call(this);
+    });
+  }
+
+  setResetHandler(handler, btnText = 'Reset') {
+    const footerEl = this.querySelector('.modal-footer');
+    if (!footerEl) return;
+    let resetBtn = footerEl.querySelector('.btn-secondary');
+    if (!resetBtn) {
+      resetBtn = document.createElement('button');
+      resetBtn.type = 'button';
+      resetBtn.className = 'btn btn-secondary';
+      resetBtn.textContent = btnText;
+      footerEl.insertBefore(resetBtn, footerEl.firstChild);
+    } else {
+      resetBtn.textContent = btnText;
+      resetBtn.classList.remove('d-none');
+    }
+    if (typeof handler === 'function') {
+      resetBtn.addEventListener('click', () => {
+        handler.call(this);
+      });
+    } else {
+      resetBtn.addEventListener('click', (e) => {
+        const inputEls = this.querySelectorAll(
+          '.modal-body input, .modal-body select, .modal-body textarea'
+        );
+        inputEls.forEach((input) => {
+          if (input.type === 'checkbox' || input.type === 'radio') {
+            input.checked = false;
+          } else {
+            input.value = '';
+          }
         });
+      });
     }
+  }
 
-    setResetHandler(handler, btnText = 'Reset') {
-        const footerEl = this.querySelector('.modal-footer');
-        if (!footerEl) return;
-        let resetBtn = footerEl.querySelector('.btn-secondary');
-        if (!resetBtn) {
-            resetBtn = document.createElement('button');
-            resetBtn.type = 'button';
-            resetBtn.className = 'btn btn-secondary';
-            resetBtn.textContent = btnText;
-            footerEl.insertBefore(resetBtn, footerEl.firstChild);
-        } else {
-            resetBtn.textContent = btnText;
-            resetBtn.classList.remove('d-none');
-        }
-        if (typeof handler === 'function') {
-            resetBtn.addEventListener('click', () => {
-                handler.call(this);
-            });
-        } else {
-            resetBtn.addEventListener('click', (e) => {
-                const inputEls = this.querySelectorAll('.modal-body input, .modal-body select, .modal-body textarea');
-                inputEls.forEach(input => {
-                    if (input.type === 'checkbox' || input.type === 'radio') {
-                        input.checked = false;
-                    } else {
-                        input.value = '';
-                    }
-                });
-            });
-        }
-    }
-
-    setFooter(showFooter) {
-        this.showFooter = showFooter;
-        const footerEl = this.querySelector('.modal-footer');
-        if (showFooter) {
-            if (!footerEl) {
-                const footerHTML = `
+  setFooter(showFooter) {
+    this.showFooter = showFooter;
+    const footerEl = this.querySelector('.modal-footer');
+    if (showFooter) {
+      if (!footerEl) {
+        const footerHTML = `
                     <div class="modal-footer gap-2" data-ft="true">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
                         <button type="button" class="btn btn-primary">Lưu</button>
                     </div>
                 `;
-                this.querySelector('.modal-content').insertAdjacentHTML('beforeend', footerHTML);
-            } else {
-                footerEl.classList.remove('d-none');
-                footerEl.setAttribute('data-ft', 'true');
-            }
-        } else {
-            if (footerEl) {
-                footerEl.classList.add('d-none');
-            }
-        }
+        this.querySelector('.modal-content').insertAdjacentHTML('beforeend', footerHTML);
+      } else {
+        footerEl.classList.remove('d-none');
+        footerEl.setAttribute('data-ft', 'true');
+      }
+    } else {
+      if (footerEl) {
+        footerEl.classList.add('d-none');
+      }
     }
+  }
 
+  /**
+   * Toggle modal size between fullscreen and XL.
+   * Updates the modal-dialog class and icon accordingly.
+   * @private
+   */
+  _toggleModalSize() {
+    const modalDialog = this.querySelector('#modalFullDialog');
+    const btnResize = this.querySelector('#btnResizeModal');
 
+    if (!modalDialog || !btnResize) return;
 
-    /**
-     * Toggle modal size between fullscreen and XL.
-     * Updates the modal-dialog class and icon accordingly.
-     * @private
-     */
-    _toggleModalSize() {
-        const modalDialog = this.querySelector('#modalFullDialog');
-        const btnResize = this.querySelector('#btnResizeModal');
+    this.isFullscreen = !this.isFullscreen;
 
-        if (!modalDialog || !btnResize) return;
-
-        this.isFullscreen = !this.isFullscreen;
-
-        // Update modal dialog class
-        if (this.isFullscreen) {
-            modalDialog.className = 'modal-dialog modal-fullscreen';
-            btnResize.innerHTML = '<i class="fas fa-expand"></i>';
-            btnResize.title = 'Thu nhỏ modal';
-        } else {
-            modalDialog.className = 'modal-dialog modal-xl';
-            modalDialog.style.draggable = true; // Enable dragging when not fullscreen
-            btnResize.innerHTML = '<i class="fas fa-compress"></i>';
-            btnResize.title = 'Phóng to modal';
-        }
+    // Update modal dialog class
+    if (this.isFullscreen) {
+      modalDialog.className = 'modal-dialog modal-fullscreen';
+      btnResize.innerHTML = '<i class="fas fa-expand"></i>';
+      btnResize.title = 'Thu nhỏ modal';
+    } else {
+      modalDialog.className = 'modal-dialog modal-xl';
+      modalDialog.style.draggable = true; // Enable dragging when not fullscreen
+      btnResize.innerHTML = '<i class="fas fa-compress"></i>';
+      btnResize.title = 'Phóng to modal';
     }
+  }
 }
 
 customElements.define('at-modal-full', ModalFull);
 
 export class OffcanvasMenu extends HTMLElement {
-    constructor() {
-        super();
-        this.attachShadow({ mode: 'open' });
-        this._initialized = false;
-        // State Management
-        this.state = {
-            selectedStages: new Set(['all']),
-            searchQuery: '',
-            isHoverEnabled: true,
-            triggerWidth: 20,
-            isPinned: false,
-            isRightSide: false,
-            menuWidth: 340,
-            minWidth: 280,
-            maxWidth: 600,
-            isResizing: false
-        };
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._initialized = false;
+    // State Management
+    this.state = {
+      selectedStages: new Set(['all']),
+      searchQuery: '',
+      isHoverEnabled: true,
+      triggerWidth: 20,
+      isPinned: false,
+      isRightSide: false,
+      menuWidth: 340,
+      minWidth: 280,
+      maxWidth: 600,
+      isResizing: false,
+    };
 
-        // ★ FIX: Bind methods with correct 'this' context
-        this._handleMouseMove = this._handleMouseMove.bind(this);
-        this._handleMouseLeave = this._handleMouseLeave.bind(this);
-        this._handleResizeStart = this._handleResizeStart.bind(this);
-        this._handleResizing = this._handleResizing.bind(this);
-        this._handleResizeEnd = this._handleResizeEnd.bind(this);
+    // ★ FIX: Bind methods with correct 'this' context
+    this._handleMouseMove = this._handleMouseMove.bind(this);
+    this._handleMouseLeave = this._handleMouseLeave.bind(this);
+    this._handleResizeStart = this._handleResizeStart.bind(this);
+    this._handleResizing = this._handleResizing.bind(this);
+    this._handleResizeEnd = this._handleResizeEnd.bind(this);
+  }
+
+  connectedCallback() {
+    if (this._initialized) {
+      console.warn('[OffcanvasMenu] Đã khởi tạo rồi, bỏ qua...');
+      return;
     }
+    this._initialized = true;
 
-    connectedCallback() {
-        if (this._initialized) {
-            console.warn('[OffcanvasMenu] Đã khởi tạo rồi, bỏ qua...');
-            return;
-        }
-        this._initialized = true;
+    if (this.shadowRoot.querySelector('.offcanvas-wrapper')) return;
 
-        if (this.shadowRoot.querySelector('.offcanvas-wrapper')) return;
+    this._render();
+    this._setupDOM();
+    this._attachEvents();
+    this._initHoverTrigger();
+    this._initResizeHandle();
 
-        this._render();
-        this._setupDOM();
-        this._attachEvents();
-        this._initHoverTrigger();
-        this._initResizeHandle();
+    this.classList.remove('show');
+  }
 
-        this.classList.remove('show');
-    }
+  // =========================================================================
+  // 1. RENDERING
+  // =========================================================================
 
-
-
-    // =========================================================================
-    // 1. RENDERING
-    // =========================================================================
-
-    _render() {
-        this.shadowRoot.innerHTML = '';
-        const template = document.createElement('template');
-        template.innerHTML = `
+  _render() {
+    this.shadowRoot.innerHTML = '';
+    const template = document.createElement('template');
+    template.innerHTML = `
             ${this._getStyles()}
             <div class="offcanvas-wrapper">
               <div class="resize-handle resize-handle-left" title="Kéo để điều chỉnh chiều rộng"></div>
@@ -443,30 +451,30 @@ export class OffcanvasMenu extends HTMLElement {
               </div>
             </div>
         `;
-        this.shadowRoot.appendChild(template.content.cloneNode(true));
-    }
+    this.shadowRoot.appendChild(template.content.cloneNode(true));
+  }
 
-    _renderCheckbox(value, label, className, checked = false) {
-        return `
+  _renderCheckbox(value, label, className, checked = false) {
+    return `
             <label class="checkbox-item">
                 <input type="checkbox" class="stage-filter" value="${value}" ${checked ? 'checked' : ''}>
                 <span class="custom-check"></span>
                 <span class="badge ${className}">${label}</span>
             </label>
         `;
-    }
+  }
 
-    _renderFuncBtn(action, label, icon, color) {
-        return `
+  _renderFuncBtn(action, label, icon, color) {
+    return `
             <button class="func-btn" data-action="${action}">
                 <i class="fas fa-${icon}" style="color: ${color}"></i>
                 <span>${label}</span>
             </button>
         `;
-    }
+  }
 
-    _getStyles() {
-        return `
+  _getStyles() {
+    return `
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
         <style>
             :host {
@@ -869,566 +877,576 @@ export class OffcanvasMenu extends HTMLElement {
             }
         </style>
         `;
-    }
+  }
 
-    // =========================================================================
-    // 2. SETUP & EVENTS
-    // =========================================================================
+  // =========================================================================
+  // 2. SETUP & EVENTS
+  // =========================================================================
 
-    _setupDOM() {
-        this.dom = {
-            wrapper: this.shadowRoot.querySelector('.offcanvas-wrapper'),
-            closeBtn: this.shadowRoot.querySelector('.btn-close'),
-            searchInput: this.shadowRoot.querySelector('#searchInput'),
-            checkboxes: this.shadowRoot.querySelectorAll('.stage-filter'),
-            btnReset: this.shadowRoot.querySelector('#btnReset'),
-            funcButtons: this.shadowRoot.querySelectorAll('.func-btn'),
-            testBtn: this.shadowRoot.querySelector('#btn-admin-test'),
-            btnPin: this.shadowRoot.querySelector('#btn-pin'),
-            btnToggleSide: this.shadowRoot.querySelector('#btn-toggle-side'),
-            resizeHandleLeft: this.shadowRoot.querySelector('.resize-handle-left'),
-            resizeHandleRight: this.shadowRoot.querySelector('.resize-handle-right'),
-        };
-    }
+  _setupDOM() {
+    this.dom = {
+      wrapper: this.shadowRoot.querySelector('.offcanvas-wrapper'),
+      closeBtn: this.shadowRoot.querySelector('.btn-close'),
+      searchInput: this.shadowRoot.querySelector('#searchInput'),
+      checkboxes: this.shadowRoot.querySelectorAll('.stage-filter'),
+      btnReset: this.shadowRoot.querySelector('#btnReset'),
+      funcButtons: this.shadowRoot.querySelectorAll('.func-btn'),
+      testBtn: this.shadowRoot.querySelector('#btn-admin-test'),
+      btnPin: this.shadowRoot.querySelector('#btn-pin'),
+      btnToggleSide: this.shadowRoot.querySelector('#btn-toggle-side'),
+      resizeHandleLeft: this.shadowRoot.querySelector('.resize-handle-left'),
+      resizeHandleRight: this.shadowRoot.querySelector('.resize-handle-right'),
+    };
+  }
 
-    _attachEvents() {
-        this.dom.closeBtn.addEventListener('click', () => this.close());
-        this.dom.btnReset.addEventListener('click', () => this._resetFilters());
+  _attachEvents() {
+    this.dom.closeBtn.addEventListener('click', () => this.close());
+    this.dom.btnReset.addEventListener('click', () => this._resetFilters());
 
+    this.dom.searchInput.addEventListener('input', (e) => {
+      this.state.searchQuery = e.target.value.trim();
+      this._dispatchUpdate();
+    });
 
-        this.dom.searchInput.addEventListener('input', (e) => {
-            this.state.searchQuery = e.target.value.trim();
-            this._dispatchUpdate();
-        });
+    this.dom.checkboxes.forEach((cb) => {
+      cb.addEventListener('change', (e) => this._handleCheckboxChange(e));
+    });
 
-        this.dom.checkboxes.forEach(cb => {
-            cb.addEventListener('change', (e) => this._handleCheckboxChange(e));
-        });
-
-        this.dom.funcButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const action = btn.dataset.action;
-                this.dispatchEvent(new CustomEvent('offcanvas-action', {
-                    detail: { action },
-                    bubbles: true,
-                    composed: true
-                }));
-                if (typeof window[action] === 'function') {
-                    window[action]();
-                }
-            });
-
-        });
-
-        this.dom.wrapper.addEventListener('mouseleave', this._handleMouseLeave);
-        this.dom.testBtn.addEventListener('click', () => this._test());
-
-        this.dom.btnPin.addEventListener('click', () => this._togglePin());
-        this.dom.btnToggleSide.addEventListener('click', () => this._toggleSide());
-    }
-
-    _handleCheckboxChange(e) {
-        const val = e.target.value;
-        const isChecked = e.target.checked;
-
-        if (val === 'all') {
-            if (isChecked) {
-                this.state.selectedStages.clear();
-                this.state.selectedStages.add('all');
-                this.dom.checkboxes.forEach(c => {
-                    if (c.value !== 'all') c.checked = false;
-                });
-            } else {
-                e.target.checked = true;
-            }
-        } else {
-            if (isChecked) {
-                this.state.selectedStages.delete('all');
-                this.dom.checkboxes.forEach(c => {
-                    if (c.value === 'all') c.checked = false;
-                });
-                this.state.selectedStages.add(val);
-            } else {
-                this.state.selectedStages.delete(val);
-                if (this.state.selectedStages.size === 0) {
-                    this.state.selectedStages.add('all');
-                    this.shadowRoot.querySelector('input[value="all"]').checked = true;
-                }
-            }
+    this.dom.funcButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        this.dispatchEvent(
+          new CustomEvent('offcanvas-action', {
+            detail: { action },
+            bubbles: true,
+            composed: true,
+          })
+        );
+        if (typeof window[action] === 'function') {
+          window[action]();
         }
-        this._dispatchUpdate();
-    }
+      });
+    });
 
-    _resetFilters() {
-        this.dom.searchInput.value = '';
-        this.state.searchQuery = '';
+    this.dom.wrapper.addEventListener('mouseleave', this._handleMouseLeave);
+    this.dom.testBtn.addEventListener('click', () => this._test());
+
+    this.dom.btnPin.addEventListener('click', () => this._togglePin());
+    this.dom.btnToggleSide.addEventListener('click', () => this._toggleSide());
+  }
+
+  _handleCheckboxChange(e) {
+    const val = e.target.value;
+    const isChecked = e.target.checked;
+
+    if (val === 'all') {
+      if (isChecked) {
         this.state.selectedStages.clear();
         this.state.selectedStages.add('all');
-
-        this.dom.checkboxes.forEach(c => {
-            c.checked = (c.value === 'all');
+        this.dom.checkboxes.forEach((c) => {
+          if (c.value !== 'all') c.checked = false;
         });
+      } else {
+        e.target.checked = true;
+      }
+    } else {
+      if (isChecked) {
+        this.state.selectedStages.delete('all');
+        this.dom.checkboxes.forEach((c) => {
+          if (c.value === 'all') c.checked = false;
+        });
+        this.state.selectedStages.add(val);
+      } else {
+        this.state.selectedStages.delete(val);
+        if (this.state.selectedStages.size === 0) {
+          this.state.selectedStages.add('all');
+          this.shadowRoot.querySelector('input[value="all"]').checked = true;
+        }
+      }
+    }
+    this._dispatchUpdate();
+  }
 
-        this._dispatchUpdate();
+  _resetFilters() {
+    this.dom.searchInput.value = '';
+    this.state.searchQuery = '';
+    this.state.selectedStages.clear();
+    this.state.selectedStages.add('all');
+
+    this.dom.checkboxes.forEach((c) => {
+      c.checked = c.value === 'all';
+    });
+
+    this._dispatchUpdate();
+  }
+
+  _test() {
+    const val = this.shadowRoot.querySelector('#test-input')?.value || '';
+
+    if (!val) {
+      log('Vui lòng nhập mã lệnh hoặc tên hàm', 'warning');
+      return;
     }
 
-    _test() {
-        const val = this.shadowRoot.querySelector('#test-input')?.value || '';
+    try {
+      const fn1 = new Function(`return (${val.trim()})`);
+      fn1();
+      log('Test executed successfully', 'success');
+    } catch (e1) {
+      try {
+        const fn2 = new Function(val.trim());
+        fn2();
+        log('Test executed successfully', 'success');
+      } catch (e2) {
+        log(`Lỗi khi thực thi: ${e2.message}`, 'error');
+      }
+    }
+  }
 
-        if (!val) {
-            log('Vui lòng nhập mã lệnh hoặc tên hàm', 'warning');
-            return;
-        }
+  openReport() {
+    // Đóng menu sidebar
+    const offcanvas = bootstrap.Offcanvas.getInstance(
+      this.shadowRoot.querySelector('#offcanvas-menu')
+    );
+    if (offcanvas) offcanvas.hide();
 
-        try {
-            const fn1 = new Function(`return (${val.trim()})`);
-            fn1();
-            log('Test executed successfully', 'success');
-        } catch (e1) {
-            try {
-                const fn2 = new Function(val.trim());
-                fn2();
-                log('Test executed successfully', 'success');
-            } catch (e2) {
-                log(`Lỗi khi thực thi: ${e2.message}`, 'error');
-            }
-        }
+    // Mở Modal Báo Cáo
+    // Kiểm tra xem ModalFull đã được định nghĩa chưa, nếu chưa thì báo lỗi hoặc fallback
+    const modal = document.querySelector('at-modal-full');
+    if (modal) {
+      // Set tiêu đề và hiển thị
+
+      // Gọi hàm show của Report Module
+      // Lưu ý: Cần đảm bảo script logic_report.js đã được load
+      if (window.ReportModule) {
+        window.ReportModule.init(); // Init report content inside modal
+        modal.show(); // Show modal container
+      } else {
+        console.error('ReportModule not found. Please load logic_report.js');
+        logA('Chưa tải module báo cáo. Vui lòng refresh trang.', 'warning', 'alert');
+      }
+    }
+  }
+
+  _dispatchUpdate() {
+    this.dispatchEvent(
+      new CustomEvent('filter-change', {
+        detail: {
+          stages: Array.from(this.state.selectedStages),
+          search: this.state.searchQuery,
+        },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
+  // =========================================================================
+  // 3. PIN & SIDE TOGGLE
+  // =========================================================================
+
+  /**
+   * Toggle pin state - when pinned, menu stays visible on hover-away.
+   * When unpinned, menu auto-hides after mouse leaves.
+   * @private
+   */
+  _togglePin() {
+    this.state.isPinned = !this.state.isPinned;
+    this.state.isHoverEnabled = !this.state.isPinned;
+
+    if (this.state.isPinned) {
+      this.dom.btnPin.classList.add('active');
+      this.dom.closeBtn.style.display = 'none';
+    } else {
+      this.dom.btnPin.classList.remove('active');
+      this.dom.closeBtn.style.display = '';
     }
 
-    openReport() {
-        // Đóng menu sidebar
-        const offcanvas = bootstrap.Offcanvas.getInstance(this.shadowRoot.querySelector('#offcanvas-menu'));
-        if (offcanvas) offcanvas.hide();
+    this.dispatchEvent(
+      new CustomEvent('pin-changed', {
+        detail: { isPinned: this.state.isPinned },
+        bubbles: true,
+        composed: true,
+      })
+    );
 
-        // Mở Modal Báo Cáo
-        // Kiểm tra xem ModalFull đã được định nghĩa chưa, nếu chưa thì báo lỗi hoặc fallback
-        const modal = document.querySelector('at-modal-full');
-        if (modal) {
-            // Set tiêu đề và hiển thị
+    log(
+      this.state.isPinned
+        ? 'Menu được ghim - không tự động ẩn'
+        : 'Menu có thể tự động ẩn khi hover rời',
+      'info'
+    );
+  }
 
-            // Gọi hàm show của Report Module
-            // Lưu ý: Cần đảm bảo script logic_report.js đã được load
-            if (window.ReportModule) {
-                window.ReportModule.init(); // Init report content inside modal
-                modal.show(); // Show modal container
-            } else {
-                console.error("ReportModule not found. Please load logic_report.js");
-                alert("Chưa tải module báo cáo. Vui lòng refresh trang.");
-            }
-        }
+  /**
+   * Toggle sidebar position - left ↔ right.
+   * @private
+   */
+  _toggleSide() {
+    this.state.isRightSide = !this.state.isRightSide;
+
+    if (this.state.isRightSide) {
+      this.classList.add('right-side');
+      this.dom.btnToggleSide.classList.add('right-active');
+    } else {
+      this.classList.remove('right-side');
+      this.dom.btnToggleSide.classList.remove('right-active');
     }
 
-    _dispatchUpdate() {
-        this.dispatchEvent(new CustomEvent('filter-change', {
-            detail: {
-                stages: Array.from(this.state.selectedStages),
-                search: this.state.searchQuery
-            },
-            bubbles: true,
-            composed: true
-        }));
+    this.dispatchEvent(
+      new CustomEvent('side-changed', {
+        detail: { isRightSide: this.state.isRightSide },
+        bubbles: true,
+        composed: true,
+      })
+    );
+
+    log(
+      this.state.isRightSide ? 'Sidebar chuyển sang bên phải' : 'Sidebar chuyển sang bên trái',
+      'info'
+    );
+  }
+
+  // =========================================================================
+  // ★ 4. RESIZE HANDLE LOGIC (FIXED)
+  // =========================================================================
+
+  /**
+   * Initialize resize handle listeners.
+   * Attach mousedown events to both left and right resize handles.
+   * @private
+   */
+  _initResizeHandle() {
+    if (!this.dom.resizeHandleLeft || !this.dom.resizeHandleRight) return;
+
+    this.dom.resizeHandleLeft.addEventListener('mousedown', this._handleResizeStart);
+    this.dom.resizeHandleRight.addEventListener('mousedown', this._handleResizeStart);
+  }
+
+  /**
+   * Handle resize start - initialize drag state and attach global listeners.
+   * ★ FIX: Correct binding and property access
+   * @private
+   * @param {MouseEvent} e
+   */
+  _handleResizeStart(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // ★ FIX: Access 'this' correctly (bound in constructor)
+    this.state.isResizing = true;
+    this._resizeStartX = e.clientX;
+    this._resizeStartWidth = this.state.menuWidth;
+
+    // Visual feedback
+    this.dom.resizeHandleLeft?.classList.add('active');
+    this.dom.resizeHandleRight?.classList.add('active');
+
+    // ★ FIX: Use .style.transition = 'none' NOT .transition('none')
+    if (this.dom.wrapper) {
+      this.dom.wrapper.style.transition = 'none';
     }
 
-    // =========================================================================
-    // 3. PIN & SIDE TOGGLE
-    // =========================================================================
+    // ★ FIX: Attach with correct binding context
+    document.addEventListener('mousemove', this._handleResizing, false);
+    document.addEventListener('mouseup', this._handleResizeEnd, false);
+  }
 
-    /**
-     * Toggle pin state - when pinned, menu stays visible on hover-away.
-     * When unpinned, menu auto-hides after mouse leaves.
-     * @private
-     */
-    _togglePin() {
-        this.state.isPinned = !this.state.isPinned;
-        this.state.isHoverEnabled = !this.state.isPinned;
-
-        if (this.state.isPinned) {
-            this.dom.btnPin.classList.add('active');
-            this.dom.closeBtn.style.display = 'none';
-        } else {
-            this.dom.btnPin.classList.remove('active');
-            this.dom.closeBtn.style.display = '';
-        }
-
-        this.dispatchEvent(new CustomEvent('pin-changed', {
-            detail: { isPinned: this.state.isPinned },
-            bubbles: true,
-            composed: true
-        }));
-
-        log(
-            this.state.isPinned
-                ? 'Menu được ghim - không tự động ẩn'
-                : 'Menu có thể tự động ẩn khi hover rời',
-            'info'
-        );
+  /**
+   * Handle resizing - update menu width dynamically as user drags.
+   * ★ FIX: Arrow function ensures 'this' binding is correct
+   * @private
+   * @param {MouseEvent} e
+   */
+  _handleResizing = (e) => {
+    // ★ FIX: Guard clause to prevent errors if state lost
+    if (!this.state || !this.state.isResizing) {
+      return;
     }
 
-    /**
-     * Toggle sidebar position - left ↔ right.
-     * @private
-     */
-    _toggleSide() {
-        this.state.isRightSide = !this.state.isRightSide;
+    try {
+      e.preventDefault();
 
-        if (this.state.isRightSide) {
-            this.classList.add('right-side');
-            this.dom.btnToggleSide.classList.add('right-active');
-        } else {
-            this.classList.remove('right-side');
-            this.dom.btnToggleSide.classList.remove('right-active');
-        }
+      const deltaX = e.clientX - this._resizeStartX;
+      let newWidth = this._resizeStartWidth;
 
-        this.dispatchEvent(new CustomEvent('side-changed', {
-            detail: { isRightSide: this.state.isRightSide },
-            bubbles: true,
-            composed: true
-        }));
+      // ★ Correct direction calculation
+      if (this.state.isRightSide) {
+        newWidth = this._resizeStartWidth - deltaX;
+      } else {
+        newWidth = this._resizeStartWidth + deltaX;
+      }
 
-        log(
-            this.state.isRightSide
-                ? 'Sidebar chuyển sang bên phải'
-                : 'Sidebar chuyển sang bên trái',
-            'info'
-        );
+      // Apply constraints
+      newWidth = Math.max(this.state.minWidth, Math.min(newWidth, this.state.maxWidth));
+
+      // Update state and CSS
+      this.state.menuWidth = newWidth;
+      this.style.setProperty('--w-panel', `${newWidth}px`);
+
+      // Dispatch event
+      this.dispatchEvent(
+        new CustomEvent('resize-changed', {
+          detail: { width: newWidth },
+          bubbles: true,
+          composed: true,
+        })
+      );
+    } catch (err) {
+      // ★ FIX: Silently fail without breaking event chain
+      console.warn('Resize error (non-fatal):', err.message);
+    }
+  };
+
+  /**
+   * Handle resize end - cleanup listeners and restore transitions.
+   * ★ FIX: Proper cleanup with error handling
+   * @private
+   * @param {MouseEvent} e
+   */
+  _handleResizeEnd = (e) => {
+    try {
+      // ★ FIX: Check state exists before accessing
+      if (this.state) {
+        this.state.isResizing = false;
+      }
+
+      // Remove visual feedback
+      this.dom.resizeHandleLeft?.classList.remove('active');
+      this.dom.resizeHandleRight?.classList.remove('active');
+
+      // ★ FIX: Use .style.transition = '' to restore (empty string = restore CSS default)
+      if (this.dom.wrapper) {
+        this.dom.wrapper.style.transition = '';
+      }
+
+      // ★ FIX: Remove listeners with matching parameters
+      document.removeEventListener('mousemove', this._handleResizing, false);
+      document.removeEventListener('mouseup', this._handleResizeEnd, false);
+
+      // Save state
+      this._saveResizeState();
+
+      log(`Menu width: ${this.state.menuWidth}px`, 'info');
+    } catch (err) {
+      console.warn('Resize end error (non-fatal):', err.message);
+    }
+  };
+
+  /**
+   * Save resize state to localStorage for persistence.
+   * @private
+   */
+  _saveResizeState() {
+    try {
+      const state = JSON.parse(localStorage.getItem('offcanvas-menu-state') || '{}');
+      state.menuWidth = this.state.menuWidth;
+      localStorage.setItem('offcanvas-menu-state', JSON.stringify(state));
+    } catch (err) {
+      console.warn('State save error:', err.message);
+    }
+  }
+
+  // =========================================================================
+  // ★ 5. AUTO HIDE/SHOW TRIGGER LOGIC (ENSURE NO CONFLICTS)
+  // =========================================================================
+
+  /**
+   * Initialize hover trigger - add global mousemove listener for auto-show.
+   * ★ IMPORTANT: This runs independently from resize handler
+   * @private
+   */
+  _initHoverTrigger() {
+    this._hoverTriggerTime = null; // Track when cursor enters trigger zone
+    document.addEventListener('mousemove', this._handleMouseMove, false);
+  }
+
+  /**
+   * Handle global mouse move - open menu when cursor near edge for at least 1s.
+   * Only works when NOT pinned and NOT resizing.
+   * ★ FIX: Add 1s delay before opening menu to prevent accidental triggers
+   * @private
+   * @param {MouseEvent} e
+   */
+  _handleMouseMove(e) {
+    // ★ Skip if resizing (don't block other handlers)
+    if (!this || !this.state || this.state.isResizing) {
+      return;
     }
 
-    // =========================================================================
-    // ★ 4. RESIZE HANDLE LOGIC (FIXED)
-    // =========================================================================
-
-    /**
-     * Initialize resize handle listeners.
-     * Attach mousedown events to both left and right resize handles.
-     * @private
-     */
-    _initResizeHandle() {
-        if (!this.dom.resizeHandleLeft || !this.dom.resizeHandleRight) return;
-
-        this.dom.resizeHandleLeft.addEventListener('mousedown', this._handleResizeStart);
-        this.dom.resizeHandleRight.addEventListener('mousedown', this._handleResizeStart);
+    if (!this.state.isHoverEnabled) {
+      return;
     }
 
-    /**
-     * Handle resize start - initialize drag state and attach global listeners.
-     * ★ FIX: Correct binding and property access
-     * @private
-     * @param {MouseEvent} e
-     */
-    _handleResizeStart(e) {
-        e.preventDefault();
-        e.stopPropagation();
+    try {
+      const triggerX = this.state.isRightSide
+        ? window.innerWidth - this.state.triggerWidth
+        : this.state.triggerWidth;
 
-        // ★ FIX: Access 'this' correctly (bound in constructor)
-        this.state.isResizing = true;
-        this._resizeStartX = e.clientX;
-        this._resizeStartWidth = this.state.menuWidth;
+      const isInTriggerZone = this.state.isRightSide
+        ? e.clientX >= triggerX
+        : e.clientX <= triggerX;
 
-        // Visual feedback
-        this.dom.resizeHandleLeft?.classList.add('active');
-        this.dom.resizeHandleRight?.classList.add('active');
-
-        // ★ FIX: Use .style.transition = 'none' NOT .transition('none')
-        if (this.dom.wrapper) {
-            this.dom.wrapper.style.transition = 'none';
+      if (isInTriggerZone) {
+        // Cursor entered trigger zone
+        if (!this._hoverTriggerTime) {
+          // Record time when cursor first enters
+          this._hoverTriggerTime = Date.now();
+          if (this._isClosing) this._isClosing = false; // Cancel any pending close
+        } else if (Date.now() - this._hoverTriggerTime >= 1000) {
+          // Cursor has been in zone for at least 1 second
+          this.open();
         }
-
-        // ★ FIX: Attach with correct binding context
-        document.addEventListener('mousemove', this._handleResizing, false);
-        document.addEventListener('mouseup', this._handleResizeEnd, false);
-    }
-
-    /**
-     * Handle resizing - update menu width dynamically as user drags.
-     * ★ FIX: Arrow function ensures 'this' binding is correct
-     * @private
-     * @param {MouseEvent} e
-     */
-    _handleResizing = (e) => {
-        // ★ FIX: Guard clause to prevent errors if state lost
-        if (!this.state || !this.state.isResizing) {
-            return;
-        }
-
-        try {
-            e.preventDefault();
-
-            const deltaX = e.clientX - this._resizeStartX;
-            let newWidth = this._resizeStartWidth;
-
-            // ★ Correct direction calculation
-            if (this.state.isRightSide) {
-                newWidth = this._resizeStartWidth - deltaX;
-            } else {
-                newWidth = this._resizeStartWidth + deltaX;
-            }
-
-            // Apply constraints
-            newWidth = Math.max(this.state.minWidth, Math.min(newWidth, this.state.maxWidth));
-
-            // Update state and CSS
-            this.state.menuWidth = newWidth;
-            this.style.setProperty('--w-panel', `${newWidth}px`);
-
-            // Dispatch event
-            this.dispatchEvent(new CustomEvent('resize-changed', {
-                detail: { width: newWidth },
-                bubbles: true,
-                composed: true
-            }));
-        } catch (err) {
-            // ★ FIX: Silently fail without breaking event chain
-            console.warn('Resize error (non-fatal):', err.message);
-        }
-    }
-
-    /**
-     * Handle resize end - cleanup listeners and restore transitions.
-     * ★ FIX: Proper cleanup with error handling
-     * @private
-     * @param {MouseEvent} e
-     */
-    _handleResizeEnd = (e) => {
-        try {
-            // ★ FIX: Check state exists before accessing
-            if (this.state) {
-                this.state.isResizing = false;
-            }
-
-            // Remove visual feedback
-            this.dom.resizeHandleLeft?.classList.remove('active');
-            this.dom.resizeHandleRight?.classList.remove('active');
-
-            // ★ FIX: Use .style.transition = '' to restore (empty string = restore CSS default)
-            if (this.dom.wrapper) {
-                this.dom.wrapper.style.transition = '';
-            }
-
-            // ★ FIX: Remove listeners with matching parameters
-            document.removeEventListener('mousemove', this._handleResizing, false);
-            document.removeEventListener('mouseup', this._handleResizeEnd, false);
-
-            // Save state
-            this._saveResizeState();
-
-            log(`Menu width: ${this.state.menuWidth}px`, 'info');
-        } catch (err) {
-            console.warn('Resize end error (non-fatal):', err.message);
-        }
-    }
-
-    /**
-     * Save resize state to localStorage for persistence.
-     * @private
-     */
-    _saveResizeState() {
-        try {
-            const state = JSON.parse(localStorage.getItem('offcanvas-menu-state') || '{}');
-            state.menuWidth = this.state.menuWidth;
-            localStorage.setItem('offcanvas-menu-state', JSON.stringify(state));
-        } catch (err) {
-            console.warn('State save error:', err.message);
-        }
-    }
-
-    // =========================================================================
-    // ★ 5. AUTO HIDE/SHOW TRIGGER LOGIC (ENSURE NO CONFLICTS)
-    // =========================================================================
-
-    /**
-     * Initialize hover trigger - add global mousemove listener for auto-show.
-     * ★ IMPORTANT: This runs independently from resize handler
-     * @private
-     */
-    _initHoverTrigger() {
-        this._hoverTriggerTime = null; // Track when cursor enters trigger zone
-        document.addEventListener('mousemove', this._handleMouseMove, false);
-    }
-
-    /**
-     * Handle global mouse move - open menu when cursor near edge for at least 1s.
-     * Only works when NOT pinned and NOT resizing.
-     * ★ FIX: Add 1s delay before opening menu to prevent accidental triggers
-     * @private
-     * @param {MouseEvent} e
-     */
-    _handleMouseMove(e) {
-        // ★ Skip if resizing (don't block other handlers)
-        if (!this || !this.state || this.state.isResizing) {
-            return;
-        }
-
-        if (!this.state.isHoverEnabled) {
-            return;
-        }
-
-        try {
-            const triggerX = this.state.isRightSide
-                ? window.innerWidth - this.state.triggerWidth
-                : this.state.triggerWidth;
-
-            const isInTriggerZone = this.state.isRightSide
-                ? e.clientX >= triggerX
-                : e.clientX <= triggerX;
-
-            if (isInTriggerZone) {
-                // Cursor entered trigger zone
-                if (!this._hoverTriggerTime) {
-                    // Record time when cursor first enters
-                    this._hoverTriggerTime = Date.now();
-                    if (this._isClosing) this._isClosing = false; // Cancel any pending close
-                } else if (Date.now() - this._hoverTriggerTime >= 1000) {
-                    // Cursor has been in zone for at least 1 second
-                    this.open();
-                }
-            } else {
-                // Cursor left trigger zone - reset timer
-                this._hoverTriggerTime = null;
-            }
-        } catch (err) {
-            console.warn('Hover trigger error (non-fatal):', err.message);
-        }
-    }
-
-    /**
-     * Handle mouse leave from menu wrapper - close after delay and reset hover timer.
-     * Only works when NOT pinned.
-     * @private
-     */
-    _handleMouseLeave(e) {
-        if (!this.state || !this.state.isHoverEnabled) {
-            return;
-        }
-
-        // Reset hover trigger timer khi chuột rời menu
+      } else {
+        // Cursor left trigger zone - reset timer
         this._hoverTriggerTime = null;
-        this._isClosing = true;
+      }
+    } catch (err) {
+      console.warn('Hover trigger error (non-fatal):', err.message);
+    }
+  }
 
-        setTimeout(() => {
-            if (this._isClosing) {
-                this.close();
-            }
-        }, 1500);
+  /**
+   * Handle mouse leave from menu wrapper - close after delay and reset hover timer.
+   * Only works when NOT pinned.
+   * @private
+   */
+  _handleMouseLeave(e) {
+    if (!this.state || !this.state.isHoverEnabled) {
+      return;
     }
 
-    // =========================================================================
-    // ★ 6. DISCONNECT - PROPER CLEANUP
-    // =========================================================================
+    // Reset hover trigger timer khi chuột rời menu
+    this._hoverTriggerTime = null;
+    this._isClosing = true;
 
-    disconnectedCallback() {
-        try {
-            // Remove hover trigger
-            document.removeEventListener('mousemove', this._handleMouseMove, false);
+    setTimeout(() => {
+      if (this._isClosing) {
+        this.close();
+      }
+    }, 1500);
+  }
 
-            // Remove any active resize listeners
-            document.removeEventListener('mousemove', this._handleResizing, false);
-            document.removeEventListener('mouseup', this._handleResizeEnd, false);
-            if (this.hoverTrigger) this.hoverTrigger.remove();
-        } catch (err) {
-            console.warn('Cleanup error:', err.message);
-        }
+  // =========================================================================
+  // ★ 6. DISCONNECT - PROPER CLEANUP
+  // =========================================================================
+
+  disconnectedCallback() {
+    try {
+      // Remove hover trigger
+      document.removeEventListener('mousemove', this._handleMouseMove, false);
+
+      // Remove any active resize listeners
+      document.removeEventListener('mousemove', this._handleResizing, false);
+      document.removeEventListener('mouseup', this._handleResizeEnd, false);
+      if (this.hoverTrigger) this.hoverTrigger.remove();
+    } catch (err) {
+      console.warn('Cleanup error:', err.message);
+    }
+  }
+
+  // =========================================================================
+  // 6. PUBLIC API
+  // =========================================================================
+
+  /**
+   * Open menu.
+   */
+  open() {
+    this.classList.add('show');
+  }
+
+  /**
+   * Close menu.
+   */
+  close() {
+    this.classList.remove('show');
+  }
+
+  /**
+   * Toggle menu visibility.
+   */
+  toggle() {
+    this.classList.toggle('show');
+  }
+
+  toggleSide() {
+    this._toggleSide();
+  }
+  togglePin() {
+    this._togglePin();
+  }
+
+  /**
+   * Restore persisted state (pin, side, width).
+   * @param {Object} state - {isPinned, isRightSide, menuWidth}
+   */
+  setState(state) {
+    if (state.isPinned !== undefined) {
+      this.state.isPinned = state.isPinned;
+      this.state.isHoverEnabled = !state.isPinned;
+
+      if (state.isPinned) {
+        this.dom.btnPin.classList.add('active');
+        this.dom.closeBtn.style.display = 'none';
+      }
     }
 
-    // =========================================================================
-    // 6. PUBLIC API
-    // =========================================================================
+    if (state.isRightSide !== undefined) {
+      this.state.isRightSide = state.isRightSide;
 
-    /**
-     * Open menu.
-     */
-    open() {
-        this.classList.add('show');
+      if (state.isRightSide) {
+        this.classList.add('right-side');
+        this.dom.btnToggleSide.classList.add('right-active');
+      }
     }
 
-    /**
-     * Close menu.
-     */
-    close() {
-        this.classList.remove('show');
+    if (
+      state.menuWidth !== undefined &&
+      state.menuWidth >= this.state.minWidth &&
+      state.menuWidth <= this.state.maxWidth
+    ) {
+      this.state.menuWidth = state.menuWidth;
+      this.style.setProperty('--w-panel', `${state.menuWidth}px`);
     }
-
-    /**
-     * Toggle menu visibility.
-     */
-    toggle() {
-        this.classList.toggle('show');
-    }
-
-    toggleSide() {
-        this._toggleSide();
-    }
-    togglePin() {
-        this._togglePin();
-    }
-
-    /**
-     * Restore persisted state (pin, side, width).
-     * @param {Object} state - {isPinned, isRightSide, menuWidth}
-     */
-    setState(state) {
-        if (state.isPinned !== undefined) {
-            this.state.isPinned = state.isPinned;
-            this.state.isHoverEnabled = !state.isPinned;
-
-            if (state.isPinned) {
-                this.dom.btnPin.classList.add('active');
-                this.dom.closeBtn.style.display = 'none';
-            }
-        }
-
-        if (state.isRightSide !== undefined) {
-            this.state.isRightSide = state.isRightSide;
-
-            if (state.isRightSide) {
-                this.classList.add('right-side');
-                this.dom.btnToggleSide.classList.add('right-active');
-            }
-        }
-
-        if (state.menuWidth !== undefined &&
-            state.menuWidth >= this.state.minWidth &&
-            state.menuWidth <= this.state.maxWidth) {
-            this.state.menuWidth = state.menuWidth;
-            this.style.setProperty('--w-panel', `${state.menuWidth}px`);
-        }
-    }
+  }
 }
 
 // Register Component
 if (!customElements.get('offcanvas-menu')) {
-    customElements.define('offcanvas-menu', OffcanvasMenu);
+  customElements.define('offcanvas-menu', OffcanvasMenu);
 }
 
 // AUTO INJECT ON STARTUP
-(function () {
-    document.addEventListener('DOMContentLoaded', () => {
-        const existingMenu = document.querySelector('offcanvas-menu');
+// (function () {
+//     document.addEventListener('DOMContentLoaded', () => {
+//         const existingMenu = document.querySelector('offcanvas-menu');
 
-        if (!existingMenu) {
-            const menu = document.createElement('offcanvas-menu');
-            document.body.appendChild(menu);
-            log('✅ [9Trip System] ERP Left Menu Injected.', 'success');
+//         if (!existingMenu) {
+//             const menu = document.createElement('offcanvas-menu');
+//             document.body.appendChild(menu);
+//             log('✅ [9Trip System] ERP Left Menu Injected.', 'success');
 
-            menu.addEventListener('pin-changed', (e) => {
-                _updateMenuState({ isPinned: e.detail.isPinned });
-            });
-            menu.addEventListener('side-changed', (e) => {
-                _updateMenuState({ isRightSide: e.detail.isRightSide });
-            });
-            menu.addEventListener('resize-changed', (e) => {
-                _updateMenuState({ menuWidth: e.detail.width });
-            });
-            // menu.toggleSide();
-        }
-    });
-    if (!getE('at-modal-full')) {
-        const modal = document.createElement('at-modal-full');
-        document.body.appendChild(modal);
-    }
+//             menu.addEventListener('pin-changed', (e) => {
+//                 _updateMenuState({ isPinned: e.detail.isPinned });
+//             });
+//             menu.addEventListener('side-changed', (e) => {
+//                 _updateMenuState({ isRightSide: e.detail.isRightSide });
+//             });
+//             menu.addEventListener('resize-changed', (e) => {
+//                 _updateMenuState({ menuWidth: e.detail.width });
+//             });
+//             // menu.toggleSide();
+//         }
+//     });
+//     if (!getE('at-modal-full')) {
+//         const modal = document.createElement('at-modal-full');
+//         document.body.appendChild(modal);
+//     }
 
-    function _updateMenuState(updates) {
-        const state = JSON.parse(localStorage.getItem('offcanvas-menu-state') || '{}');
-        Object.assign(state, updates);
-        localStorage.setItem('offcanvas-menu-state', JSON.stringify(state));
-    }
-})();
+//     function _updateMenuState(updates) {
+//         const state = JSON.parse(localStorage.getItem('offcanvas-menu-state') || '{}');
+//         Object.assign(state, updates);
+//         localStorage.setItem('offcanvas-menu-state', JSON.stringify(state));
+//     }
+// })();

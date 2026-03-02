@@ -1,120 +1,276 @@
 <div class="panel panel-default box-search">
-    <div class="panel-heading"><a class="btn-a-filter" href="javascript:;"><i class="fa fa-filter"></i><b>Tìm
-                kiếm</b></a></div>
-    <div class="panel-body box-search-body">
-        <div class="row">
-            <div class="col-sm-2">
-                <div class="form-group "><label>Từ ngày</label>
-                    <div class="input-group datepicker-from date"><span class="add-on input-group-addon"><i
-                                class="fa fa-calendar  icon-calendar"></i></span><input
-                            name="ctl00$PageContent$txtFromDate" type="text" autocomplete="off" value="01/02/2026"
-                            id="PageContent_txtFromDate" class="form-control input-fromDate" data-format="dd/MM/yyyy">
-                    </div>
-                </div>
-            </div>
-            <div class="col-sm-2"><label>&nbsp;</label>
-                <div class="input-group bootstrap-timepicker timepicker-orient-right"><span class="input-group-addon"><i
-                            class="fa fa-clock-o fa-lg"></i></span><input name="ctl00$PageContent$txtFTime" type="text"
-                        autocomplete="off" value="00:00" id="PageContent_txtFTime" class="form-control input-small">
-                </div>
-            </div>
-            <div class="col-sm-2">
-                <div class="form-group"><label>Đến ngày</label>
-                    <div class="input-group datepicker-to date"><span class="add-on input-group-addon"><i
-                                class="fa fa-calendar  icon-calendar"></i></span><input
-                            name="ctl00$PageContent$txtTodate" type="text" autocomplete="off" value="28/02/2026"
-                            id="PageContent_txtTodate" class="form-control input-toDate" data-format="dd/MM/yyyy"></div>
-                </div>
-            </div>
-            <div class="col-sm-2"><label>&nbsp;</label>
-                <div class="input-group bootstrap-timepicker timepicker-orient-right"><span class="input-group-addon"><i
-                            class="fa fa-clock-o fa-lg"></i></span><input name="ctl00$PageContent$txtTTime" type="text"
-                        autocomplete="off" value="23:59" id="PageContent_txtTTime" class="form-control input-small">
-                </div>
-            </div>
+  <div class="panel-heading">
+    <a class="btn-a-filter" href="javascript:;"><i class="fa fa-filter"></i><b>Tìm kiếm</b></a>
+  </div>
+  <div class="panel-body box-search-body">
+    <div class="row">
+      <div class="col-sm-2">
+        <div class="form-group">
+          <label>Từ ngày</label>
+          <div class="input-group datepicker-from date">
+            <span class="add-on input-group-addon"
+              ><i class="fa fa-calendar icon-calendar"></i></span
+            ><input
+              name="ctl00$PageContent$txtFromDate"
+              type="text"
+              autocomplete="off"
+              value="01/02/2026"
+              id="PageContent_txtFromDate"
+              class="form-control input-fromDate"
+              data-format="dd/MM/yyyy"
+            />
+          </div>
         </div>
-        <div class="row">
-            <div class="col-sm-2"><label>Loại dữ liệu</label>
-                <div class="form-group">
-                    <div class="input-group"><select size="4" name="ctl00$PageContent$lstDataType" multiple="multiple"
-                            id="PageContent_lstDataType" style="display: none;">
-                            <option selected="selected" value="1">City Ledger</option>
-                            <option selected="selected" value="2">Khác</option>
-                        </select>
-                        <div class="btn-group"><button type="button" class="multiselect dropdown-toggle btn btn-default"
-                                data-toggle="dropdown" title="City Ledger, Khác" aria-expanded="false"><span
-                                    class="multiselect-selected-text">Đã chọn tất cả (2)</span> <b
-                                    class="caret"></b></button>
-                            <ul class="multiselect-container dropdown-menu">
-                                <li class="multiselect-item multiselect-all active"><a tabindex="0"
-                                        class="multiselect-all"><label class="checkbox"><input type="checkbox"
-                                                value="multiselect-all"> Chọn tất cả</label></a></li>
-                                <li class="active"><a tabindex="0"><label class="checkbox"><input type="checkbox"
-                                                value="1"> City Ledger</label></a></li>
-                                <li class="active"><a tabindex="0"><label class="checkbox"><input type="checkbox"
-                                                value="2"> Khác</label></a></li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-sm-2"><label>Nguồn</label>
-                <div class="form-group"><select size="4" name="ctl00$PageContent$lstSourceType" multiple="multiple"
-                        id="PageContent_lstSourceType" style="display: none;">
-                        <option selected="selected" value="5">BE</option>
-                        <option selected="selected" value="3">Corporate</option>
-                        <option selected="selected" value="0">Direct</option>
-                    </select>
-                    <div class="btn-group"><button type="button" class="multiselect dropdown-toggle btn btn-default"
-                            data-toggle="dropdown" title="BE, Corporate, Direct, OTA, Reference, TA"
-                            aria-expanded="false"><span class="multiselect-selected-text">Đã chọn tất cả (6)</span> <b
-                                class="caret"></b></button>
-                        <ul class="multiselect-container dropdown-menu">
-                            <li class="multiselect-item multiselect-all active"><a tabindex="0"
-                                    class="multiselect-all"><label class="checkbox"><input type="checkbox"
-                                            value="multiselect-all"> Chọn tất cả</label></a></li>
-                            <li class="active"><a tabindex="0"><label class="checkbox"><input type="checkbox" value="5">
-                                        BE</label></a></li>
-                            <li class="active"><a tabindex="0"><label class="checkbox"><input type="checkbox" value="3">
-                                        Corporate</label></a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-            <div class="col-sm-2"><label>&nbsp;</label>
-                <div class="form-group">
-                    <div class="input-group"><select size="4" name="ctl00$PageContent$lstSource" multiple="multiple"
-                            id="PageContent_lstSource" style="display: none;">
-                            <option value="15576" selected="selected">Khách lẻ</option>
-                            <option value="15578" selected="selected">Agoda</option>
-                        </select>
-                        <div class="btn-group"><button type="button" class="multiselect dropdown-toggle btn btn-default"
-                                data-toggle="dropdown" title="Khách lẻ, Agoda" aria-expanded="false"><span
-                                    class="multiselect-selected-text">Đã chọn tất cả (24)</span>
-                                <b class="caret"></b></button>
-                            <ul class="multiselect-container dropdown-menu">
-                                <li class="multiselect-item multiselect-all active"><a tabindex="0"
-                                        class="multiselect-all"><label class="checkbox"><input type="checkbox"
-                                                value="multiselect-all"> Chọn tất cả</label></a></li>
-                                <li class="active"><a tabindex="0"><label class="checkbox"><input type="checkbox"
-                                                value="15576"> Khách lẻ</label></a></li>
-                                <li class="active"><a tabindex="0"><label class="checkbox"><input type="checkbox"
-                                                value="15578"> Agoda</label></a></li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-sm-2"><label>Mã đặt phòng</label>
-                <div class="form-group">
-                    <div class="input-group"><input name="ctl00$PageContent$txtBookingCode" type="text"
-                            id="PageContent_txtBookingCode" class="form-control"></div>
-                </div>
-            </div>
-            <div class="col-sm-2">
-                <div class="form-group"><a id="PageContent_btnSearch" class="btn btn-primary "
-                        href="javascript:__doPostBack('ctl00$PageContent$btnSearch','')">Xem báo cáo</a></div>
-            </div>
+      </div>
+      <div class="col-sm-2">
+        <label>&nbsp;</label>
+        <div class="input-group bootstrap-timepicker timepicker-orient-right">
+          <span class="input-group-addon"><i class="fa fa-clock-o fa-lg"></i></span
+          ><input
+            name="ctl00$PageContent$txtFTime"
+            type="text"
+            autocomplete="off"
+            value="00:00"
+            id="PageContent_txtFTime"
+            class="form-control input-small"
+          />
         </div>
+      </div>
+      <div class="col-sm-2">
+        <div class="form-group">
+          <label>Đến ngày</label>
+          <div class="input-group datepicker-to date">
+            <span class="add-on input-group-addon"
+              ><i class="fa fa-calendar icon-calendar"></i></span
+            ><input
+              name="ctl00$PageContent$txtTodate"
+              type="text"
+              autocomplete="off"
+              value="28/02/2026"
+              id="PageContent_txtTodate"
+              class="form-control input-toDate"
+              data-format="dd/MM/yyyy"
+            />
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-2">
+        <label>&nbsp;</label>
+        <div class="input-group bootstrap-timepicker timepicker-orient-right">
+          <span class="input-group-addon"><i class="fa fa-clock-o fa-lg"></i></span
+          ><input
+            name="ctl00$PageContent$txtTTime"
+            type="text"
+            autocomplete="off"
+            value="23:59"
+            id="PageContent_txtTTime"
+            class="form-control input-small"
+          />
+        </div>
+      </div>
     </div>
+    <div class="row">
+      <div class="col-sm-2">
+        <label>Loại dữ liệu</label>
+        <div class="form-group">
+          <div class="input-group">
+            <select
+              size="4"
+              name="ctl00$PageContent$lstDataType"
+              multiple="multiple"
+              id="PageContent_lstDataType"
+              style="display: none"
+            >
+              <option selected="selected" value="1">City Ledger</option>
+              <option selected="selected" value="2">Khác</option>
+            </select>
+            <div class="btn-group">
+              <button
+                type="button"
+                class="multiselect dropdown-toggle btn btn-default"
+                data-toggle="dropdown"
+                title="City Ledger, Khác"
+                aria-expanded="false"
+              >
+                <span class="multiselect-selected-text">Đã chọn tất cả (2)</span>
+                <b class="caret"></b>
+              </button>
+              <ul class="multiselect-container dropdown-menu">
+                <li class="multiselect-item multiselect-all active">
+                  <a tabindex="0" class="multiselect-all"
+                    ><label class="checkbox"
+                      ><input type="checkbox" value="multiselect-all" /> Chọn tất cả</label
+                    ></a
+                  >
+                </li>
+                <li class="active">
+                  <a tabindex="0"
+                    ><label class="checkbox"
+                      ><input type="checkbox" value="1" /> City Ledger</label
+                    ></a
+                  >
+                </li>
+                <li class="active">
+                  <a tabindex="0"
+                    ><label class="checkbox"><input type="checkbox" value="2" /> Khác</label></a
+                  >
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-2">
+        <label>Nguồn</label>
+        <div class="form-group">
+          <select
+            size="4"
+            name="ctl00$PageContent$lstSourceType"
+            multiple="multiple"
+            id="PageContent_lstSourceType"
+            style="display: none"
+          >
+            <option selected="selected" value="5">BE</option>
+            <option selected="selected" value="3">Corporate</option>
+            <option selected="selected" value="0">Direct</option>
+          </select>
+          <div class="btn-group">
+            <button
+              type="button"
+              class="multiselect dropdown-toggle btn btn-default"
+              data-toggle="dropdown"
+              title="BE, Corporate, Direct, OTA, Reference, TA"
+              aria-expanded="false"
+            >
+              <span class="multiselect-selected-text">Đã chọn tất cả (6)</span>
+              <b class="caret"></b>
+            </button>
+            <ul class="multiselect-container dropdown-menu">
+              <li class="multiselect-item multiselect-all active">
+                <a tabindex="0" class="multiselect-all"
+                  ><label class="checkbox"
+                    ><input type="checkbox" value="multiselect-all" /> Chọn tất cả</label
+                  ></a
+                >
+              </li>
+              <li class="active">
+                <a tabindex="0"
+                  ><label class="checkbox"><input type="checkbox" value="5" /> BE</label></a
+                >
+              </li>
+              <li class="active">
+                <a tabindex="0"
+                  ><label class="checkbox"><input type="checkbox" value="3" /> Corporate</label></a
+                >
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-2">
+        <label>&nbsp;</label>
+        <div class="form-group">
+          <div class="input-group">
+            <select
+              size="4"
+              name="ctl00$PageContent$lstSource"
+              multiple="multiple"
+              id="PageContent_lstSource"
+              style="display: none"
+            >
+              <option value="15576" selected="selected">Khách lẻ</option>
+              <option value="15578" selected="selected">Agoda</option>
+            </select>
+            <div class="btn-group">
+              <button
+                type="button"
+                class="multiselect dropdown-toggle btn btn-default"
+                data-toggle="dropdown"
+                title="Khách lẻ, Agoda"
+                aria-expanded="false"
+              >
+                <span class="multiselect-selected-text">Đã chọn tất cả (24)</span>
+                <b class="caret"></b>
+              </button>
+              <ul class="multiselect-container dropdown-menu">
+                <li class="multiselect-item multiselect-all active">
+                  <a tabindex="0" class="multiselect-all"
+                    ><label class="checkbox"
+                      ><input type="checkbox" value="multiselect-all" /> Chọn tất cả</label
+                    ></a
+                  >
+                </li>
+                <li class="active">
+                  <a tabindex="0"
+                    ><label class="checkbox"
+                      ><input type="checkbox" value="15576" /> Khách lẻ</label
+                    ></a
+                  >
+                </li>
+                <li class="active">
+                  <a tabindex="0"
+                    ><label class="checkbox"
+                      ><input type="checkbox" value="15578" /> Agoda</label
+                    ></a
+                  >
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-2">
+        <label>Mã đặt phòng</label>
+        <div class="form-group">
+          <div class="input-group">
+            <input
+              name="ctl00$PageContent$txtBookingCode"
+              type="text"
+              id="PageContent_txtBookingCode"
+              class="form-control"
+            />
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-2">
+        <div class="form-group">
+          <a
+            id="PageContent_btnSearch"
+            class="btn btn-primary"
+            href="javascript:__doPostBack('ctl00$PageContent$btnSearch','')"
+            >Xem báo cáo</a
+          >
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+<template>
+  <div
+    class="toast-container position-fixed bottom-0 end-0 p-2"
+    id="toast-container"
+    style="font-size: 0.75rem; max-width: 15vw; max-height: 50vh; z-index: 11000"
+  >
+    <div
+      id="liveToast"
+      class="toast"
+      role="alert"
+      aria-live="assertive"
+      aria-atomic="true"
+      data-bs-delay="3000"
+    >
+      <div class="toast-header">
+        <img
+          src="https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp"
+          class="rounded me-2"
+          alt="..."
+          style="height: 20px; width: 20px"
+        />
+        <strong class="me-auto">Thông Báo</strong>
+        <small id="toast-time-calc">1 mins ago</small>
+        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+      <div id="toast-body" class="toast-body text-wrap"></div>
+    </div>
+  </div>
+</template>

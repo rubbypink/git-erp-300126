@@ -20,7 +20,8 @@
     <div class="row g-2 mb-2">
       <div class="col-md-6">
         <div class="card shadow-sm h-100 border-0">
-          <div class="card-header bg-primary text-white py-1 d-flex justify-content-between align-items-center">
+          <div class="card-header bg-primary text-white py-1 d-flex justify-content-between align-items-center"
+            onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto;">
             <small class="fw-bold">BOOKING MỚI (14 ngày qua)</small>
             <span class="badge  text-primary" id="badge-new-bk">0</span>
           </div>
@@ -46,7 +47,8 @@
 
       <div class="col-md-6">
         <div class="card shadow-sm h-100 border-0">
-          <div class="card-header bg-danger text-white py-1 d-flex justify-content-between align-items-center">
+          <div class="card-header bg-danger text-white py-1 d-flex justify-content-between align-items-center"
+            onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto;">
             <small class="fw-bold">CHƯA ĐẶT DỊCH VỤ (Missing Supplier)</small>
             <span class="badge  text-danger" id="badge-missing-supplier">0</span>
           </div>
@@ -74,7 +76,8 @@
     <div class="row g-2">
       <div class="col-md-6">
         <div class="card shadow-sm h-100 border-0">
-          <div class="card-header  py-1 border-bottom">
+          <div class="card-header  py-1 border-bottom" onclick="this.closest('.card').classList.toggle('active')"
+            style="pointer-events: auto;">
             <div class="d-flex justify-content-between align-items-center">
               <small class="fw-bold text-dark border-start border-4 border-warning ps-2">CÔNG NỢ THEO NCC</small>
               <div class="small fw-bold text-danger">Còn lại: <span id="sum-supplier-bal">0</span></div>
@@ -98,7 +101,8 @@
 
       <div class="col-md-6">
         <div class="card shadow-sm h-100 border-0">
-          <div class="card-header  py-1 border-bottom">
+          <div class="card-header  py-1 border-bottom" onclick="this.closest('.card').classList.toggle('active')"
+            style="pointer-events: auto;">
             <div class="d-flex justify-content-between align-items-center">
               <small class="fw-bold text-dark border-start border-4 border-info ps-2">CHI PHÍ THEO LOẠI DV</small>
               <div class="small fw-bold text-danger">Còn lại: <span id="sum-type-bal">0</span></div>
@@ -233,7 +237,7 @@
       </div>
 
       <div class="table-responsive" id="tbl-booking-form">
-        <table class="table table-bordered table-sm mb-0" style="min-width: 1500px;">
+        <table class="table table-bordered table-sm mb-0" style="min-width: 1500px;" data-collection="operator_entries">
           <thead class="table-secondary text-center align-middle small fw-bold text-secondary">
             <tr style="font-size: 11px;">
               <th style="width: 20px;">STT</th>

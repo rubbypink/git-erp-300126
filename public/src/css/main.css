@@ -1,5 +1,4 @@
-
-    /* =========================================================================
+/* =========================================================================
        MAIN.CSS - RESTRUCTURED WITH CSS GRID & REM UNITS
        Last Updated: February 2026
        Changes:
@@ -8,889 +7,915 @@
        - Mobile responsive optimization
        ========================================================================= */
 
-    /* --- 1. GLOBAL RESET & BOX MODEL --- */
-    *, *::before, *::after {
-      box-sizing: border-box; /* Đảm bảo padding/margin không làm vỡ kích thước 100% */
-    }
-    /* =========================================================================
+/* --- 1. GLOBAL RESET & BOX MODEL --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box; /* Đảm bảo padding/margin không làm vỡ kích thước 100% */
+}
+/* =========================================================================
        COLOR SCHEME: LIGHT & DARK THEMES
        Sử dụng 2 bộ màu hài hòa phổ biến nhất
        - Light: Blue/Gray (Professional, dễ nhìn)
        - Dark: Purple/Gray (Hiện đại, bảo vệ mắt)
        ========================================================================= */
 
-    :root {
-      color-scheme: light dark;
-      
-      /* ─── LAYOUT GRID CONSTANTS ─── */
-      --grid-cols: 13;                   /* 13 columns for flexibility */
-      --grid-col-7-width: fit-content;   /* Column 7 special handling */
-      --header-height: 5rem;             /* Total header (top-bar + nav-bar) */
-      --header-top-bar-height: 0.9rem;   /* 30% of header */
-      --header-nav-bar-height: 2.1rem;   /* 70% of header */
-      --footer-height: 4rem;             /* Footer height */
-      --content-height: calc(100vh - var(--header-height) - var(--footer-height));
-      
-      /* ─── THEME: LIGHT MODE (Mặc định) ─── */
-      /* Bộ màu: Blue/Gray - Chuyên nghiệp, dễ đọc */
-      --primary-color: #3b82f6;           /* Blue - Tạo hành động */
-      --secondary-color: #64748b;        /* Slate Gray - Phụ vụ */
-      --app-bg: #e6e6e6;                 /* Xám nhạt - Nền sạch */
-      --header-bg: #2c37d1;              /* Xanh đậm - Header nổi bật */
-      --footer-bg: #4d4d4e;              /* Xanh đen - Footer nhất quán */
-      --text-color: #0f141c;             /* Tối - Văn bản chính */
-      --text-secondary: #3b4450;         /* Xám tối - Văn bản phụ (contrast ≥4.5:1) */
-      --border-color: #afb8c4;           /* Xám sáng - Border */
-      --surface-color: #e7e7e7;          /* Trắng - Card/Modal */
-      --hover-bg: #eaeaeb;               /* Xám siêu nhạt - Hover */
-      --input-bg: #e4e4e4;               /* Trắng - Input background */
-      --success-color: #10b981;          /* Xanh lá - Thành công */
-      --warning-color: #f59e0b;          /* Cam - Cảnh báo */
-      --error-color: #ef4444;            /* Đỏ - Lỗi */
-      --info-color: #06b6d4;             /* Cyan - Thông tin */
-      
-      /* Table Colors - Light */
-      --tbl-head-bg: #bec4cc;            /* Xám nhạt - Header table */
-      --tbl-head-text: #030407;          /* Tối - Text header */
-      --tbl-row-bg: #ffffff;             /* Trắng - Row bình thường */
-      --tbl-row-hover: #f1f5f9;          /* Xám siêu nhạt - Hover */
-      --tbl-border: #cbd5e1;             /* Xám - Border */
+:root {
+  color-scheme: light dark;
 
-      /* Tab Navigation - Light */
-      --tab-active-bg: #ffffff;
-      --tab-active-text: #3b82f6;
-      --tab-inactive-bg: #e2e8f0;
-      --tab-inactive-text: #272b30;
+  /* ─── LAYOUT GRID CONSTANTS ─── */
+  --grid-cols: 13; /* 13 columns for flexibility */
+  --grid-col-7-width: fit-content; /* Column 7 special handling */
+  --header-height: 5rem; /* Total header (top-bar + nav-bar) */
+  --header-top-bar-height: 0.9rem; /* 30% of header */
+  --header-nav-bar-height: 2.1rem; /* 70% of header */
+  --footer-height: 4rem; /* Footer height */
+  --content-height: calc(100vh - var(--header-height) - var(--footer-height));
 
-      /* Glass/Surface Layer - Light */
-      --glass-bg: #f1e1e1;
-      --glass-text: #1e293b;
-      --glass-border: #cbd5e1;
+  /* ─── THEME: LIGHT MODE (Mặc định) ─── */
+  /* Bộ màu: Blue/Gray - Chuyên nghiệp, dễ đọc */
+  --primary-color: #3b82f6; /* Blue - Tạo hành động */
+  --secondary-color: #64748b; /* Slate Gray - Phụ vụ */
+  --app-bg: #e6e6e6; /* Xám nhạt - Nền sạch */
+  --header-bg: #2c37d1; /* Xanh đậm - Header nổi bật */
+  --footer-bg: #4d4d4e; /* Xanh đen - Footer nhất quán */
+  --text-color: #0f141c; /* Tối - Văn bản chính */
+  --text-secondary: #3b4450; /* Xám tối - Văn bản phụ (contrast ≥4.5:1) */
+  --border-color: #afb8c4; /* Xám sáng - Border */
+  --surface-color: #e7e7e7; /* Trắng - Card/Modal */
+  --hover-bg: #eaeaeb; /* Xám siêu nhạt - Hover */
+  --input-bg: #e4e4e4; /* Trắng - Input background */
+  --success-color: #10b981; /* Xanh lá - Thành công */
+  --warning-color: #f59e0b; /* Cam - Cảnh báo */
+  --error-color: #ef4444; /* Đỏ - Lỗi */
+  --info-color: #06b6d4; /* Cyan - Thông tin */
 
-      /* Typography & Spacing (in REM) */
-      --font-family: 'Segoe UI', sans-serif;
-      --font-size: 14px;         
-      --spacing-unit: 0.425rem;            /* 8px base unit */
-      --radius: 0.25rem;
-      --shadow-sm: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.05);
-      --shadow-md: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.1);
-      --shadow-lg: 0 0.625rem 0.9375rem rgba(0, 0, 0, 0.1);
-    }
+  /* Table Colors - Light */
+  --tbl-head-bg: #bec4cc; /* Xám nhạt - Header table */
+  --tbl-head-text: #030407; /* Tối - Text header */
+  --tbl-row-bg: #ffffff; /* Trắng - Row bình thường */
+  --tbl-row-hover: #f1f5f9; /* Xám siêu nhạt - Hover */
+  --tbl-border: #cbd5e1; /* Xám - Border */
 
-    /* ─── THEME: DARK MODE ─── */
-    /* Bộ màu: Purple/Gray - Hiện đại, bảo vệ mắt */
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --primary-color: #7c3aed;           /* Purple - Tạo hành động */
-        --secondary-color: #94a3b8;        /* Slate - Phụ vụ */
-        --app-bg: #0f172a;                 /* Xanh đậm - Nền chính */
-        --header-bg: #1e293b;              /* Xanh đen - Header */
-        --footer-bg: #1e293b;              /* Xanh đen - Footer */
-        --text-color: #f1f5f9;             /* Sáng - Văn bản chính */
-        --text-secondary: #cbd5e1;         /* Xám sáng - Văn bản phụ (contrast ≥4.5:1 on dark bg) */
-        --border-color: #334155;           /* Xám tối - Border */
-        --surface-color: #1e293b;          /* Xanh đen - Card/Modal */
-        --hover-bg: #334155;               /* Xám tối - Hover */
-        --input-bg: #1e293b;               /* Xanh đen - Input background */
-        --success-color: #4ade80;          /* Xanh lá sáng - Thành công */
-        --warning-color: #facc15;          /* Vàng sáng - Cảnh báo */
-        --error-color: #f87171;            /* Đỏ sáng - Lỗi */
-        --info-color: #22d3ee;             /* Cyan sáng - Thông tin */
-        
-        /* Table Colors - Dark */
-        --tbl-head-bg: #334155;            /* Xám tối - Header table */
-        --tbl-head-text: #f1f5f9;          /* Sáng - Text header */
-        --tbl-row-bg: #415068;             /* Xanh đen - Row bình thường */
-        --tbl-row-hover: #334155;          /* Xám tối - Hover */
-        --tbl-border: #475569;             /* Xám trung bình - Border */
+  /* Tab Navigation - Light */
+  --tab-active-bg: #ffffff;
+  --tab-active-text: #3b82f6;
+  --tab-inactive-bg: #e2e8f0;
+  --tab-inactive-text: #272b30;
 
-        /* Tab Navigation - Dark */
-        --tab-active-bg: #334155;
-        --tab-active-text: #7c3aed;
-        --tab-inactive-bg: #1e293b;
-        --tab-inactive-text: #94a3b8;
+  /* Glass/Surface Layer - Light */
+  --glass-bg: #f1e1e1;
+  --glass-text: #1e293b;
+  --glass-border: #cbd5e1;
 
-        /* Glass/Surface Layer - Dark */
-        --glass-bg: #1e293b;
-        --glass-text: #f1f5f9;
-        --glass-border: #475569;
+  /* Typography & Spacing (in REM) */
+  --font-family: 'Segoe UI', sans-serif;
+  --font-size: 14px;
+  --spacing-unit: 0.425rem; /* 8px base unit */
+  --radius: 0.25rem;
+  --shadow-sm: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 0.625rem 0.9375rem rgba(0, 0, 0, 0.1);
+}
 
-        /* Shadow - Dark (tối hơn) */
-        --shadow-sm: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.3);
-        --shadow-md: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.3);
-        --shadow-lg: 0 0.625rem 0.9375rem rgba(0, 0, 0, 0.3);
-      }
-    }
+/* ─── THEME: DARK MODE ─── */
+/* Bộ màu: Purple/Gray - Hiện đại, bảo vệ mắt */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary-color: #7c3aed; /* Purple - Tạo hành động */
+    --secondary-color: #94a3b8; /* Slate - Phụ vụ */
+    --app-bg: #0f172a; /* Xanh đậm - Nền chính */
+    --header-bg: #1e293b; /* Xanh đen - Header */
+    --footer-bg: #1e293b; /* Xanh đen - Footer */
+    --text-color: #f1f5f9; /* Sáng - Văn bản chính */
+    --text-secondary: #cbd5e1; /* Xám sáng - Văn bản phụ (contrast ≥4.5:1 on dark bg) */
+    --border-color: #334155; /* Xám tối - Border */
+    --surface-color: #1e293b; /* Xanh đen - Card/Modal */
+    --hover-bg: #334155; /* Xám tối - Hover */
+    --input-bg: #1e293b; /* Xanh đen - Input background */
+    --success-color: #4ade80; /* Xanh lá sáng - Thành công */
+    --warning-color: #facc15; /* Vàng sáng - Cảnh báo */
+    --error-color: #f87171; /* Đỏ sáng - Lỗi */
+    --info-color: #22d3ee; /* Cyan sáng - Thông tin */
 
-    /* --- APPLY VARIABLES --- */
-    body {
-        background-color: var(--app-bg) !important;
-        color: var(--text-color) !important;
-        font-family: var(--font-family) !important;
-        font-size: var(--font-size) !important;
-        transition: background-color 0.3s ease, color 0.3s ease;
-    }
+    /* Table Colors - Dark */
+    --tbl-head-bg: #334155; /* Xám tối - Header table */
+    --tbl-head-text: #f1f5f9; /* Sáng - Text header */
+    --tbl-row-bg: #415068; /* Xanh đen - Row bình thường */
+    --tbl-row-hover: #334155; /* Xám tối - Hover */
+    --tbl-border: #475569; /* Xám trung bình - Border */
 
-    fieldset {
-      display: grid;
-      grid-template-columns: repeat(var(--row-items, 4), 1fr);
-      gap: 0.75rem;
-      padding: 0 1rem;
-      margin: 0 1rem;
-      border: 0.5rem solid #ccc;
-      border-radius: 8px;
-      align-items: start;
-      align-content: start;
-      grid-auto-flow: row;
-    }
-    
-    fieldset > * {
-      width: 100%;
-    }
+    /* Tab Navigation - Dark */
+    --tab-active-bg: #334155;
+    --tab-active-text: #7c3aed;
+    --tab-inactive-bg: #1e293b;
+    --tab-inactive-text: #94a3b8;
 
-    legend {
-      font-size: inherit; /* Tăng kích thước chữ */
-      width: unset; /* Đặt lại width mặc định */
-      float:initial !important; /* Đặt legend ở giữa */
-      font-weight: 600; /* In đậm */
-      padding: 0 0.5rem; /* Khoảng cách ngang */
-      color: var(--secondary-color); /* Màu chính */
-    }
+    /* Glass/Surface Layer - Dark */
+    --glass-bg: #1e293b;
+    --glass-text: #f1f5f9;
+    --glass-border: #475569;
 
-    /* ==========================================================================
+    /* Shadow - Dark (tối hơn) */
+    --shadow-sm: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 0.625rem 0.9375rem rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* --- APPLY VARIABLES --- */
+body {
+  background-color: var(--app-bg) !important;
+  color: var(--text-color) !important;
+  font-family: var(--font-family) !important;
+  font-size: var(--font-size) !important;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+fieldset {
+  display: grid;
+  grid-template-columns: repeat(var(--row-items, 4), 1fr);
+  gap: 0.75rem;
+  padding: 0 1rem;
+  margin: 0 1rem;
+  border: 0.5rem solid #ccc;
+  border-radius: 8px;
+  align-items: start;
+  align-content: start;
+  grid-auto-flow: row;
+}
+
+fieldset > * {
+  width: 100%;
+}
+
+legend {
+  font-size: inherit; /* Tăng kích thước chữ */
+  width: unset; /* Đặt lại width mặc định */
+  float: initial !important; /* Đặt legend ở giữa */
+  font-weight: 600; /* In đậm */
+  padding: 0 0.5rem; /* Khoảng cách ngang */
+  color: var(--secondary-color); /* Màu chính */
+}
+
+/* ==========================================================================
     ERP CUSTOM GRID LAYOUT (13 Columns x 5 Rows)
     ========================================================================== */
-    .g-layout {
-        display: grid;
-        /* Chia 13 cột bằng nhau, 1fr = 1 phân số (fraction) của không gian trống */
-        grid-template-columns: repeat(13, 1fr); 
-        /* Chia 5 hàng bằng nhau */
-        grid-template-rows: repeat(5, 1fr); 
-        
-        /* Thiết lập kích thước Full-size */
-        width: 100%;
-        height: 85vh; /* Fallback cho các trình duyệt cũ */
-        height: 85dvh; /* Tối ưu cho Mobile: Dynamic Viewport Height tránh bị che bởi thanh cuộn */
-        
-        /* Khoảng cách giữa các ô (Grid Gap) - Bạn có thể chỉnh về 0 nếu muốn các ô dính sát vào nhau */
-        gap: 0; 
-        
-        /* Padding an toàn xung quanh để nội dung không chạm sát mép màn hình */
-        padding: 8px;
-        
-        /* Ngăn chặn scroll tổng thể nếu nội dung bên trong vô tình phình to */
-        overflow: hidden;
-        background-color: #f8f9fa; /* Màu nền nhẹ nhàng, đồng bộ bootstrap (tùy chọn) */
-    }
+.g-layout {
+  display: grid;
+  /* Chia 13 cột bằng nhau, 1fr = 1 phân số (fraction) của không gian trống */
+  grid-template-columns: repeat(13, 1fr);
+  /* Chia 5 hàng bằng nhau */
+  grid-template-rows: repeat(5, 1fr);
 
-    /* Các ô bên trong grid (Card UI) để đảm bảo nội dung không làm vỡ cấu trúc */
-    .g-layout > div {
-        background: #ffffff;
-        border-radius: 6px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        overflow: auto; /* Nếu nội dung trong 1 ô quá dài, chỉ cuộn riêng ô đó */
-        padding: 10px;
-    }
+  /* Thiết lập kích thước Full-size */
+  width: 100%;
+  height: 85vh; /* Fallback cho các trình duyệt cũ */
+  height: 85dvh; /* Tối ưu cho Mobile: Dynamic Viewport Height tránh bị che bởi thanh cuộn */
 
+  /* Khoảng cách giữa các ô (Grid Gap) - Bạn có thể chỉnh về 0 nếu muốn các ô dính sát vào nhau */
+  gap: 0;
 
-    /* ─── CUSTOM GRID UTILITY CLASSES ─── */
-    /* Grid Left: Columns 1-6 (left side, items inline) */
-    .g-left {
-      grid-column: 1 / 6;
-      /* display: flex;
+  /* Padding an toàn xung quanh để nội dung không chạm sát mép màn hình */
+  padding: 8px;
+
+  /* Ngăn chặn scroll tổng thể nếu nội dung bên trong vô tình phình to */
+  overflow: hidden;
+  background-color: #f8f9fa; /* Màu nền nhẹ nhàng, đồng bộ bootstrap (tùy chọn) */
+}
+
+/* Các ô bên trong grid (Card UI) để đảm bảo nội dung không làm vỡ cấu trúc */
+.g-layout > div {
+  background: #ffffff;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: auto; /* Nếu nội dung trong 1 ô quá dài, chỉ cuộn riêng ô đó */
+  padding: 10px;
+}
+
+/* ─── CUSTOM GRID UTILITY CLASSES ─── */
+/* Grid Left: Columns 1-6 (left side, items inline) */
+.g-left {
+  grid-column: 1 / 6;
+  /* display: flex;
       flex-direction: row; */
-      align-items: center;
-      /* justify-content: flex-start; */
-    }
-
-    /* Grid Center: Column 7 (center, fit-content, items inline, centered) */
-    .g-center {
-      grid-column: 6 / 9;
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: 0.5rem;
-      width: fit-content;
-      justify-content: start;
-      justify-self: center;
-    }
-
-    /* Grid Right: Columns 9-13 (right side, items inline) */
-    .g-right {
-      grid-column: 9 / -1;
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: 0.5rem;
-      justify-content: start;
-    }
-
-    .g-r-100 {
-      grid-column: 1 / -1;
-    }
-    .g-r-2 {
-      grid-row: span 2;
-    }
-    .g-r-3 {
-      grid-row: span 3;
-    }
-    .g-r-4 {
-      grid-row: span 4;
-    }
-    .g-c-100 {
-      grid-row: 1 / -1;
-      display: flex;
-      flex-direction: column;
-    }
-    .g-c-2 {
-      grid-column: span 2;
-      display: flex;
-      flex-direction: column;
-    }
-    .g-c-3 {
-      grid-column: span 3;
-      display: flex;
-      flex-direction: column;
-    }
-    .g-c-4 {
-      grid-column: span 4;
-      display: flex;
-      flex-direction: column;
-    }
-    .g-c-5 {
-      grid-column: span 5;
-      display: flex;
-      flex-direction: column;
-    }    
-    .g-r-last {
-      grid-row: -1;
-    }
-    .g-c-last {
-      grid-column: -1;
-    }
-    /* Fix Header/Footer Contrast */
-    .app-header {
-        background: var(--header-bg) !important;
-        border-color: var(--border-color) !important;
-        color: var(--text-color) !important;
-        transition: background-color 0.3s ease, color 0.3s ease;
-    }
-
-
-    /* ─── SCROLLABLE CONTAINERS: Allow scroll gestures ─── */
-    .nav-tabs {
-      border-bottom: 1px solid var(--border-color);
-    }
-    .nav-tabs .nav-link {
-        background-color: var(--tab-inactive-bg) !important;
-        color: var(--tab-inactive-text) !important;
-        border: 1px solid transparent;
-        margin-right: 2px;
-        border-radius: var(--radius) var(--radius) 0 0 !important;
-        transition: all 0.2s ease;
-    }
-    .nav-tabs .nav-link:hover {
-        opacity: 0.8;
-        background-color: var(--hover-bg) !important;
-    }
-    .nav-tabs .nav-link.active {
-        background-color: var(--tab-active-bg) !important;
-        color: var(--tab-active-text) !important;
-        border-color: var(--border-color) var(--border-color) transparent !important;
-        font-weight: bold;
-        box-shadow: inset 0 -2px 0 var(--tab-active-text);
-    }
-
-    /* --- CARD & SURFACE COMPONENTS --- */
-    .card {
-        background-color: var(--surface-color);
-        color: var(--text-color);
-        border-color: var(--border-color);
-        box-shadow: var(--shadow-md);
-        transition: all 0.3s ease;
-    }
-    .card:hover {
-        box-shadow: var(--shadow-lg);
-    }
-
-    .card-header {
-        background-color: var(--tbl-head-bg);
-        color: var(--tbl-head-text);
-        border-color: var(--border-color);
-    }
-
-    /* --- DROPDOWN & MENU --- */
-    .dropdown-menu {
-        background-color: var(--surface-color) !important;
-        color: var(--text-color) !important;
-        border: 0.0625rem solid var(--border-color);
-        border-radius: 0.375rem !important;
-        padding: 0.375rem 0 ;
-        min-width: 10rem ;
-        max-width: 20rem !important;
-        box-shadow: 0 0.375rem 0.75rem rgba(0, 0, 0, 0.15) !important;
-        transition: all 0.2s ease;
-    }
-
-    .dropdown-item {
-        color: var(--text-color) !important;
-        padding: 0.375rem 0.75rem;
-        font-size: 0.8125rem ;
-        font-weight: 500 !important;
-        border-radius: 0.25rem !important;
-        margin: 0 0.25rem !important;
-        transition: all 0.15s ease;
-    }
-
-    .dropdown-item:hover {
-        background-color: var(--hover-bg) !important;
-        color: var(--primary-color) !important;
-        padding-left: 0.875rem !important;
-    }
-
-    .dropdown-item.active {
-        background-color: var(--primary-color) !important;
-        color: #ffffff !important;
-    }
-
-    .dropdown-divider {
-        border-color: var(--border-color) !important;
-        opacity: 0.2 !important;
-        margin: 0.25rem 0 !important;
-    }
-
-    /* --- FORM CONTROLS --- */
-    /* Input form cũng cần đồng bộ nền để dễ đọc */
-    .form-control, .form-select {
-        background-color: var(--input-bg);
-        color: var(--text-color);
-        border-color: var(--border-color);
-        transition: all 0.2s ease;
-        text-align: center;
-        -webkit-user-select: text;    /* Allow text selection in inputs */
-        user-select: text;
-        touch-action: manipulation;  /* ✅ Allow zoom but block double-tap zoom */
-        pointer-events: auto;        /* ✅ Ensure input is clickable */
-    }
-    .form-control::placeholder {
-        color: var(--text-secondary);
-        opacity: 0.7;
-    }
-    .form-control:focus, .form-select:focus {
-        background-color: transparent !important;
-        color: var(--text-color) !important;
-        border-color: transparent !important;
-        box-shadow: 0 0 0 0.2rem rgba(124, 58, 237, 0.1);
-    }
-
-    /* --- BUTTON STYLING --- */
-    .btn {
-        transition: all 0.2s ease;
-        font-weight: 500;
-        text-align: center;
-        line-clamp: 2;
-        touch-action: manipulation;  /* ✅ Allow but block double-tap zoom */
-        pointer-events: auto;        /* ✅ Ensure button is clickable */
-    }
-
-    .btn-primary {
-        background-color: var(--primary-color) !important;
-        border-color: var(--primary-color) !important;
-        color: #ffffff !important;
-    }
-
-    .btn-primary:hover {
-        opacity: 0.85;
-        box-shadow: var(--shadow-md);
-    }
-
-    .btn-secondary {
-        background-color: var(--secondary-color) !important;
-        border-color: var(--secondary-color) !important;
-        color: #ffffff !important;
-    }
-
-    .btn-success {
-        background-color: var(--success-color) !important;
-        border-color: var(--success-color) !important;
-        color: #ffffff !important;
-    }
-
-    .btn-danger {
-        background-color: var(--error-color) !important;
-        border-color: var(--error-color) !important;
-        color: #ffffff !important;
-    }
-
-    .btn-warning {
-        background-color: var(--warning-color) !important;
-        border-color: var(--warning-color) !important;
-        color: #1e293b !important;
-    }
-
-    .btn-info {
-        background-color: var(--info-color) !important;
-        border-color: var(--info-color) !important;
-        color: #ffffff !important;
-    }
-
-    .btn-light {
-        background-color: var(--surface-color) !important;
-        border-color: var(--border-color) !important;
-        color: var(--text-color) !important;
-    }
-
-    /* --- TABLE STYLING --- */
-    table {
-        background-color: var(--surface-color);
-        color: var(--text-color);
-        border-color: var(--border-color);
-    }
-
-    thead {
-        background-color: var(--tbl-head-bg);
-        color: var(--tbl-head-text);
-    }
-
-    tbody tr {
-        background-color: var(--tbl-row-bg);
-        border-color: var(--tbl-border);
-        transition: background-color 0.2s ease;
-    }
-
-    tbody tr:hover {
-        background-color: var(--tbl-row-hover);
-    }
-
-    tbody td {
-        border-color: var(--tbl-border);
-        padding: 0.25rem;
-    }
-
-    /* --- MODAL & OVERLAY --- */
-    .modal-content {
-        background-color: var(--surface-color) !important;
-        color: var(--text-color) !important;
-        border-color: var(--border-color) !important;
-    }
-
-    .modal-header {
-        background-color: var(--primary-color) !important;
-        color: var(--input-bg) !important;
-        border-color: var(--border-color) !important;
-    }
-
-    .modal-footer {
-        background-color: var(--hover-bg) !important;
-        border-color: var(--border-color) !important;
-    }
-
-    .btn-close {
-        filter: invert(0.8);
-    }
-
-    @media (prefers-color-scheme: dark) {
-        .btn-close {
-            filter: invert(1);
-        }
-    }
-
-    /* --- TOAST NOTIFICATION --- */
-    .toast {
-        background-color: var(--surface-color) !important;
-        color: var(--text-color) !important;
-        border: 1px solid var(--border-color) !important;
-    }
-
-    .toast-header {
-        background-color: var(--hover-bg) !important;
-        border-color: var(--border-color) !important;
-        color: var(--text-color) !important;
-    }
-
-    .toast-body {
-        color: var(--text-color) !important;
-    }
-
-    /* --- SCROLLBAR STYLING --- */
-    ::-webkit-scrollbar {
-        width: 0.4rem;
-        height: 0.4rem;
-    }
-
-    ::-webkit-scrollbar-track {
-        background-color: var(--app-bg);
-    }
-
-    ::-webkit-scrollbar-thumb {
-        background-color: rgba(88, 85, 85, 0.979);
-        border-radius: 0.25rem;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-        background-color: var(--secondary-color);
-    }
-
-    /* --- UTILITY CLASSES --- */
-    .text-muted {
-        color: var(--text-secondary) !important;
-    }
-
-    .text-primary {
-        color: var(--primary-color) !important;
-    }
-
-    .text-success {
-        color: var(--success-color) !important;
-    }
-
-    .text-danger {
-        color: var(--error-color) !important;
-    }
-
-    .text-warning {
-        color: var(--warning-color) !important;
-    }
-
-    .text-info {
-        color: var(--info-color) !important;
-    }
-
-    .bg-primary {
-        background-color: var(--primary-color) !important;
-    }
-
-    .bg-secondary {
-        background-color: var(--secondary-color) !important;
-    }
-
-    .border {
-        border-color: var(--border-color) !important;
-    }
-
-    .shadow-sm {
-        box-shadow: var(--shadow-sm) !important;
-    }
-
-    .shadow {
-        box-shadow: var(--shadow-md) !important;
-    }
-
-    .shadow-lg {
-        box-shadow: var(--shadow-lg) !important;
-    }
-   
-    html, body {
-      height: 100%;
-      width: 100%;
-      margin: 0;
-      padding: 0;
-      overflow: hidden; /* Cấm cuộn ở body, chỉ cuộn ở vùng content */
-    }
-
-    /* --- 2. MAIN GRID LAYOUT (3 rows × 13 columns) --- */
-    body {
-      display: grid;
-      grid-template-rows: minmax(5vh, auto) 1fr minmax(5vh, auto);
-      grid-template-columns: repeat(var(--grid-cols), minmax(0, 1fr));
-      gap: 0;
-      font-family: var(--font-family) !important;
-      font-size: var(--font-size) !important;
-      transition: background-color 0.3s ease, color 0.3s ease;
-      
-      /* Grid Area Names */
-      grid-template-areas:
-        "h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13"
-        "m1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13"
-        "f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13";
-    }
-    .app-container {
-      grid-area: h1 / h1 / -1 / -1;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      width: 100%;
-      overflow: hidden; /* Chỉ cuộn trong app-content */
-    }
-
-    /* APP-HEADER: Spans row 1, all columns + internal grid layout */
-    .app-header {
-      grid-area: h1 / h1 / auto / -1;
-      display: grid;
-      grid-template-rows: 35% 65%;
-      grid-template-columns: repeat(var(--grid-cols), minmax(0, 1fr));
-      transition: background-color 0.3s ease, color 0.3s ease;
-      gap: 0;
-    }
-
-    /* TOP-BAR: Row 1 of header */
-    .app-header .top-bar {
-      grid-row: 1;
-      grid-column: 1 / -1;
-      background: var(--header-bg);
-      color: var(--text-color);
-      padding: 0 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    /* ─── NAV-CONTAINER: Horizontal flex, auto-wrap, horizontal scroll ─── */
-    .nav-container {
-      grid-row: 1 / 3; /* Spans both rows of header */
-      grid-column: 1 / -1;
-      background: var(--header-bg);
-      color: var(--text-color);
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      pointer-events: auto;
-    }
-
-    /* APP-CONTENT: Spans row 2, all columns */
-    .app-content {
-      grid-column: 1 / -1;
-      flex: 1 1 auto;
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-      position: relative;
-      padding: 0.5rem 0.25rem;
-      display: flex;
-      flex-direction: column;
-      pointer-events: auto;
-    }
-
-
-
-
-    /* Form Elements siêu nhỏ */
-    .form-control-sm, .form-select-sm, .btn-sm, .input-group-sm, .input-group-append-sm, .input-group-prepend-sm {
-      font-size: 0.75rem;
-      padding: 0.15rem 0.25rem;
-      min-height: 1.5rem;
-    }
-    .dropdown-menu {
-      font-size: 0.8125rem;
-      max-height: 20rem;
-      overflow-y: auto;
-    }
-    
-    .dropdown-menu .dropdown-item {
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      overflow: hidden;
-    }
-    
-    .btn {
-      border-radius: 0.5rem;
-    }
-    
-    /* Fix Button Group Border Radius - Giữ lại border-radius cho tất cả button trong group */
-    .btn-group > .btn {
-      border-radius: 0.5rem !important;
-    }
-
-    /* ─── SCROLLABLE CONTAINERS: Allow scroll gestures ─── */
-    .app-content,
-    .tab-content,
-    #tbl-container-tab2,
-    
-
-
-    table.table-bordered thead {
-      border: var(--tbl-border);
-    }
-    
-    td {
-      padding: 0;
-    }
-
-    td select.form-select-sm, td input.form-control-sm {
-      margin: 0;
-      padding: 0 !important;
-      border: none;
-    }
-    
-    .badge {
-      padding: 0.25rem 0.5rem;
-      border-radius: 0.25rem;
-      width: fit-content;
-    }
-    
-    .badge.planning { background: #e9ecef; color: #495057; }
-    .badge.pending { background: #fff3cd; color: #856404; }
-    .badge.in-progress { background: #cff4fc; color: #055160; }    
-    .badge.confirmed { background: #d1e7dd; color: #0f5132; }
-    .badge.completed { background: #d1e7dd; color: #198754; }
-    .badge.canceled { background: #f8d7da; color: #842029; }
-
-    .form-floating {
-      font-size: 0.75rem;
-      padding: 0.15rem 0.25rem !important;
-    }
-
-    /* Form Labels */
-    .form-label {
-      margin-bottom: 0 !important;
-      font-size: 0.625rem !important;
-      color: #666;
-      font-weight: 600;
-    }
-
-    /* --- 3. TAB SYSTEM & SCROLLING --- */
-    .tab-content {
-      display: flex;
-      flex: 1 1 auto; 
-      padding: 0 0.25rem 0.25rem 0.25rem;
-      height: 100%;
-      width: 100%;
-      overflow: auto;  /* Allow scrolling */
-      -webkit-overflow-scrolling: touch;
-    }
-    
-    .tab-pane {
-      height: 100%;
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .card-header {
-      max-height: 10%;
-      min-height: 1.25rem;
-      flex: 0 0 auto;
-      width: 100%;
-      background-color: #f8f9fa;
-      padding: 0 0.25rem;
-      border-bottom: 1px solid #dee2e6;
-      font-weight: bold;
-      min-height: 2rem;
-      align-items: center;
-      justify-content: start;
-    }
-
-    #tab-dashboard .card-body {
-      max-height: 0;         /* <== ĐÂY CHÍNH LÀ LỆNH ẨN */
-      overflow: hidden;      /* <== Đảm bảo nội dung thừa không tràn ra ngoài */
-      padding: 0 1rem;
-    }
-
-    #tab-dashboard .card.active .card-body {
-      max-height: 38vh;   /* <== Giá trị lớn để đảm bảo hiển thị đầy đủ khi active */
-      height: 38vh;
-      transition: max-height 0.5s ease-in-out; /* <== Hiệu ứng chuyển đổi mượt mà */
-    }
-
-
-
-    /* --- 4. TAB LIST (DANH SÁCH DỮ LIỆU & PAGINATION) --- */
-    #tab-list {
-      height: 100%;
-      width: 100%;
-      flex: 1 1 auto;
-    }
-    
-    #tab-list .card {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      border: 1px solid #e0e0e0;
-    }
-
-    /* Container bao gồm Bảng + Pagination */
-    #tbl-container-tab2 {
-      flex: 1 1 auto;
-      display: flex;
-      flex-direction: column;
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-      height: 100% !important;
-      pointer-events: auto;
-    }
-
-    /* Vùng chứa bảng (Scrollable Area) */
-    #tbl-container-tab2 .flex-grow-1 {
-      flex: 1 1 auto;
-      overflow: auto;
-    }
-
-    /* Vùng Pagination (Footer của Card) */
-    #tbl-container-tab2 .card-footer {
-      flex: 0 0 auto;
-      background-color: #f8f9fa;
-      border-top: 1px solid #dee2e6;
-    }
-    
-    /* --- 5. TAB FORM (NHẬP LIỆU) --- */
-    #tab-form {
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-      height: 100%;
-      padding-bottom: 0.625rem;
-    }
-
-    /* --- 6. CÁC THÀNH PHẦN KHÁC (TABLE, BUTTON...) --- */
-    /* Table Sticky Header */
-    .table-data th { 
-      position: sticky; 
-      top: 0; 
-      z-index: 10; 
-      box-shadow: 0 0.125rem 0.125rem -0.0625rem rgba(0, 0, 0, 0.1);
-    }
-    
-    .table-data td {
-      vertical-align: middle;
-      padding: 0.125rem;
-      font-size: 0.75rem;
-    }
-
-    #tab-log {
-      height: 100%;
-    }
-    
-    #log-list {
-      height: calc(100% - 2.5rem);
-      overflow-y: auto;
-      background-color: #1e1e1e;
-      color: #d4d4d4;
-      font-family: 'Courier New', Courier, monospace;
-      padding: 0.625rem;
-      border: 0.03125rem solid #4e3c3c;
-    }
-
-    .flex-center {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 1rem;
-    }
-    
-    .flex-inline-center {
-        display: inline-flex;
-        justify-content: center;
-        align-items: center;
-        gap: var(--font-size);
-    }
-    
-    .flex-inline-center > * {
-        display: inline-flex;
-    }
-
-    .line-clamp-2 {
-      display: -webkit-box;
-      line-clamp: 2;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    
-    /* ==========================================
+  align-items: center;
+  /* justify-content: flex-start; */
+}
+
+/* Grid Center: Column 7 (center, fit-content, items inline, centered) */
+.g-center {
+  grid-column: 6 / 9;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  width: fit-content;
+  justify-content: start;
+  justify-self: center;
+}
+
+/* Grid Right: Columns 9-13 (right side, items inline) */
+.g-right {
+  grid-column: 9 / -1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: start;
+}
+
+.g-r-100 {
+  grid-column: 1 / -1;
+}
+.g-r-2 {
+  grid-row: span 2;
+}
+.g-r-3 {
+  grid-row: span 3;
+}
+.g-r-4 {
+  grid-row: span 4;
+}
+.g-c-100 {
+  grid-row: 1 / -1;
+  display: flex;
+  flex-direction: column;
+}
+.g-c-2 {
+  grid-column: span 2;
+  display: flex;
+  flex-direction: column;
+}
+.g-c-3 {
+  grid-column: span 3;
+  display: flex;
+  flex-direction: column;
+}
+.g-c-4 {
+  grid-column: span 4;
+  display: flex;
+  flex-direction: column;
+}
+.g-c-5 {
+  grid-column: span 5;
+  display: flex;
+  flex-direction: column;
+}
+.g-r-last {
+  grid-row: -1;
+}
+.g-c-last {
+  grid-column: -1;
+}
+/* Fix Header/Footer Contrast */
+.app-header {
+  background: var(--header-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-color) !important;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+/* ─── SCROLLABLE CONTAINERS: Allow scroll gestures ─── */
+.nav-tabs {
+  border-bottom: 1px solid var(--border-color);
+}
+.nav-tabs .nav-link {
+  background-color: var(--tab-inactive-bg) !important;
+  color: var(--tab-inactive-text) !important;
+  border: 1px solid transparent;
+  margin-right: 2px;
+  border-radius: var(--radius) var(--radius) 0 0 !important;
+  transition: all 0.2s ease;
+}
+.nav-tabs .nav-link:hover {
+  opacity: 0.8;
+  background-color: var(--hover-bg) !important;
+}
+.nav-tabs .nav-link.active {
+  background-color: var(--tab-active-bg) !important;
+  color: var(--tab-active-text) !important;
+  border-color: var(--border-color) var(--border-color) transparent !important;
+  font-weight: bold;
+  box-shadow: inset 0 -2px 0 var(--tab-active-text);
+}
+
+/* --- CARD & SURFACE COMPONENTS --- */
+.card {
+  background-color: var(--surface-color);
+  color: var(--text-color);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-md);
+  transition: all 0.3s ease;
+}
+.card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.card-header {
+  background-color: var(--tbl-head-bg);
+  color: var(--tbl-head-text);
+  border-color: var(--border-color);
+}
+
+/* --- DROPDOWN & MENU --- */
+.dropdown-menu {
+  background-color: var(--surface-color) !important;
+  color: var(--text-color) !important;
+  border: 0.0625rem solid var(--border-color);
+  border-radius: 0.375rem !important;
+  padding: 0.375rem 0;
+  min-width: 10rem;
+  max-width: 20rem !important;
+  box-shadow: 0 0.375rem 0.75rem rgba(0, 0, 0, 0.15) !important;
+  transition: all 0.2s ease;
+}
+
+.dropdown-item {
+  color: var(--text-color) !important;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500 !important;
+  border-radius: 0.25rem !important;
+  margin: 0 0.25rem !important;
+  transition: all 0.15s ease;
+}
+
+.dropdown-item:hover {
+  background-color: var(--hover-bg) !important;
+  color: var(--primary-color) !important;
+  padding-left: 0.875rem !important;
+}
+
+.dropdown-item.active {
+  background-color: var(--primary-color) !important;
+  color: #ffffff !important;
+}
+
+.dropdown-divider {
+  border-color: var(--border-color) !important;
+  opacity: 0.2 !important;
+  margin: 0.25rem 0 !important;
+}
+
+/* --- FORM CONTROLS --- */
+/* Input form cũng cần đồng bộ nền để dễ đọc */
+.form-control,
+.form-select {
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  border-color: var(--border-color);
+  transition: all 0.2s ease;
+  text-align: center;
+  -webkit-user-select: text; /* Allow text selection in inputs */
+  user-select: text;
+  touch-action: manipulation; /* ✅ Allow zoom but block double-tap zoom */
+  pointer-events: auto; /* ✅ Ensure input is clickable */
+}
+.form-control::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+.form-control:focus,
+.form-select:focus {
+  background-color: transparent !important;
+  color: var(--text-color) !important;
+  border-color: transparent !important;
+  box-shadow: 0 0 0 0.2rem rgba(124, 58, 237, 0.1);
+}
+
+/* --- BUTTON STYLING --- */
+.btn {
+  transition: all 0.2s ease;
+  font-weight: 500;
+  text-align: center;
+  line-clamp: 2;
+  touch-action: manipulation; /* ✅ Allow but block double-tap zoom */
+  pointer-events: auto; /* ✅ Ensure button is clickable */
+}
+
+.btn-primary {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  color: #ffffff !important;
+}
+
+.btn-primary:hover {
+  opacity: 0.85;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-secondary {
+  background-color: var(--secondary-color) !important;
+  border-color: var(--secondary-color) !important;
+  color: #ffffff !important;
+}
+
+.btn-success {
+  background-color: var(--success-color) !important;
+  border-color: var(--success-color) !important;
+  color: #ffffff !important;
+}
+
+.btn-danger {
+  background-color: var(--error-color) !important;
+  border-color: var(--error-color) !important;
+  color: #ffffff !important;
+}
+
+.btn-warning {
+  background-color: var(--warning-color) !important;
+  border-color: var(--warning-color) !important;
+  color: #1e293b !important;
+}
+
+.btn-info {
+  background-color: var(--info-color) !important;
+  border-color: var(--info-color) !important;
+  color: #ffffff !important;
+}
+
+.btn-light {
+  background-color: var(--surface-color) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-color) !important;
+}
+
+/* --- TABLE STYLING --- */
+table {
+  background-color: var(--surface-color);
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+
+thead {
+  background-color: var(--tbl-head-bg);
+  color: var(--tbl-head-text);
+}
+
+tbody tr {
+  background-color: var(--tbl-row-bg);
+  border-color: var(--tbl-border);
+  transition: background-color 0.2s ease;
+}
+
+tbody tr:hover {
+  background-color: var(--tbl-row-hover);
+}
+
+tbody td {
+  border-color: var(--tbl-border);
+  padding: 0.25rem;
+}
+
+/* --- MODAL & OVERLAY --- */
+.modal-content {
+  background-color: var(--surface-color) !important;
+  color: var(--text-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+.modal-header {
+  background-color: var(--primary-color) !important;
+  color: var(--input-bg) !important;
+  border-color: var(--border-color) !important;
+}
+
+.modal-footer {
+  background-color: var(--hover-bg) !important;
+  border-color: var(--border-color) !important;
+}
+
+.btn-close {
+  filter: invert(0.8);
+}
+
+@media (prefers-color-scheme: dark) {
+  .btn-close {
+    filter: invert(1);
+  }
+}
+
+/* --- TOAST NOTIFICATION --- */
+.toast {
+  background-color: var(--surface-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.toast-header {
+  background-color: var(--hover-bg) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-color) !important;
+}
+
+.toast-body {
+  color: var(--text-color) !important;
+}
+
+/* --- SCROLLBAR STYLING --- */
+::-webkit-scrollbar {
+  width: 0.4rem;
+  height: 0.4rem;
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--app-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(88, 85, 85, 0.979);
+  border-radius: 0.25rem;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--secondary-color);
+}
+
+/* --- UTILITY CLASSES --- */
+.text-muted {
+  color: var(--text-secondary) !important;
+}
+
+.text-primary {
+  color: var(--primary-color) !important;
+}
+
+.text-success {
+  color: var(--success-color) !important;
+}
+
+.text-danger {
+  color: var(--error-color) !important;
+}
+
+.text-warning {
+  color: var(--warning-color) !important;
+}
+
+.text-info {
+  color: var(--info-color) !important;
+}
+
+.bg-primary {
+  background-color: var(--primary-color) !important;
+}
+
+.bg-secondary {
+  background-color: var(--secondary-color) !important;
+}
+
+.border {
+  border-color: var(--border-color) !important;
+}
+
+.shadow-sm {
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.shadow {
+  box-shadow: var(--shadow-md) !important;
+}
+
+.shadow-lg {
+  box-shadow: var(--shadow-lg) !important;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Cấm cuộn ở body, chỉ cuộn ở vùng content */
+}
+
+/* --- 2. MAIN GRID LAYOUT (3 rows × 13 columns) --- */
+body {
+  display: grid;
+  grid-template-rows: minmax(5vh, auto) 1fr minmax(5vh, auto);
+  grid-template-columns: repeat(var(--grid-cols), minmax(0, 1fr));
+  gap: 0;
+  font-family: var(--font-family) !important;
+  font-size: var(--font-size) !important;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+
+  /* Grid Area Names */
+  grid-template-areas:
+    'h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13'
+    'm1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13'
+    'f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 f13';
+}
+.app-container {
+  grid-area: h1 / h1 / -1 / -1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* Chỉ cuộn trong app-content */
+}
+
+/* APP-HEADER: Spans row 1, all columns + internal grid layout */
+.app-header {
+  grid-area: h1 / h1 / auto / -1;
+  display: grid;
+  grid-template-rows: 35% 65%;
+  grid-template-columns: repeat(var(--grid-cols), minmax(0, 1fr));
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+  gap: 0;
+}
+
+/* TOP-BAR: Row 1 of header */
+.app-header .top-bar {
+  grid-row: 1;
+  grid-column: 1 / -1;
+  background: var(--header-bg);
+  color: var(--text-color);
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ─── NAV-CONTAINER: Horizontal flex, auto-wrap, horizontal scroll ─── */
+.nav-container {
+  grid-row: 1 / 3; /* Spans both rows of header */
+  grid-column: 1 / -1;
+  background: var(--header-bg);
+  color: var(--text-color);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  pointer-events: auto;
+}
+
+/* APP-CONTENT: Spans row 2, all columns */
+.app-content {
+  grid-column: 1 / -1;
+  flex: 1 1 auto;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
+  padding: 0.5rem 0.25rem;
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+}
+
+/* Form Elements siêu nhỏ */
+.form-control-sm,
+.form-select-sm,
+.btn-sm,
+.input-group-sm,
+.input-group-append-sm,
+.input-group-prepend-sm {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.25rem;
+  min-height: 1.5rem;
+}
+.dropdown-menu {
+  font-size: 0.8125rem;
+  max-height: 20rem;
+  overflow-y: auto;
+}
+
+.dropdown-menu .dropdown-item {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.btn {
+  border-radius: 0.5rem;
+}
+
+/* Fix Button Group Border Radius - Giữ lại border-radius cho tất cả button trong group */
+.btn-group > .btn {
+  border-radius: 0.5rem !important;
+}
+
+/* ─── SCROLLABLE CONTAINERS: Allow scroll gestures ─── */
+.app-content,
+.tab-content,
+#tbl-container-tab2,
+table.table-bordered thead {
+  border: var(--tbl-border);
+}
+
+td {
+  padding: 0;
+}
+
+td select.form-select-sm,
+td input.form-control-sm {
+  margin: 0;
+  padding: 0 !important;
+  border: none;
+}
+
+.badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  width: fit-content;
+}
+
+.badge.planning {
+  background: #e9ecef;
+  color: #495057;
+}
+.badge.pending {
+  background: #fff3cd;
+  color: #856404;
+}
+.badge.in-progress {
+  background: #cff4fc;
+  color: #055160;
+}
+.badge.confirmed {
+  background: #d1e7dd;
+  color: #0f5132;
+}
+.badge.completed {
+  background: #d1e7dd;
+  color: #198754;
+}
+.badge.canceled {
+  background: #f8d7da;
+  color: #842029;
+}
+
+.form-floating {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.25rem !important;
+}
+
+/* Form Labels */
+.form-label {
+  margin-bottom: 0 !important;
+  font-size: 0.625rem !important;
+  color: #666;
+  font-weight: 600;
+}
+
+/* --- 3. TAB SYSTEM & SCROLLING --- */
+.tab-content {
+  display: flex;
+  flex: 1 1 auto;
+  padding: 0 0.25rem 0.25rem 0.25rem;
+  height: 100%;
+  width: 100%;
+  overflow: auto; /* Allow scrolling */
+  -webkit-overflow-scrolling: touch;
+}
+
+.tab-pane {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-header {
+  /* max-height: 10% ← removed: clips wrapped filter bar on mobile */
+  flex: 0 0 auto;
+  width: 100%;
+  background-color: #f8f9fa;
+  padding: 0 0.25rem;
+  border-bottom: 1px solid #dee2e6;
+  font-weight: bold;
+  min-height: 2rem;
+  align-items: center;
+  justify-content: start;
+}
+
+#tab-dashboard .card-body {
+  max-height: 0; /* <== ĐÂY CHÍNH LÀ LỆNH ẨN */
+  overflow: hidden; /* <== Đảm bảo nội dung thừa không tràn ra ngoài */
+  padding: 0 1rem;
+}
+
+#tab-dashboard .card.active .card-body {
+  max-height: 38vh; /* <== Giá trị lớn để đảm bảo hiển thị đầy đủ khi active */
+  height: 38vh;
+  transition: max-height 0.5s ease-in-out; /* <== Hiệu ứng chuyển đổi mượt mà */
+}
+
+/* --- 4. TAB LIST (DANH SÁCH DỮ LIỆU & PAGINATION) --- */
+#tab-list {
+  height: 100%;
+  width: 100%;
+  flex: 1 1 auto;
+}
+
+#tab-list .card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e0e0e0;
+}
+
+/* Container bao gồm Bảng + Pagination */
+#tbl-container-tab2 {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  height: 100% !important;
+  pointer-events: auto;
+}
+
+/* Vùng chứa bảng (Scrollable Area) */
+#tbl-container-tab2 .flex-grow-1 {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+/* Vùng Pagination (Footer của Card) */
+#tbl-container-tab2 .card-footer {
+  flex: 0 0 auto;
+  background-color: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+}
+
+/* --- 5. TAB FORM (NHẬP LIỆU) --- */
+#tab-form {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  height: 100%;
+  padding-bottom: 0.625rem;
+}
+
+/* --- 6. CÁC THÀNH PHẦN KHÁC (TABLE, BUTTON...) --- */
+/* Table Sticky Header */
+.table-data th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 0.125rem 0.125rem -0.0625rem rgba(0, 0, 0, 0.1);
+}
+
+.table-data td {
+  vertical-align: middle;
+  padding: 0.125rem;
+  font-size: 0.75rem;
+}
+
+#tab-log {
+  height: 100%;
+}
+
+#log-list {
+  height: calc(100% - 2.5rem);
+  overflow-y: auto;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  font-family: 'Courier New', Courier, monospace;
+  padding: 0.625rem;
+  border: 0.03125rem solid #4e3c3c;
+}
+
+.flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+}
+
+.flex-inline-center {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--font-size);
+}
+
+.flex-inline-center > * {
+  display: inline-flex;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================
     CSS: CHROME MENU TRIGGER BUTTON
     ========================================== */
-    /* .chrome-trigger-btn {
+/* .chrome-trigger-btn {
         background-color: transparent;
         border: none;  
         width: 36px;                  
@@ -913,280 +938,330 @@
         outline: none; 
     } */
 
-    /* Tinh chỉnh cho Dark Mode */
-    body.dark-theme .chrome-trigger-btn:hover,
-    body.dark-theme .chrome-trigger-btn:focus {
-        background-color: rgba(236, 227, 227, 0.1); 
-    }
+/* Tinh chỉnh cho Dark Mode */
+body.dark-theme .chrome-trigger-btn:hover,
+body.dark-theme .chrome-trigger-btn:focus {
+  background-color: rgba(236, 227, 227, 0.1);
+}
 
-    .dragging {
-      opacity: 0.5;
-    }
-    .is-dragging { 
-      margin: 0 !important;           /* Loại bỏ auto margin để di chuyển tự do */
-      max-width: none;    
-      transition: none !important;    
-      touch-action: none;  /* Quan trọng cho Mobile: Ngăn trình duyệt cuộn trang khi đang kéo modal */    transition: none !important; 
-    }
-    /* Styling cho cục nắm kéo kích thước */
-    .erp-resize-handle {
-        position: absolute;
-        bottom: 0;
-        right: 0;
-        width: 15px;
-        height: 15px;
-        cursor: nwse-resize; /* Trỏ chuột hình mũi tên chéo */
-        background: linear-gradient(135deg, transparent 50%, #6c757d 50%); /* Tạo hình tam giác nhỏ ở góc */
-        z-index: 10;
-    }
+.dragging {
+  opacity: 0.5;
+}
+.is-dragging {
+  margin: 0 !important; /* Loại bỏ auto margin để di chuyển tự do */
+  max-width: none;
+  transition: none !important;
+  touch-action: none; /* Quan trọng cho Mobile: Ngăn trình duyệt cuộn trang khi đang kéo modal */
+  transition: none !important;
+}
+/* Styling cho cục nắm kéo kích thước */
+.erp-resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 15px;
+  height: 15px;
+  cursor: nwse-resize; /* Trỏ chuột hình mũi tên chéo */
+  background: linear-gradient(
+    135deg,
+    transparent 50%,
+    #6c757d 50%
+  ); /* Tạo hình tam giác nhỏ ở góc */
+  z-index: 10;
+}
 
-    /* Tắt transition khi đang kéo để tránh giật lag */
-    .is-resizing {
-        transition: none !important;
-    }
-    /* TỐI ƯU CHO RESIZABLE MODAL */
+/* Tắt transition khi đang kéo để tránh giật lag */
+.is-resizing {
+  transition: none !important;
+}
+/* TỐI ƯU CHO RESIZABLE MODAL */
 
-    /* 1. Đảm bảo vỏ ngoài là một cột Flex */
-    .modal-content {
-        display: flex !important;
-        flex-direction: column !important;
-    }
+/* 1. Đảm bảo vỏ ngoài là một cột Flex */
+.modal-content {
+  display: flex !important;
+  flex-direction: column !important;
+}
 
-    /* 2. Ép phần body tự động giãn nở (flex-grow: 1) lấp đầy khoảng trống */
-    .modal-content > .modal-body {
-        flex: 1 1 auto !important; 
-        overflow-y: auto; /* Tự động hiện thanh cuộn nếu bạn thu nhỏ quá */
-        min-height: 0;    /* Fix lỗi flexbox trên một số trình duyệt Safari/cũ */
-    }
+/* 2. Ép phần body tự động giãn nở (flex-grow: 1) lấp đầy khoảng trống */
+.modal-content > .modal-body {
+  flex: 1 1 auto !important;
+  overflow-y: auto; /* Tự động hiện thanh cuộn nếu bạn thu nhỏ quá */
+  min-height: 0; /* Fix lỗi flexbox trên một số trình duyệt Safari/cũ */
+}
 
-    /* 3. (Tùy chọn) Nếu bảng của bạn nằm trong body, ép nó cao 100% */
-    .modal-body .table-responsive {
-        height: 100%;
-    }
-    /* ERP TASKBAR (Chứa các cửa sổ thu nhỏ) */
-    .erp-taskbar {
-        position: fixed;
-        bottom: 15px;
-        left: 15px;
-        display: flex;
-        gap: 10px;
-        z-index: 9999; /* Luôn nổi trên cùng */
-        pointer-events: none; /* Xuyên qua phần rỗng */
-    }
+/* 3. (Tùy chọn) Nếu bảng của bạn nằm trong body, ép nó cao 100% */
+.modal-body .table-responsive {
+  height: 100%;
+}
+/* ERP TASKBAR (Chứa các cửa sổ thu nhỏ) */
+.erp-taskbar {
+  position: fixed;
+  bottom: 15px;
+  background-color: transparent;
+  left: 15px;
+  display: flex;
+  gap: 10px;
+  z-index: 9999; /* Luôn nổi trên cùng */
+  pointer-events: none; /* Xuyên qua phần rỗng */
+}
 
-    /* Các nút thu nhỏ trên Taskbar */
-    .erp-task-item {
-        pointer-events: auto; /* Bắt sự kiện click */
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        border-radius: 50%;
-        padding: 8px 15px;
-        font-weight: 500;
-        transition: all 0.2s ease;
-        animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-    }
+/* Các nút thu nhỏ trên Taskbar */
+.erp-task-item {
+  pointer-events: auto; /* Bắt sự kiện click */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 0.5rem;
+  padding-right: 1.5rem;
+  font-weight: 500;
+  max-width: 7rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: all 0.2s ease;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
 
-    .erp-task-item:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-    }
+.erp-task-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
 
-    @keyframes popIn {
-        0% { transform: scale(0); opacity: 0; }
-        100% { transform: scale(1); opacity: 1; }
-    }
+@keyframes popIn {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
 
+/* Thanh cuộn đẹp cho panel */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
 
+@keyframes iconSpin {
+  from {
+    transform: rotate(-180deg) scale(0.5);
+  }
+  to {
+    transform: rotate(0) scale(1);
+  }
+}
 
-    /* Thanh cuộn đẹp cho panel */
-    .custom-scrollbar::-webkit-scrollbar {
-      width: 6px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: #f1f1f1; 
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #c1c1c1; 
-      border-radius: 3px;
-    }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-      background: #a8a8a8; 
-    }
+/* Hiệu ứng flash khi đảo dòng */
+@keyframes flash-bg {
+  0% {
+    background-color: #e8f5e9;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
 
-    @keyframes iconSpin {
-        from { transform: rotate(-180deg) scale(0.5); }
-        to { transform: rotate(0) scale(1); }
-    }
+.flash-effect tr {
+  animation: flash-bg 0.5s ease-out;
+}
 
-    /* Hiệu ứng flash khi đảo dòng */
-    @keyframes flash-bg {
-      0% { background-color: #e8f5e9; }
-      100% { background-color: transparent; }
-    }
+/* Animation */
+@keyframes bounceIn {
+  0%,
+  20%,
+  40%,
+  60%,
+  80%,
+  100% {
+    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+  }
+  0% {
+    opacity: 0;
+    transform: scale3d(0.3, 0.3, 0.3);
+  }
+  20% {
+    transform: scale3d(1.1, 1.1, 1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale3d(1, 1, 1);
+  }
+}
 
-    .flash-effect tr {
-      animation: flash-bg 0.5s ease-out;
-    }
-    
-    /* Animation */
-    @keyframes bounceIn {
-      0%, 20%, 40%, 60%, 80%, 100% { animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000); }
-      0% { opacity: 0; transform: scale3d(.3, .3, .3); }
-      20% { transform: scale3d(1.1, 1.1, 1.1); }
-      100% { opacity: 1; transform: scale3d(1, 1, 1); }
-    }
-    
-    .animate__bounceIn { animation-name: bounceIn; animation-duration: 1s; }
-    
-    
-    /* CSS Riêng cho Admin Dashboard */
-    /* Reset CSS cho vùng chứa này để tránh xung đột với style chung */
-    #tab-admin-dashboard {
-      width: 100%;
-      height: 100%;
-    }
+.animate__bounceIn {
+  animation-name: bounceIn;
+  animation-duration: 1s;
+}
 
-    /* Wrapper chính: Căn giữa tuyệt đối & Full màn hình */
-    .admin-wrapper {
-      min-height: calc(100vh - 10rem);
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      background-color: var(--app-bg);
-      padding: 1.25rem;
-    }
+/* CSS Riêng cho Admin Dashboard */
+/* Reset CSS cho vùng chứa này để tránh xung đột với style chung */
+#tab-admin-dashboard {
+  width: 100%;
+  height: 100%;
+}
 
-    .admin-header-text {
-      text-align: center;
-      margin-bottom: 2.5rem;
-      color: #2c3e50;
-      width: 100%;
-    }
+/* Wrapper chính: Căn giữa tuyệt đối & Full màn hình */
+.admin-wrapper {
+  min-height: calc(100vh - 10rem);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--app-bg);
+  padding: 1.25rem;
+}
 
-    /* Thiết kế Card */
-    .module-card {
-      border: none;
-      border-radius: 1rem;
-      background: var(--tab-inactive-bg);
-      box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.05);
-      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-      cursor: pointer;
-      height: 100%;
-      min-height: 15.625rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      position: relative;
-    }
+.admin-header-text {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  color: #2c3e50;
+  width: 100%;
+}
 
-    .module-card:hover {
-      box-shadow: 0 0.75rem 1.875rem rgba(0, 0, 0, 0.15);
-      z-index: 2;
-    }
+/* Thiết kế Card */
+.module-card {
+  border: none;
+  border-radius: 1rem;
+  background: var(--tab-inactive-bg);
+  box-shadow: 0 0.25rem 1.25rem rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  cursor: pointer;
+  height: 100%;
+  min-height: 15.625rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
 
-    /* Màu sắc định danh */
-    .card-sales { border-bottom: 5px solid #0d6efd; }
-    .card-op    { border-bottom: 5px solid #198754; }
-    .card-acc   { border-bottom: 5px solid #ffc107; }
+.module-card:hover {
+  box-shadow: 0 0.75rem 1.875rem rgba(0, 0, 0, 0.15);
+  z-index: 2;
+}
 
-    .module-icon { font-size: 3.5rem; margin-bottom: 1.25rem; opacity: 0.9; }
-    .module-title { font-weight: 700; font-size: 1.25rem; text-transform: uppercase; margin-bottom: 0.3125rem; }
+/* Màu sắc định danh */
+.card-sales {
+  border-bottom: 5px solid #0d6efd;
+}
+.card-op {
+  border-bottom: 5px solid #198754;
+}
+.card-acc {
+  border-bottom: 5px solid #ffc107;
+}
 
-    /* -----------------------------------------------------------
+.module-icon {
+  font-size: 3.5rem;
+  margin-bottom: 1.25rem;
+  opacity: 0.9;
+}
+.module-title {
+  font-weight: 700;
+  font-size: 1.25rem;
+  text-transform: uppercase;
+  margin-bottom: 0.3125rem;
+}
+
+/* -----------------------------------------------------------
     QUY TẮC: "CHỈ ẨN KHI..." (Negative Logic)
     Cấu trúc: body:not(Quyền_Sở_Hữu):not(Quyền_Cấp_Cao_Hơn) .element { ẩn }
   ----------------------------------------------------------- */
 
-    /* 1. ADMIN ONLY: Chỉ Admin mới thấy (Level cao nhất) */
-    body:not(.is-admin) .admin-only {
-      display: none !important;
-    }
+/* 1. ADMIN ONLY: Chỉ Admin mới thấy (Level cao nhất) */
+body:not(.is-admin) .admin-only {
+  display: none !important;
+}
 
-    /* 2. MANAGER ONLY: Manager thấy + Admin cũng thấy */
-    body:not(.is-manager):not(.is-admin) .manager-only {
-      display: none !important;
-    }
+/* 2. MANAGER ONLY: Manager thấy + Admin cũng thấy */
+body:not(.is-manager):not(.is-admin) .manager-only {
+  display: none !important;
+}
 
-    /* 3. SUP ONLY: Sup thấy + Manager thấy + Admin thấy */
-    body:not(.is-sup):not(.is-manager):not(.is-admin) .sup-only {
-      display: none !important;
-    }
+/* 3. SUP ONLY: Sup thấy + Manager thấy + Admin thấy */
+body:not(.is-sup):not(.is-manager):not(.is-admin) .sup-only {
+  display: none !important;
+}
 
-    /* 4. SALES ONLY: Sales thấy + Manager thấy + Admin thấy (Ví dụ thế) */
-    body:not(.is-sales):not(.is-manager):not(.is-admin) .sales-only {
-      display: none !important;
-    }
+/* 4. SALES ONLY: Sales thấy + Manager thấy + Admin thấy (Ví dụ thế) */
+body:not(.is-sales):not(.is-manager):not(.is-admin) .sales-only {
+  display: none !important;
+}
 
-    /* 5. OP ONLY: Tương tự... */
-    body:not(.is-op):not(.is-manager):not(.is-admin) .op-only {
-      display: none !important;
-    }
+/* 5. OP ONLY: Tương tự... */
+body:not(.is-op):not(.is-manager):not(.is-admin) .op-only {
+  display: none !important;
+}
 
-    /* 6. ACCOUNTANT ONLY: Chỉ Kế toán + Admin thấy (Manager sale ko đc xem tiền) */
-    body:not(.is-acc):not(.is-admin) .acc-only {
-      display: none !important;
-    }
+/* 6. ACCOUNTANT ONLY: Chỉ Kế toán + Admin thấy (Manager sale ko đc xem tiền) */
+body:not(.is-acc):not(.is-admin) .acc-only {
+  display: none !important;
+}
 
-
-
-  @media screen and (max-width: 1200px) {
-    fieldset {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0.75rem;
-      padding: 0 1rem;
-      margin: 0;
-      border-bottom: 0.5rem solid #ccc;
-      border-radius: 8px;
-      background-color: #f9f9f9;
-      align-items: start;
-      align-content: start;
-      grid-auto-flow: row;
-    }
-
+@media screen and (max-width: 1200px) {
+  fieldset {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    padding: 0 1rem;
+    margin: 0;
+    border-bottom: 0.5rem solid #ccc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    align-items: start;
+    align-content: start;
+    grid-auto-flow: row;
   }
-    /* =========================================================================
+}
+/* =========================================================================
     MOBILE TOUCH FIX - REVISED BY 9 TRIP ERP ASSISTANT
     ========================================================================= */
- 
- @media screen and (max-width: 991px) {
+
+@media screen and (max-width: 991px) {
   /* 1. Đảm bảo container chiếm trọn màn hình và không cuộn body */
-  html, body {
-      overflow: hidden !important;
-      height: auto !important;
-      touch-action: auto !important; 
-      -webkit-overflow-scrolling: touch;
-      height: 100dvh;   
+  html,
+  body {
+    overflow: hidden !important;
+    height: auto !important;
+    touch-action: auto !important;
+    -webkit-overflow-scrolling: touch;
+    height: 100dvh;
   }
-  
+
   .app-container {
-      display: flex;
-      flex-direction: column;
-      height: 100dvh; /* Sử dụng biến --vh nếu bạn đã cài đặt ở bước trước */
-      width: 100%;
-      overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100dvh; /* Sử dụng biến --vh nếu bạn đã cài đặt ở bước trước */
+    width: 100%;
+    overflow: hidden;
   }
-  
+
   .app-header {
-    flex: 0 0 auto;      /* Không cho phép co dãn */
+    flex: 0 0 auto; /* Không cho phép co dãn */
     background: var(--header-bg);
     box-shadow: var(--shadow-md);
     max-height: 8rem;
     padding: 0.2rem;
-    position: sticky;    /* sticky thay absolute: vẫn ở top, không tách khỏi flex flow */
+    position: sticky; /* sticky thay absolute: vẫn ở top, không tách khỏi flex flow */
     top: 0;
     width: 100%;
     z-index: 200;
     touch-action: auto !important;
   }
 
-
-    
   .app-content {
-    flex: 1 1 0;           /* 0 thay vì auto */
-    min-height: 0;         /* Cho phép shrink đúng */
+    flex: 1 1 0; /* 0 thay vì auto */
+    min-height: 0; /* Cho phép shrink đúng */
     overflow-y: auto !important;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
@@ -1196,7 +1271,7 @@
     /* Thay bằng padding để tránh content bị footer che */
     padding-bottom: var(--footer-actual-height, calc(var(--footer-height) + 0.5rem));
     position: relative;
-}  
+  }
 
   /* 5. FIX NAV-CONTAINER NGANG */
   .nav-container {
@@ -1236,19 +1311,23 @@
 
   .modal-dialog {
     /* Quan trọng: Ngăn chặn click-out khi click vào bên trong lòng Modal */
-    pointer-events: auto; 
+    pointer-events: auto;
     z-index: 1051;
   }
-  
+
   /* 4. ĐẢM BẢO CÁC VÙNG NHẬP LIỆU LUÔN TƯƠNG TÁC ĐƯỢC */
-  input, select, textarea, button, .btn {
+  input,
+  select,
+  textarea,
+  button,
+  .btn {
     pointer-events: auto !important;
     touch-action: manipulation !important; /* Cho phép zoom nhấp nhưng không lag */
     width: fit-content;
     padding: 0.15rem;
     margin: 0.15rem;
   }
-    
+
   .btn {
     display: inline-block; /* Stack buttons vertically if multiple */
     margin: 10px 0; /* Add vertical spacing */
@@ -1268,90 +1347,284 @@
     white-space: nowrap;
   }
 
-
   .desktop-only {
     display: none !important;
   }
 
-  #toast-container {
-    position: fixed !important;
-    bottom: auto !important;
-    top: 50% !important;
-    left: 50% !important;
-    right: auto !important;
-    transform: translate(-50%, -50%) !important;
-    max-width: 85vw !important;
-    max-height: 60vh !important;
-    padding: 1rem !important;
-  }
-  #toast-container .toast {
-    width: 100%;
-  }  
   .g-layout {
     display: grid;
     /* Chia 4 cột bằng nhau, 1fr = 1 phân số (fraction) của không gian trống */
-    grid-template-columns: repeat(4, 1fr); 
+    grid-template-columns: repeat(4, 1fr);
     /* Chia 5 hàng bằng nhau */
-    grid-template-rows: repeat(5, 1fr); 
+    grid-template-rows: repeat(5, 1fr);
 
     /* Đảm bảo chiều rộng đủ lớn để 4 cột hiển thị rõ ràng (ví dụ: tối thiểu 1200px) */
-    min-width: 1200px; 
+    min-width: 1200px;
     /* Bỏ giới hạn chiều cao cố định trên mobile để dễ lướt đọc */
-    height: auto; 
+    height: auto;
     min-height: 85dvh;
-    
+
     height: 85dvh; /* Tối ưu cho Mobile: Dynamic Viewport Height tránh bị che bởi thanh cuộn */
     /* Khoảng cách giữa các ô (Grid Gap) - Bạn có thể chỉnh về 0 nếu muốn các ô dính sát vào nhau */
-    gap: 0; 
-    
+    gap: 0;
+
     /* Padding an toàn xung quanh để nội dung không chạm sát mép màn hình */
     padding: 8px;
-    
+
     /* Ngăn chặn scroll tổng thể nếu nội dung bên trong vô tình phình to */
     overflow: scroll;
     background-color: #f8f9fa; /* Màu nền nhẹ nhàng, đồng bộ bootstrap (tùy chọn) */
-    }
+  }
 
-    /* Các ô bên trong grid (Card UI) để đảm bảo nội dung không làm vỡ cấu trúc */
-    .g-layout > div {
-        background: #ffffff;
-        border-radius: 6px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        overflow: auto; /* Nếu nội dung trong 1 ô quá dài, chỉ cuộn riêng ô đó */
-        padding: 10px;
-    }
+  /* Các ô bên trong grid (Card UI) để đảm bảo nội dung không làm vỡ cấu trúc */
+  .g-layout > div {
+    background: #ffffff;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: auto; /* Nếu nội dung trong 1 ô quá dài, chỉ cuộn riêng ô đó */
+    padding: 10px;
+  }
 
-    .no-select {
-        user-select: none !important; /* Ngăn người dùng chọn văn bản trong phần này */
-        -webkit-user-select: none !important;
-        -moz-user-select: none !important;
-        -ms-user-select: none !important;
-        -webkit-touch-callout: none !important;
-    }
+  .no-select {
+    user-select: none !important; /* Ngăn người dùng chọn văn bản trong phần này */
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    -webkit-touch-callout: none !important;
+  }
 
-    .erp-header {
-      padding: 0;
-      height: 36px;
-      width: 36px;
-    }
+  .erp-header {
+    padding: 0;
+    height: 100%;
+    width: auto;
+  }
 
-    fieldset {
-      display: grid;
-      grid-template-columns: 50% 50%;
-      gap: 0.75rem;
-      padding: 0 1rem;
-      margin: 0;
-      border-bottom: 0.5rem solid #ccc;
-      border-radius: 8px;
-      background-color: #f9f9f9;
-      align-items: start;
-      align-content: start;
-      grid-auto-flow: row;
-    }
+  fieldset {
+    display: grid;
+    grid-template-columns: 50% 50%;
+    gap: 0.75rem;
+    padding: 0 1rem;
+    margin: 0;
+    border-bottom: 0.5rem solid #ccc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    align-items: start;
+    align-content: start;
+    grid-auto-flow: row;
+  }
 
-    fieldset > * {
-      width: 100%;
-    }
+  fieldset > * {
+    width: 100%;
+  }
 }
 
+/* =========================================================================
+   STATE PROXY — Dirty Tracking & Unsaved State Indicators
+   ========================================================================= */
 
+/* Field-level: highlight any input/select that was changed since last save */
+.is-dirty {
+  background-color: #fff8e1 !important;
+  border-color: #f59e0b !important;
+  box-shadow: inset 0 0 0 1.5px #f59e0b !important;
+  transition:
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.is-dirty:focus {
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25) !important;
+}
+
+/* Row-level: faint amber tint for entire table row with dirty cells */
+tr:has(.is-dirty) {
+  background-color: rgba(254, 243, 199, 0.4);
+}
+
+/* Unsaved badge — shown via [data-bind-dirty] elements */
+[data-bind-dirty] {
+  display: none;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #92400e;
+  background-color: #fde68a;
+  border: 1px solid #f59e0b;
+  border-radius: 999px;
+  cursor: default;
+  animation: unsaved-pulse 2s ease-in-out infinite;
+}
+
+@keyframes unsaved-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.65;
+  }
+}
+
+/* Undo/rollback flash: brief green tint when a value is restored */
+.state-restored {
+  animation: state-flash 0.6s ease-out;
+}
+
+@keyframes state-flash {
+  0% {
+    background-color: #d1fae5;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+/* =========================================================
+   RESPONSIVE TAB MANAGER (MOBILE DROPDOWN + SLIDE ANIMATION)
+   ========================================================= */
+.rtm-container {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* ── CHEVRON ICON: xoay theo trạng thái mở/đóng ── */
+.rtm-toggle-btn .rtm-chevron {
+  transition: transform 0.25s ease;
+  flex-shrink: 0;
+}
+
+.rtm-toggle-btn.open .rtm-chevron {
+  transform: rotate(180deg);
+}
+
+/* Nút Toggle chỉ hiện ở Mobile */
+.rtm-toggle-btn {
+  display: none;
+}
+
+/* ─────────────────────────────────────────────────────────
+   TAB SLIDE ANIMATION — áp dụng mọi thiết bị
+   Kích hoạt khi .tab-content cha có thuộc tính data-rtm-dir
+   ───────────────────────────────────────────────────────── */
+
+/* Chuyển sang tab bên phải (index > index hiện tại): pane mới trượt vào từ phải */
+.tab-content[data-rtm-dir='forward'] .tab-pane.active {
+  animation: rtmSlideFromRight 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+/* Quay lại tab bên trái (index < index hiện tại): pane mới trượt vào từ trái */
+.tab-content[data-rtm-dir='backward'] .tab-pane.active {
+  animation: rtmSlideFromLeft 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@keyframes rtmSlideFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(2rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes rtmSlideFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-2rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   MOBILE DROPDOWN (< 768px)
+   ───────────────────────────────────────────────────────── */
+@media (max-width: 767.98px) {
+  /* Hiện nút toggle trên Mobile — compact, không full-width */
+  .rtm-toggle-btn {
+    display: inline-flex !important;
+    width: fit-content !important;
+    gap: 0.5rem;
+    padding: 0.4rem 0.8rem;
+    white-space: nowrap;
+  }
+
+  /* Dropdown ẩn mặc định — dùng biến CSS để tương thích Dark Mode */
+  /* !important cần thiết để override `.nav-tabs { display: flex !important }` từ breakpoint 991px */
+  .rtm-tabs-list {
+    display: none !important;
+    flex-direction: column;
+    position: absolute;
+    top: calc(100% + 0.375rem);
+    left: 0;
+    min-width: 100%; /* tối thiểu bằng chiều rộng button */
+    width: max-content; /* mở rộng theo nội dung nếu cần */
+    background-color: var(--surface-color, #ffffff);
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.18);
+    z-index: 1050;
+    padding: 0.375rem 0;
+    /* Ngăn menu bị che bởi overflow hidden của parent */
+    overflow: visible;
+  }
+
+  .rtm-tabs-list.show {
+    display: flex !important;
+    animation: rtmFadeIn 0.18s ease-out both;
+  }
+
+  .rtm-tabs-list .nav-item {
+    width: 100%;
+    margin-bottom: 0;
+  }
+
+  /* Style tab thành dropdown item */
+  .rtm-tabs-list .nav-link {
+    border: none !important;
+    border-radius: 0 !important;
+    width: 100%;
+    padding: 0.7rem 1.25rem;
+    color: var(--text-color, #212529);
+    background-color: transparent;
+    text-align: left;
+    transition:
+      background-color 0.15s ease,
+      border-left-color 0.15s ease;
+  }
+
+  .rtm-tabs-list .nav-link.active {
+    background-color: var(--hover-bg, #f8f9fa);
+    color: var(--primary-color, #0d6efd);
+    border-left: 3px solid var(--primary-color, #0d6efd) !important;
+    font-weight: 600;
+  }
+
+  .rtm-tabs-list .nav-link:not(.active):hover {
+    background-color: var(--hover-bg, #e9ecef);
+    color: var(--text-color, #212529);
+  }
+
+  /* Tắt border-bottom của Bootstrap nav-tabs trong dropdown */
+  .rtm-tabs-list {
+    border-bottom: none !important;
+  }
+}
+
+@keyframes rtmFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

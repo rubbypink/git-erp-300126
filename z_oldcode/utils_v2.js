@@ -167,7 +167,6 @@ const ErrorLogger = {
       console.warn('⚠️ Cannot clear localStorage', e);
     }
   },
-
   export() {
     return {
       exported: new Date().toISOString(),
@@ -1329,7 +1328,7 @@ export const Utils = {
     if (el) el.style.display = 'none';
   },
 
-  showNotify(msg, isSuccess = true) {
+  logA(msg, isSuccess = true) {
     this.logA(msg, isSuccess ? 'success' : 'error');
   },
 
@@ -1546,7 +1545,7 @@ export const Utils = {
         doc.save(`${fileName}.pdf`);
         this.showLoading(false);
       }
-      if (typeof this.showNotify === 'function') this.showNotify("Đã xuất file thành công!", true);
+      if (typeof this.logA === 'function') this.logA("Đã xuất file thành công!", true);
     } catch (err) {
       this.showLoading(false);
       this.logError(err);

@@ -1,43 +1,86 @@
+/**
+ * Xóa param ?mode= khỏi URL mà không reload trang (clean URL).
+ */
+function _cleanModeFromUrl() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('mode');
+  window.history.replaceState({}, '', url.toString());
+}
 
+/**
+ * Đọc URL param ?mode= và tự động chuyển chế độ nếu hợp lệ.
+ * Được gọi từ app.js#listenAuth ngay sau khi CURRENT_USER.role đã sẵn sàng,
+ * trước khi render UI hoặc load data — để tránh lãng phí boot.
+ *
+ * Ví dụ URL:
+ *   ?mode=SALE       → giả lập role Sales
+ *   ?mode=OPERATOR   → giả lập role Operator
+ *   ?mode=ACC        → giả lập role Kế toán
+ *   ?mode=REAL       → tắt mock, quay về role thực
+ *
+ * @returns {boolean} true nếu có param hợp lệ VÀ đang xử lý chuyển chế độ (app sẽ reload)
+ */
+function applyModeFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const modeParam = params.get('mode');
+  if (!modeParam) return false;
+
+  const VALID_MODES = ['SALE', 'OPERATOR', 'ACC'];
+  const modeCode = modeParam.toUpperCase();
+
+  // Xóa param khỏi URL ngay lập tức (tránh loop khi reload)
+  _cleanModeFromUrl();
+
+  if (!VALID_MODES.includes(modeCode)) {
+    log(`⚠️ URL mode không hợp lệ: "${modeParam}". Hợp lệ: ${VALID_MODES.join(', ')}`, 'warning');
+    return false;
+  }
+  // Áp dụng mock role
+  log(`🔗 Phát hiện URL mode: ?mode=${modeCode} → Đang chuyển chế độ...`, 'info');
+  reloadSystemMode(modeCode);
+  return true;
+}
 
 /**
  * Hàm khởi động lại App và chuyển chế độ (Chỉ dành cho Admin)
  * @param {string} modeCode - Mã Role muốn chuyển: 'SALE', 'OPERATOR', 'ACC'
  */
 function reloadSystemMode(modeCode) {
-    const roleData = {
-        realRole: CURRENT_USER.role,
-        maskedRole: modeCode
-    };
-    localStorage.setItem('erp-mock-role', JSON.stringify(roleData));
-    log('🎭 Chuyển chế độ thành công sang: ' + Object.values(roleData).join(' -> ') + '. Đang tải lại trang...');
-    A.DB.stopNotificationsListener(); // Hủy tất cả subscription trước khi reload
-    window.location.reload();
+  const roleData = {
+    realRole: CURRENT_USER.role,
+    maskedRole: modeCode,
+  };
+  localStorage.setItem('erp-mock-role', JSON.stringify(roleData));
+  log(
+    '🎭 Chuyển chế độ thành công sang: ' +
+      Object.values(roleData).join(' -> ') +
+      '. Đang tải lại trang...'
+  );
+  A.DB.stopNotificationsListener(); // Hủy tất cả subscription trước khi reload
+  window.location.reload();
 }
 
 function handleServerError(err) {
-    logError("Lỗi kết nối: " + err.message);
-    handleRetry("Lỗi kết nối: " + err.message);
+  logError('Lỗi kết nối: ' + err.message);
+  handleRetry('Lỗi kết nối: ' + err.message);
 }
 
 /**
  * Logic quyết định Thử lại hay Dừng
  */
 function handleRetry(reason) {
-
-    if (retryCount < MAX_RETRIES) {
-        retryCount++;
-        // Chờ 2s rồi gọi lại hàm load
-        log('handleRetry run lần: ', retryCount);
-        setTimeout(loadDataFromFirebase, RETRY_DELAY);
-    } else {
-        // Đã thử hết số lần cho phép -> Báo lỗi chết (Fatal Error)
-        showLoading(false);
-        const errorMsg = `Không thể kết nối Server sau ${MAX_RETRIES} lần thử.\nNguyên nhân: ${reason}\n\nVui lòng nhấn F5 để tải lại trang.`;
-        log("FATAL ERROR: " + reason, "error");
-    }
+  if (retryCount < MAX_RETRIES) {
+    retryCount++;
+    // Chờ 2s rồi gọi lại hàm load
+    log('handleRetry run lần: ', retryCount);
+    setTimeout(loadDataFromFirebase, RETRY_DELAY);
+  } else {
+    // Đã thử hết số lần cho phép -> Báo lỗi chết (Fatal Error)
+    showLoading(false);
+    const errorMsg = `Không thể kết nối Server sau ${MAX_RETRIES} lần thử.\nNguyên nhân: ${reason}\n\nVui lòng nhấn F5 để tải lại trang.`;
+    log('FATAL ERROR: ' + reason, 'error');
+  }
 }
-
 
 // ⏱️ Throttle variable cho handleSearchClick (max 1 lần/giây)
 let _lastSearchClickTime = 0;
@@ -52,91 +95,92 @@ const SEARCH_THROTTLE_MS = 500;
  * ⏱️ Giới hạn: Chỉ chạy 1 lần mỗi 1 giây (throttle)
  */
 function handleSearchClick() {
-    // ⏱️ THROTTLE: Kiểm tra thời gian kể từ lần gọi cuối
-    const now = Date.now();
-    if (now - _lastSearchClickTime < SEARCH_THROTTLE_MS) {
-        return; // Bỏ qua nếu chưa đủ 0.5 giây
+  // ⏱️ THROTTLE: Kiểm tra thời gian kể từ lần gọi cuối
+  const now = Date.now();
+  if (now - _lastSearchClickTime < SEARCH_THROTTLE_MS) {
+    return; // Bỏ qua nếu chưa đủ 0.5 giây
+  }
+  _lastSearchClickTime = now;
+
+  const searchInput = getE('global-search');
+  const kRaw = searchInput?.value;
+  const k = String(kRaw ?? '').trim();
+
+  if (!k) {
+    logA('Vui lòng nhập từ khóa (ID, Tên, SĐT)!');
+    return;
+  }
+
+  try {
+    // Lấy dữ liệu bookings
+    const bookingsObj =
+      window.APP_DATA && Array.isArray(Object.values(APP_DATA.bookings))
+        ? Object.values(APP_DATA.bookings)
+        : [];
+
+    if (!bookingsObj || bookingsObj.length === 0) {
+      logA('Chưa có dữ liệu bookings để tìm kiếm!', 'warning');
+      return;
     }
-    _lastSearchClickTime = now;
 
-    const searchInput = getE('global-search');
-    const kRaw = searchInput?.value;
-    const k = String(kRaw ?? '').trim();
+    // Chuẩn hóa từ khóa
+    const normText = (s) =>
+      String(s ?? '')
+        .toLowerCase()
+        .trim();
+    const normPhone = (s) => String(s ?? '').replace(/\D+/g, '');
+    const kText = normText(k);
+    const kPhone = normPhone(k);
 
-    if (!k) {
-        logA("Vui lòng nhập từ khóa (ID, Tên, SĐT)!");
-        return;
+    // Tìm kiếm trong 3 field: id, customer_full_name, customer_phone
+    const results = bookingsObj.filter((row) => {
+      if (!row) return false;
+
+      const id = normText(row.id || '');
+      const name = normText(row.customer_full_name || '');
+      const phone = normPhone(row.customer_phone || '');
+
+      return id.includes(kText) || name.includes(kText) || (kPhone && phone.includes(kPhone));
+    });
+
+    if (results.length === 0) {
+      logA('Không tìm thấy booking phù hợp!', 'warning');
+      return;
     }
 
-    try {
-        // Lấy dữ liệu bookings
-        const bookingsObj = (window.APP_DATA && Array.isArray(Object.values(APP_DATA.bookings)))
-            ? Object.values(APP_DATA.bookings)
-            : [];
+    // Sắp xếp theo start_date giảm dần (mới nhất trước)
+    const sorted = results.sort((a, b) => {
+      const dateA = new Date(a.start_date || 0);
+      const dateB = new Date(b.start_date || 0);
+      return dateB - dateA;
+    });
 
-        if (!bookingsObj || bookingsObj.length === 0) {
-            logA('Chưa có dữ liệu bookings để tìm kiếm!', 'warning');
-            return;
+    // Tối đa 10 kết quả
+    const topResults = sorted.slice(0, 10);
+
+    // ✨ TỐI ƯU: Nếu chỉ có 1 kết quả -> Hỏi người dùng có load luôn không
+    if (topResults.length === 1) {
+      const result = topResults[0];
+      const confirmMsg = `Tìm thấy 1 kết quả:\n\nID: ${result.id}\nTên: ${result.customer_full_name || 'N/A'}\n\nLoad dữ liệu booking này không?`;
+
+      logA(confirmMsg, 'info', async () => {
+        if (typeof onGridRowClick === 'function') {
+          onGridRowClick(result.id);
+          log(`✅ Mở booking: ${result.id}`, 'success');
         }
-
-        // Chuẩn hóa từ khóa
-        const normText = (s) => String(s ?? '').toLowerCase().trim();
-        const normPhone = (s) => String(s ?? '').replace(/\D+/g, '');
-        const kText = normText(k);
-        const kPhone = normPhone(k);
-
-        // Tìm kiếm trong 3 field: id, customer_full_name, customer_phone
-        const results = bookingsObj.filter(row => {
-            if (!row) return false;
-
-            const id = normText(row.id || '');
-            const name = normText(row.customer_full_name || '');
-            const phone = normPhone(row.customer_phone || '');
-
-            return id.includes(kText) ||
-                name.includes(kText) ||
-                (kPhone && phone.includes(kPhone));
-        });
-
-        if (results.length === 0) {
-            logA('Không tìm thấy booking phù hợp!', 'warning');
-            return;
-        }
-
-        // Sắp xếp theo start_date giảm dần (mới nhất trước)
-        const sorted = results.sort((a, b) => {
-            const dateA = new Date(a.start_date || 0);
-            const dateB = new Date(b.start_date || 0);
-            return dateB - dateA;
-        });
-
-        // Tối đa 10 kết quả
-        const topResults = sorted.slice(0, 10);
-
-        // ✨ TỐI ƯU: Nếu chỉ có 1 kết quả -> Hỏi người dùng có load luôn không
-        if (topResults.length === 1) {
-            const result = topResults[0];
-            const confirmMsg = `Tìm thấy 1 kết quả:\n\nID: ${result.id}\nTên: ${result.customer_full_name || 'N/A'}\n\nLoad dữ liệu booking này không?`;
-
-            logA(confirmMsg, 'info', async () => {
-                if (typeof onGridRowClick === 'function') {
-                    onGridRowClick(result.id);
-                    log(`✅ Mở booking: ${result.id}`, 'success');
-                }
-                // Clear input sau khi chọn
-                searchInput.value = '';
-            });
-            return; // Dừng tại đây, không populate datalist
-        }
-
-        // Populate datalist nếu có > 1 kết quả
-        _populateSearchDatalist(topResults, searchInput);
-        log(`🔍 Tìm thấy ${topResults.length} kết quả`, 'info');
-
-    } catch (error) {
-        console.error("Lỗi search:", error);
-        logError("Lỗi tìm kiếm: " + error.message);
+        // Clear input sau khi chọn
+        searchInput.value = '';
+      });
+      return; // Dừng tại đây, không populate datalist
     }
+
+    // Populate datalist nếu có > 1 kết quả
+    _populateSearchDatalist(topResults, searchInput);
+    log(`🔍 Tìm thấy ${topResults.length} kết quả`, 'info');
+  } catch (error) {
+    console.error('Lỗi search:', error);
+    logError('Lỗi tìm kiếm: ' + error.message);
+  }
 }
 
 /**
@@ -145,44 +189,44 @@ function handleSearchClick() {
  * @param {HTMLElement} inputElement - Input element để attach datalist
  */
 function _populateSearchDatalist(results, inputElement) {
-    if (!inputElement) return;
+  if (!inputElement) return;
 
-    // Tìm hoặc tạo datalist
-    let datalist = document.getElementById('search-bookings-datalist');
-    if (!datalist) {
-        datalist = document.createElement('datalist');
-        datalist.id = 'search-bookings-datalist';
-        document.body.appendChild(datalist);
-        inputElement.setAttribute('list', 'search-bookings-datalist');
+  // Tìm hoặc tạo datalist
+  let datalist = document.getElementById('search-bookings-datalist');
+  if (!datalist) {
+    datalist = document.createElement('datalist');
+    datalist.id = 'search-bookings-datalist';
+    document.body.appendChild(datalist);
+    inputElement.setAttribute('list', 'search-bookings-datalist');
+  }
+
+  // Xóa danh sách cũ
+  datalist.innerHTML = '';
+
+  // Populate với kết quả (dạng "id - customer_full_name")
+  results.forEach((row) => {
+    const option = document.createElement('option');
+    option.value = row.id;
+    option.textContent = `${row.id} - ${row.customer_full_name || 'N/A'}`;
+    datalist.appendChild(option);
+  });
+
+  // Thêm event listener cho việc chọn option
+  // Sử dụng 'change' event để detect khi user chọn từ datalist
+  inputElement.onchange = function () {
+    const selectedValue = this.value;
+    const selectedRow = results.find((r) => r.id === selectedValue);
+
+    if (selectedRow) {
+      // Gọi onGridRowClick với id
+      if (typeof onGridRowClick === 'function') {
+        onGridRowClick(selectedValue);
+        log(`✅ Mở booking: ${selectedValue}`, 'success');
+      }
+      // Clear input sau khi chọn
+      this.value = '';
     }
-
-    // Xóa danh sách cũ
-    datalist.innerHTML = '';
-
-    // Populate với kết quả (dạng "id - customer_full_name")
-    results.forEach(row => {
-        const option = document.createElement('option');
-        option.value = row.id;
-        option.textContent = `${row.id} - ${row.customer_full_name || 'N/A'}`;
-        datalist.appendChild(option);
-    });
-
-    // Thêm event listener cho việc chọn option
-    // Sử dụng 'change' event để detect khi user chọn từ datalist
-    inputElement.onchange = function () {
-        const selectedValue = this.value;
-        const selectedRow = results.find(r => r.id === selectedValue);
-
-        if (selectedRow) {
-            // Gọi onGridRowClick với id
-            if (typeof onGridRowClick === 'function') {
-                onGridRowClick(selectedValue);
-                log(`✅ Mở booking: ${selectedValue}`, 'success');
-            }
-            // Clear input sau khi chọn
-            this.value = '';
-        }
-    };
+  };
 }
 
 /**
@@ -191,28 +235,28 @@ function _populateSearchDatalist(results, inputElement) {
  * @param {string} dataSource - Tên bảng (bookings, booking_details, customer...), mặc định 'booking_details'
  */
 async function deleteItem(id, dataSource = 'booking_details') {
-    if (!id) {
-        logA("Không tìm thấy ID để xóa.", "warning");
-        return;
+  if (!id) {
+    logA('Không tìm thấy ID để xóa.', 'warning');
+    return;
+  }
+
+  const msg = `CẢNH BÁO: Hành động này sẽ xóa vĩnh viễn dòng dữ liệu (ID: ${id}) ở cả SALES & OPERATION.\n\nBạn có chắc chắn không?`;
+
+  // Sử dụng logA dạng confirm (Callback)
+  logA(msg, 'danger', async () => {
+    const res = await A.DB.deleteRecord(dataSource, id);
+    if (res) {
+      logA(`Đã xóa thành công dòng ID: ${id} từ "${dataSource}".`, 'success');
+      // Xóa dòng khỏi giao diện ngay lập tức (UX tối ưu)
+      if (CURRENT_CTX_ROW) {
+        CURRENT_CTX_ROW.remove();
+        CURRENT_CTX_ROW = null; // Reset
+        CURRENT_CTX_ID = null;
+      }
+      // Tính lại tổng tiền nếu có hàm tính toán
+      if (typeof calcGrandTotal === 'function') calcGrandTotal();
     }
-
-    const msg = `CẢNH BÁO: Hành động này sẽ xóa vĩnh viễn dòng dữ liệu (ID: ${id}) ở cả SALES & OPERATION.\n\nBạn có chắc chắn không?`;
-
-    // Sử dụng logA dạng confirm (Callback)
-    logA(msg, 'danger', async () => {
-        const res = await A.DB.deleteRecord(dataSource, id);
-        if (res) {
-            logA(`Đã xóa thành công dòng ID: ${id} từ "${dataSource}".`, "success");
-            // Xóa dòng khỏi giao diện ngay lập tức (UX tối ưu)
-            if (CURRENT_CTX_ROW) {
-                CURRENT_CTX_ROW.remove();
-                CURRENT_CTX_ROW = null; // Reset
-                CURRENT_CTX_ID = null;
-            }
-            // Tính lại tổng tiền nếu có hàm tính toán
-            if (typeof calcGrandTotal === 'function') calcGrandTotal();
-        }
-    });
+  });
 }
 
 /**
@@ -220,139 +264,134 @@ async function deleteItem(id, dataSource = 'booking_details') {
  * Tên giữ nguyên theo yêu cầu.
  */
 function handleServerData(data) {
-    showLoading(false);
+  showLoading(false);
 
-    // 1. Kiểm tra an toàn lần cuối
-    if (!data) {
-        logA("Lỗi hiển thị: Dữ liệu chưa sẵn sàng.", "error");
-        return;
+  // 1. Kiểm tra an toàn lần cuối
+  if (!data) {
+    logA('Lỗi hiển thị: Dữ liệu chưa sẵn sàng.', 'error');
+    return;
+  }
+
+  const sourceIcon = data.source === 'FIREBASE' ? '⚡ FIREBASE' : '🐢 LIVE SHEET';
+
+  // 3. KHỞI TẠO CÁC FORM CHỌN & SỰ KIỆN
+  try {
+    // Init Dropdown Lists
+    if (typeof initBtnSelectDataList === 'function') {
+      initBtnSelectDataList(data);
     }
+  } catch (e) {
+    console.error('Lỗi UI Init:', e);
+  }
 
-    const sourceIcon = data.source === "FIREBASE" ? "⚡ FIREBASE" : "🐢 LIVE SHEET";
+  // 4. KHỞI TẠO BỘ LỌC CỘT (Filter Header)
+  if (typeof initFilterUI === 'function') initFilterUI();
 
-    // 3. KHỞI TẠO CÁC FORM CHỌN & SỰ KIỆN
-    try {
-        // Init Dropdown Lists
-        if (typeof initBtnSelectDataList === 'function') {
-            initBtnSelectDataList(data);
-        }
-
-    } catch (e) {
-        console.error("Lỗi UI Init:", e);
-    }
-
-    // 4. KHỞI TẠO BỘ LỌC CỘT (Filter Header)
-    if (typeof initFilterUI === 'function') initFilterUI();
-
-    // 5. VẼ DASHBOARD (Nếu đang ở tab Dashboard)
-    // Dùng hàm runFnByRole mà ta đã tối ưu trước đó
-    if (typeof runFnByRole === 'function') {
-        runFnByRole('renderDashboard');
-    }
+  // 5. VẼ DASHBOARD (Nếu đang ở tab Dashboard)
+  // Dùng hàm runFnByRole mà ta đã tối ưu trước đó
+  if (typeof runFnByRole === 'function') {
+    runFnByRole('renderDashboard');
+  }
 }
 
 async function loadDataFromFirebase(silent = false) {
-    // 1. UI: Hiển thị trạng thái tải
-    if (retryCount > 0) showLoading(true, `Đang thử lại (${retryCount}/${MAX_RETRIES})...`);
+  // 1. UI: Hiển thị trạng thái tải
+  if (retryCount > 0) showLoading(true, `Đang thử lại (${retryCount}/${MAX_RETRIES})...`);
 
-    const startTime = Date.now();
+  const startTime = Date.now();
 
-    try {
-        let role = CURRENT_USER.role;
+  try {
+    let role = CURRENT_USER.role;
 
-        // ★ FIX Bug: Kiểm tra giá trị trả về — loadAllData() trả về null khi DB/auth chưa sẵn sàng
-        const loadedData = await A.DB.loadAllData();
-        if (!loadedData) {
-            console.error('❌ loadAllData() trả về null — DB hoặc auth chưa sẵn sàng');
-            handleRetry('Không thể khởi tạo cơ sở dữ liệu.');
-            return;
-        }
-
-        // ★ FIX Bug: Kiểm tra dữ liệu thực tế theo role, không dùng Object.keys(APP_DATA).length
-        // vì #buildEmptyResult() luôn pre-populate tất cả keys là {} → length > 0 dù data rỗng.
-        const primaryColl = (role === 'op') ? 'operator_entries'
-            : (role === 'acc' || role === 'acc_thenice') ? 'transactions'
-                : 'bookings';
-        const collData = APP_DATA?.[primaryColl];
-        if (!collData) {
-            console.error(`❌ APP_DATA.${primaryColl} không tồn tại`);
-            handleRetry('Server trả về dữ liệu rỗng.');
-            return;
-        }
-
-        // C. Mapping Details theo Role
-        const userRole = role;
-        const targetSourceKey = (userRole === 'op') ? 'operator_entries' : 'booking_details';
-
-        // [OPTIONAL] Vẫn tạo Alias activeDetails để code mới sau này dùng cho tiện
-        // Dùng ?? {} để tránh Object.values(undefined) khi collection chưa được load cho role này
-        APP_DATA.activeDetails = (userRole === 'op') ?
-            Object.values(APP_DATA?.operator_entries ?? {}) :
-            Object.values(APP_DATA?.booking_details ?? {});
-
-        log(`👤 User: ${userRole} - Data Loaded: ${APP_DATA?.activeDetails?.length} rows`);
-        log(`✅ Tải xong sau: ${Date.now() - startTime}ms`, "success");
-
-        // 6. GỌI HÀM KHỞI TẠO UI — bỏ qua khi silent=true (boot flow tự gọi sau)
-        // if (!silent) handleServerData(APP_DATA);
-
-        retryCount = 0;
-
-    } catch (error) {
-        console.error("Lỗi loadDataFromFirebase:", error);
-        handleServerError(error);
+    // ★ FIX Bug: Kiểm tra giá trị trả về — loadAllData() trả về null khi DB/auth chưa sẵn sàng
+    const loadedData = await A.DB.loadAllData();
+    if (!loadedData) {
+      console.error('❌ loadAllData() trả về null — DB hoặc auth chưa sẵn sàng');
+      handleRetry('Không thể khởi tạo cơ sở dữ liệu.');
+      return;
     }
+
+    // ★ FIX Bug: Kiểm tra dữ liệu thực tế theo role, không dùng Object.keys(APP_DATA).length
+    // vì #buildEmptyResult() luôn pre-populate tất cả keys là {} → length > 0 dù data rỗng.
+    const primaryColl =
+      role === 'op'
+        ? 'operator_entries'
+        : role === 'acc' || role === 'acc_thenice'
+          ? 'transactions'
+          : 'bookings';
+    const collData = APP_DATA?.[primaryColl];
+    if (!collData) {
+      console.error(`❌ APP_DATA.${primaryColl} không tồn tại`);
+      handleRetry('Server trả về dữ liệu rỗng.');
+      return;
+    }
+
+    // C. Mapping Details theo Role
+    const userRole = role;
+    const targetSourceKey = userRole === 'op' ? 'operator_entries' : 'booking_details';
+
+    // [OPTIONAL] Vẫn tạo Alias activeDetails để code mới sau này dùng cho tiện
+    // Dùng ?? {} để tránh Object.values(undefined) khi collection chưa được load cho role này
+    APP_DATA.activeDetails =
+      userRole === 'op'
+        ? Object.values(APP_DATA?.operator_entries ?? {})
+        : Object.values(APP_DATA?.booking_details ?? {});
+
+    log(`✅ Tải xong sau: ${Date.now() - startTime}ms`, 'success');
+
+    retryCount = 0;
+  } catch (error) {
+    console.error('Lỗi loadDataFromFirebase:', error);
+    handleServerError(error);
+  }
 }
 
 /**
-* Hàm tải Module Kế toán (Lazy Loading)
-*/
+ * Hàm tải Module Kế toán (Lazy Loading)
+ */
 async function loadModule_Accountant() {
-    try {
-        console.log("System: Loading Accountant Module...");
-
-        // BƯỚC 1: HIỂN THỊ LOADING (Optional but recommended)
-        const appContent = document.querySelector('.app-content');
-        if (appContent) {
-            appContent.innerHTML = '<div class="text-center p-5"><i class="fas fa-spinner fa-spin fa-3x text-primary"></i><br>Đang tải dữ liệu kế toán...</div>';
-        }
-
-        // BƯỚC 2: TẢI HTML TEMPLATE
-        // Sử dụng UI_RENDERER hoặc fetch thuần
-        const response = await fetch('/accountant/tpl_accountant.html');
-        if (!response.ok) throw new Error("Không thể tải giao diện Kế toán");
-        const html = await response.text();
-
-        // Inject vào DOM
-        if (appContent) {
-            appContent.innerHTML = html;
-        }
-
-        // BƯỚC 3: TẢI CSS (Tránh trùng lặp)
-        if (!document.getElementById('css-accountant')) {
-            const link = document.createElement('link');
-            link.id = 'css-accountant';
-            link.rel = 'stylesheet';
-            link.href = '/accountant/accountant.css';
-            document.head.appendChild(link);
-        }
-
-        // BƯỚC 4: IMPORT CONTROLLER & INIT
-        // Import động (Dynamic Import)
-        const module = await import('./accountant/controller_accountant.js');
-
-        // Lấy instance từ default export
-        const ctrl = module.default;
-
-        if (ctrl && typeof ctrl.init === 'function') {
-            await ctrl.init(); // <--- ĐÂY LÀ LÚC CONTROLLER BẮT ĐẦU CHẠY
-        } else {
-            console.error("Accountant Controller không có hàm init()");
-        }
-
-    } catch (error) {
-        console.error("Lỗi tải module Accountant:", error);
-        alert("Không thể tải module Kế toán. Vui lòng kiểm tra console.");
+  try {
+    // BƯỚC 1: HIỂN THỊ LOADING (Optional but recommended)
+    const appContent = document.querySelector('.app-content');
+    if (appContent) {
+      appContent.innerHTML =
+        '<div class="text-center p-5"><i class="fas fa-spinner fa-spin fa-3x text-primary"></i><br>Đang tải dữ liệu kế toán...</div>';
     }
-}
 
+    // BƯỚC 2: TẢI HTML TEMPLATE
+    // Sử dụng UI_RENDERER hoặc fetch thuần
+    const response = await fetch('/accountant/tpl_accountant.html');
+    if (!response.ok) throw new Error('Không thể tải giao diện Kế toán');
+    const html = await response.text();
+
+    // Inject vào DOM
+    if (appContent) {
+      appContent.innerHTML = html;
+    }
+
+    // BƯỚC 3: TẢI CSS (Tránh trùng lặp)
+    if (!document.getElementById('css-accountant')) {
+      const link = document.createElement('link');
+      link.id = 'css-accountant';
+      link.rel = 'stylesheet';
+      link.href = '/accountant/accountant.css';
+      document.head.appendChild(link);
+    }
+
+    // BƯỚC 4: IMPORT CONTROLLER & INIT
+    // Import động (Dynamic Import)
+    const module = await import('./accountant/controller_accountant.js');
+
+    // Lấy instance từ default export
+    const ctrl = module.default;
+
+    if (ctrl && typeof ctrl.init === 'function') {
+      await ctrl.init(); // <--- ĐÂY LÀ LÚC CONTROLLER BẮT ĐẦU CHẠY
+    } else {
+      console.error('Accountant Controller không có hàm init()');
+    }
+  } catch (error) {
+    console.error('Lỗi tải module Accountant:', error);
+    logA('Không thể tải module Kế toán. Vui lòng kiểm tra console.', 'error', 'alert');
+  }
+}

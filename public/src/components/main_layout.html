@@ -1,6 +1,5 @@
 <div class="app-header shadow-sm my-0 p-0 border-bottom">
-  <div class="nav-container" id="nav-container">
-  </div>
+  <div class="nav-container" id="nav-container"></div>
 </div>
 <!-- FIX: Thêm margin-top để tránh bị header che phủ (≈140px = height của 2 hàng header) -->
 <div class="app-content px-1">
@@ -14,52 +13,33 @@
   </div>
 </div>
 
-<div class="context-menu dropdown-menu shadow bg-opacity-50" id="bookingContextMenu"
-  style="display: none; position: fixed; width: fit-content; overflow: hidden; border: none;">
+<div
+  class="context-menu dropdown-menu shadow bg-opacity-50"
+  id="bookingContextMenu"
+  style="display: none; position: fixed; width: fit-content; overflow: hidden; border: none"
+>
   <button class="dropdown-item gap-2 d-flex align-items-center" id="ctx-copyData">
-    <i class="fa-solid fa-copy text-primary" style="width:20px"></i>
+    <i class="fa-solid fa-copy text-primary" style="width: 20px"></i>
     <span>Copy (Hàng)</span>
   </button>
 
   <button class="dropdown-item gap-2 d-flex align-items-center" id="ctx-paste">
-    <i class="fa-solid fa-paste text-success" style="width:20px"></i>
+    <i class="fa-solid fa-paste text-success" style="width: 20px"></i>
     <span>Dán (Hàng)</span>
   </button>
-  <button class="dropdown-item gap-2 d-flex align-items-center" id="ctx-copy"><i class="fa-solid fa-copy text-primary"
-      style="width:15px"></i> Clone (Hàng)</button>
+  <button class="dropdown-item gap-2 d-flex align-items-center" id="ctx-copy">
+    <i class="fa-solid fa-copy text-primary" style="width: 15px"></i> Clone (Hàng)
+  </button>
   <div class="dropdown-divider"></div>
-  <button class="dropdown-item gap-2 d-flex align-items-center text-danger" id="ctx-save-one"><i
-      class="fa-solid fa-save" style="width:15px"></i>Save (1 Hàng)</button>
+  <button class="dropdown-item gap-2 d-flex align-items-center text-danger" id="ctx-save-one">
+    <i class="fa-solid fa-save" style="width: 15px"></i>Save (1 Hàng)
+  </button>
   <div class="dropdown-divider"></div>
-  <button class="dropdown-item gap-2 d-flex align-items-center" id="ctx-delete"><i class="fa-solid fa-trash"
-      style="width:15px"></i> Delete (1 Hàng)</button>
+  <button class="dropdown-item gap-2 d-flex align-items-center" id="ctx-delete">
+    <i class="fa-solid fa-trash" style="width: 15px"></i> Delete (1 Hàng)
+  </button>
   <div class="dropdown-divider"></div>
-  <button class="dropdown-item gap-2 d-flex align-items-center text-danger" id="ctx-delete-bk"><i
-      class="fa-solid fa-trash" style="width:15px"></i>Xóa Booking (Database)</button>
-</div>
-<div class="toast-container position-fixed bottom-0 end-0 p-2" id="toast-container"
-  style="font-size: 0.75rem; max-width: 15vw; max-height:50vh; z-index: 11000;">
-  <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
-    <div class="toast-header">
-      <img src="https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp" class="rounded me-2" alt="..."
-        style="height: 20px; width: 20px;">
-      <strong class="me-auto">Thông Báo</strong>
-      <small id="toast-time-calc">1 mins ago</small>
-      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-    </div>
-    <div id="toast-body" class="toast-body text-wrap">
-    </div>
-  </div>
-</div>
-<div id="custom-overlay" class="position-fixed top-0 start-0 w-100 h-100"
-  style="display: none; z-index: 9999; background-color: rgba(0,0,0,0.6);">
-  <div
-    class="position-absolute top-50 start-50 translate-middle  bg-opacity-75 border border-dark rounded-3 shadow-lg overflow-hidden"
-    style="min-width: 25vw; max-height: 55vh;">
-    <div id="custom-overlay-header" class="d-flex justify-content-between align-items-center px-3 py-1 border-bottom">
-      <h6 class="m-1 text-center" id="overlay-title">THÔNG BÁO</h6>
-      <button type="button" class="btn-close small" onclick="closeOverlay()"></button>
-    </div>
-    <div class="p-2 w-100 overflow-auto" id="overlay-body" style="max-height: 40vh;"></div>
-  </div>
+  <button class="dropdown-item gap-2 d-flex align-items-center text-danger" id="ctx-delete-bk">
+    <i class="fa-solid fa-trash" style="width: 15px"></i>Xóa Booking (Database)
+  </button>
 </div>

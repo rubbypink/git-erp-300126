@@ -15,7 +15,7 @@ const DB_MANAGER = {
     batchCounterUpdates: {}, // Lưu counter updates cho batch processing
     currentCustomer: null,
     cache: 'unset',
-    
+
     // --- COLLECTION NAME ALIASES ---
     COLL: {
         BOOKINGS: 'bookings',
@@ -29,8 +29,8 @@ const DB_MANAGER = {
         USERS: 'users',
         CONFIG: 'app_config'
     },
-    
-    loadAllData: async function(forceNew = false) {
+
+    loadAllData: async function (forceNew = false) {
 
         let result = {};
 
@@ -40,9 +40,9 @@ const DB_MANAGER = {
         const cachedData = localStorage.getItem('APP_DATA');
         const lastSync = localStorage.getItem('LAST_SYNC');
         const cachedLists = localStorage.getItem('DATA_LISTS');
-        const limitTime = 24 * 60 * 60 * 1000; 
+        const limitTime = 24 * 60 * 60 * 1000;
 
-        
+
         if (!forceNew && cachedData && lastSync && (Date.now() - parseInt(lastSync) < limitTime)) {
             try {
                 result = JSON.parse(cachedData);
@@ -51,11 +51,11 @@ const DB_MANAGER = {
                 return result;
             } catch (e) {
                 log("Cache bị lỗi định dạng, tiến hành tải mới từ Server", e);
-                result = null; 
+                result = null;
             }
         }
         if (!this.db) { console.error("❌ DB chưa init"); return null; }
-        
+
         // Lấy User hiện tại từ Firebase Auth (Đã đăng nhập ở bước trước)
         const fUser = firebase.auth().currentUser;
         if (!fUser) { console.error("❌ Chưa đăng nhập"); return null; }
@@ -65,7 +65,7 @@ const DB_MANAGER = {
         // ✅ NEW: Xác định danh sách collections cần load dựa trên COLL_MANIFEST + role
         const userRole = CURRENT_USER?.role || null;
         let allowedCollections = [];
-        
+
         // Nếu role có giá trị → lấy từ COLL_MANIFEST[role]
         // Nếu không → dùng danh sách mặc định (tất cả)
         if (userRole && COLL_MANIFEST && COLL_MANIFEST[userRole]) {
@@ -78,9 +78,9 @@ const DB_MANAGER = {
             else console.log(`⚠️ COLL_MANIFEST[${userRole}] không tìm thấy, dùng danh sách mặc định`);
         }
         // Cấu trúc dữ liệu trả về (Khởi tạo tất cả collections)
-        result = {            
+        result = {
             // Legacy Arrays (Empty init)
-            bookings: [], 
+            bookings: [],
             booking_details: [],
             operator_entries: [],
             customers: [],
@@ -93,7 +93,7 @@ const DB_MANAGER = {
             hotel_price_schedules: [],
             service_price_schedules: [],
             users: [],
-            
+
             // Modern Objects
             bookings_obj: [],
             booking_details_obj: [],
@@ -108,9 +108,9 @@ const DB_MANAGER = {
             hotel_price_schedules_obj: [],
             service_price_schedules_obj: [],
             users_obj: [],
-            
-            lists: {},         
-            currentUser: {}    
+
+            lists: {},
+            currentUser: {}
         };
 
         try {
@@ -163,7 +163,7 @@ const DB_MANAGER = {
 
             // TẢI SONG SONG TẤT CẢ (Parallel Fetching) -> Tối ưu tốc độ
             const responses = await Promise.all(Object.values(requests));
-            
+
             // Mapping responses back to keys
             const resultMap = {};
             const keys = Object.keys(requests);
@@ -178,10 +178,10 @@ const DB_MANAGER = {
                 for (let k in rawCfg) {
                     try {
                         // Parse JSON String (do migration đã stringify mảng lồng)
-                        parsedCfg[k] = (typeof rawCfg[k] === 'string' && rawCfg[k].startsWith('[')) 
-                                       ? JSON.parse(rawCfg[k]) 
-                                       : rawCfg[k];
-                    } catch(e) { parsedCfg[k] = rawCfg[k]; }
+                        parsedCfg[k] = (typeof rawCfg[k] === 'string' && rawCfg[k].startsWith('['))
+                            ? JSON.parse(rawCfg[k])
+                            : rawCfg[k];
+                    } catch (e) { parsedCfg[k] = rawCfg[k]; }
                 }
                 result.lists = parsedCfg;
             }
@@ -233,7 +233,7 @@ const DB_MANAGER = {
             const dtCount = result.booking_details.length;
             const txCount = result.transactions.length;
             log(`📥 Data Ready: ${bkCount} BKs, ${dtCount} DTs${txCount > 0 ? `, ${txCount} TXs` : ''}`);
-            
+
             return APP_DATA;
 
         } catch (e) {
@@ -242,7 +242,7 @@ const DB_MANAGER = {
             return null;
         }
     },
-    loadCollection: async function(collectionName, limit = 4000) {
+    loadCollection: async function (collectionName, limit = 4000) {
         if (!this.db) { console.error("❌ DB chưa init"); return null; }
         console.log(`📥 Loading collection: ${collectionName}...`);
         try {
@@ -263,7 +263,7 @@ const DB_MANAGER = {
         }
     },
 
-    loadDocument: async function(collectionName, docId) {
+    loadDocument: async function (collectionName, docId) {
         if (!this.db) { console.error("❌ DB chưa init"); return null; }
         console.log(`📥 Loading document: ${collectionName}/${docId}...`)
         try {
@@ -273,10 +273,10 @@ const DB_MANAGER = {
                 const data = docSnap.data();
                 console.log(`✅ Loaded document ${collectionName}/${docId}`);
                 return data;
-                } else {
-                    console.warn(`⚠️ Document not found: ${collectionName}/${docId}`);
-                    return null;
-                    }
+            } else {
+                console.warn(`⚠️ Document not found: ${collectionName}/${docId}`);
+                return null;
+            }
         } catch (e) {
             console.error(`❌ Error loading document ${collectionName}/${docId}:`, e);
             return null;
@@ -288,7 +288,7 @@ const DB_MANAGER = {
     syncDelta: async function (collection, forceFullLoad = false) {
         try {
             showLoading(true);
-            const lastSync = localStorage.getItem('LAST_SYNC');
+            const lastSync = localStorage.getItem('LAST_SYNC_DELTA');
             const lastSyncDate = lastSync ? new Date(parseInt(lastSync)) : null;
             let collectionsToSync = [];
 
@@ -298,7 +298,7 @@ const DB_MANAGER = {
             } else {
                 const role = window.CURRENT_USER?.role;
                 const roleMap = {
-                    'sale': ['bookings', 'booking_details', 'customers', 'transactions' , 'fund_accounts', 'users'],
+                    'sale': ['bookings', 'booking_details', 'customers', 'transactions', 'fund_accounts', 'users'],
                     'op': ['bookings', 'operator_entries', 'transactions'],
                     'acc': ['transactions', 'fund_accounts'],
                     'acc_thenice': ['transactions_thenice', 'fund_accounts_thenice'],
@@ -325,10 +325,10 @@ const DB_MANAGER = {
                 }
 
                 const querySnapshot = await query.get();
-                
+
                 if (!querySnapshot.empty) {
                     log(`[${colName}] Đang xử lý ${querySnapshot.size} bản ghi.`);
-                    
+
                     if (isMissingData || forceFullLoad) {
                         // Nếu là load mới hoàn toàn, khởi tạo mảng mới
                         window.APP_DATA[`${colName}_obj`] = querySnapshot.docs.map(doc => ({
@@ -353,14 +353,14 @@ const DB_MANAGER = {
                 localStorage.setItem('APP_DATA', JSON.stringify(window.APP_DATA));
                 initBtnSelectDataList(); // Cập nhật lại dropdown nếu có thay đổi dữ liệu
             }
-            
+
             // Luôn cập nhật mốc sync mới nhất
-            localStorage.setItem('LAST_SYNC', Date.now().toString());
+            localStorage.setItem('LAST_SYNC_DELTA', Date.now().toString());
             logA(`✅ Sync Delta hoàn tất. Tổng bản ghi thay đổi: ${totalChanges}`);
             return totalChanges;
 
         } catch (e) {
-            log(`Lỗi syncDelta (Hybrid): `, e);
+            logError(`Lỗi syncDelta (Hybrid): `, e);
             return 0;
         } finally {
             showLoading(false);
@@ -385,38 +385,38 @@ const DB_MANAGER = {
      * // Với sắp xếp
      * const results = await A.DB.runQuery('transactions', 'booking_id', '==', 'BK001', 'created_at', 100);
      */
-    runQuery: async function(collectionName, fieldName, operator, value, fieldOrder = null, limit = null) {
-        if (!this.db) { 
-            console.error("❌ DB chưa init"); 
-            return null; 
+    runQuery: async function (collectionName, fieldName, operator, value, fieldOrder = null, limit = null) {
+        if (!this.db) {
+            console.error("❌ DB chưa init");
+            return null;
         }
-        
+
         const params = `${fieldName} ${operator} ${value}`;
         console.log(`🔍 Query on ${collectionName}: ${params}`);
-        
+
         try {
             // ✅ Xây dựng query điều kiện cơ bản
             let query = this.db.collection(collectionName).where(fieldName, operator, value);
-            
+
             // ✅ Chỉ thêm orderBy nếu được cung cấp
             if (fieldOrder) {
                 query = query.orderBy(fieldOrder, 'desc');
                 console.log(`  📊 Ordered by ${fieldOrder} DESC`);
             }
-            
+
             // ✅ Chỉ thêm limit nếu được cung cấp và > 0
             if (limit && limit > 0) {
                 query = query.limit(limit);
                 console.log(`  ⚙️ Limited to ${limit} results`);
             }
-            
+
             // ✅ Thực thi query
             const querySnap = await query.get();
             const results = [];
             querySnap.forEach(doc => {
                 results.push(doc.data());
             });
-            
+
             console.log(`✅ Query returned ${results.length} items from ${collectionName}`);
             return results;
         } catch (e) {
@@ -431,7 +431,7 @@ const DB_MANAGER = {
      * @param {string} bookingId - (Optional) Dùng cho booking_details: giá trị booking_id để làm prefix
      * @returns {Promise<{newId: string, newNo: number}>}
      */
-    generateIds: async function(collectionName, bookingId = null) {
+    generateIds: async function (collectionName, bookingId = null) {
         if (!this.db) {
             console.error("❌ DB chưa init");
             return null;
@@ -450,7 +450,7 @@ const DB_MANAGER = {
                 if (collectionName === this.COLL.DETAILS) prefix = bookingId ? `${bookingId}_` : 'SID_';
                 else prefix = counterSnap.data().prefix || '';
                 lastNo = counterSnap.data().last_no;
-                if(lastNo && lastNo > 0) await this._updateCounter(collectionName, lastNo + 1);
+                if (lastNo && lastNo > 0) await this._updateCounter(collectionName, lastNo + 1);
             }
 
             // Nếu counters_id không có thì lấy id mới nhất trong collection để suy ra lastNo/prefix
@@ -518,34 +518,34 @@ const DB_MANAGER = {
      * @param {string} collectionName
      * @param {number} newNo
      */
-    _updateCounter: async function(collectionName, newNo) {
+    _updateCounter: async function (collectionName, newNo) {
         const counterRef = this.db.collection('counters_id').doc(collectionName);
         try {
             await counterRef.set({ last_no: newNo }, { merge: true });
-            if (!this.batchCounterUpdates[collectionName] || this.batchCounterUpdates[collectionName]  <= newNo) this.batchCounterUpdates[collectionName] = newNo;
+            if (!this.batchCounterUpdates[collectionName] || this.batchCounterUpdates[collectionName] <= newNo) this.batchCounterUpdates[collectionName] = newNo;
         } catch (e) {
             console.error(`❌ Error updating counter for ${collectionName}:`, e);
         }
     },
-    
+
     /**
      * HÀM NỘI BỘ: Cập nhật APP_DATA.collectionName_obj sau khi save thành công
      * @param {string} collectionName - Tên collection (bookings, booking_details, ...)
      * @param {object} dataObj - Object dữ liệu vừa save
      */
-    _updateAppDataObj: function(collectionName, dataObj) {
+    _updateAppDataObj: function (collectionName, dataObj) {
         if (!APP_DATA) return; // An toàn nếu APP_DATA chưa init
-        
+
         const objKey = `${collectionName}_obj`;
-        
+
         // ✅ Kiểm tra xem collection_obj có tồn tại không
         if (!Array.isArray(APP_DATA[objKey])) {
             APP_DATA[objKey] = [];
         }
-        
+
         // ✅ Tìm index của object trong array dựa trên ID
         const existingIndex = APP_DATA[objKey].findIndex(item => item.id === dataObj.id);
-        
+
         if (existingIndex !== -1) {
             // ✅ Cập nhật object cũ (merge với dữ liệu mới)
             APP_DATA[objKey][existingIndex] = { ...APP_DATA[objKey][existingIndex], ...dataObj };
@@ -556,34 +556,34 @@ const DB_MANAGER = {
             console.log(`➕ Added new ${collectionName}_obj: ${dataObj.id}`);
         }
     },
-    
+
     /**
      * HÀM NỘI BỘ: Xóa object khỏi APP_DATA.collectionName_obj sau khi delete thành công
      * @param {string} collectionName - Tên collection (bookings, booking_details, ...)
      * @param {string} id - ID của object cần xóa
      */
-    _removeFromAppDataObj: function(collectionName, id) {
+    _removeFromAppDataObj: function (collectionName, id) {
         if (!APP_DATA) return; // An toàn nếu APP_DATA chưa init
-        
+
         const objKey = `${collectionName}_obj`;
-        
+
         // ✅ Kiểm tra xem collection_obj có tồn tại không
         if (!Array.isArray(APP_DATA[objKey])) {
             return;
         }
-        
+
         // ✅ Tìm index của object trong array dựa trên ID
         const existingIndex = APP_DATA[objKey].findIndex(item => item.id === id);
-        
+
         if (existingIndex !== -1) {
             // ✅ Xóa object khỏi array
             APP_DATA[objKey].splice(existingIndex, 1);
             console.log(`🗑️ Removed ${collectionName}_obj[${existingIndex}]: ${id}`);
         }
     },
-    
 
-    incrementField: async function(collectionName, docId, fieldName, incrementBy) {
+
+    incrementField: async function (collectionName, docId, fieldName, incrementBy) {
         if (!this.db) { console.error("❌ DB chưa init"); return false; };
         console.log(`🔼 Incrementing ${collectionName}/${docId} field ${fieldName} by ${incrementBy}`);
         try {
@@ -611,10 +611,10 @@ const DB_MANAGER = {
      * ⚠️ Hàm này tạo batch riêng để cập nhật operator_entries
      * Dùng cho non-batch save hoặc gọi AFTER batchSave commit xong
      */
-    _syncOperatorEntry: async function(detailRow) {
+    _syncOperatorEntry: async function (detailRow) {
         // ✅ FIX: Xử lý cả array và object format
         let d_id, d_bkid, d_type, d_hotel, d_service, d_in, d_out, d_night, d_qty, d_child, d_total;
-        
+
         if (Array.isArray(detailRow)) {
             // Format array (legacy)
             d_id = detailRow[COL_INDEX.D_SID];
@@ -642,7 +642,7 @@ const DB_MANAGER = {
             d_child = detailRow.child_qty;
             d_total = detailRow.total;
         }
-        
+
         // ✅ FIX: Gán giá trị mặc định nếu undefined
         const syncData = {
             id: d_id || "",
@@ -661,7 +661,7 @@ const DB_MANAGER = {
         };
 
         const opRef = this.db.collection(this.COLL.OPERATORS).doc(String(d_id));
-        
+
         try {
             await opRef.set(syncData, { merge: true });
             this._updateAppDataObj(this.COLL.OPERATORS, syncData);
@@ -679,11 +679,11 @@ const DB_MANAGER = {
      * @param {boolean} isBatch - (Nội bộ) Dùng khi gọi từ batchSave
      * @param {object} batchRef - (Nội bộ) Reference của Batch
      */
-    saveRecord: async function(collectionName, dataArray, isBatch = false, batchRef = null) {
+    saveRecord: async function (collectionName, dataArray, isBatch = false, batchRef = null) {
         let dataObj;
         let isNew;
         if (typeof dataArray === 'object' && !Array.isArray(dataArray)) {
-            
+
             dataObj = dataArray; // Đã là object, không cần convert
         } else {
             // 1. Convert Array -> Object Firestore
@@ -694,35 +694,35 @@ const DB_MANAGER = {
         // ✅ GIAI ĐOẠN 0: NẾU BOOKINGS VÀ customer_id TRỐNG - TÌM HOẶC TẠO CUSTOMER
         if (collectionName === this.COLL.BOOKINGS && (!dataObj.customer_id || dataObj.customer_id === "")) {
             let customerPhone = dataObj.customer_phone || dataArray[COL_INDEX.M_PHONE];
-        
+
             if (customerPhone) {
                 if (customerPhone.startsWith("'") || customerPhone.startsWith('+'))
-                customerPhone = customerPhone.slice(1).trim();
+                    customerPhone = customerPhone.slice(1).trim();
                 console.log(`🔍 Tìm customer với SĐT: ${customerPhone}...`);
-                
+
                 // Tìm customer có phone = customer_phone
                 const customerSnap = await this.db.collection(this.COLL.CUSTOMERS)
                     .where('phone', '==', String(customerPhone)) // Loại bỏ khoảng trắng & ký tự đầu (0 hoặc +84)
                     .limit(1)
                     .get();
-                
+
                 if (customerSnap.size > 0) {
                     // ✅ TÌM ĐƯỢC: Lấy ID của customer cũ
                     const existingCustomer = customerSnap.docs[0];
                     dataObj.customer_id = existingCustomer.id;
-                    
+
                     console.log(`✅ Tìm thấy customer cũ: ${existingCustomer.id}`);
                 } else {
                     // ❌ KHÔNG TÌM ĐƯỢC: TẠO CUSTOMER MỚI
                     console.log(`➕ Tạo customer mới từ booking...`);
-                    
+
                     // Tạo ID mới cho customer
                     const newCustomerId = await this.generateIds(this.COLL.CUSTOMERS);
                     if (!newCustomerId) {
                         console.error("❌ Lỗi: Không thể tạo ID customer");
                         return { success: false, message: "Failed to create customer ID" };
                     }
-                    
+
                     // Xây dựng object customer mới với 3 field cần thiết
                     const newCustomer = {
                         id: newCustomerId.newId,
@@ -731,16 +731,16 @@ const DB_MANAGER = {
                         source: 'Fanpage',
                         created_at: firebase.firestore.FieldValue.serverTimestamp()
                     };
-                    
+
                     // Save customer mới vào Firestore
                     try {
                         await this.db.collection(this.COLL.CUSTOMERS)
                             .doc(newCustomerId.newId)
                             .set(newCustomer, { merge: true });
-                        
+
                         // Cập nhật APP_DATA
                         this._updateAppDataObj(this.COLL.CUSTOMERS, newCustomer);
-                        
+
                         // Cập nhật counter
                         dataObj.customer_id = newCustomerId.newId;
                         console.log(`✅ Tạo customer mới thành công: ${newCustomerId.newId}`);
@@ -755,13 +755,13 @@ const DB_MANAGER = {
                 console.warn("⚠️ customer_phone trống, không thể tạo customer mới.");
             }
         }
-        
+
         let docId = dataObj.id; // Cột đầu tiên luôn là ID
 
         // --- KIỂM TRA VÀ TẠO ID MỚI NẾU CẦN ---
         if (!docId || docId === "") {
             console.log(`🔄 ID trống, đang tạo ID mới cho ${collectionName}...`);
-                        
+
             // Xác định bookingId nếu là booking_details
             let bookingId = null;
             if (collectionName === this.COLL.DETAILS) {
@@ -789,27 +789,27 @@ const DB_MANAGER = {
         }
 
         const docRef = this.db.collection(collectionName)?.doc(String(docId));
-        
+
         // Thêm timestamp cập nhật
         dataObj.updated_at = firebase.firestore.FieldValue.serverTimestamp();
-        
+
         // --- TRƯỜNG HỢP 1: Batch mode (chỉ thêm detail, không trigger) ---
         if (isBatch && batchRef) {
             batchRef.set(docRef, dataObj, { merge: true });
             // ⚠️ Không gọi trigger ở đây - sẽ gọi sau khi batchSave commit xong
             return { success: true };
         }
-        
+
         // --- TRƯỜNG HỢP 2: Non-batch mode (commit ngay + trigger) ---
         else {
             try {
                 const localBatch = this.db.batch();
                 localBatch.set(docRef, dataObj, { merge: true });
                 await localBatch.commit();
-                
+
                 // ✅ Cập nhật APP_DATA sau khi save thành công
                 this._updateAppDataObj(collectionName, dataObj);
-                
+
                 // Sau khi detail commit thành công, gọi trigger
                 if (collectionName === this.COLL.DETAILS) {
                     await this._syncOperatorEntry(dataArray);
@@ -817,7 +817,7 @@ const DB_MANAGER = {
                         NotificationModule.sendToOperator(`Booking Detail ${dataObj.id} cập nhật!`, `Khách: ${dataObj.customer_full_name || dataArray[COL_INDEX.M_CUST] || "Unknown"} cập nhật DV ${dataObj.service_name || dataArray[COL_INDEX.D_SERVICE] || "Unknown"}`);
                     }
                 } else if (collectionName === this.COLL.BOOKINGS) {
-                    if(isNew) NotificationModule.sendToOperator(`Booking ${dataObj.id} mới!`, `Khách: ${dataObj.customer_full_name || dataArray[COL_INDEX.M_CUST] || "Unknown"}`);
+                    if (isNew) NotificationModule.sendToOperator(`Booking ${dataObj.id} mới!`, `Khách: ${dataObj.customer_full_name || dataArray[COL_INDEX.M_CUST] || "Unknown"}`);
                 }
                 return { success: true, id: docId };
             } catch (e) {
@@ -833,7 +833,7 @@ const DB_MANAGER = {
      * LƯU HÀNG LOẠT (Batch Processing)
      * Tự động chia nhỏ nếu > 500 items (Giới hạn của Firestore)
      */
-    batchSave: async function(collectionName, dataArrayList) {
+    batchSave: async function (collectionName, dataArrayList) {
         if (!dataArrayList || dataArrayList.length === 0) return;
         let customerName = "";
         let bkId = Array.isArray(dataArrayList[0]) ? dataArrayList[0][1] : dataArrayList[0].booking_id;
@@ -841,11 +841,11 @@ const DB_MANAGER = {
         const bkSnap = await bkRef.get();
         if (bkSnap.exists) {
             customerName = bkSnap.data().customer_full_name || "null";
-        } else log("Booking not found "+ bkId);
+        } else log("Booking not found " + bkId);
 
         const batchSize = 450; // Để dư chỗ cho Trigger (mỗi detail đẻ thêm 1 operator update)
         const chunks = [];
-        
+
         for (let i = 0; i < dataArrayList.length; i += batchSize) {
             chunks.push(dataArrayList.slice(i, i + batchSize));
         }
@@ -859,7 +859,7 @@ const DB_MANAGER = {
         for (const chunk of chunks) {
             for (const row of chunk) {
                 let rowId = Array.isArray(row) ? row[0] : row.id;
-                
+
                 // Nếu row chưa có ID, tạo ID ngay
                 if (!rowId || rowId === "") {
                     let bookingId = null;
@@ -867,7 +867,7 @@ const DB_MANAGER = {
                         bookingId = Array.isArray(row) ? row[COL_INDEX.D_BKID] : row.booking_id;
 
                     }
-                    
+
                     const idResult = await this.generateIds(collectionName, bookingId);
                     if (idResult) {
                         if (Array.isArray(row)) {
@@ -875,10 +875,10 @@ const DB_MANAGER = {
                         } else {
                             row.id = idResult.newId; // Cập nhật object.id
                         }
-                        if (!this.batchCounterUpdates[collectionName] || this.batchCounterUpdates[collectionName]  <= idResult.newNo) this.batchCounterUpdates[collectionName] = idResult.newNo;
+                        if (!this.batchCounterUpdates[collectionName] || this.batchCounterUpdates[collectionName] <= idResult.newNo) this.batchCounterUpdates[collectionName] = idResult.newNo;
                         console.log(`🆔 Pre-generated ID: ${idResult.newId}`);
                     }
-                    
+
                 }
                 processedData.push(row);
             }
@@ -887,11 +887,11 @@ const DB_MANAGER = {
         // ✅ GIAI ĐOẠN 2: SAVE CHI TIẾT VÀO BATCH
         for (const chunk of chunks) {
             const batch = this.db.batch();
-            
+
             chunk.forEach(row => {
 
                 this.saveRecord(collectionName, row, true, batch);
-                
+
                 // Nếu là booking_details, lưu để trigger sau
                 // Lúc này row chắc chắn đã có ID
                 if (collectionName === this.COLL.DETAILS) {
@@ -903,11 +903,11 @@ const DB_MANAGER = {
                 await batch.commit();
                 totalSuccess += chunk.length;
                 console.log(`📦 Saved chunk: ${chunk.length} items to ${collectionName}`);
-                
+
                 // ✅ Cập nhật APP_DATA sau khi batch commit thành công
                 chunk.forEach(row => {
-                    const dataObj = (typeof row === 'object' && !Array.isArray(row)) 
-                        ? row 
+                    const dataObj = (typeof row === 'object' && !Array.isArray(row))
+                        ? row
                         : arrayToObject(row, collectionName);
                     this._updateAppDataObj(collectionName, dataObj);
                 });
@@ -921,10 +921,10 @@ const DB_MANAGER = {
         if (collectionName === this.COLL.DETAILS && detailsForTrigger.length > 0) {
 
             for (const detailRow of detailsForTrigger) {
-                if(typeof detailRow === 'object') detailRow.customer_full_name = customerName; else detailRow[COL_INDEX.M_CUST] = customerName;
+                if (typeof detailRow === 'object') detailRow.customer_full_name = customerName; else detailRow[COL_INDEX.M_CUST] = customerName;
                 await this._syncOperatorEntry(detailRow);
             }
-            
+
         }
 
         return { success: true, count: totalSuccess, data: processedData };
@@ -933,22 +933,22 @@ const DB_MANAGER = {
     /**
      * XÓA BẢN GHI
      */
-    deleteRecord: async function(collectionName, id) {
+    deleteRecord: async function (collectionName, id) {
         if (!id) return;
         try {
             await this.db.collection(collectionName).doc(String(id)).delete();
-            
+
             // ✅ Xóa khỏi APP_DATA sau khi delete thành công
             this._removeFromAppDataObj(collectionName, id);
-            
+
             // Trigger: Nếu xóa Details -> Cần đánh dấu hoặc xóa Operator Details?
             // Tùy nghiệp vụ: Thường là xóa luôn Operator Entry tương ứng
             if (collectionName === this.COLL.DETAILS) {
                 await this.db.collection(this.COLL.OPERATORS).doc(String(id)).delete();
                 this._removeFromAppDataObj(this.COLL.OPERATORS, id);
             }
-            
-            return { success: true , message: "Deleted"};
+
+            return { success: true, message: "Deleted" };
         } catch (e) {
             logError("❌ Delete Error:", e);
             return { success: false, error: e.message };
@@ -958,32 +958,32 @@ const DB_MANAGER = {
     /**
      * XÓA HÀNG LOẠT
      */
-    batchDelete: async function(collectionName, idList) {
+    batchDelete: async function (collectionName, idList) {
         const batch = this.db.batch();
         idList.forEach(id => {
             const ref = this.db.collection(collectionName).doc(String(id));
             batch.delete(ref);
-            
+
             // Trigger xóa Operator
             if (collectionName === this.COLL.DETAILS) {
                 const operatorRef = this.db.collection(this.COLL.OPERATORS).doc(String(id));
                 batch.delete(operatorRef);
             }
         });
-        
+
         try {
             await batch.commit();
-            
+
             // ✅ Xóa khỏi APP_DATA sau khi batch delete thành công
             idList.forEach(id => {
                 this._removeFromAppDataObj(collectionName, id);
-                
+
                 // Trigger xóa operator khỏi APP_DATA
                 if (collectionName === this.COLL.DETAILS) {
                     this._removeFromAppDataObj(this.COLL.OPERATORS, id);
                 }
             });
-            
+
             return { success: true };
         } catch (e) {
             console.error("❌ Batch Delete Error:", e);
@@ -1001,68 +1001,68 @@ const DB_MANAGER = {
      * @param {boolean} [forceNew=false] - Bộ qua kiểm tra oldValue, cập nhật toàn bộ
      * @returns {Promise<{success: boolean, count: number, message: string}>}
      */
-    batchUpdateFieldData: async function(collectionName, fieldName, oldValue, newValue, ids = null, forceNew = false) {
+    batchUpdateFieldData: async function (collectionName, fieldName, oldValue, newValue, ids = null, forceNew = false) {
         console.time("⏱ Thời gian cập nhật");
         console.log(`🚀 Bắt đầu cập nhật ${collectionName}.${fieldName}: "${oldValue}" → "${newValue}"`);
         if (ids && ids.length > 0) {
             console.log(`📍 Chỉ cập nhật ${ids.length} documents có ID: ${ids.slice(0, 5).join(', ')}${ids.length > 5 ? '...' : ''}`);
         }
-    
+
         try {
             // --- GIAI ĐOẠN 1: KIỂM TRA INPUT ---
             if (!collectionName || !fieldName) {
                 throw new Error("❌ Lỗi: collectionName và fieldName không được để trống");
             }
-    
+
             // --- GIAI ĐOẠN 2: TẢI TOÀN BỘ COLLECTION ---
             console.log(`1️⃣ Đang tải collection "${collectionName}"...`);
             const db = DB_MANAGER.db;
-            
+
             if (!db) {
                 throw new Error("❌ Firestore DB chưa khởi tạo");
             }
-    
+
             const collSnap = await db.collection(collectionName).get();
             console.log(`📦 Tìm thấy ${collSnap.size} documents. Bắt đầu tìm kiếm...`);
-    
+
             // --- GIAI ĐOẠN 3: XỬ LÝ VÀ GHI BATCH ---
             let batch = db.batch();
             let operationCount = 0;     // Đếm số lệnh trong batch hiện tại
             let totalUpdated = 0;       // Đếm tổng số đã cập nhật
             let totalSkipped = 0;       // Đếm số bỏ qua (không match)
-            
+
             // Chuyển ids array thành Set để O(1) lookup
             const idsSet = ids && Array.isArray(ids) ? new Set(ids.map(id => String(id))) : null;
-    
+
             for (const doc of collSnap.docs) {
                 const data = doc.data();
                 const currentValue = data[fieldName];
-        
+
                 // ✅ BƯỚC 1: Nếu ids được cung cấp, bỏ qua documents không có trong danh sách
                 if (idsSet && !idsSet.has(String(doc.id))) {
                     totalSkipped++;
                     continue;
                 }
-    
+
                 // So sánh giá trị (chuẩn hóa để tránh lỗi kiểu dữ liệu)
                 const isMatch = (
-                    String(currentValue).trim() === String(oldValue).trim() 
+                    String(currentValue).trim() === String(oldValue).trim()
                 );
-    
+
                 if (isMatch || forceNew) {
                     // ==> TÌM THẤY KHỚP!
                     const docRef = db.collection(collectionName).doc(doc.id);
                     const updateObj = {};
                     updateObj[fieldName] = newValue;
                     updateObj.updated_at = firebase.firestore.FieldValue.serverTimestamp();
-    
+
                     batch.update(docRef, updateObj);
-                    
+
                     operationCount++;
                     totalUpdated++;
-    
+
                     console.log(`✅ [${totalUpdated}] ${doc.id}: ${fieldName} = "${newValue}"`);
-    
+
                     // ⚠️ GIỚI HẠN BATCH: Nếu đủ 500 lệnh, bắn lên ngay và tạo túi mới
                     if (operationCount >= 499) {
                         console.log(`🔥 Đang commit batch (${operationCount} dòng)...`);
@@ -1078,25 +1078,25 @@ const DB_MANAGER = {
                     }
                 }
             }
-    
+
             // --- GIAI ĐOẠN 4: COMMIT SỐ DƯ CÒN LẠI ---
             if (operationCount > 0) {
                 console.log(`🔥 Đang commit batch cuối cùng (${operationCount} dòng)...`);
                 await batch.commit();
             }
-    
+
             const result = {
                 success: true,
                 count: totalUpdated,
                 skipped: totalSkipped,
-                message: idsSet 
+                message: idsSet
                     ? `✅ Hoàn tất! Cập nhật ${totalUpdated}/${ids.length} documents trong danh sách`
                     : `✅ Hoàn tất! Cập nhật ${totalUpdated} documents, bỏ qua ${totalSkipped}`
             };
-    
+
             console.log(`🎉 ${result.message}`);
             return result;
-    
+
         } catch (error) {
             const errorMsg = `❌ Lỗi: ${error.message}`;
             console.error(errorMsg);
@@ -1130,17 +1130,17 @@ const DB_MANAGER = {
         }
 
         const docRef = this.db.collection(collectionName).doc(String(id));
-        
+
         try {
             // Thêm timestamp cập nhật
             objData.updated_at = firebase.firestore.FieldValue.serverTimestamp();
-            
+
             // Cập nhật lên Firebase
             await docRef.set(objData, { merge: true });
-            
+
             // ✅ Cập nhật APP_DATA
             this._updateAppDataObj(collectionName, objData);
-            
+
             console.log(`✅ Updated ${collectionName}/${id}`);
             return { success: true, message: "Updated successfully" };
         } catch (e) {
@@ -1158,30 +1158,30 @@ async function fixMissingCustomerIds() {
         // --- GIAI ĐOẠN 1: TẠO TỪ ĐIỂN KHÁCH HÀNG (LOOKUP MAP) ---
         console.log("1️⃣ Đang tải danh sách Customers...");
         const custSnap = await db.collection('customers').get();
-        
+
         // Tạo Map: Key là SĐT -> Value là Customer ID
         const phoneToIdMap = {};
-        
+
         custSnap.forEach(doc => {
             const data = doc.data();
             // Giả sử field lưu sđt trong customer là 'phone'
             if (data.phone) {
                 // Chuẩn hóa: xóa khoảng trắng, đưa về string để so sánh chính xác
-                const cleanPhone = String(data.phone).trim(); 
+                const cleanPhone = String(data.phone).trim();
                 phoneToIdMap[cleanPhone] = doc.id;
             }
         });
-        
+
         console.log(`✅ Đã lập chỉ mục xong ${Object.keys(phoneToIdMap).length} khách hàng.`);
 
         // --- GIAI ĐOẠN 2: TẢI BOOKINGS BỊ LỖI ---
         console.log("2️⃣ Đang tải danh sách Bookings...");
-        
+
         // Chỉ lấy những booking chưa có customer_id (để tiết kiệm)
         // Lưu ý: Nếu field này không tồn tại, query này có thể không chạy được nếu chưa đánh index.
         // Nếu booking ít (< 5000), bạn cứ .get() tất cả về cho lành.
         const bookingSnap = await db.collection('bookings').get();
-        
+
         console.log(`📦 Tìm thấy ${bookingSnap.size} bookings. Bắt đầu xử lý...`);
 
         // --- GIAI ĐOẠN 3: XỬ LÝ VÀ GHI BATCH (QUAN TRỌNG) ---
@@ -1191,7 +1191,7 @@ async function fixMissingCustomerIds() {
 
         for (const doc of bookingSnap.docs) {
             const booking = doc.data();
-            
+
             // Bỏ qua nếu đã có customer_id rồi (an toàn)
 
 
@@ -1204,7 +1204,7 @@ async function fixMissingCustomerIds() {
 
                 // Thêm lệnh update vào túi Batch
                 batch.update(bookingRef, { customer_id: customerId });
-                
+
                 operationCount++;
                 totalUpdated++;
 
@@ -1283,7 +1283,7 @@ window.fixMissingCustomerIds = fixMissingCustomerIds;
  * @param {number} limitDocs - Giới hạn documents (default: 1000, dùng 0 để lấy tất cả)
  * @returns {Promise<{success: boolean, migratedCount: number, errors: Array, duration: string}>}
  */
-DB_MANAGER.migrateFieldClientSide = async function(
+DB_MANAGER.migrateFieldClientSide = async function (
     collectionName,
     oldFieldName,
     newFieldName,
@@ -1302,7 +1302,7 @@ DB_MANAGER.migrateFieldClientSide = async function(
 
     try {
         log(`🔄 Bắt đầu migrate client-side: [${oldFieldName}] → [${newFieldName}]`);
-        
+
         // Lấy documents có field cũ
         let query = this.db.collection(collectionName)
             .where(oldFieldName, '!=', null);
@@ -1315,10 +1315,10 @@ DB_MANAGER.migrateFieldClientSide = async function(
 
         if (snapshot.empty) {
             log('⚠️ Không tìm thấy documents với field: ' + oldFieldName, 'warning');
-            return { 
-                success: true, 
-                migratedCount: 0, 
-                message: 'Không có dữ liệu để migrate' 
+            return {
+                success: true,
+                migratedCount: 0,
+                message: 'Không có dữ liệu để migrate'
             };
         }
 
@@ -1412,7 +1412,7 @@ DB_MANAGER.migrateFieldClientSide = async function(
  * @param {number} limitDocs - Giới hạn documents
  * @returns {Promise<Object>}
  */
-DB_MANAGER.migrateBatchFieldsClientSide = async function(
+DB_MANAGER.migrateBatchFieldsClientSide = async function (
     collectionName,
     fieldMappings,
     strategy = 'move',
@@ -1472,7 +1472,7 @@ DB_MANAGER.migrateBatchFieldsClientSide = async function(
  * //   status: 'PENDING'
  * // }
  */
-DB_MANAGER.checkMigrationStatus = async function(
+DB_MANAGER.checkMigrationStatus = async function (
     collectionName,
     oldFieldName,
     newFieldName
@@ -1497,9 +1497,9 @@ DB_MANAGER.checkMigrationStatus = async function(
         });
 
         const percentage = total > 0 ? Math.round((migrated / total) * 100) : 0;
-        const status = remaining === 0 ? '✅ COMPLETE' : 
-                      percentage > 50 ? '⏳ IN PROGRESS' : 
-                      '⚠️ PENDING';
+        const status = remaining === 0 ? '✅ COMPLETE' :
+            percentage > 50 ? '⏳ IN PROGRESS' :
+                '⚠️ PENDING';
 
         return {
             success: true,

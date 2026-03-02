@@ -4,43 +4,46 @@
  * Cơ chế: Tự động dàn layout Desktop/Mobile và ẩn/hiện element theo Role.
  */
 export default class ErpHeaderMenu {
-    constructor(containerId = 'nav-container') {
-        this.containerId = containerId;
-        this.currentRole = CURRENT_USER.realrole ? CURRENT_USER.realrole : CURRENT_USER.role || 'guest';
-        this.config = { height: '60px', zIndex: '1040', bgColor: '#0d6efd' };
-        this._initialized = false;
+  constructor(containerId = 'nav-container') {
+    this.containerId = containerId;
+    this.currentRole = CURRENT_USER.realrole ? CURRENT_USER.realrole : CURRENT_USER.role || 'guest';
+    this.config = { height: '60px', zIndex: '1040', bgColor: '#0d6efd' };
+    this._initialized = false;
 
-        // [SỬA LỖI]: Bơm HTML ngay lập tức (Đồng bộ) để giữ chỗ ID cho Firebase Auth bắn dữ liệu vào
-        this._injectStyles();
-        this._renderLayout();
-        this.init();
+    // [SỬA LỖI]: Bơm HTML ngay lập tức (Đồng bộ) để giữ chỗ ID cho Firebase Auth bắn dữ liệu vào
+    this._injectStyles();
+    this._renderLayout();
+    this._initClickOutside();
+    this.init();
+  }
+
+  async init() {
+    if (this._initialized) {
+      console.warn('[ERP Header Menu] Đã khởi tạo rồi, bỏ qua...');
+      return;
     }
-
-    async init() {
-        if (this._initialized) {
-            console.warn('[ERP Header Menu] Đã khởi tạo rồi, bỏ qua...');
-            return;
-        }
-        this._initialized = true;
-        try {
-            if (!this.currentRole || this.currentRole === 'guest') {
-                this.currentRole = CURRENT_USER.realrole ? CURRENT_USER.realrole : CURRENT_USER.role || 'sale';
-                this._applyRoleFilters(); // Chỉ chạy CSS filter sau khi đã có Role
-            }
-        } catch (error) {
-            console.error('[9 Trip ERP] Lỗi khởi tạo Header Menu:', error);
-        }
+    this._initialized = true;
+    try {
+      if (!this.currentRole || this.currentRole === 'guest') {
+        this.currentRole = CURRENT_USER.realrole
+          ? CURRENT_USER.realrole
+          : CURRENT_USER.role || 'sale';
+        this._applyRoleFilters(); // Chỉ chạy CSS filter sau khi đã có Role
+      }
+    } catch (error) {
+      console.error('[9 Trip ERP] Lỗi khởi tạo Header Menu:', error);
     }
+  }
 
-    /**
-     * (Private) Bơm CSS độc lập để xử lý Responsive chuẩn xác
-     */
-    _injectStyles() {
-        if (document.getElementById('erp-header-styles')) return;
+  /**
+   * (Private) Bơm CSS độc lập để xử lý Responsive chuẩn xác
+   */
+  _injectStyles() {
+    if (document.getElementById('erp-header-styles')) return;
 
-        const style = document.createElement('style');
-        style.id = 'erp-header-styles';
-        style.innerHTML = `
+    const style = document.createElement('style');
+    style.id = 'erp-header-styles';
+    style.innerHTML = `
             /* [FIX] Nâng toàn bộ container gốc lên tầng trên cùng */
             #${this.containerId} {
                 position: relative; /* Hoặc 'sticky' với top: 0 nếu bạn muốn header trượt theo màn hình */
@@ -81,6 +84,7 @@ export default class ErpHeaderMenu {
                 /* Mobile: Reorder elements bằng flexbox order - ĐẶT 1 HÀNG */
                 .erp-header-inner {
                     flex-wrap: nowrap;
+                    padding: 0.5rem 1.5rem;
                 }
                 .erp-header-inner > div:nth-child(1) { /* Logo */
                     order: 1;
@@ -170,14 +174,14 @@ export default class ErpHeaderMenu {
                 }
             }
         `;
-        document.head.appendChild(style);
-    }
+    document.head.appendChild(style);
+  }
 
-    _renderLayout() {
-        const container = document.getElementById(this.containerId);
-        if (!container) return;
+  _renderLayout() {
+    const container = document.getElementById(this.containerId);
+    if (!container) return;
 
-        container.innerHTML = `
+    container.innerHTML = `
             <nav class="navbar navbar-dark p-0 erp-header-wrapper">
                 <div class="erp-header-inner w-100 d-flex align-items-center">
                     
@@ -194,7 +198,7 @@ export default class ErpHeaderMenu {
                         </h5>
                     </div>
 
-                    <div class="d-flex align-items-center gap-1 gap-sm-2">
+                    <div class="d-flex align-items-center justify-content-between gap-2">
                         
                         <div class="d-none d-md-block">
                             ${this._getSearchAndFiltersHTML()}
@@ -205,7 +209,7 @@ export default class ErpHeaderMenu {
                         
                         ${this._getNotificationWidgetHTML()}
 
-                        <div class="dropdown d-lg-none ms-1">
+                        <div class="erp-header flex-center d-lg-none ms-1">
                             <button class="btn btn-light btn-sm d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" style="width: 36px; height: 36px; border-radius: 50%;">
                                 <i class="fa-solid fa-bars text-primary"></i>
                             </button>
@@ -223,10 +227,10 @@ export default class ErpHeaderMenu {
                 </div>
             </nav>
         `;
-    }
+  }
 
-    _getSearchAndFiltersHTML() {
-        return `
+  _getSearchAndFiltersHTML() {
+    return `
             <div class="d-flex align-items-center gap-2">
                 <div class="d-none" id="datalist-select" data-ontabs="3">
                     <select id="btn-select-datalist" class="form-select form-select-sm border-0 shadow-sm" style="width: 8rem;"></select>
@@ -255,12 +259,12 @@ export default class ErpHeaderMenu {
                 </form>
             </div>
         `;
-    }
+  }
 
-    // --- CÁC HÀM TRÍCH XUẤT HTML THÀNH PHẦN (Giữ nguyên ID và Class cũ) ---
+  // --- CÁC HÀM TRÍCH XUẤT HTML THÀNH PHẦN (Giữ nguyên ID và Class cũ) ---
 
-    _getNavTabsHTML() {
-        return `
+  _getNavTabsHTML() {
+    return `
             <ul class="nav nav-tabs border-0" id="mainTabs" role="tablist">
                 <li class="nav-item">
                     <button class="nav-link active fw-bold border-0 bg-transparent text-white" data-bs-target="#tab-dashboard" onclick="activateTab('tab-dashboard')">
@@ -288,10 +292,10 @@ export default class ErpHeaderMenu {
                 </li>
             </ul>
         `;
-    }
+  }
 
-    _getSettingsMenuHTML() {
-        return `
+  _getSettingsMenuHTML() {
+    return `
             <div class="erp-header d-flex justify-content-end shadow-sm">
                 <button id="erp-menu-trigger" class="chrome-trigger-btn" aria-label="Menu" title="Menu">
                 <i class="fa-solid fa-ellipsis-vertical"></i>
@@ -357,6 +361,7 @@ export default class ErpHeaderMenu {
                  padding: 8px 0;
                  z-index: 1000;
                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                 font-size: 0.85rem;
                  color: var(--erp-menu-text);
              }
              
@@ -365,7 +370,7 @@ export default class ErpHeaderMenu {
                  display: flex;
                  align-items: center;
                  padding: 6px 16px;
-                 font-size: 0.85rem;
+                 font-size: 0.8rem;
                  cursor: pointer;
                  transition: background-color 0.2s;
                  text-decoration: none;
@@ -375,7 +380,7 @@ export default class ErpHeaderMenu {
                  background-color: var(--erp-menu-hover);
              }
              .erp-menu-item i.menu-icon {
-                 font-size: 0.85rem;
+                 font-size: 0.8rem;
                  width: 24px; 
                  text-align: center;
                  margin-right: 12px;
@@ -399,7 +404,7 @@ export default class ErpHeaderMenu {
                  background: transparent;
                  border: none;
                  color: var(--erp-menu-text);
-                 padding: 2px 10px;
+                 padding: 2px 5px;
                  cursor: pointer;
              }
              .chrome-zoom-controls button:hover {
@@ -460,12 +465,12 @@ export default class ErpHeaderMenu {
              }
             </style>
         `;
-    }
+  }
 
-    _getNotificationWidgetHTML() {
-        return `
-            <div class="notification-widget dropdown position-relative mx-2">
-                <button class="btn btn-warning btn-sm dropdown-toggle d-flex align-items-center justify-content-center position-relative shadow-sm border-0" type="button" id="notificationBellBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" style="width: 35px; height: 35px; border-radius: 50%;">
+  _getNotificationWidgetHTML() {
+    return `
+            <div class="notification-widget dropdown position-relative me-2">
+                <button class="btn btn-warning btn-sm dropdown-toggle d-flex align-items-center justify-content-center position-relative shadow-sm border-0" type="button" id="notificationBellBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" style="width: 36px; height: 36px; border-radius: 50%;">
                     <i class="fa-solid fa-bell text-white" style="font-size: 1.2rem;"></i>
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger shadow-sm d-none" id="notificationBadge" style="font-size: 0.65rem; border: 2px solid white;">0</span>
                 </button>
@@ -486,51 +491,105 @@ export default class ErpHeaderMenu {
                 </div>
             </div>
         `;
-    }
+  }
 
-    /**
-     * (Private) Logic ẩn hiện các phần tử dựa trên cấu hình Role
-     */
-    _applyRoleFilters() {
-        const container = document.getElementById(this.containerId);
-        if (!container) return;
+  /**
+   * (Private) Đăng ký event click-outside để đóng tất cả custom dropdown trong header.
+   * Xử lý:
+   *   1. Toggle #erp-menu-container khi click #erp-menu-trigger
+   *   2. Accordion submenu (.erp-submenu) trên mobile
+   *   3. Click ngoài vùng menu → ẩn tất cả + disable pointer-events
+   */
+  _initClickOutside() {
+    // ── Handler duy nhất — 3 case xử lý tuần tự, return sớm để tránh chồng lấn ──
+    const handler = (e) => {
+      const trigger = document.getElementById('erp-menu-trigger');
+      const menu = document.getElementById('erp-menu-container');
 
-        // Map class phân quyền
-        const roleClassMap = {
-            'sale': '.sales-only',
-            'op': '.op-only',
-            'acc': '.acc-only',
-            'admin': '.admin-only',
-            'manager': '.manager-only'
-        };
+      // ── 1. Toggle settings menu ──
+      if (trigger && trigger.contains(e.target)) {
+        const isHidden = menu.classList.contains('d-none');
+        menu.classList.toggle('d-none', !isHidden);
+        menu.style.pointerEvents = isHidden ? 'auto' : 'none';
+        return;
+      }
 
-        // 1. Ẩn tất cả các element có dính class phân quyền (reset trạng thái)
-        Object.values(roleClassMap).forEach(selector => {
-            const elements = container.querySelectorAll(selector);
-            elements.forEach(el => {
-                // Sử dụng !important thông qua style để đè lên các class d-flex nếu có
-                el.style.setProperty('display', 'none', 'important');
-            });
+      // ── 2. Mobile accordion cho .erp-submenu ──
+      const submenuTrigger = e.target.closest('.erp-submenu > .erp-menu-item');
+      if (submenuTrigger && menu && menu.contains(submenuTrigger)) {
+        const submenu = submenuTrigger.closest('.erp-submenu');
+        menu.querySelectorAll('.erp-submenu.active').forEach((el) => {
+          if (el !== submenu) el.classList.remove('active');
         });
+        submenu.classList.toggle('active');
+        return;
+      }
 
-        // 2. Mở lại các element thuộc quyền của user hiện tại
-        if (this.currentRole === 'admin') {
-            // Admin thấy tất cả
-            Object.values(roleClassMap).forEach(selector => {
-                const elements = container.querySelectorAll(selector);
-                elements.forEach(el => {
-                    el.style.removeProperty('display');
-                });
-            });
-        } else {
-            // User thường chỉ thấy role của mình
-            const allowedSelector = roleClassMap[this.currentRole];
-            if (allowedSelector) {
-                const elements = container.querySelectorAll(allowedSelector);
-                elements.forEach(el => {
-                    el.style.removeProperty('display');
-                });
-            }
+      // ── 3. Click ngoài → đóng settings menu ──
+      if (menu && !menu.classList.contains('d-none')) {
+        const wrapper = document.querySelector('.erp-header');
+        if (!wrapper || !wrapper.contains(e.target)) {
+          menu.classList.add('d-none');
+          menu.style.pointerEvents = 'none';
+          menu
+            .querySelectorAll('.erp-submenu.active')
+            .forEach((el) => el.classList.remove('active'));
         }
+      }
+    };
+
+    // Dùng A.Event.on để được auto-cleanup + dedup qua _listenerRegistry.
+    // Fallback về native nếu A chưa khởi tạo (trường hợp header render trước app boot).
+    if (typeof window.A?.Event?.on === 'function') {
+      A.Event.on(document, 'click', handler, true);
+    } else {
+      document.addEventListener('click', handler);
     }
+  }
+
+  /**
+   * (Private) Logic ẩn hiện các phần tử dựa trên cấu hình Role
+   */
+  _applyRoleFilters() {
+    const container = document.getElementById(this.containerId);
+    if (!container) return;
+
+    // Map class phân quyền
+    const roleClassMap = {
+      sale: '.sales-only',
+      op: '.op-only',
+      acc: '.acc-only',
+      admin: '.admin-only',
+      manager: '.manager-only',
+    };
+
+    // 1. Ẩn tất cả các element có dính class phân quyền (reset trạng thái)
+    Object.values(roleClassMap).forEach((selector) => {
+      const elements = container.querySelectorAll(selector);
+      elements.forEach((el) => {
+        // Sử dụng !important thông qua style để đè lên các class d-flex nếu có
+        el.style.setProperty('display', 'none', 'important');
+      });
+    });
+
+    // 2. Mở lại các element thuộc quyền của user hiện tại
+    if (this.currentRole === 'admin') {
+      // Admin thấy tất cả
+      Object.values(roleClassMap).forEach((selector) => {
+        const elements = container.querySelectorAll(selector);
+        elements.forEach((el) => {
+          el.style.removeProperty('display');
+        });
+      });
+    } else {
+      // User thường chỉ thấy role của mình
+      const allowedSelector = roleClassMap[this.currentRole];
+      if (allowedSelector) {
+        const elements = container.querySelectorAll(allowedSelector);
+        elements.forEach((el) => {
+          el.style.removeProperty('display');
+        });
+      }
+    }
+  }
 }

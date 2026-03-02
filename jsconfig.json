@@ -10,7 +10,7 @@
     },
     "include": [
         "public/**/*"
-    ],
+, "utils_v2.js"    ],
     "exclude": [
         "node_modules",
         ".firebase"

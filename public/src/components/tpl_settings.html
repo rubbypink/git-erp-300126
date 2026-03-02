@@ -1,387 +1,490 @@
 <div class="d-flex flex-column h-100 w-auto">
-    <div class="card-header nav-container px-3 border-bottom ">
-        <ul class="nav nav-tabs" id="settingTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active fw-bold small" id="tab-theme-btn"
-                    onclick="selectTab('tab-adm-app-config')" data-bs-target="#tab-adm-app-config" type="button"
-                    role="tab">
-                    <i class="fa-solid fa-palette me-2 text-primary"></i>Quản Lý Database
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link fw-bold small" id="tab-shortcut-btn"
-                    onclick="selectTab('tab-adm-database-control')" data-bs-target="#tab-adm-database-control"
-                    type="button" role="tab">
-                    <i class="fa-solid fa-keyboard me-2 text-danger"></i>Back End Settings
-                </button>
-            </li>
-            <li class="nav-item admin-only" role="presentation">
-                <button class="nav-link fw-bold small" id="tab-users-btn" onclick="selectTab('tab-adm-users')"
-                    data-bs-target="#tab-adm-users" type="button" role="tab">
-                    <i class="fa-solid fa-users me-2 text-success"></i>Quản Lý Người Dùng
-                </button>
-            </li>
-        </ul>
+  <div class="card-header nav-container px-3 border-bottom" id="settings-navbar-container">
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link active fw-bold small"
+          id="tab-theme-btn"
+          onclick="selectTab('tab-adm-app-config')"
+          data-bs-target="#tab-adm-app-config"
+          type="button"
+          role="tab"
+        >
+          <i class="fa-solid fa-palette me-2 text-primary"></i>Quản Lý Database
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link fw-bold small"
+          id="tab-shortcut-btn"
+          onclick="selectTab('tab-adm-database-control')"
+          data-bs-target="#tab-adm-database-control"
+          type="button"
+          role="tab"
+        >
+          <i class="fa-solid fa-keyboard me-2 text-danger"></i>Back End Settings
+        </button>
+      </li>
+      <li class="nav-item admin-only" role="presentation">
+        <button
+          class="nav-link fw-bold small"
+          id="tab-users-btn"
+          onclick="selectTab('tab-adm-users')"
+          data-bs-target="#tab-adm-users"
+          type="button"
+          role="tab"
+        >
+          <i class="fa-solid fa-users me-2 text-success"></i>Quản Lý Người Dùng
+        </button>
+      </li>
+    </ul> -->
+  </div>
+
+  <div class="tab-content p-1 scrollable-area" style="overflow-y: auto">
+    <div class="tab-pane fade show active" id="tab-adm-app-config" role="tabpanel">
+      <div class="container-fluid h-100 d-flex flex-column p-0">
+        <div class="d-flex align-items-center justify-content-start bg-light p-2 border-bottom gap-2 flex-wrap">
+          <select id="adm-select" class="form-select form-select-sm fw-bold" style="width: 250px">
+            <option value="">-- Chọn danh mục --</option>
+            <!-- SELECT_COLLECTION_OPTIONS_PLACEHOLDER -->
+          </select>
+
+          <div class="input-group input-group-sm" style="width: 300px">
+            <input
+              type="text"
+              id="adm-input-path"
+              class="form-control"
+              placeholder="Nhập path collection..."
+            />
+            <button class="btn btn-outline-secondary" id="adm-btn-fetch">
+              <i class="fas fa-arrow-right"></i> Load
+            </button>
+          </div>
+
+          <div class="ms-auto d-flex gap-2">
+            <button id="adm-btn-decode" class="btn btn-sm btn-info text-white fw-bold" disabled>
+              <i class="fas fa-network-wired"></i> Decode Sub (rooms)
+            </button>
+            <button id="adm-btn-save" class="btn btn-sm btn-success fw-bold px-3" disabled>
+              <i class="fas fa-save"></i> LƯU
+            </button>
+            <button id="adm-btn-delete" class="btn btn-sm btn-danger fw-bold px-3">
+              <i class="fas fa-trash"></i> XÓA
+            </button>
+          </div>
+        </div>
+
+        <div id="adm-workspace" class="flex-grow-1 p-3" style="overflow-y: auto">
+          <div class="text-center mt-5 text-secondary">
+            <i class="fas fa-cubes fa-4x mb-3"></i>
+            <p>Chọn collection hoặc nhập Path để bắt đầu.</p>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="tab-content p-1 scrollable-area" style="overflow-y: auto">
-        <div class="tab-pane fade show active" id="tab-adm-app-config" role="tabpanel">
-            <div class="container-fluid h-100 d-flex flex-column p-0">
-                <div class="d-flex align-items-center bg-light p-2 border-bottom gap-2 flex-wrap">
-                    <select id="adm-select" class="form-select form-select-sm fw-bold" style="width:250px">
-                        <option value="">-- Chọn danh mục --</option>
-                        <!-- SELECT_COLLECTION_OPTIONS_PLACEHOLDER -->
-                    </select>
+    <div class="tab-pane fade" id="tab-adm-database-control" role="tabpanel">
+      <div class="p-2 p-md-3">
 
-                    <div class="input-group input-group-sm" style="width: 300px;">
-                        <input type="text" id="adm-input-path" class="form-control"
-                            placeholder="Nhập path collection...">
-                        <button class="btn btn-outline-secondary" id="adm-btn-fetch"><i class="fas fa-arrow-right"></i>
-                            Load</button>
-                    </div>
+        <!-- ── 3 NHÓM CÀI ĐẶT ── -->
+        <div class="row g-3 mb-3">
 
-                    <div class="ms-auto d-flex gap-2">
-                        <button id="adm-btn-decode" class="btn btn-sm btn-info text-white fw-bold" disabled>
-                            <i class="fas fa-network-wired"></i> Decode Sub (rooms)
-                        </button>
-                        <button id="adm-btn-save" class="btn btn-sm btn-success fw-bold px-3" disabled>
-                            <i class="fas fa-save"></i> LƯU
-                        </button>
-                        <button id="adm-btn-delete" class="btn btn-sm btn-danger fw-bold px-3">
-                            <i class="fas fa-trash"></i> XÓA
-                        </button>
-                    </div>
+          <!-- 1. Module Nghiệp Vụ Core -->
+          <div class="col-12 col-md-6 col-xl-4">
+            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%;">
+              <legend>
+                <i class="fa-solid fa-puzzle-piece me-1 text-primary"></i>Module Nghiệp Vụ Core
+              </legend>
+
+              <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <div class="pe-2">
+                  <div class="fw-semibold small">Module Thông Báo</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Kích hoạt tạo & nhận thông báo.</div>
                 </div>
-
-                <div id="adm-workspace" class="flex-grow-1 p-3 " style="overflow-y:auto">
-                    <div class="text-center mt-5 text-secondary">
-                        <i class="fas fa-cubes fa-4x mb-3"></i>
-                        <p>Chọn collection hoặc nhập Path để bắt đầu.</p>
-                    </div>
+                <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="module_NotificationModule" />
                 </div>
-            </div>
+              </div>
+
+              <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <div class="pe-2">
+                  <div class="fw-semibold small">Theme Manager</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Kích hoạt quản lý giao diện.</div>
+                </div>
+                <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="module_ThemeManager" />
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <div class="pe-2">
+                  <div class="fw-semibold small">Module Translator</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Điều hành tour, nhà cung cấp, đối tác.</div>
+                </div>
+                <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="module_Lang" />
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <div class="pe-2">
+                  <div class="fw-semibold small">Module Download</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Tải dữ liệu từ hệ thống.</div>
+                </div>
+                <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="module_Download" />
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <div class="pe-2">
+                  <div class="fw-semibold small">Price Manager</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Kích hoạt tải giá tự động.</div>
+                </div>
+                <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="module_PriceManager" />
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-between align-items-center py-2">
+                <div class="pe-2">
+                  <div class="fw-semibold small">Module Report</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Kích hoạt chức năng báo cáo.</div>
+                </div>
+                <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="module_ReportModule" />
+                </div>
+              </div>
+
+            </fieldset>
+          </div>
+
+          <!-- 2. Giao diện & Tiện ích -->
+          <div class="col-12 col-md-6 col-xl-4">
+            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%;">
+              <legend>
+                <i class="fa-solid fa-palette me-1 text-info"></i>Giao diện & Tiện ích
+              </legend>
+
+              <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <div class="pe-2">
+                  <div class="fw-semibold small">Calculator Widget</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Máy tính mini kéo thả nổi trên màn hình.</div>
+                </div>
+                <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="module_CalculatorWidget" />
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <div class="pe-2">
+                  <div class="fw-semibold small">Offcanvas Menu</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Bật/tắt menu offcanvas.</div>
+                </div>
+                <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="module_OffcanvasMenu" />
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-between align-items-center py-2">
+                <div class="pe-2">
+                  <div class="fw-semibold small">Số dòng mỗi trang</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Mặc định dòng hiển thị trên DataTables.</div>
+                </div>
+                <div class="flex-shrink-0">
+                  <select class="form-select form-select-sm erp-config-input cursor-pointer" data-key="table_page_size" style="min-width: 110px">
+                    <option value="20">20 dòng</option>
+                    <option value="50">50 dòng</option>
+                    <option value="100">100 dòng</option>
+                    <option value="500">500 dòng ⚠️</option>
+                  </select>
+                </div>
+              </div>
+
+            </fieldset>
+          </div>
+
+          <!-- 3. Hệ thống & Thông báo -->
+          <div class="col-12 col-md-6 col-xl-4">
+            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%;">
+              <legend>
+                <i class="fa-solid fa-gear me-1 text-warning"></i>Hệ thống & Thông báo
+              </legend>
+
+              <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <div class="pe-2">
+                  <div class="fw-semibold small">Thời gian Toast (giây)</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Thông báo tự động biến mất sau n giây.</div>
+                </div>
+                <div class="flex-shrink-0">
+                  <input
+                    type="number"
+                    class="form-control form-control-sm erp-config-input text-center"
+                    data-key="toast_duration"
+                    min="1" max="15"
+                    style="width: 70px"
+                  />
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                <div class="pe-2">
+                  <div class="fw-semibold small">Tiết kiệm mạng</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Giảm tần suất đồng bộ Realtime.</div>
+                </div>
+                <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="network_saver" />
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-between align-items-center py-2">
+                <div class="pe-2">
+                  <div class="fw-semibold small">Chế độ Debug</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Hiển thị thông tin gỡ lỗi chi tiết.</div>
+                </div>
+                <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="debug" />
+                </div>
+              </div>
+
+            </fieldset>
+          </div>
+
+        </div>
+        <!-- /row g-3 -->
+
+        <!-- ── LƯU Ý ── -->
+        <div class="alert alert-info py-2 px-3 mb-3 small">
+          <div class="fw-bold mb-1"><i class="fa-solid fa-info-circle me-1"></i>Lưu ý quan trọng</div>
+          <ul class="mb-0 ps-3">
+            <li>Thay đổi có thể ảnh hưởng hiệu suất — cân nhắc trước khi bật/tắt tính năng.</li>
+            <li>Một số thay đổi yêu cầu tải lại trang hoặc đăng xuất để có hiệu lực.</li>
+            <li>Sao lưu dữ liệu trước khi thực hiện thay đổi lớn.</li>
+          </ul>
         </div>
 
-        <div class="tab-pane fade" id="tab-adm-database-control" role="tabpanel">
-            <div class="g-layout">
-                <div class="g-left g-r-3">
-                    <h6 class="fw-bold text-uppercase mb-3">1. Module Nghiệp Vụ Core</h6>
-                    <div class="card border-0 shadow-sm rounded-3">
-                        <div class="list-group list-group-flush rounded-3">
-
-                            <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                                <div class="me-4">
-                                    <h6 class="mb-1 fw-bold">Module Thông Báo</h6>
-                                    <small class="text-muted">Kích hoạt các chức năng tạo , nhận thông báo.</small>
-                                </div>
-                                <div class="form-check form-switch fs-4 mb-0">
-                                    <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
-                                        data-key="module_NotificationModule">
-                                </div>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                                <div class="me-4">
-                                    <h6 class="mb-1 fw-bold">Module Theme Manager</h6>
-                                    <small class="text-muted">Kích hoạt chức năng quản lý giao diện.</small>
-                                </div>
-                                <div class="form-check form-switch fs-4 mb-0">
-                                    <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
-                                        data-key="module_ThemeManager">
-                                </div>
-                            </div>
-
-                            <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                                <div class="me-4">
-                                    <h6 class="mb-1 fw-bold">Module Translator</h6>
-                                    <small class="text-muted">Kích hoạt chức năng điều hành tour, nhà cung cấp, đối
-                                        tác.</small>
-                                </div>
-                                <div class="form-check form-switch fs-4 mb-0">
-                                    <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
-                                        data-key="module_Lang">
-                                </div>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                                <div class="me-4">
-                                    <h6 class="mb-1 fw-bold">Module Download</h6>
-                                    <small class="text-muted">Kích hoạt chức năng tải dữ liệu từ hệ thống.</small>
-                                </div>
-                                <div class="form-check form-switch fs-4 mb-0">
-                                    <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
-                                        data-key="module_Download">
-                                </div>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                                <div class="me-4">
-                                    <h6 class="mb-1 fw-bold">Module Price Manager</h6>
-                                    <small class="text-muted">Kích hoạt chức năng tải giá tự động.</small>
-                                </div>
-                                <div class="form-check form-switch fs-4 mb-0">
-                                    <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
-                                        data-key="module_PriceManager">
-                                </div>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                                <div class="me-4">
-                                    <h6 class="mb-1 fw-bold">Module Report</h6>
-                                    <small class="text-muted">Kích hoạt chức năng báo cáo.</small>
-                                </div>
-                                <div class="form-check form-switch fs-4 mb-0">
-                                    <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
-                                        data-key="module_ReportModule">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="g-left g-r-2">
-                    <div class="alert alert-info mb-0">
-                        <h6 class="fw-bold"><i class="fa-solid fa-info-circle me-2"></i>Lưu ý quan trọng:</h6>
-                        <ul class="mb-0">
-                            <li>Thay đổi cài đặt có thể ảnh hưởng đến hiệu suất và trải nghiệm người dùng. Hãy cân nhắc
-                                trước khi bật/tắt các tính năng.</li>
-                            <li>Một số thay đổi có thể yêu cầu tải lại trang hoặc đăng xuất để có hiệu lực.</li>
-                            <li>Luôn đảm bảo sao lưu dữ liệu quan trọng trước khi thực hiện các thay đổi lớn trong cài
-                                đặt hệ thống.</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div class="g-center g-c-100">
-                    <h6 class="fw-bold text-uppercase text-muted mb-3">2. Giao diện & Tiện ích</h6>
-                    <div class="card border-0 shadow-sm rounded-3">
-                        <div class="list-group list-group-flush rounded-3">
-
-                            <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                                <div class="me-4">
-                                    <h6 class="mb-1 fw-bold">Máy tính nổi (Calculator Widget)</h6>
-                                    <small class="text-muted">Cho phép mở máy tính mini kéo thả trên mọi màn
-                                        hình.</small>
-                                </div>
-                                <div class="form-check form-switch fs-4 mb-0">
-                                    <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
-                                        data-key="module_CalculatorWidget">
-                                </div>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                                <div class="me-4">
-                                    <h6 class="mb-1 fw-bold">Offcanvas Menu</h6>
-                                    <small class="text-muted">Bật/tắt menu offcanvas</small>
-                                </div>
-                                <div class="form-check form-switch fs-4 mb-0">
-                                    <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
-                                        data-key="module_OffcanvasMenu">
-                                </div>
-                            </div>
-
-                            <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                                <div class="me-4">
-                                    <h6 class="mb-1 fw-bold">Số lượng dữ liệu mỗi trang</h6>
-                                    <small class="text-muted">Mặc định số dòng hiển thị trên DataTables.</small>
-                                </div>
-                                <div>
-                                    <select class="form-select erp-config-input cursor-pointer bg-light"
-                                        data-key="table_page_size" style="min-width: 140px;">
-                                        <option value="20">20 dòng</option>
-                                        <option value="50">50 dòng</option>
-                                        <option value="100">100 dòng</option>
-                                        <option value="500">500 dòng (Cảnh báo chậm)</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
-
-                <div class="g-right g-c-100">
-                    <h6 class="fw-bold text-uppercase text-muted mb-3">3. Hệ thống & Thông báo</h6>
-                    <div class="card border-0 shadow-sm rounded-3">
-                        <div class="list-group list-group-flush rounded-3">
-
-                            <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                                <div class="me-4">
-                                    <h6 class="mb-1 fw-bold">Độ trễ thông báo Toast (Giây)</h6>
-                                    <small class="text-muted">Thời gian các thông báo thành công/lỗi tự động biến
-                                        mất.</small>
-                                </div>
-                                <div>
-                                    <input type="number" class="form-control erp-config-input text-center bg-light"
-                                        data-key="toast_duration" min="1" max="15" style="width: 80px;">
-                                </div>
-                            </div>
-
-                            <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                                <div class="me-4">
-                                    <h6 class="mb-1 fw-bold">Chế độ tiết kiệm mạng</h6>
-                                    <small class="text-muted">Vô hiệu hóa tải trước hình ảnh, giảm tần suất đồng bộ
-                                        Realtime.</small>
-                                </div>
-                                <div class="form-check form-switch fs-4 mb-0">
-                                    <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
-                                        data-key="network_saver">
-                                </div>
-                            </div>
-                            <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                                <div class="me-4">
-                                    <h6 class="mb-1 fw-bold">Chế độ Debug</h6>
-                                    <small class="text-muted">Hiển thị thông tin gỡ lỗi và nhật ký chi tiết.</small>
-                                </div>
-                                <div class="form-check form-switch fs-4 mb-0">
-                                    <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
-                                        data-key="debug">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="g-r-last g-r-100 flex-center">
-                    <button id="reset-config-btn" class="btn btn-sm btn-outline-danger fw-bold mt-3">
-                        <i class="fas fa-rotate-left"></i> Reset về mặc định
-                    </button>
-                    <button id="save-config-btn" class="btn btn-sm btn-success fw-bold mt-3 ms-2">
-                        <i class="fas fa-save"></i> Lưu cài đặt
-                    </button>
-                </div>
-            </div>
+        <!-- ── BUTTONS ── -->
+        <div class="d-flex justify-content-end gap-2">
+          <button id="reset-config-btn" class="btn btn-sm btn-outline-danger fw-bold">
+            <i class="fas fa-rotate-left"></i> Reset mặc định
+          </button>
+          <button id="save-config-btn" class="btn btn-sm btn-success fw-bold">
+            <i class="fas fa-save"></i> Lưu cài đặt
+          </button>
         </div>
 
-        <div class="tab-pane fade" id="tab-adm-users" role="tabpanel">
-            <div id="users-config-container">
-                <div class="card shadow-sm border-0 h-100">
-                    <div class="card-body h-100">
-                        <div class="d-flex flex-row justify-content-between border-bottom pb-2 mb-3">
-                            <h6 class="fw-bold text-success">
-                                <i class="fa-solid fa-users me-2"></i>Quản Lý Người Dùng
-                            </h6>
-                            <button type="button" class="btn btn-sm btn-secondary"
-                                onclick="A.Auth.renderUsersConfig()">Load</button>
-                        </div>
-                        <!-- Phần Form Nhập Liệu -->
-                        <form id="users-form" class="row g-2 mb-2 p-2 rounded border h-100" style="font-size: 0.75rem;">
+      </div>
+    </div>
 
-                            <div class="col-md-3 form-floating">
-                                <input type="text" class="form-control form-control-sm" id="form-account"
-                                    placeholder="Account name" style="max-height: 1.5rem !important;">
-                                <label for="form-account">Tên Tài Khoản</label>
-                            </div>
+    <div class="tab-pane fade" id="tab-adm-users" role="tabpanel">
+      <div id="users-config-container">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body h-100">
+            <div class="d-flex flex-row justify-content-between border-bottom pb-2 mb-3">
+              <h6 class="fw-bold text-success">
+                <i class="fa-solid fa-users me-2"></i>Quản Lý Người Dùng
+              </h6>
+              <button
+                type="button"
+                class="btn btn-sm btn-secondary"
+                onclick="A.Auth.renderUsersConfig()"
+              >
+                Load
+              </button>
+            </div>
+            <!-- Phần Form Nhập Liệu -->
+            <form
+              id="users-form"
+              class="row g-2 mb-2 p-2 rounded border h-100"
+              style="font-size: 0.75rem"
+            >
+              <div class="col-md-3 form-floating">
+                <input
+                  type="text"
+                  class="form-control form-control-sm"
+                  id="form-account"
+                  placeholder="Account name"
+                  style="max-height: 1.2rem"
+                />
+                <label for="form-account">Tên Tài Khoản</label>
+              </div>
 
-                            <div class="col-md-3 form-floating">
-                                <input type="text" class="form-control form-control-sm" id="form-user-name"
-                                    placeholder="Họ tên" style="max-height: 1.5rem !important;">
-                                <label for="form-user-name">Tên Người Dùng</label>
-                            </div>
+              <div class="col-md-3 form-floating">
+                <input
+                  type="text"
+                  class="form-control form-control-sm"
+                  id="form-user-name"
+                  placeholder="Họ tên"
+                  style="max-height: 1.2rem"
+                />
+                <label for="form-user-name">Tên Người Dùng</label>
+              </div>
 
-                            <div class="col-md-3 form-floating">
-                                <input type="text" class="form-control form-control-sm" id="form-user-phone"
-                                    placeholder="0123456789" style="max-height: 1.5rem !important;">
-                                <label for="form-user-phone">Số Điện Thoại</label>
-                            </div>
+              <div class="col-md-3 form-floating">
+                <input
+                  type="text"
+                  class="form-control form-control-sm"
+                  id="form-user-phone"
+                  placeholder="0123456789"
+                  style="max-height: 1.2rem"
+                />
+                <label for="form-user-phone">Số Điện Thoại</label>
+              </div>
 
-                            <div class="col-md-3 form-floating">
-                                <input type="email" class="form-control form-control-sm" id="form-email"
-                                    placeholder="user@example.com" style="max-height: 1.5rem !important;">
-                                <label for="form-email">Email</label>
-                            </div>
+              <div class="col-md-3 form-floating">
+                <input
+                  type="email"
+                  class="form-control form-control-sm"
+                  id="form-email"
+                  placeholder="user@example.com"
+                  style="max-height: 1.2rem"
+                />
+                <label for="form-email">Email</label>
+              </div>
 
-                            <div class="col-md-3">
-                                <div class="form-floating">
-                                    <select class="form-select form-select-sm" style="max-height: 1.5rem !important;"
-                                        id="form-role" onchange="
+              <div class="col-md-3">
+                <div class="form-floating">
+                  <select
+                    class="form-select form-select-sm"
+                    style="max-height: 1.2rem"
+                    id="form-role"
+                    onchange="
                       const selectedOption = this.options[this.selectedIndex];
                       const level = selectedOption.getAttribute('data-level') || '0';
                       getE('form-level').value = level;
-                    ">
-                                        <option value="sale" data-level="1">Sales</option>
-                                        <option value="sale_sup" data-level="2">Sales Supervisor</option>
-                                        <option value="op" data-level="1">Operator</option>
-                                        <option value="acc" data-level="3">Accountant</option>
-                                        <option value="supervisor" data-level="5">Supervisor</option>
-                                        <option value="manager" data-level="10">Manager</option>
-                                        <option value="admin" data-level="99">Admin</option>
-                                    </select>
-                                    <label for="form-role">Vai Trò</label>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label class="form-label small fw-bold">Group</label>
-                                <div class="border rounded p-2 " style="max-height: 150px; overflow-y: auto;">
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input group-role-checkbox" type="checkbox"
-                                            id="group-guests" value="GUESTS">
-                                        <label class="form-check-label small" for="group-guests">Khách</label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input group-role-checkbox" type="checkbox"
-                                            id="group-sales" value="SALES">
-                                        <label class="form-check-label small" for="group-sales">Sales Team</label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input group-role-checkbox" type="checkbox"
-                                            id="group-operations" value="OPERATIONS">
-                                        <label class="form-check-label small" for="group-operations">Operations
-                                            Team</label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input group-role-checkbox" type="checkbox"
-                                            id="group-accountant" value="ACCOUNTANT">
-                                        <label class="form-check-label small" for="group-accountant">Kế toán</label>
-                                    </div>
-                                    <div class="form-check form-check-inline">
-                                        <input class="form-check-input group-role-checkbox" type="checkbox"
-                                            id="group-admin" value="ADMIN">
-                                        <label class="form-check-label small" for="group-admin">Admin</label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-3 form-floating" style="max-height: 1.5rem !important;">
-                                <input type="date" class="form-control form-control-sm" id="form-created-at" readonly>
-                                <label for="form-created-at">Ngày Tạo</label>
-                            </div>
-
-                            <div class="text-muted small" style="max-height: 1.5rem !important;">
-                                <input type="hidden" class="form-control form-control-sm" id="form-level"
-                                    placeholder="1" min="0" readonly>
-                            </div>
-                            <div class="text-muted small">
-                                <input type="hidden" class="form-control form-control-sm" id="form-uid" readonly
-                                    placeholder="Tự động" style="max-height: 1.5rem !important;">
-                            </div>
-                        </form>
-
-                        <!-- Phần Bảng Dữ Liệu -->
-                        <h6 class="fw-bold text-info border-bottom pb-2 mb-3">
-                            <i class="fa-solid fa-table me-2"></i>Danh Sách Người Dùng
-                        </h6>
-                        <div class="table-responsive" style="max-height: 50vh; overflow-y: auto;">
-                            <table class="table table-bordered table-hover table-sm" id="users-table">
-                                <thead class="table-light sticky-top text-center">
-                                    <tr>
-                                        <th style="width: 15%">UID</th>
-                                        <th style="width: 12%">Account</th>
-                                        <th style="width: 12%">Password</th>
-                                        <th style="width: 15%">Họ & Tên</th>
-                                        <th style="width: 12%">Điện Thoại</th>
-                                        <th style="width: 15%">Email</th>
-                                        <th style="width: 8%">Vai Trò</th>
-                                        <th style="width: 7%">Cấp Độ</th>
-                                        <th style="width: 10%">Nhóm</th>
-                                        <th style="width: 15%">Ngày Tạo</th>
-                                        <th style="width: 8%">Hành động</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="users-table-body">
-                                    <tr>
-                                        <td colspan="11" class="text-center text-muted">Đang tải dữ liệu...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    "
+                  >
+                    <option value="sale" data-level="1">Sales</option>
+                    <option value="sale_sup" data-level="2">Sales Supervisor</option>
+                    <option value="op" data-level="1">Operator</option>
+                    <option value="acc" data-level="3">Accountant</option>
+                    <option value="supervisor" data-level="5">Supervisor</option>
+                    <option value="manager" data-level="10">Manager</option>
+                    <option value="admin" data-level="99">Admin</option>
+                  </select>
+                  <label for="form-role">Vai Trò</label>
                 </div>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label small fw-bold">Group</label>
+                <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto">
+                  <div class="form-check form-check-inline">
+                    <input
+                      class="form-check-input group-role-checkbox"
+                      type="checkbox"
+                      id="group-guests"
+                      value="GUESTS"
+                    />
+                    <label class="form-check-label small" for="group-guests">Khách</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input
+                      class="form-check-input group-role-checkbox"
+                      type="checkbox"
+                      id="group-sales"
+                      value="SALES"
+                    />
+                    <label class="form-check-label small" for="group-sales">Sales Team</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input
+                      class="form-check-input group-role-checkbox"
+                      type="checkbox"
+                      id="group-operations"
+                      value="OPERATIONS"
+                    />
+                    <label class="form-check-label small" for="group-operations"
+                      >Operations Team</label
+                    >
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input
+                      class="form-check-input group-role-checkbox"
+                      type="checkbox"
+                      id="group-accountant"
+                      value="ACCOUNTANT"
+                    />
+                    <label class="form-check-label small" for="group-accountant">Kế toán</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input
+                      class="form-check-input group-role-checkbox"
+                      type="checkbox"
+                      id="group-admin"
+                      value="ADMIN"
+                    />
+                    <label class="form-check-label small" for="group-admin">Admin</label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-3 form-floating" style="max-height: 1.2rem">
+                <input
+                  type="date"
+                  class="form-control form-control-sm"
+                  id="form-created-at"
+                  readonly
+                />
+                <label for="form-created-at">Ngày Tạo</label>
+              </div>
+
+              <div class="text-muted small" style="max-height: 1.2rem">
+                <input
+                  type="hidden"
+                  class="form-control form-control-sm"
+                  id="form-level"
+                  placeholder="1"
+                  min="0"
+                  readonly
+                />
+              </div>
+              <div class="text-muted small">
+                <input
+                  type="hidden"
+                  class="form-control form-control-sm"
+                  id="form-uid"
+                  readonly
+                  placeholder="Tự động"
+                  style="max-height: 1.2rem"
+                />
+              </div>
+            </form>
+
+            <!-- Phần Bảng Dữ Liệu -->
+            <h6 class="fw-bold text-info border-bottom pb-2 mb-3">
+              <i class="fa-solid fa-table me-2"></i>Danh Sách Người Dùng
+            </h6>
+            <div class="table-responsive" style="max-height: 50vh; overflow-y: auto">
+              <table
+                class="table table-bordered table-hover table-sm"
+                id="users-table"
+                data-collection="users"
+              >
+                <thead class="table-light sticky-top text-center">
+                  <tr class="text-center align-middle">
+                    <th style="width: 15%">UID</th>
+                    <th style="width: 12%">Account</th>
+                    <th style="width: 12%">Password</th>
+                    <th style="width: 15%">Họ & Tên</th>
+                    <th style="width: 12%">Điện Thoại</th>
+                    <th style="width: 15%">Email</th>
+                    <th style="width: 8%">Vai Trò</th>
+                    <th style="width: 7%">Cấp Độ</th>
+                    <th style="width: 10%">Nhóm</th>
+                    <th style="width: 15%">Ngày Tạo</th>
+                    <th style="width: 8%">Hành động</th>
+                  </tr>
+                </thead>
+                <tbody id="users-table-body">
+                  <tr class="text-center align-middle">
+                    <td colspan="11" class="text-center text-muted">Đang tải dữ liệu...</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
+          </div>
         </div>
+      </div>
     </div>
+  </div>
 </div>

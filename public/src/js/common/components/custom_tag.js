@@ -117,9 +117,9 @@ class AtStatus extends HTMLElement {
             childEl.addEventListener('blur', () => this.render());
         }
 
-        // Watch for data-value attribute changes on child
+        // Watch for data-val attribute changes on child
         const observer = new MutationObserver(() => this.render());
-        observer.observe(this, { attributes: true, subtree: true, attributeFilter: ['status', 'data-value'] });
+        observer.observe(this, { attributes: true, subtree: true, attributeFilter: ['status', 'data-val'] });
     }
 
     // 4. Callback chạy khi thuộc tính thay đổi (Reactivity)
@@ -133,7 +133,7 @@ class AtStatus extends HTMLElement {
     _autoDetectStatus() {
         // Priority (theo thứ tự):
         // 1. Attribute status on at-status
-        // 2. data-value on child element
+        // 2. data-val on child element
         // 3. .value of input/select/textarea
         // 4. Text content
         // 5. Default: 'new'
@@ -146,9 +146,9 @@ class AtStatus extends HTMLElement {
         // 2. Tìm input/select/textarea con
         const childEl = this.querySelector('input, select, textarea');
         if (childEl) {
-            // Check data-value attribute first
-            if (childEl.hasAttribute('data-value')) {
-                return childEl.getAttribute('data-value');
+            // Check data-val attribute first
+            if (childEl.hasAttribute('data-val')) {
+                return childEl.getAttribute('data-val');
             }
             // Then check .value property
             if (childEl.value) {
