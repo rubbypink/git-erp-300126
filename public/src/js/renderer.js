@@ -70,8 +70,7 @@ const setupMainFormUI = function (lists) {
     const thead = tblBookingForm.querySelector('thead');
     if (thead) {
       // Xác định collection dựa trên role
-      const collectionName =
-        CURRENT_USER && CURRENT_USER.role === 'op' ? 'operator_entries' : 'booking_details';
+      const collectionName = CURRENT_USER && CURRENT_USER.role === 'op' ? 'operator_entries' : 'booking_details';
 
       const headerHtml = renderHeaderHtml(collectionName);
       if (headerHtml) {
@@ -105,10 +104,7 @@ function activateTab(targetTabId) {
 function toggleContextUI(targetTabIdOrIndex) {
   try {
     // 1. Xác định Active Index chuẩn hóa
-    const activeTabIndex =
-      typeof targetTabIdOrIndex === 'number'
-        ? targetTabIdOrIndex
-        : TAB_INDEX_BY_ID[String(targetTabIdOrIndex)];
+    const activeTabIndex = typeof targetTabIdOrIndex === 'number' ? targetTabIdOrIndex : TAB_INDEX_BY_ID[String(targetTabIdOrIndex)];
 
     // Log để debug xem đang vào tab nào
     // console.log(`[UI] Switching to tab: ${targetTabIdOrIndex} (Index: ${activeTabIndex})`);
@@ -141,7 +137,7 @@ function toggleContextUI(targetTabIdOrIndex) {
     // 4. Xử lý Logic riêng cho Tab Form (Index = 2)
     // SỬA LỖI Ở ĐÂY: Dùng activeTabIndex để so sánh, không dùng tabId
     if (activeTabIndex === TAB_INDEX_BY_ID['tab-form']) {
-      // Chỉ set default nếu đang ở chế độ tạo mới (Start rỗng)
+      setClass('#tab-form', 'd-none', false); // Hiện tab form
       CURRENT_TABLE_KEY = 'bookings';
       if (typeof setMany === 'function' && typeof getVal === 'function') {
         if (getE('BK_Start') && getVal('BK_Start') === '') {
@@ -163,9 +159,7 @@ function selectTab(targetTabId) {
   A.UI.lazyLoad(targetTabId);
 
   // 2. Tìm nút bấm trên Header
-  const navBtn =
-    document.querySelector(`button[data-bs-target="#${targetTabId}"]`) ||
-    document.querySelector(`.nav-link[data-bs-target="#${targetTabId}"]`);
+  const navBtn = document.querySelector(`button[data-bs-target="#${targetTabId}"]`) || document.querySelector(`.nav-link[data-bs-target="#${targetTabId}"]`);
 
   // 3. Kích hoạt chuyển tab bằng Bootstrap API
   if (navBtn) {
@@ -184,9 +178,9 @@ function selectTab(targetTabId) {
   } else if (targetTabId === 'tab-shortcut-content') {
     setClass($(targetTabId), 'd-none', false);
     setClass($('#tab-theme-content'), 'd-none', true);
-
-    A.Modal.setSaveHandler(saveShortcutsConfig, 'Lưu Phím Tắt');
-    A.Modal.setResetHandler(() => {}, 'Đặt Lại');
+    A.ShortKey.renderSettingsForm();
+    // A.Modal.setSaveHandler(saveShortcutsConfig, 'Lưu Phím Tắt');
+    // A.Modal.setResetHandler(() => {}, 'Đặt Lại');
   } else if (targetTabId === 'tab-admin-users') {
     setClass($(targetTabId), 'd-none', false);
     A.Auth.renderUsersConfig();
@@ -223,21 +217,7 @@ function generateGridColsFromObject(collectionName) {
 
   const FORMAT_KEYWORDS = {
     date: ['ngày', 'hạn', 'date', 'dob', 'checkin', 'checkout', 'deadline', 'start', 'end'],
-    money: [
-      'tiền',
-      'giá',
-      'cọc',
-      'thu',
-      'chi',
-      'total',
-      'amount',
-      'price',
-      'deposit',
-      'revenue',
-      'cost',
-      'profit',
-      'balance',
-    ],
+    money: ['tiền', 'giá', 'cọc', 'thu', 'chi', 'total', 'amount', 'price', 'deposit', 'revenue', 'cost', 'profit', 'balance'],
   };
 
   const matches = (text, type) => {
@@ -267,10 +247,7 @@ function generateGridColsFromObject(collectionName) {
       align: format === 'money' ? 'text-end' : 'text-center',
     };
 
-    if (
-      TABLE_HIDDEN_FIELDS[collectionName] &&
-      TABLE_HIDDEN_FIELDS[collectionName].includes(fieldName)
-    ) {
+    if (TABLE_HIDDEN_FIELDS[collectionName] && TABLE_HIDDEN_FIELDS[collectionName].includes(fieldName)) {
       res.hidden = true;
     }
     return res;
@@ -282,10 +259,7 @@ function renderHeaderHtml(collectionName) {
   // Render header row
   if (GRID_COLS && GRID_COLS.length > 0) {
     let headerHTML = '<th style="width:50px" class="text-center">#</th>';
-    headerHTML += GRID_COLS.map(
-      (col) =>
-        `<th class="${col.hidden ? 'd-none ' : 'text-center'}" data-field="${col.key}" style="white-space: nowrap;">${col.t}</th>`
-    ).join('');
+    headerHTML += GRID_COLS.map((col) => `<th class="${col.hidden ? 'd-none ' : 'text-center'}" data-field="${col.key}" style="white-space: nowrap;">${col.t}</th>`).join('');
     return headerHTML;
   } else {
     return '<th>Không có cấu hình cột</th>';
@@ -301,21 +275,7 @@ function generateGridCols(headerRow) {
   // 1. Cấu hình từ khóa nhận diện định dạng (Config Pattern)
   const FORMAT_KEYWORDS = {
     date: ['ngày', 'hạn', 'date', 'dob', 'checkin', 'checkout', 'deadline', 'start', 'end'],
-    money: [
-      'tiền',
-      'giá',
-      'cọc',
-      'thu',
-      'chi',
-      'total',
-      'amount',
-      'price',
-      'deposit',
-      'revenue',
-      'cost',
-      'profit',
-      'balance',
-    ],
+    money: ['tiền', 'giá', 'cọc', 'thu', 'chi', 'total', 'amount', 'price', 'deposit', 'revenue', 'cost', 'profit', 'balance'],
   };
 
   const matches = (text, type) => {
@@ -367,10 +327,7 @@ function renderGrid(dataList, table) {
     header.innerHTML = '<th>Không có cấu hình cột</th>';
   } else {
     let headerHTML = '<th style="width:50px" class="text-center">#</th>';
-    headerHTML += GRID_COLS.map(
-      (c) =>
-        `<th class="${nohide ? '' : c.hidden ? 'd-none' : 'text-center'}" data-field="${c.key}" style="white-space: nowrap;">${c.t}</th>`
-    ).join('');
+    headerHTML += GRID_COLS.map((c) => `<th class="${nohide ? '' : c.hidden ? 'd-none' : 'text-center'}" data-field="${c.key}" style="white-space: nowrap;">${c.t}</th>`).join('');
     header.innerHTML = headerHTML;
   }
 
@@ -388,8 +345,7 @@ function renderGrid(dataList, table) {
 
     // Cột STT (Tính theo trang nếu có phân trang)
     let stt = idx + 1;
-    if (typeof PG_STATE !== 'undefined')
-      stt = (PG_STATE.currentPage - 1) * PG_STATE.limit + idx + 1;
+    if (typeof PG_STATE !== 'undefined') stt = (PG_STATE.currentPage - 1) * PG_STATE.limit + idx + 1;
 
     let html = `<td class="text-center fw-bold text-secondary">${stt}</td>`;
 
@@ -424,8 +380,7 @@ function renderGrid(dataList, table) {
     } else {
       // Array format (legacy)
       rowId = row[0];
-      if (CURRENT_TABLE_KEY === 'booking_details' || CURRENT_TABLE_KEY === 'operator_entries')
-        rowId = row[1]; // Details lấy cột 1 (BK_ID)
+      if (CURRENT_TABLE_KEY === 'booking_details' || CURRENT_TABLE_KEY === 'operator_entries') rowId = row[1]; // Details lấy cột 1 (BK_ID)
     }
     tr.id = rowId;
 
@@ -447,6 +402,7 @@ function renderGrid(dataList, table) {
 
   tbody.appendChild(docFrag);
   table.dataset.collection = CURRENT_TABLE_KEY; // Gắn collection vào dataset của table để tiện truy xuất sau này
+  calculateSummary(dataList);
 }
 
 // =========================================================================
@@ -493,9 +449,7 @@ function changePage(page) {
   }
   renderCurrentPage(); // Vẽ lại
   // Notify StateProxy to clear session tracking on page change
-  document.dispatchEvent(
-    new CustomEvent('paginationchange', { detail: { page: PG_STATE.currentPage } })
-  );
+  document.dispatchEvent(new CustomEvent('paginationchange', { detail: { page: PG_STATE.currentPage } }));
 }
 
 function renderPaginationControls(container) {
@@ -511,8 +465,7 @@ function renderPaginationControls(container) {
 
   if (startPage > 1) {
     html += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="changePage(1)">1</a></li>`;
-    if (startPage > 2)
-      html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    if (startPage > 2) html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
   }
 
   for (let i = startPage; i <= endPage; i++) {
@@ -520,8 +473,7 @@ function renderPaginationControls(container) {
   }
 
   if (endPage < totalPages) {
-    if (endPage < totalPages - 1)
-      html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+    if (endPage < totalPages - 1) html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
     html += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="changePage(${totalPages})">${totalPages}</a></li>`;
   }
 
@@ -545,7 +497,7 @@ function setupLongPress(element, callback, threshold = 500) {
   let touchStartX = 0;
   let touchStartY = 0;
   let isValidPress = false;
-  let isMobile = window.innerWidth <= 768; // Simple mobile detection
+  let isMobile = window.innerWidth <= (window.A?.getConfig?.('mobile_breakpoint') ?? 768); // Configurable mobile detection
   if (!isMobile) return; // Only setup on mobile devices
   // Touch events
   element.addEventListener(
@@ -651,9 +603,7 @@ function renderSecondaryIndexTable(key, tblId) {
  * @param {string} [tblId]   - Container element ID (default: 'tbl-container-tab2')
  */
 function renderSecondaryIndexFromFlat(key, flatData, tblId) {
-  const table = tblId
-    ? document.getElementById(tblId)
-    : document.getElementById('tbl-container-tab2');
+  const table = tblId ? document.getElementById(tblId) : document.getElementById('tbl-container-tab2');
   if (!table) return;
 
   const tblEl = table.querySelector('table');
@@ -668,8 +618,7 @@ function renderSecondaryIndexFromFlat(key, flatData, tblId) {
     const groupBy = schemaDef?.groupBy ?? 'id';
 
     if (!flatData || flatData.length === 0) {
-      if (tbody)
-        tbody.innerHTML = `<tr><td colspan="100%" class="text-center p-4 text-muted">Không có dữ liệu (${key})</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="100%" class="text-center p-4 text-muted">Không có dữ liệu (${key})</td></tr>`;
       return;
     }
 
@@ -678,8 +627,7 @@ function renderSecondaryIndexFromFlat(key, flatData, tblId) {
       generateGridColsFromObject(schemaKey);
     }
     if (!GRID_COLS || GRID_COLS.length === 0) {
-      if (tbody)
-        tbody.innerHTML = `<tr><td colspan="100%" class="text-center p-4 text-muted">Không tìm thấy cấu hình cột cho '${schemaKey}'</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="100%" class="text-center p-4 text-muted">Không tìm thấy cấu hình cột cho '${schemaKey}'</td></tr>`;
       return;
     }
     const colCount = GRID_COLS.length + 1;
@@ -687,10 +635,7 @@ function renderSecondaryIndexFromFlat(key, flatData, tblId) {
     // Render thead
     if (thead) {
       let headerHTML = '<th style="width:50px" class="text-center">#</th>';
-      headerHTML += GRID_COLS.map(
-        (col) =>
-          `<th class="${col.hidden ? 'd-none ' : ''}text-center" data-field="${col.key}" style="white-space: nowrap;">${col.t}</th>`
-      ).join('');
+      headerHTML += GRID_COLS.map((col) => `<th class="${col.hidden ? 'd-none ' : ''}text-center" data-field="${col.key}" style="white-space: nowrap;">${col.t}</th>`).join('');
       thead.innerHTML = headerHTML;
     }
 
@@ -702,8 +647,7 @@ function renderSecondaryIndexFromFlat(key, flatData, tblId) {
       grouped[gVal].push(doc);
     });
 
-    const groupByLabel =
-      A.DB.schema[schemaKey]?.fields?.find((f) => f.name === groupBy)?.displayName ?? groupBy;
+    const groupByLabel = A.DB.schema[schemaKey]?.fields?.find((f) => f.name === groupBy)?.displayName ?? groupBy;
 
     const docFrag = document.createDocumentFragment();
     let globalIdx = 0;
@@ -874,17 +818,14 @@ function renderTableByKey(key, tblId) {
   const schemaDef = A.DB.schema[key];
   const isSecondary = schemaDef?.isSecondaryIndex === true;
 
-  let table = tblId
-    ? document.getElementById(tblId)
-    : document.getElementById('tbl-container-tab2');
+  let table = tblId ? document.getElementById(tblId) : document.getElementById('tbl-container-tab2');
   if (!table) return;
 
   const tblEl = table.querySelector('table');
   if (tblEl) tblEl.dataset.collection = key;
 
   const tbody = table.querySelector('tbody');
-  if (tbody)
-    tbody.innerHTML = '<tr><td colspan="100%" class="text-center p-3">Đang tải...</td></tr>';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="100%" class="text-center p-3">Đang tải...</td></tr>';
 
   try {
     // Flatten APP_DATA → PG_DATA (single source of truth for subsequent ops)
@@ -939,9 +880,7 @@ function getAppDataFlat(key) {
   const isSecondary = A.DB?.schema?.[key]?.isSecondaryIndex === true;
   if (isSecondary) {
     // nested: { groupKey: { docId: doc, ... } } → [doc, ...]
-    return Object.values(data).flatMap((group) =>
-      group && typeof group === 'object' ? Object.values(group) : []
-    );
+    return Object.values(data).flatMap((group) => (group && typeof group === 'object' ? Object.values(group) : []));
   }
   return Object.values(data);
 }
@@ -981,11 +920,7 @@ function updateFilterOptions() {
     if (!Array.isArray(arr)) return [];
     if (arr.length === 0) return [];
     const first = arr[0];
-    if (
-      Array.isArray(first) &&
-      typeof first[0] === 'string' &&
-      (first[0].toLowerCase() === 'id' || first[0].toLowerCase() === 'số thứ tự')
-    ) {
+    if (Array.isArray(first) && typeof first[0] === 'string' && (first[0].toLowerCase() === 'id' || first[0].toLowerCase() === 'số thứ tự')) {
       return arr.slice(1);
     }
     return arr;
@@ -1004,11 +939,7 @@ function updateFilterOptions() {
   const distinctValues = new Set();
   const colCfg = resolveColConfig(rawCol);
   const fieldName = colCfg?.key || colCfg?.i || rawCol;
-  const arrayIdx = isNumericString(rawCol)
-    ? Number(rawCol)
-    : typeof colCfg?.i === 'number'
-      ? colCfg.i
-      : -1;
+  const arrayIdx = isNumericString(rawCol) ? Number(rawCol) : typeof colCfg?.i === 'number' ? colCfg.i : -1;
   sourceData.forEach((row) => {
     let val;
 
@@ -1025,7 +956,7 @@ function updateFilterOptions() {
   });
 
   const sortedValues = [...distinctValues].sort((a, b) => b.localeCompare(a));
-  const limit = 500;
+  const limit = window.A?.getConfig?.('filter_datalist_limit') ?? 500;
   setDataList('filter-datalist', sortedValues.slice(0, limit));
   setVal('filter-val', '');
 }
@@ -1107,8 +1038,9 @@ function renderDashTable1() {
   tbody.innerHTML = '';
 
   const bookings = Object.values(APP_DATA.bookings);
+  const badgeDays = window.A?.getConfig?.('new_booking_badge_days') ?? 14;
   const limitDate = new Date();
-  limitDate.setDate(limitDate.getDate() - 14);
+  limitDate.setDate(limitDate.getDate() - badgeDays);
   let count = 0;
 
   bookings.forEach((row) => {
@@ -1125,7 +1057,7 @@ function renderDashTable1() {
 				<td class="text-center">${formatDateVN(row.end_date || row.created_at || row.start_date)}</td>
 				<td class="text-center text-success">${formatMoney(row.total_amount)}</td>
 				<td class="text-center ${balClass}">${formatMoney(row.deposit_amount)}</td>
-				<td class="small text-center"><at-status status="${row.status}"></at-status></td>
+				<td class="small text-center"><at-status status="${row.status}">${row.status}</at-status></td>
 				<td class="small text-center">${row.staff_id}</td>
 			`;
       tr.style.cursor = 'pointer';
@@ -1199,8 +1131,9 @@ function renderDashTable3() {
 
   const bookings = Object.values(APP_DATA.bookings);
   const today = new Date();
+  const lookaheadDays = window.A?.getConfig?.('arrival_lookahead_days') ?? 30;
   const limit = new Date();
-  limit.setDate(limit.getDate() + 30);
+  limit.setDate(limit.getDate() + lookaheadDays);
   let count = 0;
 
   bookings.forEach((row) => {
@@ -1348,11 +1281,7 @@ window.renderDashboard_Op = function () {
   const operatorEntries = Object.values(APP_DATA.operator_entries); // Bỏ header
 
   operatorEntries.forEach((row) => {
-    const dIn = row.check_in
-      ? new Date(row.check_in)
-      : row.start_date
-        ? new Date(row.start_date)
-        : null;
+    const dIn = row.check_in ? new Date(row.check_in) : row.start_date ? new Date(row.start_date) : null;
 
     // Điều kiện lọc ngày (Dựa theo Check-in)
     if (dIn && dIn >= dFrom && dIn <= dTo) {

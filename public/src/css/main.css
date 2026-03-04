@@ -25,12 +25,8 @@
 
   /* ─── LAYOUT GRID CONSTANTS ─── */
   --grid-cols: 13; /* 13 columns for flexibility */
-  --grid-col-7-width: fit-content; /* Column 7 special handling */
   --header-height: 5rem; /* Total header (top-bar + nav-bar) */
-  --header-top-bar-height: 0.9rem; /* 30% of header */
-  --header-nav-bar-height: 2.1rem; /* 70% of header */
   --footer-height: 4rem; /* Footer height */
-  --content-height: calc(100vh - var(--header-height) - var(--footer-height));
 
   /* ─── THEME: LIGHT MODE (Mặc định) ─── */
   /* Bộ màu: Blue/Gray - Chuyên nghiệp, dễ đọc */
@@ -38,7 +34,6 @@
   --secondary-color: #64748b; /* Slate Gray - Phụ vụ */
   --app-bg: #e6e6e6; /* Xám nhạt - Nền sạch */
   --header-bg: #2c37d1; /* Xanh đậm - Header nổi bật */
-  --footer-bg: #4d4d4e; /* Xanh đen - Footer nhất quán */
   --text-color: #0f141c; /* Tối - Văn bản chính */
   --text-secondary: #3b4450; /* Xám tối - Văn bản phụ (contrast ≥4.5:1) */
   --border-color: #afb8c4; /* Xám sáng - Border */
@@ -63,15 +58,9 @@
   --tab-inactive-bg: #e2e8f0;
   --tab-inactive-text: #272b30;
 
-  /* Glass/Surface Layer - Light */
-  --glass-bg: #f1e1e1;
-  --glass-text: #1e293b;
-  --glass-border: #cbd5e1;
-
   /* Typography & Spacing (in REM) */
   --font-family: 'Segoe UI', sans-serif;
   --font-size: 14px;
-  --spacing-unit: 0.425rem; /* 8px base unit */
   --radius: 0.25rem;
   --shadow-sm: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.05);
   --shadow-md: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.1);
@@ -86,7 +75,6 @@
     --secondary-color: #94a3b8; /* Slate - Phụ vụ */
     --app-bg: #0f172a; /* Xanh đậm - Nền chính */
     --header-bg: #1e293b; /* Xanh đen - Header */
-    --footer-bg: #1e293b; /* Xanh đen - Footer */
     --text-color: #f1f5f9; /* Sáng - Văn bản chính */
     --text-secondary: #cbd5e1; /* Xám sáng - Văn bản phụ (contrast ≥4.5:1 on dark bg) */
     --border-color: #334155; /* Xám tối - Border */
@@ -111,27 +99,11 @@
     --tab-inactive-bg: #1e293b;
     --tab-inactive-text: #94a3b8;
 
-    /* Glass/Surface Layer - Dark */
-    --glass-bg: #1e293b;
-    --glass-text: #f1f5f9;
-    --glass-border: #475569;
-
     /* Shadow - Dark (tối hơn) */
     --shadow-sm: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.3);
     --shadow-md: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.3);
     --shadow-lg: 0 0.625rem 0.9375rem rgba(0, 0, 0, 0.3);
   }
-}
-
-/* --- APPLY VARIABLES --- */
-body {
-  background-color: var(--app-bg) !important;
-  color: var(--text-color) !important;
-  font-family: var(--font-family) !important;
-  font-size: var(--font-size) !important;
-  transition:
-    background-color 0.3s ease,
-    color 0.3s ease;
 }
 
 fieldset {
@@ -160,116 +132,11 @@ legend {
   color: var(--secondary-color); /* Màu chính */
 }
 
-/* ==========================================================================
-    ERP CUSTOM GRID LAYOUT (13 Columns x 5 Rows)
-    ========================================================================== */
-.g-layout {
-  display: grid;
-  /* Chia 13 cột bằng nhau, 1fr = 1 phân số (fraction) của không gian trống */
-  grid-template-columns: repeat(13, 1fr);
-  /* Chia 5 hàng bằng nhau */
-  grid-template-rows: repeat(5, 1fr);
-
-  /* Thiết lập kích thước Full-size */
-  width: 100%;
-  height: 85vh; /* Fallback cho các trình duyệt cũ */
-  height: 85dvh; /* Tối ưu cho Mobile: Dynamic Viewport Height tránh bị che bởi thanh cuộn */
-
-  /* Khoảng cách giữa các ô (Grid Gap) - Bạn có thể chỉnh về 0 nếu muốn các ô dính sát vào nhau */
-  gap: 0;
-
-  /* Padding an toàn xung quanh để nội dung không chạm sát mép màn hình */
-  padding: 8px;
-
-  /* Ngăn chặn scroll tổng thể nếu nội dung bên trong vô tình phình to */
-  overflow: hidden;
-  background-color: #f8f9fa; /* Màu nền nhẹ nhàng, đồng bộ bootstrap (tùy chọn) */
-}
-
-/* Các ô bên trong grid (Card UI) để đảm bảo nội dung không làm vỡ cấu trúc */
-.g-layout > div {
-  background: #ffffff;
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow: auto; /* Nếu nội dung trong 1 ô quá dài, chỉ cuộn riêng ô đó */
-  padding: 10px;
-}
-
-/* ─── CUSTOM GRID UTILITY CLASSES ─── */
-/* Grid Left: Columns 1-6 (left side, items inline) */
-.g-left {
-  grid-column: 1 / 6;
-  /* display: flex;
-      flex-direction: row; */
-  align-items: center;
-  /* justify-content: flex-start; */
-}
-
-/* Grid Center: Column 7 (center, fit-content, items inline, centered) */
-.g-center {
-  grid-column: 6 / 9;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-  width: fit-content;
-  justify-content: start;
-  justify-self: center;
-}
-
-/* Grid Right: Columns 9-13 (right side, items inline) */
-.g-right {
-  grid-column: 9 / -1;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-  justify-content: start;
-}
-
+/* ─── GRID UTILITY ─── */
 .g-r-100 {
   grid-column: 1 / -1;
 }
-.g-r-2 {
-  grid-row: span 2;
-}
-.g-r-3 {
-  grid-row: span 3;
-}
-.g-r-4 {
-  grid-row: span 4;
-}
-.g-c-100 {
-  grid-row: 1 / -1;
-  display: flex;
-  flex-direction: column;
-}
-.g-c-2 {
-  grid-column: span 2;
-  display: flex;
-  flex-direction: column;
-}
-.g-c-3 {
-  grid-column: span 3;
-  display: flex;
-  flex-direction: column;
-}
-.g-c-4 {
-  grid-column: span 4;
-  display: flex;
-  flex-direction: column;
-}
-.g-c-5 {
-  grid-column: span 5;
-  display: flex;
-  flex-direction: column;
-}
-.g-r-last {
-  grid-row: -1;
-}
-.g-c-last {
-  grid-column: -1;
-}
+
 /* Fix Header/Footer Contrast */
 .app-header {
   background: var(--header-bg) !important;
@@ -317,9 +184,17 @@ legend {
 }
 
 .card-header {
-  background-color: var(--tbl-head-bg);
   color: var(--tbl-head-text);
   border-color: var(--border-color);
+  flex: 0 0 auto;
+  width: 100%;
+  background-color: #f8f9fa;
+  padding: 0 0.25rem;
+  border-bottom: 1px solid #dee2e6;
+  font-weight: bold;
+  min-height: 2rem;
+  align-items: center;
+  justify-content: start;
 }
 
 /* --- DROPDOWN & MENU --- */
@@ -333,6 +208,9 @@ legend {
   max-width: 20rem !important;
   box-shadow: 0 0.375rem 0.75rem rgba(0, 0, 0, 0.15) !important;
   transition: all 0.2s ease;
+  font-size: 0.8125rem;
+  max-height: 20rem;
+  overflow-y: auto;
 }
 
 .dropdown-item {
@@ -396,6 +274,7 @@ legend {
   line-clamp: 2;
   touch-action: manipulation; /* ✅ Allow but block double-tap zoom */
   pointer-events: auto; /* ✅ Ensure button is clickable */
+  border-radius: 0.5rem;
 }
 
 .btn-primary {
@@ -477,6 +356,8 @@ tbody td {
   background-color: var(--surface-color) !important;
   color: var(--text-color) !important;
   border-color: var(--border-color) !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 .modal-header {
@@ -498,23 +379,6 @@ tbody td {
   .btn-close {
     filter: invert(1);
   }
-}
-
-/* --- TOAST NOTIFICATION --- */
-.toast {
-  background-color: var(--surface-color) !important;
-  color: var(--text-color) !important;
-  border: 1px solid var(--border-color) !important;
-}
-
-.toast-header {
-  background-color: var(--hover-bg) !important;
-  border-color: var(--border-color) !important;
-  color: var(--text-color) !important;
-}
-
-.toast-body {
-  color: var(--text-color) !important;
 }
 
 /* --- SCROLLBAR STYLING --- */
@@ -591,22 +455,22 @@ body {
   width: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden; /* Cấm cuộn ở body, chỉ cuộn ở vùng content */
+  overflow: hidden;
 }
 
 /* --- 2. MAIN GRID LAYOUT (3 rows × 13 columns) --- */
 body {
-  display: grid;
-  grid-template-rows: minmax(5vh, auto) 1fr minmax(5vh, auto);
-  grid-template-columns: repeat(var(--grid-cols), minmax(0, 1fr));
-  gap: 0;
+  background-color: var(--app-bg) !important;
+  color: var(--text-color) !important;
   font-family: var(--font-family) !important;
   font-size: var(--font-size) !important;
   transition:
     background-color 0.3s ease,
     color 0.3s ease;
-
-  /* Grid Area Names */
+  display: grid;
+  grid-template-rows: minmax(5vh, auto) 1fr minmax(5vh, auto);
+  grid-template-columns: repeat(var(--grid-cols), minmax(0, 1fr));
+  gap: 0;
   grid-template-areas:
     'h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 h11 h12 h13'
     'm1 m2 m3 m4 m5 m6 m7 m8 m9 m10 m11 m12 m13'
@@ -633,18 +497,6 @@ body {
   gap: 0;
 }
 
-/* TOP-BAR: Row 1 of header */
-.app-header .top-bar {
-  grid-row: 1;
-  grid-column: 1 / -1;
-  background: var(--header-bg);
-  color: var(--text-color);
-  padding: 0 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 /* ─── NAV-CONTAINER: Horizontal flex, auto-wrap, horizontal scroll ─── */
 .nav-container {
   grid-row: 1 / 3; /* Spans both rows of header */
@@ -663,10 +515,9 @@ body {
 .app-content {
   grid-column: 1 / -1;
   flex: 1 1 auto;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
   position: relative;
-  padding: 0.5rem 0.25rem;
+  padding: 0.5rem 0.25rem 3rem 0.25rem;
   display: flex;
   flex-direction: column;
   pointer-events: auto;
@@ -683,20 +534,15 @@ body {
   padding: 0.15rem 0.25rem;
   min-height: 1.5rem;
 }
-.dropdown-menu {
-  font-size: 0.8125rem;
-  max-height: 20rem;
-  overflow-y: auto;
-}
-
 .dropdown-menu .dropdown-item {
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
 }
 
-.btn {
-  border-radius: 0.5rem;
+input::-webkit-calendar-picker-indicator {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666666"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H5V10h14v8zm0-10H5V6h14v2z"/></svg>');
+  filter: invert(0.5);
 }
 
 /* Fix Button Group Border Radius - Giữ lại border-radius cho tất cả button trong group */
@@ -774,8 +620,8 @@ td input.form-control-sm {
   padding: 0 0.25rem 0.25rem 0.25rem;
   height: 100%;
   width: 100%;
-  overflow: auto; /* Allow scrolling */
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden; /* Allow scrolling */
+  -webkit-overflow-scrolling: auto;
 }
 
 .tab-pane {
@@ -783,19 +629,6 @@ td input.form-control-sm {
   width: 100%;
   display: flex;
   flex-direction: column;
-}
-
-.card-header {
-  /* max-height: 10% ← removed: clips wrapped filter bar on mobile */
-  flex: 0 0 auto;
-  width: 100%;
-  background-color: #f8f9fa;
-  padding: 0 0.25rem;
-  border-bottom: 1px solid #dee2e6;
-  font-weight: bold;
-  min-height: 2rem;
-  align-items: center;
-  justify-content: start;
 }
 
 #tab-dashboard .card-body {
@@ -892,17 +725,6 @@ td input.form-control-sm {
   gap: 1rem;
 }
 
-.flex-inline-center {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--font-size);
-}
-
-.flex-inline-center > * {
-  display: inline-flex;
-}
-
 .line-clamp-2 {
   display: -webkit-box;
   line-clamp: 2;
@@ -911,32 +733,6 @@ td input.form-control-sm {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-/* ==========================================
-    CSS: CHROME MENU TRIGGER BUTTON
-    ========================================== */
-/* .chrome-trigger-btn {
-        background-color: transparent;
-        border: none;  
-        width: 36px;                  
-        height: 36px;
-        border-radius: 50%;   
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--erp-icon-color, #000000); 
-        font-size: 18px;
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-    }
-
-
-    .chrome-trigger-btn:hover,
-    .chrome-trigger-btn:focus,
-    .chrome-trigger-btn:active {
-        background-color: var(--erp-menu-hover, rgba(0, 0, 0, 0.08)); 
-        outline: none; 
-    } */
 
 /* Tinh chỉnh cho Dark Mode */
 body.dark-theme .chrome-trigger-btn:hover,
@@ -947,13 +743,6 @@ body.dark-theme .chrome-trigger-btn:focus {
 .dragging {
   opacity: 0.5;
 }
-.is-dragging {
-  margin: 0 !important; /* Loại bỏ auto margin để di chuyển tự do */
-  max-width: none;
-  transition: none !important;
-  touch-action: none; /* Quan trọng cho Mobile: Ngăn trình duyệt cuộn trang khi đang kéo modal */
-  transition: none !important;
-}
 /* Styling cho cục nắm kéo kích thước */
 .erp-resize-handle {
   position: absolute;
@@ -962,11 +751,7 @@ body.dark-theme .chrome-trigger-btn:focus {
   width: 15px;
   height: 15px;
   cursor: nwse-resize; /* Trỏ chuột hình mũi tên chéo */
-  background: linear-gradient(
-    135deg,
-    transparent 50%,
-    #6c757d 50%
-  ); /* Tạo hình tam giác nhỏ ở góc */
+  background: linear-gradient(135deg, transparent 50%, #6c757d 50%); /* Tạo hình tam giác nhỏ ở góc */
   z-index: 10;
 }
 
@@ -976,13 +761,7 @@ body.dark-theme .chrome-trigger-btn:focus {
 }
 /* TỐI ƯU CHO RESIZABLE MODAL */
 
-/* 1. Đảm bảo vỏ ngoài là một cột Flex */
-.modal-content {
-  display: flex !important;
-  flex-direction: column !important;
-}
-
-/* 2. Ép phần body tự động giãn nở (flex-grow: 1) lấp đầy khoảng trống */
+/* Ép phần body tự động giãn nở (flex-grow: 1) lấp đầy khoảng trống */
 .modal-content > .modal-body {
   flex: 1 1 auto !important;
   overflow-y: auto; /* Tự động hiện thanh cuộn nếu bạn thu nhỏ quá */
@@ -1051,15 +830,6 @@ body.dark-theme .chrome-trigger-btn:focus {
   background: #a8a8a8;
 }
 
-@keyframes iconSpin {
-  from {
-    transform: rotate(-180deg) scale(0.5);
-  }
-  to {
-    transform: rotate(0) scale(1);
-  }
-}
-
 /* Hiệu ứng flash khi đảo dòng */
 @keyframes flash-bg {
   0% {
@@ -1072,34 +842,6 @@ body.dark-theme .chrome-trigger-btn:focus {
 
 .flash-effect tr {
   animation: flash-bg 0.5s ease-out;
-}
-
-/* Animation */
-@keyframes bounceIn {
-  0%,
-  20%,
-  40%,
-  60%,
-  80%,
-  100% {
-    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
-  }
-  0% {
-    opacity: 0;
-    transform: scale3d(0.3, 0.3, 0.3);
-  }
-  20% {
-    transform: scale3d(1.1, 1.1, 1.1);
-  }
-  100% {
-    opacity: 1;
-    transform: scale3d(1, 1, 1);
-  }
-}
-
-.animate__bounceIn {
-  animation-name: bounceIn;
-  animation-duration: 1s;
 }
 
 /* CSS Riêng cho Admin Dashboard */
@@ -1194,7 +936,7 @@ body:not(.is-sup):not(.is-manager):not(.is-admin) .sup-only {
 }
 
 /* 4. SALES ONLY: Sales thấy + Manager thấy + Admin thấy (Ví dụ thế) */
-body:not(.is-sales):not(.is-manager):not(.is-admin) .sales-only {
+body:not(.is-sale):not(.is-manager):not(.is-admin) .sales-only {
   display: none !important;
 }
 
@@ -1269,7 +1011,7 @@ body:not(.is-acc):not(.is-admin) .acc-only {
     flex-direction: column;
     /* Bỏ max-height: 88dvh (magic number không chính xác) */
     /* Thay bằng padding để tránh content bị footer che */
-    padding-bottom: var(--footer-actual-height, calc(var(--footer-height) + 0.5rem));
+    padding-bottom: var(--footer-actual-height, calc(var(--footer-height)));
     position: relative;
   }
 
@@ -1288,9 +1030,12 @@ body:not(.is-acc):not(.is-admin) .acc-only {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch !important;
     align-items: center;
     background-color: var(--app-bg);
-    padding: 1.25rem;
+    padding: 1rem 3rem;
   }
 
   #sub-booking-form {
@@ -1307,6 +1052,12 @@ body:not(.is-acc):not(.is-admin) .acc-only {
     background-color: rgba(0, 0, 0, 0.5) !important; /* Tạo lớp nền mờ thủ công nếu cần */
     pointer-events: auto !important;
     top: 10dvh;
+  }
+
+  .modal .modal-title {
+    font-size: 1rem !important;
+    padding: 0.25rem !important;
+    max-height: 2rem !important;
   }
 
   .modal-dialog {
@@ -1349,40 +1100,6 @@ body:not(.is-acc):not(.is-admin) .acc-only {
 
   .desktop-only {
     display: none !important;
-  }
-
-  .g-layout {
-    display: grid;
-    /* Chia 4 cột bằng nhau, 1fr = 1 phân số (fraction) của không gian trống */
-    grid-template-columns: repeat(4, 1fr);
-    /* Chia 5 hàng bằng nhau */
-    grid-template-rows: repeat(5, 1fr);
-
-    /* Đảm bảo chiều rộng đủ lớn để 4 cột hiển thị rõ ràng (ví dụ: tối thiểu 1200px) */
-    min-width: 1200px;
-    /* Bỏ giới hạn chiều cao cố định trên mobile để dễ lướt đọc */
-    height: auto;
-    min-height: 85dvh;
-
-    height: 85dvh; /* Tối ưu cho Mobile: Dynamic Viewport Height tránh bị che bởi thanh cuộn */
-    /* Khoảng cách giữa các ô (Grid Gap) - Bạn có thể chỉnh về 0 nếu muốn các ô dính sát vào nhau */
-    gap: 0;
-
-    /* Padding an toàn xung quanh để nội dung không chạm sát mép màn hình */
-    padding: 8px;
-
-    /* Ngăn chặn scroll tổng thể nếu nội dung bên trong vô tình phình to */
-    overflow: scroll;
-    background-color: #f8f9fa; /* Màu nền nhẹ nhàng, đồng bộ bootstrap (tùy chọn) */
-  }
-
-  /* Các ô bên trong grid (Card UI) để đảm bảo nội dung không làm vỡ cấu trúc */
-  .g-layout > div {
-    background: #ffffff;
-    border-radius: 6px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    overflow: auto; /* Nếu nội dung trong 1 ô quá dài, chỉ cuộn riêng ô đó */
-    padding: 10px;
   }
 
   .no-select {
@@ -1467,20 +1184,6 @@ tr:has(.is-dirty) {
   }
 }
 
-/* Undo/rollback flash: brief green tint when a value is restored */
-.state-restored {
-  animation: state-flash 0.6s ease-out;
-}
-
-@keyframes state-flash {
-  0% {
-    background-color: #d1fae5;
-  }
-  100% {
-    background-color: transparent;
-  }
-}
-
 /* =========================================================
    RESPONSIVE TAB MANAGER (MOBILE DROPDOWN + SLIDE ANIMATION)
    ========================================================= */
@@ -1519,6 +1222,66 @@ tr:has(.is-dirty) {
 /* Quay lại tab bên trái (index < index hiện tại): pane mới trượt vào từ trái */
 .tab-content[data-rtm-dir='backward'] .tab-pane.active {
   animation: rtmSlideFromLeft 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+[data-collection] tbody,
+#tbl-booking-form tbody,
+#grid-body,
+.context-menu {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 2. Disable double-tap zoom globally (keep pinch-zoom) */
+html {
+  touch-action: manipulation;
+}
+
+/* 3. Bigger tap targets for context menu items on mobile */
+.context-menu .dropdown-item,
+.ctx-submenu-children .dropdown-item {
+  padding: 0.5rem 1rem;
+  font-size: 0.88rem;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+/* ── 4. Global: force ALL nested/flyout dropdown menus to stack vertically ── */
+/* Bootstrap .dropstart/.dropend: override side-popping behavior */
+.dropstart > .dropdown-menu.show,
+.dropend > .dropdown-menu.show {
+  position: static !important;
+  transform: none !important;
+  inset: auto !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-left: 2px solid rgba(var(--bs-primary-rgb, 13, 110, 253), 0.2);
+  padding-left: 0.5rem;
+  margin: 0;
+  width: 100%;
+}
+
+/* Nested dropdown menus (dropdown inside dropdown) → vertical stack */
+.dropdown-menu .dropdown-menu.show {
+  position: static !important;
+  transform: none !important;
+  inset: auto !important;
+  box-shadow: none !important;
+  border: none;
+  border-left: 2px solid rgba(var(--bs-primary-rgb, 13, 110, 253), 0.2);
+  padding-left: 0.5rem;
+  margin: 0;
+  width: 100%;
+}
+
+/* 5. All visible dropdown menus: viewport-safe + scrollable */
+.dropdown-menu.show {
+  max-height: calc(100vh - 32px);
+  max-width: calc(100vw - 16px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 @keyframes rtmSlideFromRight {

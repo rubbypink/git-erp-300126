@@ -1,5 +1,5 @@
 import { DraggableSetup, TableResizeManager } from '../libs/ui_helper.js';
-import { createFormBySchema } from './DBSchema.js';
+import { createFormBySchema, loadFormDataSchema } from './DBSchema.js';
 
 const UI_RENDERER = {
   renderedTemplates: {},
@@ -9,27 +9,17 @@ const UI_RENDERER = {
 
   // Render Dashboard & Load Data
   init: async function (moduleManager) {
-    await Promise.all([
-      this.renderMainLayout(),
-      this.renderTemplate('body', 'tpl_all.html', true, '.app-container'),
-    ]);
+    await Promise.all([this.renderMainLayout(), this.renderTemplate('body', 'tpl_all.html', true, '.app-container')]);
     const role = CURRENT_USER.realrole ? CURRENT_USER.realrole : CURRENT_USER.role;
     log('UI: User Role:', role);
     if (!['acc', 'acc_thenice', 'ketoan'].includes(role)) {
-      const [headerModule, chromeMenu, footerModule] = await Promise.all([
-        moduleManager.loadModule('ErpHeaderMenu'),
-        moduleManager.loadModule('ChromeMenuController', false),
-        moduleManager.loadModule('ErpFooterMenu'),
-      ]);
+      const [headerModule, chromeMenu, footerModule] = await Promise.all([moduleManager.loadModule('ErpHeaderMenu'), moduleManager.loadModule('ChromeMenuController', false), moduleManager.loadModule('ErpFooterMenu')]);
       if (headerModule) new headerModule();
       A.call('ChromeMenuController', 'init', role);
       const mainErpFooter = new footerModule('erp-main-footer');
       mainErpFooter.init();
     } else {
-      const [headerModule, chromeMenu] = await Promise.all([
-        moduleManager.loadModule('ErpHeaderMenu'),
-        moduleManager.loadModule('ChromeMenuController', false),
-      ]);
+      const [headerModule, chromeMenu] = await Promise.all([moduleManager.loadModule('ErpHeaderMenu'), moduleManager.loadModule('ChromeMenuController', false)]);
       if (headerModule) new headerModule();
       A.call('ChromeMenuController', 'init', role);
     }
@@ -57,8 +47,7 @@ const UI_RENDERER = {
         html = this.htmlCache[finalSourcePath];
       } else {
         const response = await fetch(finalSourcePath);
-        if (!response.ok)
-          throw new Error(`Không thể tải template tại ${finalSourcePath}: HTTP ${response.status}`);
+        if (!response.ok) throw new Error(`Không thể tải template tại ${finalSourcePath}: HTTP ${response.status}`);
         html = await response.text();
         this.htmlCache[finalSourcePath] = html; // Lưu cache
       }
@@ -84,13 +73,7 @@ const UI_RENDERER = {
    * @param {string} positionRef - Selector của phần tử mốc để chèn (dùng khi insertAdjacent)
    * @param {string} mode - 'replace' (ghi đè), 'append' (nối đuôi), 'prepend' (lên đầu)
    */
-  renderTemplate: async function (
-    targetId,
-    source,
-    force = false,
-    positionRef = null,
-    mode = 'replace'
-  ) {
+  renderTemplate: async function (targetId, source, force = false, positionRef = null, mode = 'replace') {
     // 1. CHUẨN HÓA SOURCE KEY (QUAN TRỌNG NHẤT)
     // Phải xác định unique key ngay từ đầu để check và save thống nhất
     let finalSourcePath = source;
@@ -128,26 +111,17 @@ const UI_RENDERER = {
           // 1b. Kiểm tra Content-Type (phải là HTML)
           const contentType = response.headers.get('content-type') || '';
           if (!contentType.includes('text/html') && !contentType.includes('text/plain')) {
-            console.warn(
-              `⚠️ Content-Type không phải HTML: ${contentType} cho file ${finalSourcePath}`
-            );
+            console.warn(`⚠️ Content-Type không phải HTML: ${contentType} cho file ${finalSourcePath}`);
           }
 
           htmlString = await response.text();
 
           // 1c. Xác nhận không phải fallback index.html
           // Note: SPA thường return index.html với status 200 để xử lý routing
-          const isIndexFallback =
-            htmlString.includes('id="app-launcher"') ||
-            htmlString.includes('id="main-app"') ||
-            (htmlString.includes('<!DOCTYPE html>') &&
-              !htmlString.includes('<template') &&
-              !htmlString.includes('tpl-'));
+          const isIndexFallback = htmlString.includes('id="app-launcher"') || htmlString.includes('id="main-app"') || (htmlString.includes('<!DOCTYPE html>') && !htmlString.includes('<template') && !htmlString.includes('tpl-'));
 
           if (isIndexFallback) {
-            throw new Error(
-              `Fallback index.html (SPA) thay vì template component: ${finalSourcePath}`
-            );
+            throw new Error(`Fallback index.html (SPA) thay vì template component: ${finalSourcePath}`);
           }
 
           // 1d. Xác nhận nội dung không rỗng
@@ -341,10 +315,15 @@ const UI_RENDERER = {
       logError('Lỗi trong renderModal: ', e);
     }
   },
-  renderForm: async function (collection, formId) {
-    const html = await createFormBySchema(collection, formId);
-    A.Modal.render(html, `Form Admin`); // Có thể tùy chỉnh title theo collection hoặc formId nếu muốn
+  renderForm: async function (collection, dataorId = null) {
+    const html = await createFormBySchema(collection);
+    A.Modal.render(html, null); // Có thể tùy chỉnh title theo collection hoặc formId nếu muốn
     A.Modal.show();
+    if (dataorId) {
+      const formId = `${collection}-schema-form`;
+      // Tải dữ liệu vào form trước khi render modal
+      await loadFormDataSchema(formId.toString(), dataorId);
+    }
     A.Modal.setFooter(false);
   },
   renderBtn(label, action = '', color = 'primary', icon = '', isSmall = true) {
@@ -376,14 +355,7 @@ const UI_RENDERER = {
 			>
 		  </div>`;
   },
-  renderTblInput(
-    fieldName,
-    type = 'text',
-    changeHandler = null,
-    value = '',
-    isSmall = true,
-    placeholder = ''
-  ) {
+  renderTblInput(fieldName, type = 'text', changeHandler = null, value = '', isSmall = true, placeholder = '') {
     const sizeClass = isSmall ? 'form-control-sm' : '';
     let numberClass;
     if (type === 'number') {

@@ -25,9 +25,7 @@ export default class ErpHeaderMenu {
     this._initialized = true;
     try {
       if (!this.currentRole || this.currentRole === 'guest') {
-        this.currentRole = CURRENT_USER.realrole
-          ? CURRENT_USER.realrole
-          : CURRENT_USER.role || 'sale';
+        this.currentRole = CURRENT_USER.realrole ? CURRENT_USER.realrole : CURRENT_USER.role || 'sale';
         this._applyRoleFilters(); // Chỉ chạy CSS filter sau khi đã có Role
       }
     } catch (error) {
@@ -237,8 +235,8 @@ export default class ErpHeaderMenu {
                 </div>
                 
                 
-                <div class="dropdown d-none" id="btn-group-download" data-ontabs="3">
-                    <button class="btn btn-warning btn-sm dropdown-toggle shadow-sm" type="button" data-bs-toggle="dropdown" id="download-menu">
+                <div class="dropdown d-none d-md-block" id="btn-group-download" data-ontabs="3">
+                    <button class="btn btn-warning btn-sm dropdown-toggle shadow-sm" type="button" data-bs-toggle="dropdown" id="download-menu" style="min-width: 4rem;">
                         <i class="fa-solid fa-download"></i> Tải...
                     </button>
                     <div class="dropdown-menu border-0 shadow-sm" aria-labelledby="download-menu">
@@ -249,7 +247,7 @@ export default class ErpHeaderMenu {
                     
                 </div>
 
-                <form class="form-inline m-0">
+                <form class="form-inline m-0 d-none d-md-block">
                     <div class="input-group input-group-sm flex-center gap-0 bg-white rounded overflow-hidden shadow-sm">
                         <input type="text" id="global-search" class="form-control border-0" placeholder="Tìm kiếm..." oninput="if(typeof handleSearchClick === 'function') handleSearchClick()" style="box-shadow: none; width: 150px;">
                         <button class="btn btn-light text-primary border-0" type="button" onclick="if(typeof handleSearchClick === 'function') handleSearchClick()">
@@ -531,9 +529,7 @@ export default class ErpHeaderMenu {
         if (!wrapper || !wrapper.contains(e.target)) {
           menu.classList.add('d-none');
           menu.style.pointerEvents = 'none';
-          menu
-            .querySelectorAll('.erp-submenu.active')
-            .forEach((el) => el.classList.remove('active'));
+          menu.querySelectorAll('.erp-submenu.active').forEach((el) => el.classList.remove('active'));
         }
       }
     };

@@ -43,6 +43,10 @@ class TableResizeManager {
       handleColor: '#999',
       handleHoverColor: '#333',
     };
+
+    // ✅ Bind method refs 1 lần duy nhất (tránh .bind() mỗi lần gọi → memory leak)
+    this._boundMouseMove = this._onMouseMove.bind(this);
+    this._boundMouseUp = this._onMouseUp.bind(this);
   }
 
   /**
@@ -217,9 +221,9 @@ class TableResizeManager {
       cell.classList.add('resizing');
     });
 
-    // Mouse move & up
-    document.addEventListener('mousemove', this._onMouseMove.bind(this));
-    document.addEventListener('mouseup', this._onMouseUp.bind(this));
+    // Mouse move & up (dùng bound ref đã lưu)
+    document.addEventListener('mousemove', this._boundMouseMove);
+    document.addEventListener('mouseup', this._boundMouseUp);
   }
 
   /**
@@ -246,9 +250,9 @@ class TableResizeManager {
     // Add active class
     row.classList.add('resizing');
 
-    // Mouse move & up
-    document.addEventListener('mousemove', this._onMouseMove.bind(this));
-    document.addEventListener('mouseup', this._onMouseUp.bind(this));
+    // Mouse move & up (dùng bound ref đã lưu)
+    document.addEventListener('mousemove', this._boundMouseMove);
+    document.addEventListener('mouseup', this._boundMouseUp);
   }
 
   /**
@@ -352,9 +356,9 @@ class TableResizeManager {
     this.resizeState.isResizing = false;
     this.resizeState.resizeType = null;
 
-    // Remove listeners
-    document.removeEventListener('mousemove', this._onMouseMove.bind(this));
-    document.removeEventListener('mouseup', this._onMouseUp.bind(this));
+    // Remove listeners (dùng đúng ref đã lưu → removeEventListener khớp)
+    document.removeEventListener('mousemove', this._boundMouseMove);
+    document.removeEventListener('mouseup', this._boundMouseUp);
   }
 
   /**
@@ -449,9 +453,9 @@ class TableResizeManager {
    * Destroy & cleanup
    */
   destroy() {
-    // Remove event listeners
-    document.removeEventListener('mousemove', this._onMouseMove.bind(this));
-    document.removeEventListener('mouseup', this._onMouseUp.bind(this));
+    // Remove event listeners (dùng đúng ref đã lưu)
+    document.removeEventListener('mousemove', this._boundMouseMove);
+    document.removeEventListener('mouseup', this._boundMouseUp);
 
     // Remove handles
     this.table.querySelectorAll('.resize-handle-col, .resize-handle-row').forEach((handle) => {
@@ -471,31 +475,23 @@ class DraggableSetup {
   // ✅ Static: Lưu all instances và flag để set event 1 lần
   static instances = [];
   static isDblClickListenerAdded = false;
-  static isTouchDoubleTapListenerAdded = false;
 
   /**
    * @param {string} elementId - ID của phần tử gốc chứa đối tượng cần kéo
    * @param {Object} options - Cấu hình linh hoạt (targetSelector, handleSelector)
    */
-  constructor(
-    elementId,
-    options = { targetSelector: '.modal-dialog', handleSelector: '.modal-header' }
-  ) {
+  constructor(elementId, options = { targetSelector: '.modal-dialog', handleSelector: '.modal-header' }) {
     try {
       this.wrapper = $(elementId);
       if (!this.wrapper) return;
 
       // 1. Xác định CÁI GÌ SẼ DI CHUYỂN (Target)
       // Nếu là Modal thì truyền vào '.modal-dialog', nếu là Widget thì không cần truyền (tự lấy wrapper)
-      this.target = options.targetSelector
-        ? this.wrapper.querySelector(options.targetSelector)
-        : this.wrapper;
+      this.target = options.targetSelector ? this.wrapper.querySelector(options.targetSelector) : this.wrapper;
 
       // 2. Xác định NẮM VÀO ĐÂU ĐỂ KÉO (Handle)
       // Thường là '.modal-header' hoặc '.card-header'. Mặc định là cầm vào đâu cũng kéo được.
-      this.handle = options.handleSelector
-        ? this.wrapper.querySelector(options.handleSelector)
-        : this.target;
+      this.handle = options.handleSelector ? this.wrapper.querySelector(options.handleSelector) : this.target;
 
       if (!this.target || !this.handle) {
         console.warn(`DraggableSetup: Không tìm thấy target hoặc handle cho #${elementId}`);
@@ -511,20 +507,10 @@ class DraggableSetup {
       this.xOffset = 0;
       this.yOffset = 0;
 
-      // ★ Lưu initial offset (vị trí center ban đầu khi mở modal)
-      this.initialCenterOffsetX = 0;
-      this.initialCenterOffsetY = 0;
-      this.hasInitialOffset = false; // Flag để đánh dấu lần đầu set offset
-
       // ✅ RAF throttle - Tránh schedule RAF liên tục trên mỗi mousemove
       this.rafId = null;
       this.pendingX = 0;
       this.pendingY = 0;
-
-      // ✅ Touch double-tap detection (mobile support)
-      this.lastTouchTime = 0;
-      this.lastTouchX = 0;
-      this.lastTouchY = 0;
 
       // Bind context
       this.dragStart = this.dragStart.bind(this);
@@ -549,13 +535,6 @@ class DraggableSetup {
     this.handle.style.cursor = 'move';
     this.target.style.willChange = 'transform'; // Gợi ý trình duyệt tối ưu GPU trước
 
-    // ★ Lưu initial center offset lần đầu (vị trí mặc định khi modal mở)
-    if (!this.hasInitialOffset) {
-      this.initialCenterOffsetX = this.xOffset;
-      this.initialCenterOffsetY = this.yOffset;
-      this.hasInitialOffset = true;
-    }
-
     // ✅ Set event dblclick TOÀN giao diện - chỉ 1 lần cho toàn bộ class (Desktop)
     // Kiểm tra event.target nằm trong phạm vi element nào để reset
     if (!DraggableSetup.isDblClickListenerAdded) {
@@ -574,55 +553,8 @@ class DraggableSetup {
       DraggableSetup.isDblClickListenerAdded = true;
     }
 
-    // ✅ Set event touchend TOÀN giao diện - chỉ 1 lần cho toàn bộ class (Mobile - Double Tap)
-    // Detect touch double-tap: 2 tap < 300ms, di chuyển < 20px
-    if (!DraggableSetup.isTouchDoubleTapListenerAdded) {
-      document.addEventListener(
-        'touchend',
-        (e) => {
-          const currentTime = Date.now();
-          const currentX = e.changedTouches[0]?.clientX || 0;
-          const currentY = e.changedTouches[0]?.clientY || 0;
-
-          // Tính khoảng cách từ tap cuối cùng
-          const dx = currentX - DraggableSetup._lastTapX;
-          const dy = currentY - DraggableSetup._lastTapY;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-
-          // Kiểm tra: time < 300ms và khoảng cách < 20px
-          const isDoubleTap =
-            currentTime - DraggableSetup._lastTapTime < 300 &&
-            distance < 20 &&
-            window.innerWidth < 991; // Chỉ áp dụng trên mobile
-
-          if (isDoubleTap) {
-            // Tìm instance nào chứa event target
-            DraggableSetup.instances.forEach((instance) => {
-              if (instance.wrapper.contains(e.target)) {
-                if (instance._isHeaderHidden()) {
-                  instance._centerElement();
-                }
-              }
-            });
-
-            // Reset lastTap để tránh trigger 3x tap
-            DraggableSetup._lastTapTime = 0;
-          } else {
-            // Lưu lại tap hiện tại
-            DraggableSetup._lastTapTime = currentTime;
-            DraggableSetup._lastTapX = currentX;
-            DraggableSetup._lastTapY = currentY;
-          }
-        },
-        { passive: true }
-      );
-
-      // Initialize static tap tracking
-      DraggableSetup._lastTapTime = 0;
-      DraggableSetup._lastTapX = 0;
-      DraggableSetup._lastTapY = 0;
-      DraggableSetup.isTouchDoubleTapListenerAdded = true;
-    }
+    // ✅ Mobile double-tap: TouchGestureAdapter đã bridge touchend → synthetic dblclick
+    // Không cần listener touchend riêng — dblclick listener ở trên xử lý cả desktop lẫn mobile
   }
 
   dragStart(e) {
@@ -703,35 +635,68 @@ class DraggableSetup {
   }
 
   /**
-   * Kiểm tra header có bị khuất khỏi viewport không
+   * Kiểm tra element có nằm ngoài vùng sử dụng hợp lý không.
+   * Trả về true khi:
+   *  - Header bị khuất hoàn toàn khỏi viewport, HOẶC
+   *  - Element bị kéo ra ngoài bất kỳ cạnh nào quá 50% kích thước của nó.
    * @private
+   * @returns {boolean}
    */
   _isHeaderHidden() {
-    const header =
-      this.target.querySelector('.modal-header') || this.target.querySelector('header');
-    if (!header) return false;
+    const rect = this.target.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
 
-    const rect = header.getBoundingClientRect();
-    // Header bị khuất nếu: top < 0 (kéo lên quá) hoặc top > window.innerHeight (kéo xuống quá)
-    return rect.top < 0 || rect.top > window.innerHeight;
+    // 1. Check header khuất (giữ logic gốc)
+    const header = this.target.querySelector('.modal-header') || this.target.querySelector('header');
+    if (header) {
+      const hRect = header.getBoundingClientRect();
+      if (hRect.top < 0 || hRect.top > vh) return true;
+    }
+
+    // 2. Check element vượt quá 50% kích thước ra ngoài bất kỳ cạnh nào
+    const halfW = rect.width / 2;
+    const halfH = rect.height / 2;
+
+    if (rect.right < halfW) return true; // Trái: >50% bị khuất bên trái
+    if (rect.left > vw - halfW) return true; // Phải: >50% bị khuất bên phải
+    if (rect.bottom < halfH) return true; // Trên: >50% bị khuất phía trên
+    if (rect.top > vh - halfH) return true; // Dưới: >50% bị khuất phía dưới
+
+    return false;
   }
 
   /**
-   * Reset element về giữa màn hình
-   * ✅ Được gọi khi dblclick vào element này mà header bị khuất
+   * Reset element về chính giữa viewport.
+   * ✅ Được gọi khi dblclick vào element này mà header bị khuất.
+   * Logic: Reset translate3d(0,0,0) → CSS mặc định sẽ center modal.
+   * Với element không dùng CSS center → tính toán offset thủ công.
    * @private
    */
   _centerElement() {
-    // ★ Restore về vị trí center ban đầu (khi modal lần đầu mở)
-    // Không tính toán lại - chỉ restore initial offset đã lưu
-    this.xOffset = this.initialCenterOffsetX;
-    this.yOffset = this.initialCenterOffsetY;
-    this.currentX = this.initialCenterOffsetX;
-    this.currentY = this.initialCenterOffsetY;
+    // Smooth transition khi snap về center
+    const prevTransition = this.target.style.transition;
+    this.target.style.transition = 'transform 0.25s ease-out';
 
-    // Apply transform
-    this.target.style.transform = `translate3d(${this.initialCenterOffsetX}px, ${this.initialCenterOffsetY}px, 0)`;
-    console.log(`[DraggableSetup] 🎯 Restored to initial center offset`);
+    // Tính offset cần thiết để element nằm giữa viewport
+    const rect = this.target.getBoundingClientRect();
+    const viewCenterX = window.innerWidth / 2;
+    const viewCenterY = window.innerHeight / 2;
+    const elCenterX = rect.left + rect.width / 2;
+    const elCenterY = rect.top + rect.height / 2;
+
+    // Offset mới = offset hiện tại + delta từ vị trí hiện tại đến center viewport
+    this.xOffset += viewCenterX - elCenterX;
+    this.yOffset += viewCenterY - elCenterY;
+    this.currentX = this.xOffset;
+    this.currentY = this.yOffset;
+
+    this.target.style.transform = `translate3d(${this.xOffset}px, ${this.yOffset}px, 0)`;
+
+    // Khôi phục transition sau animation
+    setTimeout(() => {
+      this.target.style.transition = prevTransition;
+    }, 260);
   }
 }
 
@@ -740,17 +705,12 @@ class DraggableSetup {
  * Tương thích hoàn hảo với FreeMover và Bootstrap
  */
 class Resizable {
-  constructor(
-    elementId,
-    options = { targetSelector: '.modal-dialog', handleSelector: '.modal-header' }
-  ) {
+  constructor(elementId, options = { targetSelector: '.modal-dialog', handleSelector: '.modal-header' }) {
     try {
       this.wrapper = $(elementId);
       if (!this.wrapper) return;
       // Target thực sự cần thay đổi kích thước (Ví dụ: .modal-content thay vì cả cái modal)
-      this.target = options.targetSelector
-        ? this.wrapper.querySelector(options.targetSelector)
-        : this.wrapper;
+      this.target = options.targetSelector ? this.wrapper.querySelector(options.targetSelector) : this.wrapper;
       if (!this.target) return;
 
       // Cấu hình giới hạn kích thước
@@ -934,8 +894,7 @@ class WindowMinimizer {
     if (providedTitle) return providedTitle;
 
     // Tự động tìm .modal-header hoặc header trong element
-    const headerEl =
-      this.target.querySelector('.modal-header') || this.target.querySelector('header');
+    const headerEl = this.target.querySelector('.modal-header') || this.target.querySelector('header');
     if (headerEl) {
       // ✅ Tối ưu: Clone element, xóa icons/buttons, lấy text
       const cloned = headerEl.cloneNode(true);
@@ -1018,26 +977,7 @@ class WindowMinimizer {
     const closeBtn = document.createElement('button');
     closeBtn.className = 'btn btn-sm';
     closeBtn.title = 'Đóng';
-    closeBtn.style.cssText = [
-      'position:absolute',
-      'top:-6px',
-      'right:-6px',
-      'width:16px',
-      'height:16px',
-      'padding:0',
-      'border-radius:50%',
-      'background:#dc3545',
-      'color:#fff',
-      'font-size:10px',
-      'line-height:1',
-      'display:flex',
-      'align-items:center',
-      'justify-content:center',
-      'opacity:0',
-      'transition:opacity 0.15s',
-      'z-index:10',
-      'border:none',
-    ].join(';');
+    closeBtn.style.cssText = ['position:absolute', 'top:-6px', 'right:-6px', 'width:16px', 'height:16px', 'padding:0', 'border-radius:50%', 'background:#dc3545', 'color:#fff', 'font-size:10px', 'line-height:1', 'display:flex', 'align-items:center', 'justify-content:center', 'opacity:0', 'transition:opacity 0.15s', 'z-index:10', 'border:none'].join(';');
     closeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
 
     // Hiện/ẩn nút X khi hover vào task item
@@ -1053,8 +993,7 @@ class WindowMinimizer {
       e.stopPropagation();
       // Restore display trước để Bootstrap hide animation chạy đúng
       this.target.style.display = this.oldDisplay || '';
-      const bsModal =
-        typeof bootstrap !== 'undefined' ? bootstrap.Modal.getInstance(this.target) : null;
+      const bsModal = typeof bootstrap !== 'undefined' ? bootstrap.Modal.getInstance(this.target) : null;
       if (bsModal) {
         bsModal.hide(); // fire hidden.bs.modal → _resetContent() xử lý autoRemove
       } else {

@@ -33,24 +33,31 @@ class IndexedDBHelper {
 
     // Cấu hình TTL (Time-To-Live) theo phút cho từng nhóm dữ liệu.
     // Dùng cho isSynced() / getStalecollections() trong flow loadAllData.
+    // Overridable via Admin Settings → A.getConfig('cache_ttl_*').
+    const _cfg = (key, fallback) => window.A?.getConfig?.(key) ?? fallback;
+    const masterTTL = _cfg('cache_ttl_master_data', 4320);
+    const bookingTTL = _cfg('cache_ttl_bookings', 60);
+    const detailTTL = _cfg('cache_ttl_booking_details', 60);
+    const transTTL = _cfg('cache_ttl_transactions', 120);
+    const custTTL = _cfg('cache_ttl_customers', 120);
     this.ttlConfig = {
       // ── Cold Data: ít thay đổi ────────────────────────────────────
-      app_config: 4320, // 72h
+      app_config: masterTTL, // default 72h
       users: 1440, // 24h
-      hotels: 4320, // 72h
-      suppliers: 4320, // 72h
-      fund_accounts: 4320, // 72h
+      hotels: masterTTL, // default 72h
+      suppliers: masterTTL, // default 72h
+      fund_accounts: masterTTL, // default 72h
       hotel_price_schedules: 1440, // 24h
       service_price_schedules: 1440, // 24h
 
       // ── Warm/Hot Data: cần cập nhật thường xuyên ──────────────────
-      bookings: 60, // 60 phút
-      booking_details: 60, // 60 phút
-      operator_entries: 60, // 60 phút
-      transactions: 120, // 2 tiếng
-      transactions_thenice: 120, // 2 tiếng
-      customers: 120, // 2 tiếng
-      notifications: 60, // 60 phút
+      bookings: bookingTTL, // default 60 phút
+      booking_details: detailTTL, // default 60 phút
+      operator_entries: detailTTL, // default 60 phút
+      transactions: transTTL, // default 2 tiếng
+      transactions_thenice: transTTL, // default 2 tiếng
+      customers: custTTL, // default 2 tiếng
+      notifications: 60, // 60 phút (fixed)
     };
     this.defaultTTL = 360; // 6h cho bảng không khai báo
   }
@@ -95,29 +102,14 @@ class IndexedDBHelper {
 
     // Fallback store list nếu schema chưa sẵn sàng
     if (requiredStores.length === 0) {
-      requiredStores = [
-        'bookings',
-        'booking_details',
-        'operator_entries',
-        'customers',
-        'transactions',
-        'transactions_thenice',
-        'fund_accounts',
-        'fund_accounts_thenice',
-        'hotels',
-        'suppliers',
-        'hotel_price_schedules',
-        'service_price_schedules',
-        'users',
-        'app_config',
-        'notifications',
-      ];
+      requiredStores = ['bookings', 'booking_details', 'operator_entries', 'customers', 'transactions', 'transactions_thenice', 'fund_accounts', 'fund_accounts_thenice', 'hotels', 'suppliers', 'hotel_price_schedules', 'service_price_schedules', 'users', 'app_config', 'notifications'];
     }
 
     // _sync_meta luôn được thêm vào — store nội bộ cho mọi metadata sync
     if (!requiredStores.includes('_sync_meta')) requiredStores.push('_sync_meta');
     // notifications luôn được thêm vào — không có trong DB_SCHEMA nhưng được dùng bởi NotificationModule
     if (!requiredStores.includes('notifications')) requiredStores.push('notifications');
+    if (!requiredStores.includes('app_config')) requiredStores.push('app_config');
 
     return new Promise((resolve, reject) => {
       const checkRequest = indexedDB.open(this.dbName);
@@ -209,9 +201,7 @@ class IndexedDBHelper {
   setMeta(key, value) {
     this.#syncMeta[key] = value;
     // Flush sang IDB — không await, không block caller
-    this.put('_sync_meta', { id: key, value }).catch((e) =>
-      console.warn(`[ERP DB] setMeta flush '${key}' lỗi:`, e)
-    );
+    this.put('_sync_meta', { id: key, value }).catch((e) => console.warn(`[ERP DB] setMeta flush '${key}' lỗi:`, e));
   }
 
   // ==========================================

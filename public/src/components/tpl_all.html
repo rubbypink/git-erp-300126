@@ -11,28 +11,10 @@
     <div class="card-header nav-container px-3 border-bottom">
       <ul class="nav nav-tabs" id="settingTabs" role="tablist">
         <li class="nav-item" role="presentation">
-          <button
-            class="nav-link active fw-bold small"
-            id="tab-theme-btn"
-            onclick="selectTab('tab-theme-content')"
-            data-bs-target="#tab-theme-content"
-            type="button"
-            role="tab"
-          >
-            <i class="fa-solid fa-palette me-2 text-primary"></i>Giao Diện & Màu Sắc
-          </button>
+          <button class="nav-link active fw-bold small" id="tab-theme-btn" onclick="selectTab('tab-theme-content')" data-bs-target="#tab-theme-content" type="button" role="tab"><i class="fa-solid fa-palette me-2 text-primary"></i>Giao Diện & Màu Sắc</button>
         </li>
         <li class="nav-item" role="presentation">
-          <button
-            class="nav-link fw-bold small"
-            id="tab-shortcut-btn"
-            onclick="selectTab('tab-shortcut-content')"
-            data-bs-target="#tab-shortcut-content"
-            type="button"
-            role="tab"
-          >
-            <i class="fa-solid fa-keyboard me-2 text-danger"></i>Phím Tắt (Hotkeys)
-          </button>
+          <button class="nav-link fw-bold small" id="tab-shortcut-btn" onclick="selectTab('tab-shortcut-content')" data-bs-target="#tab-shortcut-content" type="button" role="tab"><i class="fa-solid fa-keyboard me-2 text-danger"></i>Phím Tắt (Hotkeys)</button>
         </li>
       </ul>
     </div>
@@ -40,9 +22,7 @@
     <div class="tab-content p-1 scrollable-area" style="overflow-y: auto">
       <div class="tab-pane fade show active" id="tab-theme-content" role="tabpanel">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h6 class="d-inline-flex fw-bold text-primary mb-1 border-bottom pb-2">
-            1. Giao Diện & Phông Chữ
-          </h6>
+          <h6 class="d-inline-flex fw-bold text-primary mb-1 border-bottom pb-2">1. Giao Diện & Phông Chữ</h6>
           <button id="theme-toggle" class="btn btn-light btn-sm" onclick="toggleTheme()">
             <i class="fa-solid fa-moon"></i>
           </button>
@@ -51,11 +31,7 @@
           <div class="col-3">
             <label class="form-label small fw-bold">Bộ chủ đề mẫu (Theme)</label>
 
-            <select
-              class="form-select form-select-sm fw-bold text-primary"
-              id="st-theme-preset"
-              onchange="applyThemePresetFromForm(this.value)"
-            >
+            <select class="form-select form-select-sm fw-bold text-primary" id="st-theme-preset" onchange="applyThemePresetFromForm(this.value)">
               <option value="light">🔵 9Trip Standard (Mặc định)</option>
               <option value="dark">⚫ Hiện Đại (Dark/Modern)</option>
               <option value="minimal">⚪ Tối Giản (Minimalist)</option>
@@ -84,24 +60,9 @@
             <label class="form-label small fw-bold">Cỡ chữ (px)</label>
 
             <div class="d-flex align-items-center gap-2">
-              <input
-                type="range"
-                class="form-range"
-                min="11"
-                max="16"
-                step="1"
-                id="st-font-range"
-                oninput="document.getElementById('st-font-size').value = this.value"
-              />
+              <input type="range" class="form-range" min="11" max="16" step="1" id="st-font-range" oninput="document.getElementById('st-font-size').value = this.value" />
 
-              <input
-                type="number"
-                class="form-control form-control-sm text-center fw-bold"
-                id="st-font-size"
-                value="13"
-                style="width: 50px"
-                readonly
-              />
+              <input type="number" class="form-control form-control-sm text-center fw-bold" id="st-font-size" value="13" style="width: 50px" readonly />
             </div>
           </div>
 
@@ -109,28 +70,17 @@
             <label class="form-label small fw-bold">Logo App</label>
 
             <div class="d-flex align-items-center gap-2">
-              <div
-                class="border p-1 rounded d-flex justify-content-center align-items-center"
-                style="width: 40px; height: 40px"
-              >
+              <div class="border p-1 rounded d-flex justify-content-center align-items-center" style="width: 40px; height: 40px">
                 <img id="st-logo-preview" src="" style="max-width: 100%; max-height: 100%" />
               </div>
 
-              <input
-                type="file"
-                class="form-control form-control-sm"
-                id="st-logo-upload"
-                accept="image/*"
-                onchange="previewLogo()"
-              />
+              <input type="file" class="form-control form-control-sm" id="st-logo-upload" accept="image/*" onchange="previewLogo()" />
             </div>
           </div>
         </form>
 
         <div class="col-12 p-3 scrollable-area" style="max-height: 70vh; overflow-y: auto">
-          <h6 class="fw-bold text-success mb-3 border-bottom pb-2">
-            2. Bảng Màu & Thành Phần (Chi tiết)
-          </h6>
+          <h6 class="fw-bold text-success mb-3 border-bottom pb-2">2. Bảng Màu & Thành Phần (Chi tiết)</h6>
 
           <div class="row g-2 mb-1">
             <div class="col-12">
@@ -140,12 +90,7 @@
             <div class="col-3">
               <label class="small">App Background</label>
               <div class="input-group input-group-sm">
-                <input
-                  type="color"
-                  class="form-control form-control-color"
-                  id="st-app-bg"
-                  value="#f8f9fa"
-                />
+                <input type="color" class="form-control form-control-color" id="st-app-bg" value="#f8f9fa" />
 
                 <input type="text" class="form-control" id="st-app-bg-text" readonly />
               </div>
@@ -155,12 +100,7 @@
               <label class="small">Header/Footer</label>
 
               <div class="input-group input-group-sm">
-                <input
-                  type="color"
-                  class="form-control form-control-color"
-                  id="st-header-bg"
-                  value="#ffffff"
-                />
+                <input type="color" class="form-control form-control-color" id="st-header-bg" value="#ffffff" />
 
                 <input type="text" class="form-control" id="st-header-bg-text" readonly />
               </div>
@@ -192,29 +132,17 @@
 
             <div class="col-2">
               <label class="small text-primary fw-bold">Primary</label>
-              <input
-                type="color"
-                class="form-control form-control-color w-100"
-                id="st-btn-primary"
-              />
+              <input type="color" class="form-control form-control-color w-100" id="st-btn-primary" />
             </div>
 
             <div class="col-2">
               <label class="small text-success fw-bold">Success</label>
-              <input
-                type="color"
-                class="form-control form-control-color w-100"
-                id="st-btn-success"
-              />
+              <input type="color" class="form-control form-control-color w-100" id="st-btn-success" />
             </div>
 
             <div class="col-2">
               <label class="small text-danger fw-bold">Danger</label>
-              <input
-                type="color"
-                class="form-control form-control-color w-100"
-                id="st-btn-danger"
-              />
+              <input type="color" class="form-control form-control-color w-100" id="st-btn-danger" />
             </div>
 
             <div class="col-2">
@@ -224,19 +152,13 @@
 
             <div class="col-2">
               <label class="small text-secondary fw-bold">Secondary</label>
-              <input
-                type="color"
-                class="form-control form-control-color w-100"
-                id="st-btn-secondary"
-              />
+              <input type="color" class="form-control form-control-color w-100" id="st-btn-secondary" />
             </div>
           </div>
 
           <div class="row g-2 mb-1">
             <div class="col-12">
-              <small class="text-muted fw-bold text-uppercase border-top pt-2 d-block mt-2"
-                >Thanh Điều Hướng (Tabs & Nav)</small
-              >
+              <small class="text-muted fw-bold text-uppercase border-top pt-2 d-block mt-2">Thanh Điều Hướng (Tabs & Nav)</small>
             </div>
 
             <div class="col-6">
@@ -245,11 +167,7 @@
                 <span class="input-group-text small">Nền</span>
                 <input type="color" class="form-control form-control-color" id="st-tab-active-bg" />
                 <span class="input-group-text small">Chữ</span>
-                <input
-                  type="color"
-                  class="form-control form-control-color"
-                  id="st-tab-active-text"
-                />
+                <input type="color" class="form-control form-control-color" id="st-tab-active-text" />
               </div>
             </div>
 
@@ -257,26 +175,16 @@
               <label class="small fw-bold text-secondary">Tab Chưa chọn</label>
               <div class="input-group input-group-sm">
                 <span class="input-group-text small">Nền</span>
-                <input
-                  type="color"
-                  class="form-control form-control-color"
-                  id="st-tab-inactive-bg"
-                />
+                <input type="color" class="form-control form-control-color" id="st-tab-inactive-bg" />
                 <span class="input-group-text small">Chữ</span>
-                <input
-                  type="color"
-                  class="form-control form-control-color"
-                  id="st-tab-inactive-text"
-                />
+                <input type="color" class="form-control form-control-color" id="st-tab-inactive-text" />
               </div>
             </div>
           </div>
 
           <div class="row g-2">
             <div class="col-12">
-              <small class="text-muted fw-bold text-uppercase border-top pt-2 d-block mt-2"
-                >Thành phần phụ (Input/Card/Btn-Light)</small
-              >
+              <small class="text-muted fw-bold text-uppercase border-top pt-2 d-block mt-2">Thành phần phụ (Input/Card/Btn-Light)</small>
             </div>
 
             <div class="col-6">
@@ -298,9 +206,7 @@
 
           <div class="row g-2 mt-2">
             <div class="col-12">
-              <small class="text-muted fw-bold text-uppercase border-top pt-2 d-block mt-2"
-                >Màu Bổ Sung (Extra Colors)</small
-              >
+              <small class="text-muted fw-bold text-uppercase border-top pt-2 d-block mt-2">Màu Bổ Sung (Extra Colors)</small>
             </div>
 
             <div class="col-6">
@@ -358,36 +264,20 @@
       <div class="tab-pane fade d-none" id="tab-shortcut-content" role="tabpanel">
         <div class="card shadow-sm border-0">
           <div class="card-body">
-            <h6 class="fw-bold text-danger border-bottom pb-2 mb-3">
-              <i class="bi bi-command me-2"></i>Cấu hình phím tắt
-            </h6>
+            <h6 class="fw-bold text-danger border-bottom pb-2 mb-3"><i class="bi bi-command me-2"></i>Cấu hình phím tắt</h6>
 
             <!-- Button Thêm Mới Shortcut -->
             <div class="mb-3">
-              <button
-                type="button"
-                class="btn btn-sm btn-success"
-                id="btn-add-shortcut"
-                onclick="showAddShortcutForm()"
-              >
-                <i class="fa-solid fa-plus me-2"></i>Thêm Phím Tắt Mới
-              </button>
+              <button type="button" class="btn btn-sm btn-success" id="btn-add-shortcut" onclick="A.ShortKey.showAddShortcutForm()"><i class="fa-solid fa-plus me-2"></i>Thêm Phím Tắt Mới</button>
             </div>
 
             <!-- Form Nhập Shortcut Mới -->
             <div class="card card-border mb-3 d-none" id="add-shortcut-form-container">
               <div class="card-body p-3">
-                <h6 class="fw-bold text-success mb-3">
-                  <i class="fa-solid fa-plus-circle me-2"></i>Tạo Phím Tắt Mới
-                </h6>
+                <h6 class="fw-bold text-success mb-3"><i class="fa-solid fa-plus-circle me-2"></i>Tạo Phím Tắt Mới</h6>
                 <div class="row g-2">
                   <div class="col-md-3 form-floating">
-                    <input
-                      type="text"
-                      class="form-control form-control-sm"
-                      id="new-sc-name"
-                      placeholder="Tên phím tắt"
-                    />
+                    <input type="text" class="form-control form-control-sm" id="new-sc-name" placeholder="Tên phím tắt" />
                     <label for="new-sc-name">Tên Phím Tắt</label>
                   </div>
                   <div class="col-md-3 form-floating">
@@ -405,46 +295,21 @@
                     <label for="new-sc-icon">Icon</label>
                   </div>
                   <div class="col-md-3 form-floating">
-                    <input
-                      type="text"
-                      class="form-control form-control-sm"
-                      id="new-sc-function"
-                      placeholder="saveForm"
-                    />
+                    <input type="text" class="form-control form-control-sm" id="new-sc-function" placeholder="saveForm" />
                     <label for="new-sc-function">Tên Hàm Thực Thi</label>
                   </div>
                   <div class="col-md-2 form-floating">
-                    <input
-                      type="text"
-                      class="form-control form-control-sm text-center fw-bold"
-                      id="new-sc-key"
-                      placeholder="Click để ghi"
-                      readonly
-                    />
+                    <input type="text" class="form-control form-control-sm text-center fw-bold" id="new-sc-key" placeholder="Click để ghi" readonly />
                     <label for="new-sc-key">Phím Tắt</label>
                   </div>
                   <div class="col-md-1 flex-center">
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-primary flex-grow-1"
-                      id="btn-record-new-key"
-                      onclick="startRecordingNewKey()"
-                    >
+                    <button type="button" class="btn btn-sm btn-primary flex-grow-1" id="btn-record-new-key" onclick="A.ShortKey.startRecordingNewKey()">
                       <i class="fa-solid fa-keyboard"></i>
                     </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-success flex-grow-1"
-                      id="btn-save-new-shortcut"
-                      onclick="saveNewShortcut()"
-                    >
+                    <button type="button" class="btn btn-sm btn-success flex-grow-1" id="btn-save-new-shortcut" onclick="A.ShortKey.saveNewShortcut()">
                       <i class="fa-solid fa-check"></i>
                     </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-secondary flex-grow-1"
-                      onclick="hideAddShortcutForm()"
-                    >
+                    <button type="button" class="btn btn-sm btn-secondary flex-grow-1" onclick="A.ShortKey.hideAddForm()">
                       <i class="fa-solid fa-xmark"></i>
                     </button>
                   </div>
@@ -454,12 +319,11 @@
 
             <div class="alert alert-warning small py-2 mb-3">
               <i class="fa-solid fa-triangle-exclamation me-1"></i>
-              <strong>Quy tắc:</strong> Mọi phím tắt bắt buộc phải bắt đầu bằng phím
-              <code>Ctrl/Shift/Alt</code> + [Phím chức năng].
+              <strong>Quy tắc:</strong> Mọi phím tắt bắt buộc phải bắt đầu bằng phím <code>Ctrl/Shift/Alt</code> + [Phím chức năng].
             </div>
 
             <div class="list-group list-group-flush" id="shortcut-list-container">
-              <div
+              <!-- <div
                 class="list-group-item d-flex justify-content-between align-items-center py-3 px-0"
               >
                 <div>
@@ -581,7 +445,7 @@
                     data-fn="openSettingsModal"
                   />
                 </div>
-              </div>
+              </div> -->
             </div>
           </div>
         </div>
@@ -593,77 +457,37 @@
 <template id="tmpl-list">
   <div class="card h-100 d-flex flex-column">
     <div class="card-header py-1 flex-shrink-0" style="max-height: none">
-      <!--
-        Desktop (≥576px): 1 hàng ngang, flex-nowrap
-        Mobile  (<576px) : 3 hàng dọc (flex-column)
-      -->
-      <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-3">
+      <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-3 desktop-only">
         <!-- NHÓM 2: Date range filter -->
         <div id="date-filters" class="d-flex align-items-center gap-2 flex-shrink-0">
           <span class="small text-muted">Giai đoạn:</span>
-          <input
-            type="date"
-            id="filter-from"
-            class="form-control form-control-sm"
-            style="width: 130px"
-          />
-          <input
-            type="date"
-            id="filter-to"
-            class="form-control form-control-sm"
-            style="width: 130px"
-          />
+          <input type="date" id="filter-from" class="form-control form-control-sm" style="width: 130px" />
+          <input type="date" id="filter-to" class="form-control form-control-sm" style="width: 130px" />
         </div>
 
         <!-- NHÓM 1: Lọc cột + Giá trị + Nút Lọc / Sắp xếp -->
         <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-3">
-          <select
-            id="filter-col"
-            class="form-select form-select-sm"
-            onchange="updateFilterOptions()"
-            style="width: 110px"
-          ></select>
+          <select id="filter-col" class="form-select form-select-sm" onchange="updateFilterOptions()" style="width: 110px"></select>
           <div class="position-relative" style="width: 180px">
-            <input
-              type="text"
-              id="filter-val"
-              class="form-control form-control-sm"
-              placeholder="Nhập/Chọn giá trị..."
-              list="filter-datalist"
-              onkeyup="if (event.key === 'Enter') applyGridFilter();"
-            />
+            <input type="text" id="filter-val" class="form-control form-control-sm" placeholder="Nhập/Chọn giá trị..." list="filter-datalist" onkeyup="if (event.key === 'Enter') applyGridFilter();" />
             <datalist id="filter-datalist"></datalist>
           </div>
-          <button
-            id="btn-data-filter"
-            class="btn btn-outline-primary btn-sm ms-3"
-            style="width: 80px"
-          >
-            <i class="fa-solid fa-filter"></i> Lọc
-          </button>
-          <button id="btn-data-sort" class="btn btn-outline-warning btn-sm" style="width: 90px">
-            <i class="bi bi-sort-alpha-down"></i> Sắp xếp
-          </button>
+          <button id="btn-data-filter" class="btn btn-outline-primary btn-sm ms-3" style="width: 80px"><i class="fa-solid fa-filter"></i> Lọc</button>
+          <button id="btn-data-sort" class="btn btn-outline-warning btn-sm" style="width: 90px"><i class="bi bi-sort-alpha-down"></i> Sắp xếp</button>
         </div>
 
         <!-- NHÓM 3: Stats — ms-sm-auto đẩy sang phải chỉ trên desktop -->
         <div class="d-flex align-items-center gap-2 ms-sm-auto border-sm-start ps-sm-2">
           <div class="text-center lh-1 m-1">
-            <small class="text-secondary mx-1" style="font-size: 0.7rem; text-transform: uppercase"
-              >Tổng Cộng</small
-            >
+            <small class="text-secondary mx-1" style="font-size: 0.7rem; text-transform: uppercase">Tổng Cộng</small>
             <div id="stat-total" class="fw-bold text-primary">0</div>
           </div>
           <div class="text-center lh-1 m-1">
-            <small class="text-secondary mx-1" style="font-size: 0.7rem; text-transform: uppercase"
-              >Số Lượng</small
-            >
+            <small class="text-secondary mx-1" style="font-size: 0.7rem; text-transform: uppercase">Số Lượng</small>
             <div id="stat-qty" class="fw-bold text-success">0</div>
           </div>
           <div class="text-center lh-1 m-1">
-            <small class="text-secondary mx-1" style="font-size: 0.7rem; text-transform: uppercase"
-              >Bình Quân</small
-            >
+            <small class="text-secondary mx-1" style="font-size: 0.7rem; text-transform: uppercase">Bình Quân</small>
             <div id="stat-avg" class="fw-bold text-info">0</div>
           </div>
         </div>
@@ -671,11 +495,7 @@
     </div>
     <div id="tbl-container-tab2">
       <div class="flex-grow-1 mb-0">
-        <table
-          class="table table-responsive table-bordered table-hover table-sm table-data"
-          id="grid-table"
-          data-collection=""
-        >
+        <table class="table table-responsive table-bordered table-hover table-sm table-data" id="grid-table" data-collection="">
           <thead class="table-secondary text-center">
             <tr id="grid-header"></tr>
           </thead>
@@ -694,19 +514,11 @@
 
 <template id="tmpl-log">
   <div class="flex-center flex-shrink-0">
-    <div class="alert alert-info text-center small me-auto flex-grow-1">
-      Nhật ký xử lý hệ thống sẽ hiển thị tại đây...
-    </div>
-    <button id="btn-clear-log" class="btn btn-sm btn-outline-danger me-2" onclick="clearLog()">
-      <i class="fa-solid fa-trash-can me-1"></i>Xóa Nhật Ký
-    </button>
+    <div class="alert alert-info text-center small me-auto flex-grow-1">Nhật ký xử lý hệ thống sẽ hiển thị tại đây...</div>
+    <button id="btn-clear-log" class="btn btn-sm btn-outline-danger me-2" onclick="clearLog()"><i class="fa-solid fa-trash-can me-1"></i>Xóa Nhật Ký</button>
   </div>
   <div class="border-top my-2 flex-grow-1">
-    <ul
-      id="log-list"
-      data-ontabs="5"
-      class="list-group list-group-flush font-monospace small overflow-auto"
-    ></ul>
+    <ul id="log-list" data-ontabs="5" class="list-group list-group-flush font-monospace small overflow-auto"></ul>
   </div>
 </template>
 <template id="tmpl-admin-dashboard">
@@ -719,10 +531,7 @@
     <div class="container">
       <div class="row g-4 justify-content-center">
         <div class="col-md-4 col-sm-12">
-          <div
-            class="card p-5 text-center module-card card-sales"
-            onclick="reloadSystemMode('sale')"
-          >
+          <div class="card p-5 text-center module-card card-sales" onclick="reloadSystemMode('sale')">
             <div class="module-icon text-primary">
               <i class="fas fa-shopping-cart"></i>
             </div>

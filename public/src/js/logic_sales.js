@@ -6,6 +6,20 @@ var detailRowCount = 0;
 
 window.loadBookingToUI = function (bkData, customerData, detailsData) {
   if (!bkData) return;
+
+  // ── StateProxy: suppress auto-binding during form population ───────────
+  // Mỗi lần setVal / setNum chạy, hook của StateProxy sẽ gọi _tryAutoBind →
+  // _resolveCollId → _ensureTracked → log.  Với ~16 field × N row + calcRow,
+  // điều này sinh ra hàng trăm proxy op + log khi user chưa hề edit gì.
+  //
+  // Giải pháp: tạm ngưng hook trong suốt quá trình render ban đầu.
+  // Khi user thực sự click/focus vào 1 field, document-level delegation
+  // (_onDelegatedFocusIn) sẽ tự động khởi tạo proxy & binding cho đúng doc đó.
+  if (window.StateProxy) {
+    StateProxy.clearSession();
+    StateProxy.suppressAutoBinding();
+  }
+
   try {
     // --- NEW LOGIC: TÌM CUSTOMER SOURCE ---
     let custSource = '';
@@ -62,32 +76,14 @@ window.loadBookingToUI = function (bkData, customerData, detailsData) {
 
     calcGrandTotal();
 
-    // StateProxy v4: clearSession → snapshot baselines → install proxies for all active docs.
-    // Must run AFTER detailsArr is normalised but BEFORE user interacts with the form,
-    // so baseline reflects the fetched server data (not any in-progress edits).
-    if (window.StateProxy) {
-      StateProxy.clearSession();
-      const isBkObj = typeof bkData === 'object' && !Array.isArray(bkData);
-      const bkId = isBkObj ? bkData.id : bkData?.[0];
-      if (bkId) StateProxy.beginEdit('bookings', bkId);
-
-      // Customers: beginEdit sử dụng FIELD_ALIAS nên các field có prefix "customer_"
-      // trong HTML sẽ tự động map sang schema field tương ứng (full_name, phone, ...).
-      // Cần gọi trước khi findCustByPhone() set các giá trị vào form.
-      const custId = (() => {
-        if (!customerData) return null;
-        if (typeof customerData === 'object' && !Array.isArray(customerData))
-          return customerData.id ?? null;
-        return Array.isArray(customerData) ? (customerData[0] ?? null) : null;
-      })();
-      if (custId) StateProxy.beginEdit('customers', custId);
-
-      // detailsArr đã được normalize từ detailsData ở trên (hỗ trợ cả Array & Object format)
-      detailsArr.forEach((row) => {
-        const sid = typeof row === 'object' && !Array.isArray(row) ? row.id : row?.[0];
-        if (sid) StateProxy.beginEdit('booking_details', sid);
-      });
-    }
+    // ── StateProxy: KHÔNG gọi beginEdit() eagerly nữa ─────────────────────
+    // Trước đây ta gọi beginEdit() cho booking, customer, và mỗi detail row
+    // ngay tại đây, gây ra nhiều proxy install + baseline snapshot dù user
+    // chưa edit gì.  Giờ proxy sẽ được khởi tạo LAZY bởi _onDelegatedFocusIn
+    // khi user focus vào field đầu tiên.  Ưu điểm:
+    //   • 0 proxy operations lúc render (giảm từ 500+ → ~2 log entries)
+    //   • Baseline snapshot chính xác hơn (lấy ngay trước khi user edit)
+    //   • Chỉ track doc mà user thực sự tương tác
 
     // 4. Chuyển Tab về Form (nếu cần thiết)
     try {
@@ -100,6 +96,8 @@ window.loadBookingToUI = function (bkData, customerData, detailsData) {
   } catch (e) {
     logError('LỖI hàm loadBookingToUI', e.message);
   } finally {
+    // ── Luôn resume auto-binding dù có lỗi hay không ───────────────────
+    if (window.StateProxy) StateProxy.resumeAutoBinding();
     showLoading(false);
   }
 };
@@ -404,9 +402,7 @@ function updateLocationList(idx) {
   const allLocs = [...new Set([...hotels, ...others])];
   const elLoc = getE(`row-${idx}`).querySelector('.d-loc');
   let currentVal = elLoc.value;
-  elLoc.innerHTML =
-    '<option value="">-</option>' +
-    allLocs.map((x) => `<option value="${x}">${x}</option>`).join('');
+  elLoc.innerHTML = '<option value="">-</option>' + allLocs.map((x) => `<option value="${x}">${x}</option>`).join('');
   elLoc.value = currentVal;
 }
 // D. Hàm Fill Service Name / Room Type (CORE LOGIC)
@@ -435,9 +431,7 @@ function updateServiceNameList(idx) {
       .map((r) => r[1]); // Cột 1 là Tên
   }
   const currentVal = elName.value;
-  elName.innerHTML =
-    '<option value="">-</option>' +
-    options.map((x) => `<option value="${x}">${x}</option>`).join('');
+  elName.innerHTML = '<option value="">-</option>' + options.map((x) => `<option value="${x}">${x}</option>`).join('');
   // Cố gắng giữ lại giá trị cũ nếu có trong list mới
   if (options.includes(currentVal)) elName.value = currentVal;
 }
@@ -731,10 +725,8 @@ window.getFormData = async function (update = false) {
     // ── 3. UPDATE MODE: dùng filterUpdatedData để phát hiện thay đổi ─
 
     // 3a. Kiểm tra thay đổi riêng cho booking và customer (2 fieldset khác nhau)
-    const bookingChanges = await filterUpdatedData('fs_booking_info');
-    const customerChanges = await filterUpdatedData('fs_customer_info');
-    const hasBookingChanges = Object.keys(bookingChanges).length > 0;
-    const hasCustomerChanges = Object.keys(customerChanges).length > 0;
+    const [bookingChanges, hasBookingChanges] = await filterUpdatedData('fs_booking_info');
+    const [customerChanges, hasCustomerChanges] = await filterUpdatedData('fs_customer_info');
 
     // 3b. Kiểm tra từng dòng detail — chỉ giữ row có thay đổi
     const detailRows = [...document.querySelectorAll('#detail-tbody tr')];
@@ -742,8 +734,8 @@ window.getFormData = async function (update = false) {
     for (let i = 0; i < detailRows.length; i++) {
       const tr = detailRows[i];
       if (!tr.id) continue;
-      const rowChanges = await filterUpdatedData(tr.id, $('#detail-tbody'));
-      if (Object.values(rowChanges).length > 0) {
+      const [rowChanges, hasRowChanges] = await filterUpdatedData(tr.id, $('#detail-tbody'));
+      if (hasRowChanges > 0) {
         changedDetails.push(booking_details[i]);
       }
     }
@@ -1004,7 +996,7 @@ function processAndFillTemplate(booking_details, anchorDateStr, newStartStr, new
 // /**
 //  * Hàm lấy dữ liệu đầy đủ từ Tab này để phục vụ Export
 //  */
-getCustomerData = function (update = false) {
+getCustomerData = async function (update = false) {
   try {
     // 1. Lấy fieldset với name="customers" (hoặc fallback id="fs_customer_info")
     let custFieldset = $('fieldset[name="customers"]');
@@ -1016,13 +1008,9 @@ getCustomerData = function (update = false) {
       logA('Không tìm thấy fieldset khách hàng!', 'warning');
       return null;
     }
-
-    let hasChange = false; // Flag để kiểm tra có thay đổi nào không
     if (update) {
-      const changes = filterUpdatedData(custFieldset);
-      hasChange =
-        Object.keys(changes || {}).filter((k) => k !== 'id' && k !== 'customer_id').length > 0;
-      if (hasChange) {
+      const [changes, hasChanges] = await filterUpdatedData(custFieldset);
+      if (hasChanges) {
         // Xóa prefix "customer_" khỏi tên field trước khi trả về
         const normalized = {};
         Object.entries(changes).forEach(([key, val]) => {
@@ -1339,16 +1327,8 @@ const ConfirmationModule = (function () {
     // 3. Xác định tên loại vận chuyển (Máy bay hay Tàu?)
     // Quét nhẹ qua list detail để xem có từ khóa nào
     let transName = 'Vé vận chuyển';
-    const hasFlight = booking_details.some(
-      (d) =>
-        String(d.service_type).toLowerCase().includes('vé mb') ||
-        String(d.service_name).toLowerCase().includes('bay')
-    );
-    const hasTrain = booking_details.some(
-      (d) =>
-        String(d.service_type).toLowerCase().includes('vé tàu') ||
-        String(d.service_name).toLowerCase().includes('tàu')
-    );
+    const hasFlight = booking_details.some((d) => String(d.service_type).toLowerCase().includes('vé mb') || String(d.service_name).toLowerCase().includes('bay'));
+    const hasTrain = booking_details.some((d) => String(d.service_type).toLowerCase().includes('vé tàu') || String(d.service_name).toLowerCase().includes('tàu'));
 
     if (hasFlight && !hasTrain) transName = 'Vé máy bay';
     else if (!hasFlight && hasTrain) transName = 'Vé tàu cao tốc';
@@ -1496,10 +1476,7 @@ const ConfirmationModule = (function () {
     element.classList.add('pdf-compact-mode');
 
     // Tên file
-    const bookingId =
-      typeof _currentData !== 'undefined' && _currentData.bookings
-        ? _currentData.bookings[0]
-        : 'Booking';
+    const bookingId = typeof _currentData !== 'undefined' && _currentData.bookings ? _currentData.bookings[0] : 'Booking';
     const fileName = `Booking_${bookingId}.pdf`;
 
     const opt = {
@@ -1538,8 +1515,7 @@ const ConfirmationModule = (function () {
   }
 
   async function sendEmail() {
-    const email =
-      document.getElementById('conf-cust-email').textContent || '9tripphuquoc@gmail.com';
+    const email = document.getElementById('conf-cust-email').textContent || '9tripphuquoc@gmail.com';
     if (!email || email.length < 5) return logA('Booking này chưa có Email khách hàng.', 'warning');
 
     const subject = `[9 TRIP] XÁC NHẬN ĐẶT DỊCH VỤ - CODE ${document.getElementById('conf-id').textContent}`;
@@ -1577,22 +1553,24 @@ function createConfirmation(bkId) {
   ConfirmationModule.openModal(bkId);
 }
 
-async function saveForm() {
+async function saveForm(update = true) {
   try {
     setBtnLoading('btn-save-form', true, 'Saving...');
     await saveCustomer();
-    var data = await getFormData(true);
+    var data = await getFormData(update);
     const { bookings, booking_details, customer } = data;
-    const bookingId = bookings.id;
-    // Validate đủ thông tin khách hàng trước khi lưu
-    const missingFields = [];
-    if (!bookings.customer_id) missingFields.push('customer_id');
-    if (!bookings.customer_full_name) missingFields.push('customer_name');
-    if (!bookings.customer_phone) missingFields.push('customer_phone');
-    if (missingFields.length > 0) {
-      const msg = `Thiếu thông tin khách hàng: ${missingFields.join(', ')}`;
-      logA(msg, 'error');
-      return { success: false, message: msg };
+    const bookingId = bookings?.id;
+    if (!bookingId) {
+      // Validate đủ thông tin khách hàng trước khi lưu
+      const missingFields = [];
+      if (!bookings.customer_id) missingFields.push('customer_id');
+      if (!bookings.customer_full_name) missingFields.push('customer_name');
+      if (!bookings.customer_phone) missingFields.push('customer_phone');
+      if (missingFields.length > 0) {
+        const msg = `Thiếu thông tin khách hàng: ${missingFields.join(', ')} - Hãy tạo khách hàng lại trước khi tạo booking!`;
+        logA(msg, 'error');
+        return { success: false, message: msg };
+      }
     }
 
     // Kiểm tra xem có dữ liệu cần lưu không (ngoài field 'id')
@@ -1614,10 +1592,7 @@ async function saveForm() {
         // Truyền thẳng object để saveRecord giữ đúng field 'id' (không qua array conversion)
         newBk = await A.DB.saveRecord('bookings', bookings);
         if (newBk && !bookingId) {
-          A.NotificationManager.sendToAll(
-            'NEW BOOKING',
-            `Booking mới đã được tạo với ID: ${newBk.id} - ${newBk.staff_id}`
-          );
+          A.NotificationManager.sendToAll('NEW BOOKING', `Booking mới đã được tạo với ID: ${newBk.id} - ${newBk.staff_id}`);
         }
       }
 
@@ -1689,8 +1664,7 @@ async function deleteForm() {
     const elNote = getE('BK_Note');
     if (elStatus) {
       elStatus.value = 'Hủy';
-      elStatus.className =
-        'form-control form-control-sm fw-bold text-danger bg-danger bg-opacity-10'; // Đổi màu đỏ
+      elStatus.className = 'form-control form-control-sm fw-bold text-danger bg-danger bg-opacity-10'; // Đổi màu đỏ
     }
     // Backend đã reset tiền về 0, Frontend cũng nên hiện về 0
     if (elTotal) elTotal.value = '0';
@@ -1705,7 +1679,7 @@ async function deleteForm() {
 
 async function saveCustomer() {
   try {
-    const data = window.getCustomerData(true);
+    const data = await window.getCustomerData(true);
 
     // Nếu data chưa có id, thử tra cứu trong APP_DATA theo phone
     if (!data.id && data.phone && APP_DATA?.customers) {
@@ -1758,8 +1732,7 @@ async function saveCustomer() {
  * const spend = loadCustSpend('CUST_001'); // Returns 2500000
  */
 function loadCustSpend(custId) {
-  if (!custId)
-    custId = $("[data-field='customer_id']", getE('main-form'))?.value || getVal('Cust_Id');
+  if (!custId) custId = $("[data-field='customer_id']", getE('main-form'))?.value || getVal('Cust_Id');
 
   const bookings = window.Object.values(APP_DATA.bookings) || [];
   let totalSpend = 0;
@@ -1790,15 +1763,12 @@ async function createContract() {
     let extendedCust = null;
 
     if (typeof getCustomerData === 'function') {
-      extendedCust = getCustomerData();
+      extendedCust = await getCustomerData();
     }
 
     // Guard: nếu không lấy được dữ liệu khách hàng, không thể tạo hợp đồng
     if (!extendedCust) {
-      logA(
-        'Vui lòng điền đầy đủ thông tin khách hàng (Tên, SĐT) trước khi tạo hợp đồng!',
-        'warning'
-      );
+      logA('Vui lòng điền đầy đủ thông tin khách hàng (Tên, SĐT) trước khi tạo hợp đồng!', 'warning');
       return;
     }
 
@@ -1976,10 +1946,7 @@ function askToLoadTemplate(res, tempName) {
       const endDate = getE('BK_End').value;
       const adult = getE('BK_Adult').value;
       if (!startDate || !endDate || !adult) {
-        logA(
-          'Vui lòng điền đầy đủ: Ngày Đi, Ngày Về và Số người lớn trước khi load Template!',
-          'warning'
-        );
+        logA('Vui lòng điền đầy đủ: Ngày Đi, Ngày Về và Số người lớn trước khi load Template!', 'warning');
         // Focus vào ô còn thiếu
         if (!startDate) getE('BK_Start').focus();
         else if (!endDate) getE('BK_End').focus();
@@ -1998,7 +1965,7 @@ function askToLoadTemplate(res, tempName) {
  */
 window.handleSaveCustomer = async function () {
   try {
-    const data = window.getCustomerData();
+    const data = await window.getCustomerData();
 
     // Validate Front-end
     if (!data.full_name || !data.phone) {
@@ -2081,24 +2048,7 @@ async function saveBatchDetails() {
       return el ? el.value : '';
     };
 
-    booking_details.push([
-      getRowVal('.d-sid').value,
-      getRowVal('d-type'),
-      getRowVal('d-loc'),
-      getRowVal('d-name'),
-      getRowVal('d-in'),
-      getRowVal('d-out'),
-      getRowNum('d-night'),
-      getRowNum('d-qty'),
-      getRowNum('d-pri'),
-      getRowNum('d-qtyC'),
-      getRowNum('d-priC'),
-      getRowNum('d-sur'),
-      getRowNum('d-disc'),
-      getRowNum('.d-total'),
-      getRowVal('d-code'),
-      getRowVal('d-note'),
-    ]);
+    booking_details.push([getRowVal('.d-sid').value, getRowVal('d-type'), getRowVal('d-loc'), getRowVal('d-name'), getRowVal('d-in'), getRowVal('d-out'), getRowNum('d-night'), getRowNum('d-qty'), getRowNum('d-pri'), getRowNum('d-qtyC'), getRowNum('d-priC'), getRowNum('d-sur'), getRowNum('d-disc'), getRowNum('.d-total'), getRowVal('d-code'), getRowVal('d-note')]);
   });
 
   setBtnLoading('btn-save-batch', true);

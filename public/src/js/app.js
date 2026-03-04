@@ -10,6 +10,9 @@ import { DraggableSetup, Resizable, WindowMinimizer } from './libs/ui_helper.js'
 import UI_RENDERER from './modules/UI_Manager.js';
 import EVENT_MANAGER from './modules/EventManager.js';
 import StateProxy from './modules/StateProxy.js';
+import ShortKey from './modules/M_ShortKey.js';
+import ContextMenu from './modules/M_ContextMenu.js';
+import './modules/M_AutoMobileEvents.js'; // Self-initializing: tap→click, double-tap→dblclick, long-press→contextmenu
 
 // Expose globally so legacy scripts (logic_operator, api_operator, etc.) can access it
 window.StateProxy = StateProxy;
@@ -41,26 +44,8 @@ class Application {
     tables: {},
     path: {},
     consts: {
-      COLLECTIONS: [
-        'bookings',
-        'booking_details',
-        'booking_details_by_booking',
-        'customers',
-        'operator_entries',
-        'operator_entries_by_booking',
-        'transactions',
-        'suppliers',
-        'hotels',
-        'hotel_price_schedules',
-        'service_price_schedules',
-        'fund_accounts',
-        'transactions_thenice',
-        'fund_accounts_thenice',
-        'users',
-        'app_config',
-        'notifications',
-      ],
-      DATE_FMT: 'DD/MM/YYYY',
+      COLLECTIONS: ['bookings', 'booking_details', 'booking_details_by_booking', 'customers', 'operator_entries', 'operator_entries_by_booking', 'transactions', 'suppliers', 'hotels', 'hotel_price_schedules', 'service_price_schedules', 'fund_accounts', 'transactions_thenice', 'fund_accounts_thenice', 'users', 'app_config', 'notifications'],
+      date_format: 'dd/mm/yyyy',
       DB_DATE_FMT: 'YYYY-MM-DD',
       CURRENCY: 'VND',
     },
@@ -109,10 +94,9 @@ class Application {
         }
 
         if (!this.instance) {
-          /* global bootstrap */
-          this.instance =
-            bootstrap.Modal.getInstance(el) ||
-            new bootstrap.Modal(el, { backdrop: false, keyboard: false });
+          // Lưu config gốc để reset nếu cần
+          this._defaultOptions = { backdrop: false, keyboard: false }; /* global bootstrap */
+          this.instance = bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el, { ...this._defaultOptions });
 
           const dialog = el.querySelector('.modal-dialog');
           if (dialog && Object.keys(this.initialStyles).length === 0) {
@@ -127,7 +111,7 @@ class Application {
           }
 
           this._initEscListener();
-          new DraggableSetup(this._getEl(), {
+          this._draggable = new DraggableSetup(this._getEl(), {
             targetSelector: '.modal-dialog',
             handleSelector: '.modal-header',
           });
@@ -173,8 +157,7 @@ class Application {
             bodyEl.appendChild(htmlContent.cloneNode(true));
           } else if (htmlContent instanceof HTMLElement) {
             bodyEl.innerHTML = '';
-            if (htmlContent.tagName === 'TEMPLATE')
-              bodyEl.appendChild(htmlContent.content.cloneNode(true));
+            if (htmlContent.tagName === 'TEMPLATE') bodyEl.appendChild(htmlContent.content.cloneNode(true));
             else bodyEl.appendChild(htmlContent.cloneNode(true));
           } else if (typeof htmlContent === 'string') {
             bodyEl.innerHTML = htmlContent;
@@ -184,6 +167,65 @@ class Application {
           console.error('[Modal._injectContent] ❌ Error:', error);
           return false;
         }
+      },
+
+      /**
+       * @param {object} opts - Các option cần cập nhật
+       * @param {boolean|string} [opts.backdrop]  - false: không backdrop, true: có backdrop + click ngoài đóng, 'static': backdrop nhưng click ngoài không đóng
+       * @param {boolean}        [opts.keyboard]  - true: Escape đóng modal, false: không cho Escape đóng
+       *
+       * @example
+       *   A.Modal.setOptions({ backdrop: true, keyboard: true });  // Cho phép click ngoài + Escape đóng
+       *   A.Modal.setOptions({ backdrop: 'static' });              // Có backdrop nhưng không đóng khi click ngoài
+       */
+      setOptions: function (opts = {}) {
+        const inst = this._getInstance();
+        if (!inst || !inst._config) {
+          console.warn('[Modal.setOptions] ⚠️ Modal chưa khởi tạo, không thể cập nhật options.');
+          return;
+        }
+
+        const el = this._getEl();
+
+        // Cập nhật keyboard
+        if (typeof opts.keyboard === 'boolean') {
+          inst._config.keyboard = opts.keyboard;
+        }
+
+        // Cập nhật backdrop — cần xử lý thêm DOM attribute + backdrop element
+        if (opts.backdrop !== undefined) {
+          const prev = inst._config.backdrop;
+          inst._config.backdrop = opts.backdrop;
+
+          // Nếu chuyển từ false → true/'static': thêm backdrop nếu modal đang hiển thị
+          if (prev === false && opts.backdrop !== false && el?.classList.contains('show')) {
+            el.setAttribute('data-bs-backdrop', opts.backdrop === 'static' ? 'static' : 'true');
+            // Tạo backdrop element thủ công (Bootstrap chỉ tạo lúc show())
+            if (!document.querySelector('.modal-backdrop')) {
+              const backdropEl = document.createElement('div');
+              backdropEl.className = 'modal-backdrop fade show';
+              document.body.appendChild(backdropEl);
+
+              // Click vào backdrop → đóng modal (nếu không phải 'static')
+              if (opts.backdrop !== 'static') {
+                backdropEl.addEventListener('click', () => this.hide());
+              }
+            }
+          }
+
+          // Nếu chuyển từ true/'static' → false: xóa backdrop
+          if (prev !== false && opts.backdrop === false) {
+            el?.removeAttribute('data-bs-backdrop');
+            document.querySelectorAll('.modal-backdrop').forEach((b) => b.remove());
+          }
+        }
+      },
+
+      /**
+       * Reset options về mặc định gốc (backdrop: false, keyboard: false).
+       */
+      resetOptions: function () {
+        this.setOptions(this._defaultOptions || { backdrop: false, keyboard: false });
       },
 
       /**
@@ -224,9 +266,7 @@ class Application {
        */
       show: function (htmlContent = null, title = null, saveHandler = null, resetHandler = null) {
         // ── Fast path: modal đang minimize → restore, cập nhật nội dung nếu có ──
-        const taskbarBtn = document.querySelector(
-          `#erp-global-taskbar button[data-target-id="${id}"]`
-        );
+        const taskbarBtn = document.querySelector(`#erp-global-taskbar button[data-target-id="${id}"]`);
         if (taskbarBtn && this._minimizer) {
           // _injectContent bỏ qua occupied check — đúng vì ta muốn cập nhật modal này
           if (htmlContent) this._injectContent(htmlContent, title);
@@ -268,8 +308,7 @@ class Application {
         this.escKeyHandler = (e) => {
           if (e.key !== 'Escape') return;
           const focusedElement = document.activeElement;
-          const isFormElement =
-            focusedElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(focusedElement.tagName);
+          const isFormElement = focusedElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(focusedElement.tagName);
           if (isFormElement) return;
           this.hide();
         };
@@ -286,6 +325,9 @@ class Application {
         // Modal không còn occupied nữa → cho phép tái sử dụng hoặc tạo stacked tiếp
         this._isOccupied = false;
         this._handlers = {};
+
+        // Reset options về mặc định (backdrop: false, keyboard: false)
+        // this.resetOptions();
 
         const el = this._getEl();
         if (el) {
@@ -318,8 +360,7 @@ class Application {
 
         if (autoRemove) {
           // Stacked modal: dùng local handlers, không ảnh hưởng state toàn cục
-          if (this._handlers.saveHandler)
-            btn.removeEventListener('click', this._handlers.saveHandler);
+          if (this._handlers.saveHandler) btn.removeEventListener('click', this._handlers.saveHandler);
           const wrappedHandler = () => callback();
           this._handlers.saveHandler = wrappedHandler;
           btn.addEventListener('click', wrappedHandler);
@@ -343,8 +384,7 @@ class Application {
 
         if (autoRemove) {
           // Stacked modal: dùng local handlers
-          if (this._handlers.resetHandler)
-            btn.removeEventListener('click', this._handlers.resetHandler);
+          if (this._handlers.resetHandler) btn.removeEventListener('click', this._handlers.resetHandler);
           const wrappedHandler = () => callback();
           this._handlers.resetHandler = wrappedHandler;
           btn.addEventListener('click', wrappedHandler);
@@ -397,20 +437,41 @@ class Application {
 
         this._fullscreenHandler = () => {
           const isFullscreen = dialog.classList.contains('modal-fullscreen');
+
+          // ★ Reset DraggableSetup state — tránh transform offset xung đột
+          if (this._draggable) {
+            this._draggable.xOffset = 0;
+            this._draggable.yOffset = 0;
+            this._draggable.currentX = 0;
+            this._draggable.currentY = 0;
+          }
+
           if (isFullscreen) {
+            // ── Exit fullscreen ──
             dialog.classList.remove('modal-fullscreen');
             dialog.style.width = this.initialStyles.width || '';
             dialog.style.maxWidth = this.initialStyles.maxWidth || '';
             dialog.style.maxHeight = this.initialStyles.maxHeight || '';
+            dialog.style.minWidth = this.initialStyles.minWidth || '';
+            dialog.style.minHeight = this.initialStyles.minHeight || '';
             dialog.style.height = this.initialStyles.height || '';
+            dialog.style.paddingBottom = ''; // Restore padding gốc
+            dialog.style.transform = ''; // Reset về no-transform (CSS center)
+            dialog.style.willChange = 'transform'; // Re-enable GPU hint cho drag
             btn.querySelector('i').className = 'fa-solid fa-expand';
             btn.title = 'Fullscreen';
           } else {
+            // ── Enter fullscreen ──
             dialog.classList.add('modal-fullscreen');
             dialog.style.width = '100vw';
+            dialog.style.minWidth = '100vw';
+            dialog.style.minHeight = '100vh';
             dialog.style.maxWidth = '100vw';
             dialog.style.maxHeight = '100vh';
             dialog.style.height = '100vh';
+            dialog.style.paddingBottom = '0'; // ★ Xóa padding-bottom: 5rem
+            dialog.style.transform = 'none'; // ★ Override DraggableSetup translate3d
+            dialog.style.willChange = 'auto'; // Tắt GPU hint khi fullscreen (không cần)
             btn.querySelector('i').className = 'fa-solid fa-compress';
             btn.title = 'Exit Fullscreen';
           }
@@ -424,6 +485,14 @@ class Application {
         const dialog = el.querySelector('.modal-dialog');
         if (!dialog) return;
 
+        // ★ Reset DraggableSetup internal state (tránh jump khi drag lần sau)
+        if (this._draggable) {
+          this._draggable.xOffset = 0;
+          this._draggable.yOffset = 0;
+          this._draggable.currentX = 0;
+          this._draggable.currentY = 0;
+        }
+
         dialog.style.position = '';
         dialog.style.left = '';
         dialog.style.top = '';
@@ -436,8 +505,7 @@ class Application {
         dialog.style.transform = '';
         dialog.style.transition = '';
 
-        if (!dialog.classList.contains('modal-dialog-centered'))
-          dialog.classList.add('modal-dialog-centered');
+        if (!dialog.classList.contains('modal-dialog-centered')) dialog.classList.add('modal-dialog-centered');
         dialog.classList.remove('modal-fullscreen', 'dragging');
 
         const btn = el.querySelector('.btn-fullscreen');
@@ -461,7 +529,7 @@ class Application {
     const btnSaveId = id === 'dynamic-modal' ? 'btn-save-modal' : id + '-btn-save';
     const btnResetId = id === 'dynamic-modal' ? 'btn-reset-modal' : id + '-btn-reset';
     const modalHTML = `
-            <div id="${id}" class="modal fade" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
+            <div id="${id}" class="modal fade" tabindex="-1" data-bs-backdrop="false">
                 <div class="modal-dialog modal-dialog-centered" style="width: auto; max-width: max-content; min-width: 300px; padding-bottom: 5rem; max-height: fit-content;">
                     <div class="modal-content shadow-lg border-0">
                         <div class="modal-header bg-gradient py-2">
@@ -474,7 +542,7 @@ class Application {
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                         </div>
-                        <div id="${id}-body" class="modal-body px-2"></div>
+                        <div id="${id}-body" class="modal-body p-0"></div>
                         <div class="modal-footer bg-gray p-2 m-2 gap-2" data-ft="true" style="display:none;">
                             <button id="${btnResetId}" type="button" class="btn btn-secondary">
                                 <i class="fa-solid fa-redo me-2"></i>Đặt lại
@@ -496,12 +564,8 @@ class Application {
 
   _call(moduleName, methodName, ...args) {
     const module = this.#resolveModule(moduleName);
-    if (!module)
-      throw new Error(
-        `Module "${moduleName}" not found. Available: ${Object.keys(this.#modules).join(', ')}`
-      );
-    if (typeof module[methodName] !== 'function')
-      throw new Error(`Method "${methodName}" not found in module "${moduleName}"`);
+    if (!module) throw new Error(`Module "${moduleName}" not found. Available: ${Object.keys(this.#modules).join(', ')}`);
+    if (typeof module[methodName] !== 'function') throw new Error(`Method "${methodName}" not found in module "${moduleName}"`);
     return module[methodName].apply(module, args);
   }
 
@@ -523,11 +587,7 @@ class Application {
     // ── Lazy class wrapper: instantiate singleton on first access ──
     if (!stored._instance) {
       stored._instance = new stored._class(...(stored._ctorArgs || []));
-      if (
-        stored._autoInit &&
-        typeof stored._instance.init === 'function' &&
-        !stored._instance._initialized
-      ) {
+      if (stored._autoInit && typeof stored._instance.init === 'function' && !stored._instance._initialized) {
         stored._instance.init();
         stored._instance._initialized = true;
       }
@@ -618,6 +678,9 @@ class Application {
   get Security() {
     return this.#createProxy('Security');
   }
+  get CalculatorWidget() {
+    return this.#createProxy('CalculatorWidget');
+  }
   get UI() {
     return this.#createProxy('UI');
   }
@@ -695,10 +758,7 @@ class Application {
     // The canonical check: class constructors always have a non-writable prototype
     // descriptor, whereas regular functions have writable prototype.
     // Arrow functions have no prototype at all → descriptor is undefined → not a class.
-    const protoDesc =
-      typeof moduleOrClass === 'function'
-        ? Object.getOwnPropertyDescriptor(moduleOrClass, 'prototype')
-        : undefined;
+    const protoDesc = typeof moduleOrClass === 'function' ? Object.getOwnPropertyDescriptor(moduleOrClass, 'prototype') : undefined;
     const isClass = protoDesc !== undefined && protoDesc.writable === false;
 
     if (isClass) {
@@ -715,11 +775,7 @@ class Application {
       this.#modules[name] = moduleOrClass;
 
       // Call init() eagerly for plain objects (classes do it lazily in #resolveModule)
-      if (
-        initialized &&
-        typeof moduleOrClass?.init === 'function' &&
-        !moduleOrClass?._initialized
-      ) {
+      if (initialized && typeof moduleOrClass?.init === 'function' && !moduleOrClass?._initialized) {
         moduleOrClass.init();
         moduleOrClass._initialized = true;
       }
@@ -755,12 +811,21 @@ class Application {
     return key ? this.#state[key] : this.#state;
   }
   getConfig(key = null) {
+    if (key && key.includes('/')) {
+      // 🔧 XỬ LÝ NESTED KEY (ví dụ: "notifications/emailEnabled"
+      const keys = key.split('/');
+      let target = this.#config;
+      for (let i = 0; i < keys.length; i++) {
+        if (target[keys[i]] === undefined) return undefined;
+        target = target[keys[i]];
+      }
+      return target;
+    }
     return key ? this.#config[key] : this.#config;
   }
 
   setConfig(updates) {
-    if (this.#state.user && this.#state.user.role !== 'admin' && !this.#config.saveLoad)
-      throw new Error('Only admin can update config');
+    if (this.#state.user && this.#state.user.role !== 'admin' && !this.#config.saveLoad) throw new Error('Only admin can update config');
 
     // 🔧 Xử lý disabledModules - merge vào thay vì ghi đè
     const mergedUpdates = { ...updates };
@@ -794,11 +859,8 @@ class Application {
    */
   async loadAppConfig() {
     try {
-      if (this.#state.user && this.#state.user.role !== 'admin' && !this.#config.saveLoad)
-        throw new Error('Only admin can update config');
-      const db =
-        this.#modules['Database']?.db ||
-        (window.firebase?.firestore && window.firebase.firestore());
+      if (this.#state.user && this.#state.user.role !== 'admin' && !this.#config.saveLoad) throw new Error('Only admin can update config');
+      const db = this.#modules['Database']?.db || (window.firebase?.firestore && window.firebase.firestore());
 
       if (!db) {
         console.error('[App.loadAppConfig] ❌ Firestore DB not initialized');
@@ -868,7 +930,7 @@ class Application {
     const configData = {
       disabledModules: [],
     };
-    const tbl = document.getElementById('tab-adm-database-control');
+    const tbl = document.getElementById('tab-adm-app-config');
     const inputs = tbl ? tbl.querySelectorAll('.erp-config-input') : [];
     if (!inputs.length) {
       console.warn('[App._extractConfigFromForm] ⚠️ No config inputs found to extract');
@@ -887,6 +949,22 @@ class Application {
         // Nếu checkbox không được check (tắt) -> thêm vào disabledModules
         if (input.type === 'checkbox' && !input.checked) {
           configData.disabledModules.push(moduleName);
+        }
+      } else if (key.includes('/')) {
+        // 🔧 XỬ LÝ NESTED KEY (ví dụ: "notifications/emailEnabled")
+        const keys = key.split('/');
+        let target = configData;
+        for (let i = 0; i < keys.length - 1; i++) {
+          if (!target[keys[i]]) target[keys[i]] = {};
+          target = target[keys[i]];
+        }
+        const finalKey = keys[keys.length - 1];
+        if (input.type === 'checkbox') {
+          target[finalKey] = input.checked;
+        } else if (input.type === 'number') {
+          target[finalKey] = parseFloat(input.value) || 0;
+        } else {
+          target[finalKey] = input.value?.trim() || '';
         }
       } else {
         // CÁC KEY KHÁC: Lưu bình thường
@@ -909,7 +987,7 @@ class Application {
    */
   _syncConfigToForm(configData) {
     if (!configData) configData = this.#config;
-    const tbl = document.getElementById('tab-adm-database-control');
+    const tbl = document.getElementById('tab-adm-app-config');
     const inputs = tbl ? tbl.querySelectorAll('.erp-config-input') : [];
     if (!inputs.length) {
       console.warn('[App._syncConfigToForm] ⚠️ No config inputs found to sync');
@@ -930,6 +1008,24 @@ class Application {
         // Nếu moduleName nằm trong disabledModules -> uncheck
         if (input.type === 'checkbox') {
           input.checked = !disabledModules.includes(moduleName);
+        }
+      } else if (key.includes('/')) {
+        // 🔧 XỬ LÝ NESTED KEY (ví dụ: "notifications/emailEnabled")
+        const keys = key.split('/');
+        let target = configData;
+        for (let i = 0; i < keys.length - 1; i++) {
+          if (target[keys[i]] === undefined) return; // Nếu bất kỳ cấp nào không tồn tại, skip
+          target = target[keys[i]];
+        }
+        const finalKey = keys[keys.length - 1];
+        const value = target[finalKey];
+        if (value === undefined || value === null) return;
+        if (input.type === 'checkbox') {
+          input.checked = Boolean(value);
+        } else if (input.type === 'number') {
+          input.value = Number(value);
+        } else {
+          input.value = String(value);
         }
       } else {
         // CÁC KEY KHÁC: Sync bình thường
@@ -957,18 +1053,6 @@ class Application {
     this.#listenAuth();
   }
 
-  /**
-   * CRITICAL BOOT PATH — chỉ chứa những gì BẮT BUỘC để hiện app.
-   *
-   * Thứ tự:
-   *  1. DB init (lấy Firestore instance)
-   *  2. Fetch user doc (timeout 15s)
-   *  3. Set CURRENT_USER + xử lý role masking
-   *  4. UI.init + applySecurity (load JS role + render template) song song
-   *  5. cleanDOM → ensureModal → showLoading(false)
-   *
-   * Mọi tác vụ không thiết yếu → #runPostBoot() (background, không block).
-   */
   #listenAuth() {
     this.#modules['Auth'].auth.onAuthStateChanged(async (user) => {
       const launcher = document.getElementById('app-launcher');
@@ -990,10 +1074,7 @@ class Application {
         // 2. Fetch user profile — timeout 15s tránh treo vô hạn trên mobile
         let docSnap;
         try {
-          docSnap = await Promise.race([
-            this.#modules['Database'].db.collection('users').doc(user.uid).get(),
-            new Promise((_, rej) => setTimeout(() => rej(new Error('⏰ Timeout 15s')), 15000)),
-          ]);
+          docSnap = await Promise.race([this.#modules['Database'].db.collection('users').doc(user.uid).get(), new Promise((_, rej) => setTimeout(() => rej(new Error('⏰ Timeout 15s')), 15000))]);
         } catch (e) {
           console.error('[Boot] ❌ Fetch user timeout/error:', e.message);
           logA('❌ Không thể kết nối server. Kiểm tra mạng và thử lại.', 'warning', 'alert');
@@ -1010,12 +1091,7 @@ class Application {
         // 3. Gán CURRENT_USER + xử lý role masking
         const userProfile = docSnap.data();
         this.#state.user = userProfile;
-        if (
-          (userProfile.role === 'admin' || userProfile.level >= 50) &&
-          typeof applyModeFromUrl === 'function' &&
-          applyModeFromUrl()
-        )
-          return;
+        if ((userProfile.role === 'admin' || userProfile.level >= 50) && typeof applyModeFromUrl === 'function' && applyModeFromUrl()) return;
 
         window.CURRENT_USER = window.CURRENT_USER || {};
         CURRENT_USER.uid = user.uid;
@@ -1059,13 +1135,9 @@ class Application {
         this.#moduleManager = moduleManager;
         this.#config.saveLoad = true;
 
-        CR_COLLECTION =
-          (typeof ROLE_DATA !== 'undefined' ? ROLE_DATA[CURRENT_USER.role] : '') || '';
+        CR_COLLECTION = (typeof ROLE_DATA !== 'undefined' ? ROLE_DATA[CURRENT_USER.role] : '') || '';
 
-        await Promise.all([
-          this._call('UI', 'init', moduleManager),
-          SECURITY_MANAGER.applySecurity(CURRENT_USER),
-        ]);
+        await Promise.all([this._call('UI', 'init', moduleManager), SECURITY_MANAGER.applySecurity(CURRENT_USER)]);
 
         this.#config.saveLoad = false;
         SECURITY_MANAGER.cleanDOM(document);
@@ -1116,17 +1188,10 @@ class Application {
 
     // d. Load data (silent=true — không render UI ngay) + common/async modules song song.
     //    at-modal-full đã được đăng ký ở bước b → an toàn cho AdminConsole / ReportModule.
-    const dataPromise =
-      typeof loadDataFromFirebase === 'function'
-        ? loadDataFromFirebase(true).catch((e) => console.warn('[PostBoot] dataLoad:', e.message))
-        : Promise.resolve();
+    const dataPromise = typeof loadDataFromFirebase === 'function' ? loadDataFromFirebase(true).catch((e) => console.warn('[PostBoot] dataLoad:', e.message)) : Promise.resolve();
 
     try {
-      await Promise.all([
-        mgr.loadCommonModules(),
-        mgr.loadAsyncModules(CURRENT_USER.role),
-        dataPromise,
-      ]);
+      await Promise.all([mgr.loadCommonModules(), mgr.loadAsyncModules(CURRENT_USER.role), dataPromise]);
     } catch (e) {
       console.warn('[PostBoot] Module load error:', e.message);
     }
@@ -1173,6 +1238,16 @@ class Application {
       console.warn('[PostBoot] EventManager:', e.message);
     }
 
+    // f2. Context menu — init (auto-registers booking menu internally)
+    try {
+      if (!this.#modules['ContextMenu']) {
+        this.addModule('ContextMenu', new ContextMenu(), true);
+      }
+      this.#modules['ContextMenu']?.init?.();
+    } catch (e) {
+      console.warn('[PostBoot] ContextMenu:', e.message);
+    }
+
     // g. Acc footer toggle
     if (['acc', 'acc_thenice'].includes(CURRENT_USER.role)) {
       if (typeof toggleTemplate === 'function') toggleTemplate('erp-footer-menu-container');
@@ -1182,24 +1257,18 @@ class Application {
     if (this.#modules['NotificationManager']) {
       try {
         await this._call('NotificationManager', 'init');
-        this.#modules['NotificationManager'].sendToAdmin(
-          'User Login',
-          `${CURRENT_USER.name} (${CURRENT_USER.email}) vừa đăng nhập.`
-        );
+        this.#modules['NotificationManager'].sendToAdmin('User Login', `${CURRENT_USER.name} (${CURRENT_USER.email}) vừa đăng nhập.`);
       } catch (e) {
         console.warn('[PostBoot] NotificationManager:', e.message);
       }
     }
 
-    // i. Keyboard shortcuts
-    if (typeof window.initShortcuts === 'function') window.initShortcuts();
-
     // j. Mobile-specific tweaks (chạy sau khi UI đã render)
     const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
     if (isMobile) {
-      if (typeof activateTab === 'function' && document.getElementById('tab-form')) {
-        activateTab('tab-form');
-      }
+      // if (typeof activateTab === 'function' && document.getElementById('tab-form')) {
+      //   activateTab('tab-form');
+      // }
       document.querySelectorAll('.desktop-only').forEach((el) => el.remove());
       document.body.classList.add('no-select');
     }
@@ -1227,15 +1296,18 @@ class Application {
       });
       // menu.toggleSide();
     }
-    if (!getE('at-modal-full')) {
-      const modal = document.createElement('at-modal-full');
-      document.body.appendChild(modal);
-    }
+    // ⚠️ Đã xóa đoạn getE('at-modal-full') trùng lặp.
+    // getE() dùng getElementById → không tìm thấy vì <at-modal-full> không có id="at-modal-full"
+    // → luôn tạo element thứ 2 → 2 WindowMinimizer → 2 taskbar icons khi minimize.
+    // Đoạn querySelector ở bước k (line 1285) đã xử lý đủ.
     function _updateMenuState(updates) {
       const state = JSON.parse(localStorage.getItem('offcanvas-menu-state') || '{}');
       Object.assign(state, updates);
       localStorage.setItem('offcanvas-menu-state', JSON.stringify(state));
     }
+
+    log('⌨️ Initializing keyboard shortcuts...');
+    await ShortKey.init();
   }
 }
 
@@ -1253,24 +1325,22 @@ class MODULELOADER {
     this.#config.disabledModules = (disabledModules || []).map((m) => m);
     this.registry = {
       DB: () => import('./modules/DBManager.js').then((m) => m.default),
-      HotelPriceController: () =>
-        import('./modules/M_HotelPrice.js').then((m) => m.HotelPriceController),
+      HotelPriceController: () => import('./modules/M_HotelPrice.js').then((m) => m.HotelPriceController),
       ServicePriceController: () => import('./modules/M_ServicePrice.js').then((m) => m.default),
       PriceManager: () => import('./modules/M_PriceManager.js').then((m) => m.default),
       AdminConsole: () => import('./modules/AdminController.js').then((m) => m.AdminConsole),
       ReportModule: () => import('./modules/ReportModule.js').then((m) => m.default),
       ThemeManager: () => import('./modules/ThemeManager.js').then((m) => m.default),
-
+      ShortKey: () => import('./modules/M_ShortKey.js').then((m) => m.default),
       Lang: () => import('./modules/TranslationModule.js').then((m) => m.Lang),
       NotificationManager: () => import('./modules/NotificationModule.js').then((m) => m.default),
-      CalculatorWidget: () =>
-        import('./common/components/calculator_widget.js').then((m) => m.CalculatorWidget),
+      CalculatorWidget: () => import('./common/components/calculator_widget.js').then((m) => m.CalculatorWidget),
       ErpHeaderMenu: () => import('./common/components/header_menu.js').then((m) => m.default),
       ErpFooterMenu: () => import('./common/components/footer_menu.js').then((m) => m.default),
-      ChromeMenuController: () =>
-        import('./common/components/Menu_StyleChrome.js').then((m) => m.ChromeMenuController),
+      ChromeMenuController: () => import('./common/components/Menu_StyleChrome.js').then((m) => m.ChromeMenuController),
       // Side-effect import: đăng ký custom element <offcanvas-menu> + <at-modal-full>
       // Trả về adapter object trỏ đến DOM instance để A.OffcanvasMenu.open() hoạt động
+      BookingOverview: () => import('./modules/BookingOverviewController.js').then((m) => m.default),
       OffcanvasMenu: async () => {
         await import('./common/components/offcanvas_menu.js');
         const getEl = () => document.querySelector('offcanvas-menu');
@@ -1295,25 +1365,10 @@ class MODULELOADER {
       sale: ['PriceManager'],
       acc_thenice: ['PriceManager'],
     };
-    this.forAllModules = [
-      'ReportModule',
-      'CalculatorWidget',
-      'ThemeManager',
-      'Lang',
-      'NotificationManager',
-      'PriceManager',
-    ];
+    this.forAllModules = ['ReportModule', 'CalculatorWidget', 'ThemeManager', 'Lang', 'NotificationManager', 'PriceManager', 'ShortKey', 'BookingOverview'];
     this.commonModules = ['Lang', 'ThemeManager'];
     this.uiModules = ['ErpHeaderMenu', 'ErpFooterMenu', 'ChromeMenuController', 'OffcanvasMenu'];
-    this.asyncModules = [
-      'AdminConsole',
-      'ReportModule',
-      'CalculatorWidget',
-      'HotelPriceController',
-      'ServicePriceController',
-      'PriceManager',
-      'NotificationManager',
-    ];
+    this.asyncModules = ['AdminConsole', 'ReportModule', 'CalculatorWidget', 'HotelPriceController', 'ServicePriceController', 'PriceManager', 'NotificationManager', 'ShortKey', 'BookingOverview'];
   }
 
   /**
@@ -1351,11 +1406,8 @@ class MODULELOADER {
 
   async loadAsyncModules(role) {
     const asyncToLoad = this.asyncModules;
-    const modulesToLoad = asyncToLoad
-      .filter((key) => !this._isModuleDisabled(key))
-      .filter((key) => this.roleMap[role].includes(key) || this.forAllModules.includes(key));
-    if (modulesToLoad.length > 0)
-      await Promise.all(modulesToLoad.map((key) => this.loadModule(key)));
+    const modulesToLoad = asyncToLoad.filter((key) => !this._isModuleDisabled(key)).filter((key) => this.roleMap[role].includes(key) || this.forAllModules.includes(key));
+    if (modulesToLoad.length > 0) await Promise.all(modulesToLoad.map((key) => this.loadModule(key)));
   }
 
   async loadForRole(role) {
@@ -1367,8 +1419,7 @@ class MODULELOADER {
       .filter((key) => !this.commonModules.includes(key))
       .filter((key) => !this.asyncModules.includes(key));
 
-    if (activeModules.length > 0)
-      await Promise.all(activeModules.map((key) => this.loadModule(key)));
+    if (activeModules.length > 0) await Promise.all(activeModules.map((key) => this.loadModule(key)));
   }
 }
 

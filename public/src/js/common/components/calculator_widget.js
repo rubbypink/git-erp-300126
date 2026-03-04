@@ -147,11 +147,7 @@ const CalculatorWidget = {
       (e) => {
         const el = e.target;
         // Theo dõi các input text/number (ngoại trừ display của calc)
-        if (
-          el.tagName === 'INPUT' &&
-          (el.type === 'text' || el.type === 'number') &&
-          el.id !== 'calc-display'
-        ) {
+        if (el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'number') && el.id !== 'calc-display') {
           this.config.lastFocusedInput = el;
         }
       },
@@ -375,15 +371,7 @@ const CalculatorWidget = {
   if (typeof globalObject !== 'undefined') {
     globalObject.CalculatorWidget = CalculatorWidget;
   }
-})(
-  typeof window !== 'undefined'
-    ? window
-    : typeof global !== 'undefined'
-      ? global
-      : typeof self !== 'undefined'
-        ? self
-        : this
-);
+})(typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : this);
 
 // ⚠️ Khỏi tạo chỉ nếu DOM sẵn sàng
 // Người dùng có thể gọi CalculatorWidget.init() thủ công nếu cần

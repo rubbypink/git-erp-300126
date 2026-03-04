@@ -14,21 +14,19 @@ class NavBarMenuController {
     this.container = document.getElementById(this.containerId);
     /** @type {number} Index của tab đang active, dùng để tính hướng animation */
     this.currentIndex = 0;
-
     this.init();
   }
 
   init() {
     try {
       if (!this.container) {
-        console.warn(`[ResponsiveTabManager] Không tìm thấy vùng chứa #${this.containerId}`);
+        console.warn(`[ResponsiveTabManager] Không tìm thấy vùng chứa #${this.containerId} hoặc đã được khởi tạo trước đó.`);
         return;
       }
       if (!this.tabsData || this.tabsData.length === 0) {
         console.warn(`[ResponsiveTabManager] Dữ liệu truyền vào rỗng cho #${this.containerId}`);
         return;
       }
-
       this._render();
       this._bindEvents();
 
@@ -135,11 +133,7 @@ class NavBarMenuController {
 
       // ─── 2. ĐÓNG DROPDOWN KHI CLICK RA NGOÀI ────────────────────────────────
       document.addEventListener('click', (e) => {
-        if (
-          this.tabList &&
-          this.tabList.classList.contains('show') &&
-          !this.container.contains(e.target)
-        ) {
+        if (this.tabList && this.tabList.classList.contains('show') && !this.container.contains(e.target)) {
           this._closeDropdown();
         }
       });
@@ -171,11 +165,7 @@ class NavBarMenuController {
           const targetPaneId = newLink.getAttribute('data-bs-target');
           const targetPane = document.querySelector(targetPaneId);
           if (targetPane) {
-            targetPane.addEventListener(
-              'animationend',
-              () => tabContent.removeAttribute('data-rtm-dir'),
-              { once: true }
-            );
+            targetPane.addEventListener('animationend', () => tabContent.removeAttribute('data-rtm-dir'), { once: true });
           }
         }
 

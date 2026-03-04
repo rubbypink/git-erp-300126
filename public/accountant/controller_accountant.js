@@ -2,11 +2,7 @@
 // IMPORTS (v9 Modular ES6)
 // ===================================================================
 // NOTE: NotificationManager is accessed via window.A.NotificationManager (loaded by main app bundle)
-import {
-  getNewData,
-  migrateBookingTransactions,
-  auditTransactionsChecking,
-} from './accountant_logic.js';
+import { getNewData, migrateBookingTransactions, auditTransactionsChecking } from './accountant_logic.js';
 
 // ===================================================================
 // HELPER FUNCTIONS
@@ -141,11 +137,7 @@ class AccountantController {
             { okText: 'The Nice', denyText: '9 Trip' }
           );
         } else {
-          if (
-            confirm(
-              "Bạn đang đăng nhập với quyền admin. Bạn có muốn xem dữ liệu của The Nice Hotel không? (Chọn 'Cancel' để xem dữ liệu 9 Trip ERP)"
-            )
-          ) {
+          if (confirm("Bạn đang đăng nhập với quyền admin. Bạn có muốn xem dữ liệu của The Nice Hotel không? (Chọn 'Cancel' để xem dữ liệu 9 Trip ERP)")) {
             this.setupEntityAccess('acc_thenice');
           } else {
             this.setupEntityAccess('acc');
@@ -216,27 +208,19 @@ class AccountantController {
     // Luôn fetch mới nhất để đảm bảo tính đúng đắn của kế toán
     // loadCollections viết thẳng vào APP_DATA và trả về số docs đã tải
     console.log(`Fetching data for ${collectionName}...`);
-    if (window.A && window.A.DB)
-      await window.A.DB.loadCollections(collectionName, { forceNew: true });
+    if (window.A && window.A.DB) await window.A.DB.loadCollections(collectionName, { forceNew: true });
     return Object.values(APP_DATA?.[collectionName] ?? {});
   }
 
   async refreshData() {
     try {
-      const [fundsData, transData] = await Promise.all([
-        this.getData(this.currentFundCol),
-        this.getData(this.currentTransCol),
-      ]);
+      const [fundsData, transData] = await Promise.all([this.getData(this.currentFundCol), this.getData(this.currentTransCol)]);
 
       this.funds = Object.values(fundsData || []);
       this.transactions = Object.values(transData || []);
 
       // Sort: Mới nhất lên đầu (theo created_at)
-      this.transactions?.sort(
-        (a, b) =>
-          new Date(b.created_at || b.transaction_date) -
-          new Date(a.created_at || a.transaction_date)
-      );
+      this.transactions?.sort((a, b) => new Date(b.created_at || b.transaction_date) - new Date(a.created_at || a.transaction_date));
 
       this.renderDashboardAssets();
       this.applyFiltersAndRender();
@@ -256,10 +240,7 @@ class AccountantController {
     this.funds.forEach((fund) => {
       const balance = parseFloat(fund.balance || 0);
       totalBalance += balance;
-      const icon =
-        fund.id === 'cash'
-          ? '<i class="fas fa-money-bill-wave text-success me-2"></i>'
-          : '<i class="fas fa-university text-primary me-2"></i>';
+      const icon = fund.id === 'cash' ? '<i class="fas fa-money-bill-wave text-success me-2"></i>' : '<i class="fas fa-university text-primary me-2"></i>';
       const name = fund.name || fund.id || 'Quỹ ẩn';
 
       html += `
@@ -272,8 +253,7 @@ class AccountantController {
                 </div>`;
     });
 
-    this.els.fundListContainer.innerHTML =
-      html || '<div class="text-muted small text-center">Chưa có quỹ</div>';
+    this.els.fundListContainer.innerHTML = html || '<div class="text-muted small text-center">Chưa có quỹ</div>';
     if (this.els.totalFund) this.els.totalFund.innerText = formatCurrency(totalBalance);
   }
 
@@ -297,8 +277,7 @@ class AccountantController {
     const filtered = this.transactions.filter((item) => {
       // Lọc ngày (So sánh String YYYY-MM-DD ok)
       if (dateRange && dateRange.start && dateRange.end) {
-        if (item.transaction_date < dateRange.start || item.transaction_date > dateRange.end)
-          return false;
+        if (item.transaction_date < dateRange.start || item.transaction_date > dateRange.end) return false;
       }
 
       // Lọc Keyword
@@ -306,9 +285,7 @@ class AccountantController {
         const key = this.filterState.keyword.toLowerCase();
         const field = this.filterState.field;
         if (field === 'all') {
-          const content = removeVietnameseTones(
-            `${item.id} ${item.type} ${item.description} ${item.category} ${item.booking_id} ${formatCurrency(item.amount)} ${item.status} ${item.created_by}`
-          ).toLowerCase();
+          const content = removeVietnameseTones(`${item.id} ${item.type} ${item.description} ${item.category} ${item.booking_id} ${formatCurrency(item.amount)} ${item.status} ${item.created_by}`).toLowerCase();
           if (!content.includes(removeVietnameseTones(key))) return false;
         } else {
           const val = item[field] ? String(item[field]).toLowerCase() : '';
@@ -356,14 +333,11 @@ class AccountantController {
         const amountClass = isIn ? 'text-success' : 'text-danger';
         const sign = isIn ? '+' : '-';
         const typeIcon = item.type === 'IN' ? '📥' : '📤';
-        const fundName =
-          this.funds.find((f) => f.id === item.fund_source)?.name || item.fund_source || '-';
+        const fundName = this.funds.find((f) => f.id === item.fund_source)?.name || item.fund_source || '-';
 
         let statusBadge = '<span class="badge bg-secondary">Khác</span>';
-        if (item.status === 'Completed')
-          statusBadge = '<span class="badge bg-success-subtle text-success">✅ Hoàn thành</span>';
-        else if (item.status === 'Pending')
-          statusBadge = '<span class="badge bg-warning-subtle text-warning">⏳ Chờ duyệt</span>';
+        if (item.status === 'Completed') statusBadge = '<span class="badge bg-success-subtle text-success">✅ Hoàn thành</span>';
+        else if (item.status === 'Pending') statusBadge = '<span class="badge bg-warning-subtle text-warning">⏳ Chờ duyệt</span>';
 
         return `
                 <tr role="button" onclick="window.AccountantCtrl.openEditModal('${item.type}', '${item.id}')" class="text-nowrap">
@@ -531,23 +505,13 @@ class AccountantController {
     const isEdit = !!existingData;
     const mode = existingData ? existingData.type : type; // Nếu edit thì lấy type cũ
 
-    const title = isEdit
-      ? `Sửa Giao Dịch (${id})`
-      : mode === 'IN'
-        ? 'Lập Phiếu Thu'
-        : 'Lập Phiếu Chi';
+    const title = isEdit ? `Sửa Giao Dịch (${id})` : mode === 'IN' ? 'Lập Phiếu Thu' : 'Lập Phiếu Chi';
     const colorClass = mode === 'IN' ? 'text-success' : 'text-danger';
     const currentUser = window.A && CURRENT_USER ? CURRENT_USER.name || 'Hệ thống' : 'Hệ thống';
-    if (!this.funds || this.funds.length === 0)
-      this.funds = (await this.getData('fund_accounts')) || [];
+    if (!this.funds || this.funds.length === 0) this.funds = (await this.getData('fund_accounts')) || [];
     console.log('Debug: Funds for modal', this.funds);
     // Fund Options
-    let fundOptions = (this.funds || [])
-      .map(
-        (f) =>
-          `<option value="${f.id}" ${existingData && existingData.fund_source === f.id ? 'selected' : ''}>${f.name} (${formatCurrency(f.balance)})</option>`
-      )
-      .join('');
+    let fundOptions = (this.funds || []).map((f) => `<option value="${f.id}" ${existingData && existingData.fund_source === f.id ? 'selected' : ''}>${f.name} (${formatCurrency(f.balance)})</option>`).join('');
     if (!fundOptions) fundOptions = '<option disabled selected>Chưa có quỹ</option>';
     const isManager = CURRENT_USER && (CURRENT_USER.level >= 50 || CURRENT_USER.role === 'admin');
     const html = `
@@ -720,11 +684,7 @@ class AccountantController {
     if (data.booking_id) {
       const bookingData = window.APP_DATA?.bookings?.[data.booking_id];
       if (!bookingData) {
-        return logA(
-          `❌ Lỗi: Booking ID [${data.booking_id}] không tồn tại trong hệ thống!`,
-          'error',
-          'alert'
-        );
+        return logA(`❌ Lỗi: Booking ID [${data.booking_id}] không tồn tại trong hệ thống!`, 'error', 'alert');
       }
       // operatorRef không cần nữa — aggregateBookingBalance đọc từ APP_DATA
     }
@@ -775,9 +735,7 @@ class AccountantController {
         record.created_at = new Date().toISOString();
         // Check status để cập nhật quỹ
         if (data.status === 'Completed') {
-          const fundRef = db
-            .collection(this.currentFundCol || 'fund_accounts')
-            .doc(data.fund_source);
+          const fundRef = db.collection(this.currentFundCol || 'fund_accounts').doc(data.fund_source);
           // IN: Balance + amount, OUT: Balance - amount
           const change = type === 'IN' ? amount : -amount;
           batch.update(fundRef, {
@@ -791,6 +749,13 @@ class AccountantController {
       // Commit Batch 1: Lưu giao dịch & Cập nhật Quỹ trước
       await batch.commit();
       console.log(`Saved Transaction ${transId}`);
+
+      // --- Ghi booking history (nếu giao dịch gắn booking) ---
+      if (data.booking_id && window.A?.DB?.recordHistory) {
+        const histAction = isEdit ? 'Cập nhật' : 'Tạo mới';
+        const amountStr = typeof amount === 'number' ? amount.toLocaleString('vi-VN') : amount;
+        window.A.DB.recordHistory(data.booking_id, `${histAction} Giao dịch ${type} ${amountStr} (${transId})`);
+      }
 
       // --- 5. AGGREGATION (CỘNG DỒN & UPDATE PARENT) ---
       // Bước này chạy riêng sau khi đã lưu transaction thành công
@@ -846,10 +811,7 @@ class AccountantController {
           status: balance <= 0 ? 'Thanh Toán' : totalIn > 0 ? 'Đặt Cọc' : 'Đặt Lịch',
         });
 
-        NotificationManager?.sendToSales(
-          'THANH TOÁN MỚI CHO BOOKING',
-          `Booking ${bookingId} - ${customerName} đã nhận: ${amount}. Tổng thanh toán: ${formatCurrency(totalIn)} VNĐ. Số dư còn lại: ${formatCurrency(balance)} VNĐ.`
-        );
+        NotificationManager?.sendToSales('THANH TOÁN MỚI CHO BOOKING', `Booking ${bookingId} - ${customerName} đã nhận: ${amount}. Tổng thanh toán: ${formatCurrency(totalIn)} VNĐ. Số dư còn lại: ${formatCurrency(balance)} VNĐ.`);
       } else if (type === 'OUT') {
         totalOut = totalOut / 1000;
         // Đọc operator entry từ APP_DATA
@@ -864,10 +826,7 @@ class AccountantController {
             paid_amount: totalOut,
             debt_balance: debt,
           });
-          NotificationManager?.sendToOperator(
-            'CẬP NHẬT THANH TOÁN',
-            `Đã thanh toán ${bookingId} - ${opData.service_name || ''} : ${formatCurrency(totalOut)} VNĐ. Số dư còn lại: ${formatCurrency(debt)} VNĐ.`
-          );
+          NotificationManager?.sendToOperator('CẬP NHẬT THANH TOÁN', `Đã thanh toán ${bookingId} - ${opData.service_name || ''} : ${formatCurrency(totalOut)} VNĐ. Số dư còn lại: ${formatCurrency(debt)} VNĐ.`);
         }
       }
     } catch (e) {
@@ -902,7 +861,6 @@ class AccountantController {
       modalContainer.className = 'modal fade';
       modalContainer.tabIndex = -1;
       modalContainer.setAttribute('aria-labelledby', 'reportModalLabel');
-      modalContainer.setAttribute('aria-hidden', 'true');
 
       // Modal dialog
       const modalDialog = document.createElement('div');
@@ -1103,12 +1061,7 @@ class AccountantController {
       // Filter by keyword
       if (keyword) {
         const lowerKeyword = keyword.toLowerCase();
-        filtered = filtered.filter(
-          (t) =>
-            (t.id && t.id.toLowerCase().includes(lowerKeyword)) ||
-            (t.description && t.description.toLowerCase().includes(lowerKeyword)) ||
-            (t.booking_id && t.booking_id.toLowerCase().includes(lowerKeyword))
-        );
+        filtered = filtered.filter((t) => (t.id && t.id.toLowerCase().includes(lowerKeyword)) || (t.description && t.description.toLowerCase().includes(lowerKeyword)) || (t.booking_id && t.booking_id.toLowerCase().includes(lowerKeyword)));
       }
 
       // Filter by fund

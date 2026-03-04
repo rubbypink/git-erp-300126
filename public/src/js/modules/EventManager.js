@@ -30,7 +30,7 @@ class EventManager {
       this._setupSearchEvents();
       this._setupFormEvents();
       this._setupNumberInputEvents();
-      this._setupBkFormCtm();
+      // Context menu migrated to M_ContextMenu.js (managed by A.ContextMenu)
       this._setupKeyboardNavEvents();
       this.setupGlobalEvents();
 
@@ -66,9 +66,7 @@ class EventManager {
       targetStr = target;
     } else if (target && target.nodeType) {
       // DOM Element: dùng id nếu có, fallback tagName + dataset
-      targetStr = target.id
-        ? `#${target.id}`
-        : `<${target.tagName.toLowerCase()}>[${target.className || 'no-class'}]`;
+      targetStr = target.id ? `#${target.id}` : `<${target.tagName.toLowerCase()}>[${target.className || 'no-class'}]`;
     } else if (target && target.length) {
       // NodeList/Array: dùng length + first item làm key
       targetStr = `nodelist[${target.length}]::${target[0]?.id || target[0]?.tagName || 'unknown'}`;
@@ -109,11 +107,7 @@ class EventManager {
   on(target, eventNames, handler, options = {}, allowMultiple = false) {
     // ── 1. CHUẨN HÓA THAM SỐ ──────────────────────────────────────────────
     const isLazy = options === true;
-    const delegateSelector = isLazy
-      ? target
-      : typeof options === 'object' && options !== null
-        ? options.delegate || null
-        : null;
+    const delegateSelector = isLazy ? target : typeof options === 'object' && options !== null ? options.delegate || null : null;
     const events = (eventNames || '').split(' ').filter((e) => e.trim());
 
     // Guard: eventNames rỗng
@@ -170,8 +164,7 @@ class EventManager {
     // ── 4. XỬ LÝ NATIVE OPTIONS (loại bỏ key 'delegate' hoàn toàn) ────────
     // options = true (boolean) → typeof !== 'object' → nativeOpts = {}
     // options = { capture: true, delegate: '.btn' } → loại bỏ 'delegate', giữ 'capture'
-    const { delegate, ...nativeOpts } =
-      typeof options === 'object' && options !== null ? options : {};
+    const { delegate, ...nativeOpts } = typeof options === 'object' && options !== null ? options : {};
 
     // ── 5. MAIN HANDLER với try/catch (tránh uncaught exception) ──────────
     const finalHandler = (e) => {
@@ -520,8 +513,7 @@ class EventManager {
    */
   _setupNumberInputEvents() {
     // Chỉ áp dụng cho input có type="number" hoặc class .number / .number-only
-    const numberInputSelector =
-      'input[type="number"]:not([disabled]), input.number:not([disabled]), input.number-only:not([disabled])';
+    const numberInputSelector = 'input[type="number"]:not([disabled]), input.number:not([disabled]), input.number-only:not([disabled])';
 
     // Input event với debounce
     this.on(
@@ -533,7 +525,8 @@ class EventManager {
           clearTimeout(target._debounceTimer);
         }
 
-        // Set new timer (1s delay)
+        // Set new timer (configurable delay, default 1s)
+        const debounceMs = window.A?.getConfig?.('number_input_debounce_ms') ?? 1000;
         target._debounceTimer = setTimeout(() => {
           // Clean data: only keep numbers and minus sign
           setNum(target, target.value.replace(/[^0-9.-]/g, ''));
@@ -549,7 +542,7 @@ class EventManager {
           }
 
           delete target._debounceTimer;
-        }, 1000);
+        }, debounceMs);
       },
       true
     );
@@ -571,10 +564,12 @@ class EventManager {
   /**
    * =========================================================================
    * SECTION 7: BOOKING FORM CONTEXT MENU EVENTS (Right Click)
+   * @deprecated Migrated to M_ContextMenu.js — Use A.ContextMenu.register() instead.
+   * Kept for backward compatibility. No longer called from init().
    * =========================================================================
    */
   _setupBkFormCtm() {
-    // const tbody = document.getElementById('detail-tbody');
+    console.warn('[EventManager] _setupBkFormCtm is deprecated. Use A.ContextMenu instead.');
     const menu = document.getElementById('bookingContextMenu');
 
     if (!menu) {
@@ -599,10 +594,7 @@ class EventManager {
         // Save context
         window.CURRENT_CTX_ROW = row;
         const details = window.CURRENT_USER?.role === 'op' ? 'operator_entries' : 'booking_details';
-        const collection =
-          window.CURRENT_TABLE_KEY === 'bookings' || window.CURRENT_TABLE_KEY === 'detail-tbody'
-            ? details
-            : window.CURRENT_TABLE_KEY;
+        const collection = window.CURRENT_TABLE_KEY === 'bookings' || window.CURRENT_TABLE_KEY === 'detail-tbody' ? details : window.CURRENT_TABLE_KEY;
 
         const sidInput = row.querySelector('.d-sid');
         window.CURRENT_CTX_ID = sidInput ? sidInput.value : '';
@@ -673,8 +665,7 @@ class EventManager {
       btnDelete.onclick = (e) => {
         e.preventDefault();
         if (window.CURRENT_CTX_ID) {
-          const collection =
-            window.CURRENT_USER?.role === 'op' ? 'operator_entries' : 'booking_details';
+          const collection = window.CURRENT_USER?.role === 'op' ? 'operator_entries' : 'booking_details';
           if (typeof deleteItem === 'function') {
             deleteItem(window.CURRENT_CTX_ID, collection);
             // if(window.CURRENT_CTX_ROW){
@@ -712,8 +703,7 @@ class EventManager {
       btnSaveOne.onclick = async (e) => {
         e.preventDefault();
         if (window.CURRENT_CTX_ROW && window.CURRENT_ROW_DATA && window.A.DB) {
-          const collection =
-            window.CURRENT_USER?.role === 'op' ? 'operator_entries' : 'booking_details';
+          const collection = window.CURRENT_USER?.role === 'op' ? 'operator_entries' : 'booking_details';
           const res = await window.A.DB.saveRecord(collection, window.CURRENT_ROW_DATA);
           if (res?.success) {
             logA('✅ Lưu thành công!', 'success');
@@ -737,8 +727,7 @@ class EventManager {
       }
 
       const pastedData = JSON.parse(textFromClipboard);
-      const collection =
-        window.CURRENT_USER?.role === 'op' ? 'operator_entries' : 'booking_details';
+      const collection = window.CURRENT_USER?.role === 'op' ? 'operator_entries' : 'booking_details';
 
       if (typeof setRowDataByField === 'function') {
         setRowDataByField(collection, pastedData, window.CURRENT_CTX_ROW);
@@ -775,11 +764,7 @@ class EventManager {
         const currentTr = currentInput.closest('tr');
         if (!currentTr) return;
 
-        const allInputs = Array.from(
-          currentTr.querySelectorAll(
-            'input:not([type="hidden"]):not([readonly]):not([disabled]), select'
-          )
-        );
+        const allInputs = Array.from(currentTr.querySelectorAll('input:not([type="hidden"]):not([readonly]):not([disabled]), select'));
         const inputIndex = allInputs.indexOf(currentInput);
 
         if (inputIndex === -1) return;
@@ -833,11 +818,7 @@ class EventManager {
           e.preventDefault();
           const prevTr = currentTr.previousElementSibling;
           if (prevTr) {
-            const prevInputs = Array.from(
-              prevTr.querySelectorAll(
-                'input:not([type="hidden"]):not([readonly]):not([disabled]), select'
-              )
-            );
+            const prevInputs = Array.from(prevTr.querySelectorAll('input:not([type="hidden"]):not([readonly]):not([disabled]), select'));
             const sourceInput = prevInputs[inputIndex];
 
             if (sourceInput) {
@@ -867,9 +848,7 @@ class EventManager {
 
   _focusCell(tr, index) {
     if (!tr) return;
-    const inputs = Array.from(
-      tr.querySelectorAll('input:not([type="hidden"]):not([readonly]):not([disabled]), select')
-    );
+    const inputs = Array.from(tr.querySelectorAll('input:not([type="hidden"]):not([readonly]):not([disabled]), select'));
     const target = inputs[index];
     if (target) {
       target.focus();
@@ -897,7 +876,7 @@ class EventManager {
 
     // Handler chung cho cả dblclick và longpress
     const handleRowClick = (e) => {
-      if (!e || !e.target || typeof e.target.closest !== 'function') return;
+      if (!e || !e.target || typeof e.target.closest !== 'function' || getE('detail-tbody')?.contains(e.target)) return;
 
       const table = e.target.closest('table');
       if (!table) return;
@@ -924,6 +903,7 @@ class EventManager {
       'dblclick',
       (e) => {
         e.preventDefault();
+        if (getE('detail-tbody') && getE('#detail-tbody')?.contains(e.target)) return;
         handleRowClick(e);
       },
       true
@@ -938,56 +918,6 @@ class EventManager {
       },
       true
     );
-
-    // Xử lý longpress (chỉ trên mobile)
-    if (window.innerWidth <= 768) {
-      let touchStartTime = 0;
-      let touchStartX = 0;
-      let touchStartY = 0;
-      let currentTr = null;
-      const threshold = 500;
-
-      document.addEventListener(
-        'touchstart',
-        (e) => {
-          const tr = e.target.closest('tr');
-          if (!tr) return;
-
-          if (e.touches.length > 0) {
-            touchStartTime = Date.now();
-            touchStartX = e.touches[0].clientX;
-            touchStartY = e.touches[0].clientY;
-            currentTr = tr;
-          }
-        },
-        { passive: true }
-      );
-
-      document.addEventListener(
-        'touchmove',
-        (e) => {
-          if (e.touches.length > 0) {
-            const moveX = Math.abs(e.touches[0].clientX - touchStartX);
-            const moveY = Math.abs(e.touches[0].clientY - touchStartY);
-            if (moveX > 10 || moveY > 10) {
-              currentTr = null;
-            }
-          }
-        },
-        { passive: true }
-      );
-
-      document.addEventListener(
-        'touchend',
-        (e) => {
-          if (currentTr && Date.now() - touchStartTime >= threshold) {
-            handleRowClick({ target: currentTr, currentTarget: currentTr });
-          }
-          currentTr = null;
-        },
-        { passive: true }
-      );
-    }
   }
 }
 // Export cho ES6 import

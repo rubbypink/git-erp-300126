@@ -434,10 +434,7 @@ export default class ErpFooterMenu {
 
     const update = () => {
       const h = container.getBoundingClientRect().height;
-      document.documentElement.style.setProperty(
-        '--footer-actual-height',
-        h > 0 ? `${h + 4}px` : '0px'
-      );
+      document.documentElement.style.setProperty('--footer-actual-height', h > 0 ? `${h + 4}px` : '0px');
     };
 
     // Chạy ngay lần đầu
@@ -466,28 +463,16 @@ export default class ErpFooterMenu {
     const mobileContainer = document.querySelector('.erp-footer-mobile');
 
     // Close menu if clicking outside and menu is open
-    if (
-      dropup.classList.contains('active') &&
-      mobileContainer &&
-      !mobileContainer.contains(event.target)
-    ) {
+    if (dropup.classList.contains('active') && mobileContainer && !mobileContainer.contains(event.target)) {
       dropup.classList.remove('active');
     }
   }
 
   addButton(btnConfig) {
     try {
-      const {
-        id,
-        label,
-        iconClass = '',
-        btnClass = 'btn-primary',
-        callback,
-        attributes = {},
-      } = btnConfig;
+      const { id, label, iconClass = '', btnClass = 'btn-primary', callback, attributes = {} } = btnConfig;
       const safeLabel = label || '';
-      if (!id || typeof callback !== 'function')
-        throw new Error(`Thiếu id/callback cho nút: ${safeLabel || id}`);
+      if (!id || typeof callback !== 'function') throw new Error(`Thiếu id/callback cho nút: ${safeLabel || id}`);
 
       this.buttons.push(btnConfig);
 
@@ -510,9 +495,7 @@ export default class ErpFooterMenu {
         .filter((c) => c.includes('only') || c === 'd-none')
         .join(' ');
       mobileBtn.className = `d-flex align-items-center gap-2 text-dark ${roleClasses}`;
-      mobileBtn.innerHTML = iconClass
-        ? `<i class="${iconClass}"></i> <span>${safeLabel || 'Admin Action'}</span>`
-        : `<span>${safeLabel || 'Admin Action'}</span>`;
+      mobileBtn.innerHTML = iconClass ? `<i class="${iconClass}"></i> <span>${safeLabel || 'Admin Action'}</span>` : `<span>${safeLabel || 'Admin Action'}</span>`;
       Object.keys(attributes).forEach((key) => mobileBtn.setAttribute(key, attributes[key]));
       mobileBtn.addEventListener('click', (e) => {
         this._toggleMobileMenu();
@@ -672,7 +655,8 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
         iconClass: 'fa-solid fa-save',
         btnClass: 'btn-success',
         callback: () => {
-          if (typeof saveForm === 'function') saveForm();
+          const bkId = getVal('BK_ID');
+          if (typeof saveForm === 'function') bkId ? saveForm(true) : saveForm(false);
         },
         attributes: { 'data-ontabs': '2' },
       },
@@ -682,8 +666,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
         iconClass: 'fa-solid fa-rotate',
         btnClass: 'btn-danger',
         callback: () => {
-          if (typeof logA === 'function')
-            logA('Xóa hết dữ liệu vừa nhập ?', 'warning', refreshForm);
+          if (typeof logA === 'function') logA('Xóa hết dữ liệu vừa nhập ?', 'warning', refreshForm);
         },
         attributes: { 'data-ontabs': '2' },
       },
@@ -712,9 +695,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
       const btnClass = btn.btnClass || '';
 
       // Kiểm tra xem nút này có bị gán class giới hạn quyền nào không (vd: có chứa 'sales-only' hay 'op-only' không?)
-      const hasRoleRestriction = allRestrictedClasses.some((restrictedClass) =>
-        btnClass.includes(restrictedClass)
-      );
+      const hasRoleRestriction = allRestrictedClasses.some((restrictedClass) => btnClass.includes(restrictedClass));
 
       // Nếu nút KHÔNG có class giới hạn (như Lưu, Xóa Form) -> Cho phép hiển thị
       if (!hasRoleRestriction) return true;

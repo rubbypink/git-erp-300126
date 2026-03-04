@@ -103,13 +103,7 @@ async function refreshData() {
     ]);
 
     // --- 2. Filter Bookings by Date (Only for normal reports, not error reports) ---
-    const isErrorReport = [
-      'ERROR_PAYMENT',
-      'ERROR_SYNC_SA',
-      'ERROR_BOOKING_DETAILS',
-      'ERROR_SYNC_SO',
-      'ERROR_CANCELLED_BOOKING',
-    ].includes(reportType);
+    const isErrorReport = ['ERROR_PAYMENT', 'ERROR_SYNC_SA', 'ERROR_BOOKING_DETAILS', 'ERROR_SYNC_SO', 'ERROR_CANCELLED_BOOKING'].includes(reportType);
     if (!isErrorReport) {
       currentData.bookings = _filterByDate(bkRes, dateField, dFrom, dTo);
     } else {
@@ -299,20 +293,7 @@ function _processSalesGeneral() {
   const totalRev = data.reduce((sum, r) => sum + (Number(r.total_amount) || 0), 0);
   const totalDebt = data.reduce((sum, r) => sum + (Number(r.balance_amount) || 0), 0);
 
-  _updateKPI(
-    'Doanh Thu',
-    totalRev,
-    '---',
-    'Phải Thu',
-    totalDebt,
-    '',
-    'Số Bookings',
-    data.length,
-    '',
-    'Đã Thu',
-    totalRev - totalDebt,
-    ''
-  );
+  _updateKPI('Doanh Thu', totalRev, '---', 'Phải Thu', totalDebt, '', 'Số Bookings', data.length, '', 'Đã Thu', totalRev - totalDebt, '');
 
   // Chart & Table (giữ nguyên logic cũ)
   const revenueByDate = {};
@@ -320,22 +301,10 @@ function _processSalesGeneral() {
     const d = (r.created_at || '').split('T')[0];
     revenueByDate[d] = (revenueByDate[d] || 0) + (Number(r.total_amount) || 0);
   });
-  _renderLineChart(
-    Object.keys(revenueByDate).sort(),
-    Object.values(revenueByDate),
-    'Doanh thu ngày'
-  );
+  _renderLineChart(Object.keys(revenueByDate).sort(), Object.values(revenueByDate), 'Doanh thu ngày');
 
   const headers = ['Mã BK', 'Ngày', 'Khách Hàng', 'NV Sale', 'Doanh Thu', 'Còn Lại', 'Trạng Thái'];
-  const rows = data.map((r) => [
-    r.id,
-    r.created_at?.split('T')[0],
-    r.customer_full_name,
-    r.staff_id,
-    FMT.format(r.total_amount),
-    FMT.format(r.balance_amount),
-    r.status,
-  ]);
+  const rows = data.map((r) => [r.id, r.created_at?.split('T')[0], r.customer_full_name, r.staff_id, FMT.format(r.total_amount), FMT.format(r.balance_amount), r.status]);
 
   currentData.tableExport = { headers, rows };
   _renderTable(headers, rows); // Bản view đơn giản
@@ -355,14 +324,10 @@ function _processSalesServices() {
 
   details.forEach((d) => {
     // Logic: Nếu là Hotel -> dùng hotel_name, khác -> dùng service_name
-    let svName =
-      d.service_type === 'Hotel'
-        ? d.hotel_name || 'Khách sạn chưa tên'
-        : d.service_name || 'DV Khác';
+    let svName = d.service_type === 'Hotel' ? d.hotel_name || 'Khách sạn chưa tên' : d.service_name || 'DV Khác';
     if (!svName) svName = 'N/A';
 
-    if (!serviceStats[svName])
-      serviceStats[svName] = { qty: 0, amount: 0, count: 0, type: d.service_type };
+    if (!serviceStats[svName]) serviceStats[svName] = { qty: 0, amount: 0, count: 0, type: d.service_type };
 
     serviceStats[svName].count += 1;
     serviceStats[svName].qty += Number(d.quantity) || 0;
@@ -377,20 +342,7 @@ function _processSalesServices() {
   // KPIs
   const totalRev = sorted.reduce((sum, i) => sum + i.amount, 0);
   const totalQty = sorted.reduce((sum, i) => sum + i.qty, 0);
-  _updateKPI(
-    'Tổng Doanh Thu DV',
-    totalRev,
-    '',
-    'Tổng Số Lượng',
-    totalQty,
-    '',
-    'Số Dịch Vụ',
-    sorted.length,
-    '',
-    '',
-    '',
-    ''
-  );
+  _updateKPI('Tổng Doanh Thu DV', totalRev, '', 'Tổng Số Lượng', totalQty, '', 'Số Dịch Vụ', sorted.length, '', '', '', '');
 
   // Charts
   const top10 = sorted.slice(0, 10);
@@ -402,13 +354,7 @@ function _processSalesServices() {
 
   // Table
   const headers = ['Tên Dịch Vụ / KS', 'Loại DV', 'Số Lần Bán', 'Tổng Số Lượng', 'Tổng Doanh Thu'];
-  const rows = sorted.map((i) => [
-    i.name,
-    i.type,
-    i.count,
-    FMT.format(i.qty),
-    FMT.format(i.amount),
-  ]);
+  const rows = sorted.map((i) => [i.name, i.type, i.count, FMT.format(i.qty), FMT.format(i.amount)]);
 
   currentData.tableExport = { headers, rows };
   _renderTable(headers, rows);
@@ -447,20 +393,7 @@ function _processSalesMatrixStaff() {
   const sortedTypes = Array.from(typeSet).sort();
 
   // KPIs
-  _updateKPI(
-    'Số Nhân Viên',
-    sortedStaff.length,
-    '',
-    'Số Loại DV',
-    sortedTypes.length,
-    '',
-    'Tổng Doanh Thu',
-    totalAmount,
-    '',
-    '',
-    '',
-    ''
-  );
+  _updateKPI('Số Nhân Viên', sortedStaff.length, '', 'Số Loại DV', sortedTypes.length, '', 'Tổng Doanh Thu', totalAmount, '', '', '', '');
 
   // Chart: Stacked Bar Chart theo Staff
   // (Logic chart phức tạp hơn chút, tạm thời dùng pie cho tổng loại dv)
@@ -505,38 +438,12 @@ function _processOperatorDebtDetail() {
   // Yêu cầu: Báo cáo công nợ chi tiết theo nhà cung cấp
   // Fields: NCC, Dịch vụ, Người lớn, Giá NL, Trẻ em, Giá TE, Phụ phí, Giảm giá, Tổng tiền, Đã trả, Còn nợ
 
-  const headers = [
-    'Nhà Cung Cấp',
-    'Dịch Vụ (Mã BK)',
-    'Ngày Đi',
-    'Người Lớn',
-    'Giá NL',
-    'Trẻ Em',
-    'Giá TE',
-    'Phụ Phí',
-    'Giảm Giá',
-    'Tổng Chi Phí',
-    'Đã TT',
-    'Công Nợ',
-  ];
+  const headers = ['Nhà Cung Cấp', 'Dịch Vụ (Mã BK)', 'Ngày Đi', 'Người Lớn', 'Giá NL', 'Trẻ Em', 'Giá TE', 'Phụ Phí', 'Giảm Giá', 'Tổng Chi Phí', 'Đã TT', 'Công Nợ'];
   const rows = ops.map((op) => {
     const debt = Number(op.debt_balance) || 0;
     // Nếu type = "Phòng" thì dùng hotel_name, ngược lại dùng service_name
     const svName = op.service_type === 'Phòng' ? op.hotel_name || op.service_name : op.service_name;
-    return [
-      op.supplier || 'N/A',
-      `${svName} (${op.booking_id})`,
-      op.check_in || '',
-      op.adults || 0,
-      FMT.format(op.cost_adult || 0),
-      op.children || 0,
-      FMT.format(op.cost_child || 0),
-      FMT.format(op.surcharge || 0),
-      FMT.format(op.discount || 0),
-      FMT.format(op.total_cost),
-      FMT.format(op.paid_amount),
-      debt > 0 ? `<span class="text-danger fw-bold">${FMT.format(debt)}</span>` : 0,
-    ];
+    return [op.supplier || 'N/A', `${svName} (${op.booking_id})`, op.check_in || '', op.adults || 0, FMT.format(op.cost_adult || 0), op.children || 0, FMT.format(op.cost_child || 0), FMT.format(op.surcharge || 0), FMT.format(op.discount || 0), FMT.format(op.total_cost), FMT.format(op.paid_amount), debt > 0 ? `<span class="text-danger fw-bold">${FMT.format(debt)}</span>` : 0];
   });
 
   // Sort by Supplier
@@ -546,38 +453,12 @@ function _processOperatorDebtDetail() {
   const totalDebt = ops.reduce((sum, r) => sum + (Number(r.debt_balance) || 0), 0);
   const totalPaid = ops.reduce((sum, r) => sum + (Number(r.paid_amount) || 0), 0);
   const totalCost = ops.reduce((sum, r) => sum + (Number(r.total_cost) || 0), 0);
-  _updateKPI(
-    'Tổng Giá Vốn',
-    totalCost,
-    '',
-    'Đã Thanh Toán',
-    totalPaid,
-    '',
-    'Công Nợ NCC',
-    totalDebt,
-    '',
-    'Số NCC',
-    new Set(ops.map((o) => o.supplier)).size,
-    ''
-  );
+  _updateKPI('Tổng Giá Vốn', totalCost, '', 'Đã Thanh Toán', totalPaid, '', 'Công Nợ NCC', totalDebt, '', 'Số NCC', new Set(ops.map((o) => o.supplier)).size, '');
 
   // Export data needs raw values (remove HTML spans)
   const exportRows = ops.map((op) => {
     const svName = op.service_type === 'Phòng' ? op.hotel_name || op.service_name : op.service_name;
-    return [
-      op.supplier || 'N/A',
-      `${svName} (${op.booking_id})`,
-      op.check_in || '',
-      op.adults || 0,
-      op.cost_adult || 0,
-      op.children || 0,
-      op.cost_child || 0,
-      op.surcharge || 0,
-      op.discount || 0,
-      op.total_cost,
-      op.paid_amount,
-      op.debt_balance,
-    ];
+    return [op.supplier || 'N/A', `${svName} (${op.booking_id})`, op.check_in || '', op.adults || 0, op.cost_adult || 0, op.children || 0, op.cost_child || 0, op.surcharge || 0, op.discount || 0, op.total_cost, op.paid_amount, op.debt_balance];
   });
   currentData.tableExport = { headers, rows: exportRows };
 
@@ -591,20 +472,7 @@ function _processOperatorBase() {
   const totalPaid = ops.reduce((sum, r) => sum + (Number(r.paid_amount) || 0), 0);
   const totalDebt = ops.reduce((sum, r) => sum + (Number(r.debt_balance) || 0), 0);
 
-  _updateKPI(
-    'Tổng Giá Vốn',
-    totalCost,
-    '',
-    'Đã Thanh Toán',
-    totalPaid,
-    '',
-    'Công Nợ NCC',
-    totalDebt,
-    '',
-    'Số Dịch Vụ',
-    ops.length,
-    ''
-  );
+  _updateKPI('Tổng Giá Vốn', totalCost, '', 'Đã Thanh Toán', totalPaid, '', 'Công Nợ NCC', totalDebt, '', 'Số Dịch Vụ', ops.length, '');
 
   const bySupplier = {};
   ops.forEach((r) => {
@@ -622,15 +490,7 @@ function _processOperatorBase() {
 
   // Table Summary
   const headers = ['Mã BK', 'Dịch Vụ', 'Check-in', 'Tổng Gốc', 'Đã TT', 'Công Nợ', 'Nhà Cung Cấp'];
-  const rows = ops.map((r) => [
-    r.booking_id,
-    r.service_name,
-    r.check_in,
-    FMT.format(r.total_cost),
-    FMT.format(r.paid_amount),
-    FMT.format(r.debt_balance),
-    r.supplier || 'N/A',
-  ]);
+  const rows = ops.map((r) => [r.booking_id, r.service_name, r.check_in, FMT.format(r.total_cost), FMT.format(r.paid_amount), FMT.format(r.debt_balance), r.supplier || 'N/A']);
   currentData.tableExport = { headers, rows };
   _renderTable(headers, rows);
 }
@@ -644,29 +504,14 @@ function _processFinancialGeneral() {
 
   // Map Cost to Booking
   const costMap = {};
-  ops.forEach(
-    (op) => (costMap[op.booking_id] = (costMap[op.booking_id] || 0) + (Number(op.total_cost) || 0))
-  );
+  ops.forEach((op) => (costMap[op.booking_id] = (costMap[op.booking_id] || 0) + (Number(op.total_cost) || 0)));
 
   const totalRev = bks.reduce((sum, r) => sum + (Number(r.total_amount) || 0), 0);
   const totalCost = Object.values(costMap).reduce((sum, v) => sum + v, 0);
   const profit = totalRev - totalCost;
   const margin = totalRev ? ((profit / totalRev) * 100).toFixed(1) : 0;
 
-  _updateKPI(
-    'Tổng Doanh Thu',
-    totalRev,
-    '',
-    'Tổng Chi Phí',
-    totalCost,
-    '',
-    'Lợi Nhuận Gộp',
-    profit,
-    `Margin: ${margin}%`,
-    'Số BK',
-    bks.length,
-    ''
-  );
+  _updateKPI('Tổng Doanh Thu', totalRev, '', 'Tổng Chi Phí', totalCost, '', 'Lợi Nhuận Gộp', profit, `Margin: ${margin}%`, 'Số BK', bks.length, '');
   _renderPieChart(['Lợi Nhuận', 'Chi Phí'], [profit, totalCost], 'Cơ cấu Lợi nhuận');
 
   const headers = ['Mã BK', 'Ngày', 'Doanh Thu', 'Giá Vốn', 'Lợi Nhuận', '%'];
@@ -675,14 +520,7 @@ function _processFinancialGeneral() {
     const cost = costMap[r.id] || 0;
     const p = rev - cost;
     const m = rev ? ((p / rev) * 100).toFixed(1) : 0;
-    return [
-      r.id,
-      formatDateVN(r.created_at),
-      FMT.format(rev),
-      FMT.format(cost),
-      FMT.format(p),
-      m + '%',
-    ];
+    return [r.id, formatDateVN(r.created_at), FMT.format(rev), FMT.format(cost), FMT.format(p), m + '%'];
   });
 
   // Export raw
@@ -691,14 +529,7 @@ function _processFinancialGeneral() {
   // View colored
   const viewRows = rows.map((r) => {
     const p = parseInt(r[4].replace(/\./g, ''));
-    return [
-      r[0],
-      r[1],
-      r[2],
-      r[3],
-      `<span class="${p >= 0 ? 'text-success fw-bold' : 'text-danger'}">${r[4]}</span>`,
-      r[5],
-    ];
+    return [r[0], r[1], r[2], r[3], `<span class="${p >= 0 ? 'text-success fw-bold' : 'text-danger'}">${r[4]}</span>`, r[5]];
   });
   _renderTable(headers, viewRows);
 }
@@ -733,8 +564,7 @@ function _processFinancialByType() {
   details.forEach((d) => {
     serviceTypeMap[mappingKey(d.booking_id, d.service_name)] = d.service_type;
     // Fallback cho khách sạn (vì operator có thể lưu tên ks ở field supplier hoặc service_name)
-    if (d.service_type === 'Phòng')
-      serviceTypeMap[mappingKey(d.booking_id, d.hotel_name)] = 'Phòng';
+    if (d.service_type === 'Phòng') serviceTypeMap[mappingKey(d.booking_id, d.hotel_name)] = 'Phòng';
   });
 
   operators.forEach((op) => {
@@ -771,13 +601,7 @@ function _processFinancialByType() {
 
   const viewRows = rows.map((r) => {
     const p = parseInt(r[3].replace(/\./g, ''));
-    return [
-      r[0],
-      r[1],
-      r[2],
-      `<span class="${p >= 0 ? 'text-success fw-bold' : 'text-danger'}">${r[3]}</span>`,
-      r[4],
-    ];
+    return [r[0], r[1], r[2], `<span class="${p >= 0 ? 'text-success fw-bold' : 'text-danger'}">${r[3]}</span>`, r[4]];
   });
 
   _renderTable(headers, viewRows);
@@ -803,54 +627,20 @@ function _processErrorPayment() {
     })
     .sort((a, b) => new Date(b.end_date) - new Date(a.end_date)); // Mới nhất lên trước
 
-  const totalOverdue = overduePayments.reduce(
-    (sum, bk) => sum + (Number(bk.balance_amount) || 0),
-    0
-  );
+  const totalOverdue = overduePayments.reduce((sum, bk) => sum + (Number(bk.balance_amount) || 0), 0);
   const daysOverdueSamples = overduePayments.slice(0, 5).map((bk) => {
     const endDate = new Date(bk.end_date);
     const daysOver = Math.floor((today - endDate) / (86400 * 1000));
     return daysOver;
   });
 
-  _updateKPI(
-    'Số BK Quá Hạn',
-    overduePayments.length,
-    '',
-    'Tổng Tiền Phải Thu',
-    totalOverdue,
-    '',
-    'BK Có Dữ Liệu',
-    currentData.bookings.length,
-    '',
-    'Avg Ngày Trễ',
-    daysOverdueSamples.length > 0
-      ? Math.round(daysOverdueSamples.reduce((a, b) => a + b, 0) / daysOverdueSamples.length)
-      : 0,
-    'ngày'
-  );
+  _updateKPI('Số BK Quá Hạn', overduePayments.length, '', 'Tổng Tiền Phải Thu', totalOverdue, '', 'BK Có Dữ Liệu', currentData.bookings.length, '', 'Avg Ngày Trễ', daysOverdueSamples.length > 0 ? Math.round(daysOverdueSamples.reduce((a, b) => a + b, 0) / daysOverdueSamples.length) : 0, 'ngày');
 
-  const headers = [
-    'Mã BK',
-    'Khách Hàng',
-    'Ngày Về',
-    'Đã Quá Hạn',
-    'Số Ngày',
-    'Tiền Còn Nợ',
-    'Trạng Thái',
-  ];
+  const headers = ['Mã BK', 'Khách Hàng', 'Ngày Về', 'Đã Quá Hạn', 'Số Ngày', 'Tiền Còn Nợ', 'Trạng Thái'];
   const rows = overduePayments.map((bk) => {
     const endDate = new Date(bk.end_date);
     const daysOver = Math.floor((today - endDate) / (86400 * 1000));
-    return [
-      bk.id,
-      bk.customer_full_name || 'N/A',
-      formatDateVN(bk.end_date),
-      'Có',
-      daysOver + ' ngày',
-      FMT.format(Number(bk.balance_amount) || 0),
-      bk.status || 'N/A',
-    ];
+    return [bk.id, bk.customer_full_name || 'N/A', formatDateVN(bk.end_date), 'Có', daysOver + ' ngày', FMT.format(Number(bk.balance_amount) || 0), bk.status || 'N/A'];
   });
 
   currentData.tableExport = { headers, rows };
@@ -864,9 +654,7 @@ function _processErrorPayment() {
  */
 function _processErrorSyncSalesAccounting() {
   // Lấy 1000 bookings gần nhất
-  let recentBookings = currentData.bookings
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 1000);
+  let recentBookings = currentData.bookings.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 1000);
 
   const transactions = currentData.transactions || [];
   const txMap = {}; // Key: booking_id, Value: sum amount
@@ -902,42 +690,12 @@ function _processErrorSyncSalesAccounting() {
     }
   });
 
-  const errorRate =
-    recentBookings.length > 0 ? ((syncErrors.length / recentBookings.length) * 100).toFixed(2) : 0;
+  const errorRate = recentBookings.length > 0 ? ((syncErrors.length / recentBookings.length) * 100).toFixed(2) : 0;
 
-  _updateKPI(
-    'Số BK Check',
-    recentBookings.length,
-    '',
-    'Lỗi Sync',
-    syncErrors.length,
-    `${errorRate}%`,
-    'Đúng',
-    syncOk.length,
-    '',
-    'Tổng Chênh Lệch',
-    syncErrors.reduce((sum, e) => sum + e.diff, 0) || 0,
-    'VND'
-  );
+  _updateKPI('Số BK Check', recentBookings.length, '', 'Lỗi Sync', syncErrors.length, `${errorRate}%`, 'Đúng', syncOk.length, '', 'Tổng Chênh Lệch', syncErrors.reduce((sum, e) => sum + e.diff, 0) || 0, 'VND');
 
-  const headers = [
-    'Mã BK',
-    'Khách Hàng',
-    'Booking Deposit',
-    'Transaction Total',
-    'Chênh Lệch',
-    'Ngày Tạo',
-  ];
-  const rows = syncErrors
-    .sort((a, b) => b.diff - a.diff)
-    .map((err) => [
-      err.id,
-      err.customer || 'N/A',
-      FMT.format(err.deposit),
-      FMT.format(err.transaction),
-      `<span class="text-danger fw-bold">${FMT.format(err.diff)}</span>`,
-      formatDateVN(err.created),
-    ]);
+  const headers = ['Mã BK', 'Khách Hàng', 'Booking Deposit', 'Transaction Total', 'Chênh Lệch', 'Ngày Tạo'];
+  const rows = syncErrors.sort((a, b) => b.diff - a.diff).map((err) => [err.id, err.customer || 'N/A', FMT.format(err.deposit), FMT.format(err.transaction), `<span class="text-danger fw-bold">${FMT.format(err.diff)}</span>`, formatDateVN(err.created)]);
 
   currentData.tableExport = {
     headers,
@@ -963,27 +721,12 @@ function _processErrorBookingDetails() {
 
   const stats = {
     emptyBookingId: errors.filter((d) => !d.booking_id || !d.booking_id.trim()).length,
-    invalidBookingId: errors.filter(
-      (d) => d.booking_id && d.booking_id.trim() && !validBkIds.has(d.booking_id)
-    ).length,
+    invalidBookingId: errors.filter((d) => d.booking_id && d.booking_id.trim() && !validBkIds.has(d.booking_id)).length,
     totalDetails: details.length,
     validDetails: details.length - errors.length,
   };
 
-  _updateKPI(
-    'Chi Tiết Lỗi',
-    errors.length,
-    `${((errors.length / details.length) * 100).toFixed(2)}%`,
-    'ID Trống',
-    stats.emptyBookingId,
-    '',
-    'ID Không Tồn Tại',
-    stats.invalidBookingId,
-    '',
-    'Chi Tiết Đúng',
-    stats.validDetails,
-    ''
-  );
+  _updateKPI('Chi Tiết Lỗi', errors.length, `${((errors.length / details.length) * 100).toFixed(2)}%`, 'ID Trống', stats.emptyBookingId, '', 'ID Không Tồn Tại', stats.invalidBookingId, '', 'Chi Tiết Đúng', stats.validDetails, '');
 
   const headers = ['Mã Detail', 'Booking ID', 'Dịch Vụ', 'Loại Lỗi', 'Số Tiền', 'Ngày Tạo'];
   const rows = errors.map((d) => {
@@ -994,26 +737,12 @@ function _processErrorBookingDetails() {
       errorType = '<span class="badge bg-danger">ID Không Tồn Tại</span>';
     }
 
-    return [
-      d.id || 'N/A',
-      d.booking_id || '<span class="text-danger">---</span>',
-      d.service_name || d.service_type || 'N/A',
-      errorType,
-      FMT.format(Number(d.total) || 0),
-      formatDateVN(d.created_at),
-    ];
+    return [d.id || 'N/A', d.booking_id || '<span class="text-danger">---</span>', d.service_name || d.service_type || 'N/A', errorType, FMT.format(Number(d.total) || 0), formatDateVN(d.created_at)];
   });
 
   currentData.tableExport = {
     headers,
-    rows: errors.map((d) => [
-      d.id || 'N/A',
-      d.booking_id || '',
-      d.service_name || d.service_type || 'N/A',
-      d.booking_id && validBkIds.has(d.booking_id) ? 'OK' : 'ERROR',
-      Number(d.total) || 0,
-      d.created_at,
-    ]),
+    rows: errors.map((d) => [d.id || 'N/A', d.booking_id || '', d.service_name || d.service_type || 'N/A', d.booking_id && validBkIds.has(d.booking_id) ? 'OK' : 'ERROR', Number(d.total) || 0, d.created_at]),
   };
   _renderTable(headers, rows);
 }
@@ -1050,51 +779,14 @@ function _processErrorSyncSalesOperator() {
   const syncOk = details.length - errors.length;
   const syncRate = details.length > 0 ? ((syncOk / details.length) * 100).toFixed(2) : 0;
 
-  _updateKPI(
-    'Chi Tiết Cần O/E',
-    details.length,
-    '',
-    'Chi Tiết Lỗi',
-    errors.length,
-    `${((errors.length / details.length) * 100).toFixed(2)}%`,
-    'Đã O/E',
-    syncOk,
-    `${syncRate}%`,
-    'O/E Có',
-    operators.length,
-    ''
-  );
+  _updateKPI('Chi Tiết Cần O/E', details.length, '', 'Chi Tiết Lỗi', errors.length, `${((errors.length / details.length) * 100).toFixed(2)}%`, 'Đã O/E', syncOk, `${syncRate}%`, 'O/E Có', operators.length, '');
 
-  const headers = [
-    'Mã Detail',
-    'Mã BK',
-    'Dịch Vụ',
-    'Khách Sạn',
-    'Ngày Nhập',
-    'Số Tiền',
-    'Trạng Thái',
-  ];
-  const rows = errors.map((d) => [
-    d.id || 'N/A',
-    d.booking_id || 'N/A',
-    d.service_name || 'N/A',
-    d.hotel_name || 'N/A',
-    formatDateVN(d.created_at),
-    FMT.format(Number(d.total) || 0),
-    '<span class="badge bg-warning">Chưa O/E</span>',
-  ]);
+  const headers = ['Mã Detail', 'Mã BK', 'Dịch Vụ', 'Khách Sạn', 'Ngày Nhập', 'Số Tiền', 'Trạng Thái'];
+  const rows = errors.map((d) => [d.id || 'N/A', d.booking_id || 'N/A', d.service_name || 'N/A', d.hotel_name || 'N/A', formatDateVN(d.created_at), FMT.format(Number(d.total) || 0), '<span class="badge bg-warning">Chưa O/E</span>']);
 
   currentData.tableExport = {
     headers,
-    rows: errors.map((d) => [
-      d.id || 'N/A',
-      d.booking_id || 'N/A',
-      d.service_name || 'N/A',
-      d.hotel_name || 'N/A',
-      d.created_at,
-      Number(d.total) || 0,
-      'Not Synced',
-    ]),
+    rows: errors.map((d) => [d.id || 'N/A', d.booking_id || 'N/A', d.service_name || 'N/A', d.hotel_name || 'N/A', d.created_at, Number(d.total) || 0, 'Not Synced']),
   };
   _renderTable(headers, rows);
 }
@@ -1110,39 +802,12 @@ function _processErrorCancelledBooking() {
     return status.includes('Hủy') && totalAmount > 0;
   });
 
-  const totalAmountNotZeroed = cancelledErrors.reduce(
-    (sum, bk) => sum + (Number(bk.total_amount) || 0),
-    0
-  );
+  const totalAmountNotZeroed = cancelledErrors.reduce((sum, bk) => sum + (Number(bk.total_amount) || 0), 0);
 
-  _updateKPI(
-    'Booking Hủy Lỗi',
-    cancelledErrors.length,
-    '',
-    'Tổng Tiền Chưa Xóa',
-    totalAmountNotZeroed,
-    'VND',
-    'BK Hủy Đúng',
-    currentData.bookings.filter(
-      (bk) => (bk.status || '').includes('Hủy') && (Number(bk.total_amount) || 0) === 0
-    ).length,
-    '',
-    'Tổng BK Hủy',
-    currentData.bookings.filter((bk) => (bk.status || '').includes('Hủy')).length,
-    ''
-  );
+  _updateKPI('Booking Hủy Lỗi', cancelledErrors.length, '', 'Tổng Tiền Chưa Xóa', totalAmountNotZeroed, 'VND', 'BK Hủy Đúng', currentData.bookings.filter((bk) => (bk.status || '').includes('Hủy') && (Number(bk.total_amount) || 0) === 0).length, '', 'Tổng BK Hủy', currentData.bookings.filter((bk) => (bk.status || '').includes('Hủy')).length, '');
 
   const headers = ['Mã BK', 'Khách Hàng', 'Trạng Thái', 'Tổng Tiền', 'Ngày Hủy', 'Ghi Chú'];
-  const rows = cancelledErrors
-    .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
-    .map((bk) => [
-      bk.id,
-      bk.customer_full_name || 'N/A',
-      '<span class="badge bg-danger">Hủy</span>',
-      FMT.format(Number(bk.total_amount) || 0),
-      formatDateVN(bk.updated_at || bk.created_at),
-      bk.notes || 'N/A',
-    ]);
+  const rows = cancelledErrors.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)).map((bk) => [bk.id, bk.customer_full_name || 'N/A', '<span class="badge bg-danger">Hủy</span>', FMT.format(Number(bk.total_amount) || 0), formatDateVN(bk.updated_at || bk.created_at), bk.notes || 'N/A']);
 
   // Lưu dữ liệu lỗi để sửa
   currentData.syncErrorsForFix = cancelledErrors.map((bk) => ({
@@ -1157,14 +822,7 @@ function _processErrorCancelledBooking() {
 
   currentData.tableExport = {
     headers,
-    rows: cancelledErrors.map((bk) => [
-      bk.id,
-      bk.customer_full_name || 'N/A',
-      'Hủy',
-      Number(bk.total_amount) || 0,
-      bk.updated_at || bk.created_at,
-      bk.notes || '',
-    ]),
+    rows: cancelledErrors.map((bk) => [bk.id, bk.customer_full_name || 'N/A', 'Hủy', Number(bk.total_amount) || 0, bk.updated_at || bk.created_at, bk.notes || '']),
   };
   _renderTable(headers, rows);
 }
@@ -1174,34 +832,14 @@ function _processErrorCancelledBooking() {
 // =========================================================================
 
 function _renderTable(headers, rows) {
-  document.querySelector('#rpt-table thead').innerHTML =
-    '<tr class="text-center table-secondary">' +
-    headers.map((h) => `<th>${h}</th>`).join('') +
-    '</tr>';
-  document.querySelector('#rpt-table tbody').innerHTML = rows
-    .map(
-      (row) =>
-        '<tr>' +
-        row
-          .map((c) =>
-            c === 'status' ? `<td><at-status status="${c}">${c}</at-status></td>` : `<td>${c}</td>`
-          )
-          .join('') +
-        '</tr>'
-    )
-    .join('');
+  document.querySelector('#rpt-table thead').innerHTML = '<tr class="text-center table-secondary">' + headers.map((h) => `<th>${h}</th>`).join('') + '</tr>';
+  document.querySelector('#rpt-table tbody').innerHTML = rows.map((row) => '<tr>' + row.map((c) => (c === 'status' ? `<td><at-status status="${c}">${c}</at-status></td>` : `<td>${c}</td>`)).join('') + '</tr>').join('');
   document.getElementById('rpt-row-count').innerText = rows.length;
 
   // Thêm nút "Sửa Lỗi" vào tfoot nếu có dữ liệu lỗi
   const tfoot = document.querySelector('#rpt-table tfoot') || document.createElement('tfoot');
   const reportType = document.getElementById('rpt-type-select').value;
-  const isErrorReport = [
-    'ERROR_PAYMENT',
-    'ERROR_SYNC_SA',
-    'ERROR_BOOKING_DETAILS',
-    'ERROR_SYNC_SO',
-    'ERROR_CANCELLED_BOOKING',
-  ].includes(reportType);
+  const isErrorReport = ['ERROR_PAYMENT', 'ERROR_SYNC_SA', 'ERROR_BOOKING_DETAILS', 'ERROR_SYNC_SO', 'ERROR_CANCELLED_BOOKING'].includes(reportType);
 
   if (isErrorReport && rows.length > 0) {
     const btnHtml = `<tr class="table-info"><td colspan="${headers.length}" class="text-center p-2">
@@ -1232,11 +870,7 @@ async function fixData() {
     } else if (reportType === 'ERROR_CANCELLED_BOOKING') {
       await _fixErrorCancelledBooking();
     } else {
-      logA(
-        `Chức năng sửa dữ liệu chưa được triển khai cho báo cáo này: ${reportType}`,
-        'warning',
-        'alert'
-      );
+      logA(`Chức năng sửa dữ liệu chưa được triển khai cho báo cáo này: ${reportType}`, 'warning', 'alert');
     }
   } catch (e) {
     console.error('Fix Error:', e);
@@ -1325,9 +959,7 @@ async function _fixErrorCancelledBooking() {
     return;
   }
 
-  const confirmed = confirm(
-    `Sẽ cập nhật ${errors.length} booking bị hủy và các booking_details liên quan. Tiếp tục?`
-  );
+  const confirmed = confirm(`Sẽ cập nhật ${errors.length} booking bị hủy và các booking_details liên quan. Tiếp tục?`);
   if (!confirmed) return;
 
   let bookingUpdated = 0;
@@ -1345,14 +977,7 @@ async function _fixErrorCancelledBooking() {
     try {
       if (typeof A !== 'undefined' && A.DB && A.DB.batchUpdateFieldData) {
         // Gọi batchUpdateFieldData với tham số ids để chỉ xử lý những booking trong danh sách lỗi
-        const result = await A.DB.batchUpdateFieldData(
-          'bookings',
-          'total_amount',
-          oldAmount,
-          0,
-          bookingIds,
-          false
-        );
+        const result = await A.DB.batchUpdateFieldData('bookings', 'total_amount', oldAmount, 0, bookingIds, false);
         bookingUpdated = result.count;
         console.log(`✓ Updated ${bookingUpdated} bookings: total_amount → 0`);
       } else {
@@ -1367,25 +992,13 @@ async function _fixErrorCancelledBooking() {
     try {
       const relatedDetails = currentData.details.filter((d) => bookingIds.includes(d.booking_id));
 
-      if (
-        relatedDetails.length > 0 &&
-        typeof A !== 'undefined' &&
-        A.DB &&
-        A.DB.batchUpdateFieldData
-      ) {
+      if (relatedDetails.length > 0 && typeof A !== 'undefined' && A.DB && A.DB.batchUpdateFieldData) {
         // Lấy danh sách detail IDs cần sửa
         const detailIds = relatedDetails.map((d) => d.id);
         const oldDetailTotal = relatedDetails.length > 0 ? relatedDetails[0].total : 0;
 
         // Gọi batchUpdateFieldData với detail IDs
-        const result = await A.DB.batchUpdateFieldData(
-          'booking_details',
-          'total',
-          oldDetailTotal,
-          0,
-          detailIds,
-          false
-        );
+        const result = await A.DB.batchUpdateFieldData('booking_details', 'total', oldDetailTotal, 0, detailIds, false);
         detailsUpdated = result.count;
         console.log(`✓ Updated ${detailsUpdated} booking_details: total → 0`);
       }
@@ -1599,12 +1212,7 @@ function _initChart(type, labels, data, label) {
         {
           label: label,
           data: data,
-          backgroundColor:
-            type === 'line'
-              ? 'rgba(54, 162, 235, 0.2)'
-              : type === 'bar'
-                ? 'rgba(255, 159, 64, 0.6)'
-                : ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'],
+          backgroundColor: type === 'line' ? 'rgba(54, 162, 235, 0.2)' : type === 'bar' ? 'rgba(255, 159, 64, 0.6)' : ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'],
           borderColor: type === 'line' ? 'rgba(54, 162, 235, 1)' : '#fff',
           borderWidth: 1,
           fill: type === 'line',
@@ -1645,18 +1253,13 @@ const ReportModule = {
       i.className = 'fas fa-chevron-up text-muted';
     }
   },
-  setQuickDate: (type) => {
-    const now = new Date();
-    let f, t;
-    if (type === 'last_month') {
-      f = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      t = new Date(now.getFullYear(), now.getMonth(), 0);
-    } else {
-      f = new Date(now.getFullYear(), 0, 1);
-      t = new Date(now.getFullYear(), 11, 31);
+  setQuickDate: () => {
+    const rangeVal = getVal('rpt-date-field');
+    const range = getDateRange(rangeVal);
+    if (range.start && range.end) {
+      setVal('rpt-date-from', formatDateForInput(range.start));
+      setVal('rpt-date-to', formatDateForInput(range.end));
     }
-    document.getElementById('rpt-date-from').value = _fmtDateValue(f);
-    document.getElementById('rpt-date-to').value = _fmtDateValue(t);
     refreshData();
   },
 

@@ -21,7 +21,7 @@ class ModalFull extends HTMLElement {
     this.showFooter = this.getAttribute('data-ft') !== 'false';
 
     this.innerHTML = `
-            <div id="dynamic-modal-full" class="modal fade" tabindex="-1" aria-hidden="true">
+            <div id="dynamic-modal-full" class="modal fade" tabindex="-1">
                 <div class="modal-dialog modal-fullscreen" id="modalFullDialog">
                     <div class="modal-content">
                         <div class="modal-header border-bottom" style="max-height: max-content;">
@@ -51,8 +51,12 @@ class ModalFull extends HTMLElement {
         `;
   }
 
+  _getEl() {
+    return this.querySelector('#dynamic-modal-full');
+  }
+
   setupModal() {
-    const modalEl = this.querySelector('#dynamic-modal-full');
+    const modalEl = this._getEl();
     this.modal = new bootstrap.Modal(modalEl, { backdrop: false, keyboard: false });
 
     const dataLoad = this.getAttribute('data-body');
@@ -66,28 +70,35 @@ class ModalFull extends HTMLElement {
     }
 
     // Setup resize toggle button
-    const btnResize = this.querySelector('#btnResizeModal');
+    const btnResize = this._getEl().querySelector('#btnResizeModal');
     if (btnResize) {
       btnResize.addEventListener('click', () => this._toggleModalSize());
     }
   }
 
   _setupUI() {
+    // Guard: Chỉ setup 1 lần để tránh duplicate event listeners
+    if (this._uiInitialized) return;
+    this._uiInitialized = true;
+
+    const modalEl = this._getEl();
+    if (!modalEl) return;
+
     if (DraggableSetup) {
-      new DraggableSetup('dynamic-modal-full', {
+      new DraggableSetup(modalEl, {
         targetSelector: '.modal-dialog',
         handleSelector: '.modal-header',
       });
     }
     if (Resizable) {
-      new Resizable('dynamic-modal-full', {
+      new Resizable(modalEl, {
         targetSelector: '.modal-content',
         minWidth: 400,
         minHeight: 300,
       });
     }
     if (WindowMinimizer) {
-      new WindowMinimizer('dynamic-modal-full', { title: 'Data', btnSelector: '.btn-minimize' });
+      new WindowMinimizer(modalEl, { title: null, btnSelector: '.btn-minimize' });
     }
   }
 
@@ -116,18 +127,25 @@ class ModalFull extends HTMLElement {
    * @public
    */
   reset() {
-    const bodyEl = this.querySelector('#dynamic-modal-full-body');
-    if (bodyEl) {
-      bodyEl.innerHTML = '';
-      bodyEl.className = 'modal-body pt-0 overflow-auto';
+    const modalEl = this._getEl();
+    const bst = bootstrap.Modal.getInstance(modalEl);
+    if (bst) {
+      bst.dispose(); // Dispose instance để remove event listeners cũ
     }
+    this.connectedCallback();
 
-    const titleEl = this.querySelector('.modal-title');
-    if (titleEl) {
-      titleEl.textContent = this.getAttribute('title') || 'Modal Title';
-    }
+    // const bodyEl = this.querySelector('#dynamic-modal-full-body');
+    // if (bodyEl) {
+    //   bodyEl.innerHTML = '';
+    //   bodyEl.className = 'modal-body pt-0 overflow-auto';
+    // }
 
-    console.log('[ModalFull] 🔄 Modal reset to default state');
+    // const titleEl = this.querySelector('.modal-title');
+    // if (titleEl) {
+    //   titleEl.textContent = this.getAttribute('title') || 'Modal Title';
+    // }
+
+    // console.log('[ModalFull] 🔄 Modal reset to default state');
   }
 
   /**
@@ -261,9 +279,7 @@ class ModalFull extends HTMLElement {
       });
     } else {
       resetBtn.addEventListener('click', (e) => {
-        const inputEls = this.querySelectorAll(
-          '.modal-body input, .modal-body select, .modal-body textarea'
-        );
+        const inputEls = this.querySelectorAll('.modal-body input, .modal-body select, .modal-body textarea');
         inputEls.forEach((input) => {
           if (input.type === 'checkbox' || input.type === 'radio') {
             input.checked = false;
@@ -1005,9 +1021,7 @@ export class OffcanvasMenu extends HTMLElement {
 
   openReport() {
     // Đóng menu sidebar
-    const offcanvas = bootstrap.Offcanvas.getInstance(
-      this.shadowRoot.querySelector('#offcanvas-menu')
-    );
+    const offcanvas = bootstrap.Offcanvas.getInstance(this.shadowRoot.querySelector('#offcanvas-menu'));
     if (offcanvas) offcanvas.hide();
 
     // Mở Modal Báo Cáo
@@ -1070,12 +1084,7 @@ export class OffcanvasMenu extends HTMLElement {
       })
     );
 
-    log(
-      this.state.isPinned
-        ? 'Menu được ghim - không tự động ẩn'
-        : 'Menu có thể tự động ẩn khi hover rời',
-      'info'
-    );
+    log(this.state.isPinned ? 'Menu được ghim - không tự động ẩn' : 'Menu có thể tự động ẩn khi hover rời', 'info');
   }
 
   /**
@@ -1101,10 +1110,7 @@ export class OffcanvasMenu extends HTMLElement {
       })
     );
 
-    log(
-      this.state.isRightSide ? 'Sidebar chuyển sang bên phải' : 'Sidebar chuyển sang bên trái',
-      'info'
-    );
+    log(this.state.isRightSide ? 'Sidebar chuyển sang bên phải' : 'Sidebar chuyển sang bên trái', 'info');
   }
 
   // =========================================================================
@@ -1279,13 +1285,9 @@ export class OffcanvasMenu extends HTMLElement {
     }
 
     try {
-      const triggerX = this.state.isRightSide
-        ? window.innerWidth - this.state.triggerWidth
-        : this.state.triggerWidth;
+      const triggerX = this.state.isRightSide ? window.innerWidth - this.state.triggerWidth : this.state.triggerWidth;
 
-      const isInTriggerZone = this.state.isRightSide
-        ? e.clientX >= triggerX
-        : e.clientX <= triggerX;
+      const isInTriggerZone = this.state.isRightSide ? e.clientX >= triggerX : e.clientX <= triggerX;
 
       if (isInTriggerZone) {
         // Cursor entered trigger zone
@@ -1401,11 +1403,7 @@ export class OffcanvasMenu extends HTMLElement {
       }
     }
 
-    if (
-      state.menuWidth !== undefined &&
-      state.menuWidth >= this.state.minWidth &&
-      state.menuWidth <= this.state.maxWidth
-    ) {
+    if (state.menuWidth !== undefined && state.menuWidth >= this.state.minWidth && state.menuWidth <= this.state.maxWidth) {
       this.state.menuWidth = state.menuWidth;
       this.style.setProperty('--w-panel', `${state.menuWidth}px`);
     }
@@ -1416,37 +1414,3 @@ export class OffcanvasMenu extends HTMLElement {
 if (!customElements.get('offcanvas-menu')) {
   customElements.define('offcanvas-menu', OffcanvasMenu);
 }
-
-// AUTO INJECT ON STARTUP
-// (function () {
-//     document.addEventListener('DOMContentLoaded', () => {
-//         const existingMenu = document.querySelector('offcanvas-menu');
-
-//         if (!existingMenu) {
-//             const menu = document.createElement('offcanvas-menu');
-//             document.body.appendChild(menu);
-//             log('✅ [9Trip System] ERP Left Menu Injected.', 'success');
-
-//             menu.addEventListener('pin-changed', (e) => {
-//                 _updateMenuState({ isPinned: e.detail.isPinned });
-//             });
-//             menu.addEventListener('side-changed', (e) => {
-//                 _updateMenuState({ isRightSide: e.detail.isRightSide });
-//             });
-//             menu.addEventListener('resize-changed', (e) => {
-//                 _updateMenuState({ menuWidth: e.detail.width });
-//             });
-//             // menu.toggleSide();
-//         }
-//     });
-//     if (!getE('at-modal-full')) {
-//         const modal = document.createElement('at-modal-full');
-//         document.body.appendChild(modal);
-//     }
-
-//     function _updateMenuState(updates) {
-//         const state = JSON.parse(localStorage.getItem('offcanvas-menu-state') || '{}');
-//         Object.assign(state, updates);
-//         localStorage.setItem('offcanvas-menu-state', JSON.stringify(state));
-//     }
-// })();

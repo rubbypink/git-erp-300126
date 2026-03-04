@@ -170,7 +170,7 @@ class NotificationModule {
         role: options.role || CURRENT_USER.role,
         group: group || CURRENT_USER.group?.[0] || 'All',
         data: options.data || {}, // Payload đi kèm (booking_id, v.v..)
-        created_by: CURRENT_USER.username || 'System',
+        created_by: CURRENT_USER.name || 'System',
         created_at: firebase.firestore.FieldValue.serverTimestamp(),
       };
 

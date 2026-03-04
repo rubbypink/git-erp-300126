@@ -28,7 +28,9 @@
 const ERROR_CONFIG = {
   ENABLE_LOGGING: true,
   LOG_TO_STORAGE: true,
-  MAX_STORED_ERRORS: 100,
+  get MAX_STORED_ERRORS() {
+    return window.A?.getConfig?.('max_stored_errors') ?? 100;
+  },
   ERROR_TIMEOUT_MS: 5000,
   STORAGE_KEY: 'app_errors_log',
   CONTEXTS: {}, // Track error contexts {functionName: count}
@@ -143,7 +145,9 @@ const ErrorLogger = {
 
 const LOG_CFG = {
   ENABLE: true,
-  MAX_UI_LINES: 100, // Chỉ hiển thị tối đa 100 dòng trên màn hình
+  get MAX_UI_LINES() {
+    return window.A?.getConfig?.('max_ui_log_lines') ?? 100;
+  },
   STORAGE_PREFIX: 'app_logs_',
 };
 
@@ -343,6 +347,10 @@ function getDateRange(textInput) {
     const month = getNum() - 1; // JS tính tháng từ 0
     start = new Date(now.getFullYear(), month, 1);
     end = new Date(now.getFullYear(), month + 1, 0); // Ngày cuối tháng
+    if (text.includes('này')) {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0) - 1; // Ngày cuối tháng này
+    }
   }
   // C. NHÓM QUÝ (Quý 1 -> 4)
   else if (text.startsWith('quý')) {
@@ -373,6 +381,10 @@ function getDateRange(textInput) {
 
     start = new Date(year, 0, 1);
     end = new Date(year, 11, 31);
+  } else if (text.includes('all')) {
+    // Tất cả: Không giới hạn
+    start = new Date(2024, 1, 1); // Ngày rất xa
+    end = new Date(2028, 11, 31);
   }
 
   // F. CHỐT HẠ: Ép giờ cho đúng chuẩn Database (00:00:00 -> 23:59:59)
@@ -499,10 +511,7 @@ function formatDateVN(dateStr) {
 }
 
 function escapeHtml(s) {
-  return String(s ?? '').replace(
-    /[&<>"']/g,
-    (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]
-  );
+  return String(s ?? '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
 }
 
 /* =========================
@@ -510,7 +519,8 @@ function escapeHtml(s) {
  * ========================= */
 
 function setText(idOrEl, text = '') {
-  const el = resolveEls(idOrEl);
+  const els = resolveEls(idOrEl);
+  const el = Array.isArray(els) ? els[0] : els;
   if (!el) {
     warn('setText', `Element "${idOrEl}" not found`);
     return false;
@@ -521,7 +531,8 @@ function setText(idOrEl, text = '') {
 }
 
 function setHTML(idOrEl, html = '') {
-  const el = resolveEls(idOrEl);
+  const els = resolveEls(idOrEl);
+  const el = Array.isArray(els) ? els[0] : els;
   if (!el) {
     warn('setHTML', `Element "${idOrEl}" not found`);
     return false;
@@ -549,9 +560,7 @@ function setClass(target, className, on = true, rootOrOpt = {}) {
   const els = resolveEls(target, opt.root || document);
   if (!els.length) return 0;
 
-  const classes = Array.isArray(className)
-    ? className
-    : String(className).split(/\s+/).filter(Boolean);
+  const classes = Array.isArray(className) ? className : String(className).split(/\s+/).filter(Boolean);
   els.forEach((el) => classes.forEach((c) => el.classList.toggle(c, !!on)));
   return els.length;
 }
@@ -701,11 +710,7 @@ function resolveEls(target, root) {
     if (target.nodeType === 1) return [target];
 
     // C. List (NodeList, Array)
-    if (
-      Array.isArray(target) ||
-      (typeof NodeList !== 'undefined' && target instanceof NodeList) ||
-      (typeof HTMLCollection !== 'undefined' && target instanceof HTMLCollection)
-    ) {
+    if (Array.isArray(target) || (typeof NodeList !== 'undefined' && target instanceof NodeList) || (typeof HTMLCollection !== 'undefined' && target instanceof HTMLCollection)) {
       return Array.from(target).filter((el) => el && el.nodeType === 1);
     }
 
@@ -776,14 +781,9 @@ function getFromEl(el, opt = {}) {
       val = Array.from(el.selectedOptions).map((o) => o.value);
     }
     // --- CASE 3: NUMBER (Ưu tiên dataset.val) ---
-    else if (
-      classList.contains('number') ||
-      classList.contains('number-only') ||
-      el.type === 'number'
-    ) {
+    else if (classList.contains('number') || classList.contains('number-only') || el.type === 'number') {
       // Lấy từ dataset (nguồn gốc) hoặc value (hiển thị)
-      const rawVal =
-        el.dataset.val !== undefined && el.dataset.val !== '' ? el.dataset.val : el.value;
+      const rawVal = el.dataset.val !== undefined && el.dataset.val !== '' ? el.dataset.val : el.value;
       // Chỉ lấy số (0-9) để đảm bảo logic cũ không bị sai lệch
       val = String(rawVal || '').replace(/[^0-9]/g, '');
       return val === '' ? 0 : Number(val);
@@ -922,8 +922,7 @@ function setVal(id, value, root = document) {
     const el = $(id, root);
     if (!el) {
       // Không tìm thấy element để set -> Log warning nhẹ
-      if (typeof logError === 'function')
-        logError(`[DOM] setVal: Không tìm thấy ID "${id}"`, 'warning');
+      if (typeof logError === 'function') logError(`[DOM] setVal: Không tìm thấy ID "${id}"`, 'warning');
       else console.warn(`[DOM] setVal missing: ${id}`);
       return false;
     }
@@ -950,6 +949,7 @@ function setNum(idOrEl, val) {
       rawNum = Number(val);
       if (isNaN(rawNum)) rawNum = 0;
     }
+    if (el.dataset && !el.dataset.initial) el.dataset.initial = String(rawNum);
 
     // SSOT: Lưu số gốc
     el.dataset.val = rawNum;
@@ -958,10 +958,7 @@ function setNum(idOrEl, val) {
     if (el.type === 'number') {
       el.value = rawNum;
     } else {
-      el.value =
-        typeof formatMoney === 'function'
-          ? formatMoney(rawNum)
-          : new Intl.NumberFormat('vi-VN').format(rawNum);
+      el.value = typeof formatMoney === 'function' ? formatMoney(rawNum) : new Intl.NumberFormat('vi-VN').format(rawNum);
     }
   } catch (e) {
     if (typeof logError === 'function') logError(`[DOM] setNum lỗi`, 'danger');
@@ -994,8 +991,7 @@ function getNum(target) {
       // --- TRƯỜNG HỢP LÀ ELEMENT ---
       // Ưu tiên 1: Dataset (SSOT)
       if (el.dataset.val !== undefined && el.dataset.val !== '' && el.dataset.val !== 'NaN') {
-        const val =
-          el.dataset.val !== undefined && el.dataset.val !== '' ? el.dataset.val : el.value;
+        const val = el.dataset.val !== undefined && el.dataset.val !== '' ? el.dataset.val : el.value;
         // Chỉ lấy số (0-9) để đảm bảo logic cũ không bị sai lệch
         rawVal = String(val || '').replace(/[^0-9]/g, '');
         return rawVal === '' ? 0 : Number(rawVal);
@@ -1029,11 +1025,7 @@ function getNum(target) {
 
 function getVals(target, optOrRoot = {}) {
   try {
-    const {
-      root = document,
-      silent = false,
-      ...rest
-    } = optOrRoot.nodeType === 1 ? { root: optOrRoot } : optOrRoot;
+    const { root = document, silent = false, ...rest } = optOrRoot.nodeType === 1 ? { root: optOrRoot } : optOrRoot;
     const els = resolveEls(target, root);
     // Nếu target là biến (không tìm thấy element) -> Trả về mảng chứa biến đó (Consistent with getVal)
     if (!els.length) {
@@ -1047,8 +1039,7 @@ function getVals(target, optOrRoot = {}) {
 
 function setVals(target, values, optOrRoot = {}) {
   try {
-    const { root = document, keepMissing = false } =
-      optOrRoot.nodeType === 1 ? { root: optOrRoot } : optOrRoot;
+    const { root = document, keepMissing = false } = optOrRoot.nodeType === 1 ? { root: optOrRoot } : optOrRoot;
     const els = resolveEls(target, root);
     if (!els.length) return 0;
 
@@ -1192,8 +1183,7 @@ function showLoading(show, text = 'Loading...') {
     if (!show) return;
     el = document.createElement('div');
     el.id = 'loading-overlay';
-    el.style.cssText =
-      'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.8);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+    el.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.8);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
     el.innerHTML = `<div class="spinner-border text-warning" role="status" style="width: 2.5rem; height: 2.5rem;"></div><div id="loading-text" class="mt-3 fw-bold text-primary small">${text}</div>`;
     document.body.appendChild(el);
   }
@@ -1728,12 +1718,7 @@ function logA(message, type = 'info', modeOrCallback = null, ...rest) {
       // onConfirm trong options → dùng thay cho tham số 3 khi là string mode
       confirmCallback = typeof _onConfirm === 'function' ? _onConfirm : null;
       // onDeny ưu tiên hơn; onCancel giữ làm alias tương thích ngược
-      denyCallback =
-        typeof _onDeny === 'function'
-          ? _onDeny
-          : typeof _onCancel === 'function'
-            ? _onCancel
-            : null;
+      denyCallback = typeof _onDeny === 'function' ? _onDeny : typeof _onCancel === 'function' ? _onCancel : null;
       swalExtra = remaining;
     }
   }
@@ -1823,7 +1808,7 @@ function logA(message, type = 'info', modeOrCallback = null, ...rest) {
       icon,
       title: String(message),
       showConfirmButton: false,
-      timer: 3500,
+      timer: A?.getConfig('toast_duration') || 3500,
       timerProgressBar: true,
       didOpen: (toast) => {
         toast.onmouseenter = Swal.stopTimer;
@@ -1853,16 +1838,7 @@ function logA(message, type = 'info', modeOrCallback = null, ...rest) {
   }
 
   // ── Confirm modal: 2 nút (Xác nhận | Hủy) hoặc 3 nút (Xác nhận | Từ chối | Hủy) ──
-  const {
-    title: customTitle = '',
-    confirmText = 'Xác nhận',
-    denyText = 'Từ chối',
-    cancelText = 'Hủy',
-    confirmBtn: okVariant = variant,
-    denyBtn: denyVariant = 'danger',
-    cancelBtn: noVariant = 'secondary',
-    ...extraSwal
-  } = swalExtra;
+  const { title: customTitle = '', confirmText = 'Xác nhận', denyText = 'Từ chối', cancelText = 'Hủy', confirmBtn: okVariant = variant, denyBtn: denyVariant = 'danger', cancelBtn: noVariant = 'secondary', ...extraSwal } = swalExtra;
   const confirmTitle = customTitle || (autoTitle === 'Thông báo' ? 'Xác nhận' : autoTitle);
 
   return Swal.fire({
@@ -2084,10 +2060,7 @@ const _LibraryLoadStatus = {
     },
   },
   pdfjs: {
-    urls: [
-      'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-      'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js',
-    ],
+    urls: ['https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js'],
     loaded: false,
     promise: null,
     check: () => typeof window.pdfjsLib !== 'undefined',
@@ -2146,10 +2119,7 @@ async function loadLibraryAsync(libName) {
       // Normalize URLs thành array (support cả string và array)
       const urlsToLoad = Array.isArray(libConfig.urls) ? libConfig.urls : [libConfig.urls];
 
-      log(
-        `📥 Loading library [${libName}] (${urlsToLoad.length} file${urlsToLoad.length > 1 ? 's' : ''})...`,
-        'info'
-      );
+      log(`📥 Loading library [${libName}] (${urlsToLoad.length} file${urlsToLoad.length > 1 ? 's' : ''})...`, 'info');
 
       // Load tất cả URLs song song
       const loadPromises = urlsToLoad.map((url) => {
@@ -2208,11 +2178,7 @@ async function loadLibraryAsync(libName) {
  */
 function preloadExportLibraries() {
   // Load bất đồng bộ (không chờ)
-  Promise.all([
-    loadLibraryAsync('xlsx'),
-    loadLibraryAsync('jspdf'),
-    loadLibraryAsync('autotable'),
-  ]).then(() => {
+  Promise.all([loadLibraryAsync('xlsx'), loadLibraryAsync('jspdf'), loadLibraryAsync('autotable')]).then(() => {
     log('📦 All export libraries pre-loaded', 'success');
   });
 }
@@ -2244,12 +2210,7 @@ function downloadTableData_Csv(tableId, fileName = 'table_data.csv') {
   URL.revokeObjectURL(url);
 }
 
-async function downloadTableData(
-  exportData,
-  type = 'pdf',
-  fileName = 'export_data',
-  viewText = 'Dữ liệu xuất file'
-) {
+async function downloadTableData(exportData, type = 'pdf', fileName = 'export_data', viewText = 'Dữ liệu xuất file') {
   // KIỂM TRA & LOAD LIBRARY TRƯỚC KHI DÙNG
   try {
     if (type === 'excel') {
@@ -2336,9 +2297,7 @@ function toggleTemplate(targetId) {
     // Trường hợp 1: Element đang "Sống" trên DOM -> Cần đưa vào Template
     const activeElement = getE(targetId);
     if (!activeElement) {
-      log(
-        `⚠️ Element #${targetId} không tồn tại trên DOM. Kiểm tra lại ID hoặc trạng thái hiện tại.`
-      );
+      log(`⚠️ Element #${targetId} không tồn tại trên DOM. Kiểm tra lại ID hoặc trạng thái hiện tại.`);
       return null;
     }
 
@@ -2663,15 +2622,9 @@ const HD = {
     const results = {};
 
     // Truy xuất danh sách field từ Mapping hệ thống
-    const fields =
-      window.A.DB.schema.FIELD_MAP && A.DB.schema.FIELD_MAP[collection]
-        ? Object.values(A.DB.schema.FIELD_MAP[collection])
-        : [];
+    const fields = window.A.DB.schema.FIELD_MAP && A.DB.schema.FIELD_MAP[collection] ? Object.values(A.DB.schema.FIELD_MAP[collection]) : [];
 
-    log(
-      `🔍 [getFormData] Thu thập dữ liệu từ collection: ${collection} (fields: ${fields.join(', ')})`,
-      'info'
-    );
+    log(`🔍 [getFormData] Thu thập dữ liệu từ collection: ${collection} (fields: ${fields.join(', ')})`, 'info');
 
     if (fields.length === 0) return results;
 
@@ -2815,7 +2768,8 @@ async function filterUpdatedData(containerId, root = document, isCollection = tr
     if (val === null || val === undefined) return '';
     const str = String(val).trim();
     // Chuẩn hoá số có format dấu phẩy ngàn: "1,500,000" → "1500000"
-    const stripped = str.replace(/,/g, '');
+    let stripped = str.replace(/[,.]/g, '');
+    if (stripped?.startsWith("'")) stripped = stripped.slice(1);
     if (stripped !== '' && !isNaN(stripped) && isFinite(stripped)) return stripped;
     return str;
   };
@@ -2825,10 +2779,7 @@ async function filterUpdatedData(containerId, root = document, isCollection = tr
   // Tìm field 'id' trong container: nếu không có hoặc giá trị rỗng
   // → đây là record mới → trả về toàn bộ data (bỏ qua so sánh data-initial).
   if (isCollection) {
-    const idEl =
-      container.querySelector('[data-field="id"]') ||
-      container.querySelector('[data-field="customer_id"]') ||
-      container.querySelector('[data-field="uid"]');
+    const idEl = container.querySelector('[data-field="id"]') || container.querySelector('[data-field="customer_id"]') || container.querySelector('[data-field="uid"]');
 
     const idValue = idEl ? _normalize(getFromEl(idEl)) : '';
     if (!idEl || !idValue || idValue === '0') {
@@ -2838,17 +2789,15 @@ async function filterUpdatedData(containerId, root = document, isCollection = tr
         if (!fieldName || SYSTEM_FIELDS.has(fieldName)) return;
         allData[fieldName] = getFromEl(el);
       });
-      log(
-        '⚡ [filterUpdatedData] No ID found, treating as new record. Returning all data.',
-        allData
-      );
-      return allData;
+      log('⚡ [filterUpdatedData] No ID found, treating as new record. Returning all data.', allData);
+      return [allData, Object.keys(allData).length];
     }
   }
 
   // ── NORMAL FLOW: So sánh data-initial để phát hiện thay đổi ─────────────
   const updatedData = {};
-  let hasRealChanges = false;
+  let hasRealChanges = 0;
+  let initialAttr;
 
   inputs.forEach((el) => {
     const rawCurrent = getFromEl(el);
@@ -2865,16 +2814,16 @@ async function filterUpdatedData(containerId, root = document, isCollection = tr
     // ── SO SÁNH CHẶT CHẼ ──────────────────────────────────────────────────
     // FIX: dùng `initialAttr !== undefined` thay vì `!initialAttr`
     //      để tránh false-positive khi data-initial="" (chuỗi rỗng hợp lệ)
-    const initialAttr = el.dataset.initial; // undefined nếu attribute chưa được set
+    initialAttr = el.dataset.initial; // undefined nếu attribute chưa được set
     const hasInitialSet = initialAttr !== undefined;
 
     let isChanged;
-    if (!hasInitialSet) {
+    if (!hasInitialSet && (rawCurrent || Number(rawCurrent) > 0)) {
       // data-initial chưa được inject → coi là đã thay đổi (an toàn hơn)
       isChanged = true;
-    } else {
+    } else if (hasInitialSet) {
       // So sánh sau khi chuẩn hoá cả hai vế
-      isChanged = _normalize(rawCurrent) !== _normalize(initialAttr);
+      isChanged = String(_normalize(rawCurrent)) !== String(_normalize(initialAttr));
     }
 
     // Luôn lấy field id/..._id (làm khoá tham chiếu); các field khác chỉ lấy khi thay đổi
@@ -2884,12 +2833,13 @@ async function filterUpdatedData(containerId, root = document, isCollection = tr
 
     // Có thay đổi thực sự = field không phải id thuần, và giá trị khác data-initial
     if (isChanged && !isExactId) {
-      hasRealChanges = true;
+      hasRealChanges++;
+      log(`🔍 [filterUpdatedData] Updated ${hasRealChanges} fields detected: ${fieldName}: ${rawCurrent} - ${initialAttr}`);
     }
   });
 
   // Chỉ trả về dữ liệu khi thực sự có field thay đổi (không tính field id thuần)
-  if (!hasRealChanges) return {};
-  log('🔍 [filterUpdatedData] Updated fields detected:', updatedData);
-  return updatedData;
+  if (!hasRealChanges) return [{}, 0];
+
+  return [updatedData, hasRealChanges];
 }

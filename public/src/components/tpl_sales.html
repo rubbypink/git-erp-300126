@@ -19,8 +19,8 @@
           <div
             class="card-header bg-primary bg-gradient bg-opacity-75 text-white py-1 d-flex justify-content-between align-items-center"
             onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto;">
-            <small class="fw-bold">BOOKING VỪA HOÀN THÀNH (14 ngày qua)</small>
-            <span class="badge  text-primary" id="badge-new-bk">0</span>
+            <small class="fw-bold">BOOKING CẦN XIN REVIEW</small>
+            <span class="badge text-primary" id="badge-new-bk">0</span>
           </div>
           <div class="card-body p-0 border-bottom" style="height: 38vh; overflow-y: auto;">
             <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-new-bk"
@@ -47,7 +47,7 @@
             class="card-header bg-danger bg-gradient bg-opacity-75 text-white py-1 d-flex justify-content-between align-items-center"
             onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto;">
             <small class="fw-bold">Booking Chờ Xác Nhận (Khách sạn)</small>
-            <span class="badge  text-danger" id="badge-missing-code">0</span>
+            <span class="badge text-danger" id="badge-missing-code">0</span>
           </div>
           <div class="card-body p-0 border-bottom" style="height: 38vh; overflow-y: auto;">
             <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-missing"
@@ -74,7 +74,7 @@
             class="card-header bg-primary  bg-gradient bg-opacity-75 text-white fw-bold py-1 d-flex justify-content-between align-items-center"
             onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto;">
             <small class="border-start border-4 border-info ps-2">Booking Sắp Đến (30 Ngày) </small>
-            <span class="badge  text-primary" id="badge-arrival-bk">0</span>
+            <span class="badge text-primary" id="badge-arrival-bk">0</span>
           </div>
           <div class="card-body p-0 border-bottom" style="height: 38vh; overflow-y: auto;">
             <table class="table table-sm table-hover table-bordered small mb-0 text-center" id="tbl-dash-arrival-bk"
@@ -158,6 +158,10 @@
                 title="Tính lại tổng tiền booking">
                 <i class="fa-solid fa-calculator me-2"></i> Tính lại Tổng
               </a></li>
+            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="A.BookingOverview.open(getVal('BK_ID'))"
+              title="Xem tổng quan booking">
+              <i class="fa-solid fa-eye me-2"></i> Booking Overview
+            </a></li>
           </ul>
         </div>
       </div>

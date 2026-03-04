@@ -15,6 +15,15 @@ var detailRowCount = 0;
  */
 window.loadBookingToUI = function (bkData, detailsData) {
   if (!bkData) return;
+
+  // ── StateProxy: suppress auto-binding during form population ───────────
+  // Tạm ngưng hook setToEl/setNum để tránh 500+ proxy op + log khi render.
+  // Proxy sẽ được khởi tạo LAZY qua _onDelegatedFocusIn khi user focus field.
+  if (window.StateProxy) {
+    StateProxy.clearSession();
+    StateProxy.suppressAutoBinding();
+  }
+
   try {
     log('Loading Booking...:', detailsData);
 
@@ -22,16 +31,13 @@ window.loadBookingToUI = function (bkData, detailsData) {
     let custSource = '';
 
     // Get phone from booking (handle both object and array formats for compatibility)
-    const phone =
-      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.customer_phone : bkData[5];
+    const phone = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.customer_phone : bkData[5];
 
     const phoneStr = phone ? String(phone).replace(/^'/, '').trim() : '';
 
     // Find customer by phone to get source
     if (phoneStr !== '' && window.APP_DATA) {
-      const custRow = Object.values(APP_DATA.customers ?? {}).find(
-        (c) => c && c.phone && String(c.phone).includes(phoneStr)
-      );
+      const custRow = Object.values(APP_DATA.customers ?? {}).find((c) => c && c.phone && String(c.phone).includes(phoneStr));
       if (custRow) {
         custSource = custRow.source || '';
       }
@@ -42,30 +48,19 @@ window.loadBookingToUI = function (bkData, detailsData) {
     // --- POPULATE BOOKING HEADER FIELDS ---
     // Using object format field names directly
     const bookingId = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.id : bkData[0];
-    const createdDate =
-      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.created_at : bkData[16];
-    const custName =
-      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.customer_full_name : bkData[2];
-    const custPhone =
-      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.customer_phone : bkData[3];
-    const startDate =
-      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.start_date : bkData[4];
-    const endDate =
-      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.end_date : bkData[5];
+    const createdDate = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.created_at : bkData[16];
+    const custName = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.customer_full_name : bkData[2];
+    const custPhone = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.customer_phone : bkData[3];
+    const startDate = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.start_date : bkData[4];
+    const endDate = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.end_date : bkData[5];
     const adults = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.adults : bkData[6];
-    const children =
-      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.children : bkData[7];
-    const totalAmount =
-      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.total_amount : bkData[8];
-    const status =
-      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.status : bkData[15];
-    const paymentMethod =
-      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.payment_method : bkData[11];
-    const paymentDueDate =
-      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.payment_due_date : bkData[12];
+    const children = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.children : bkData[7];
+    const totalAmount = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.total_amount : bkData[8];
+    const status = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.status : bkData[15];
+    const paymentMethod = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.payment_method : bkData[11];
+    const paymentDueDate = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.payment_due_date : bkData[12];
     const note = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.note : bkData[13];
-    const staffId =
-      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.staff_id : bkData[14];
+    const staffId = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.staff_id : bkData[14];
 
     setVal('BK_ID', bookingId);
     setVal('BK_Date', createdDate);
@@ -94,11 +89,7 @@ window.loadBookingToUI = function (bkData, detailsData) {
     detailRowCount = 0;
 
     // Chuẩn hóa detailsData về mảng: hỗ trợ cả Array và Object format {docId: doc}
-    const detailsArr = Array.isArray(detailsData)
-      ? detailsData
-      : detailsData && typeof detailsData === 'object'
-        ? Object.values(detailsData)
-        : [];
+    const detailsArr = Array.isArray(detailsData) ? detailsData : detailsData && typeof detailsData === 'object' ? Object.values(detailsData) : [];
 
     if (detailsArr.length > 0) {
       // Sắp xếp chi tiết theo thứ tự service_type và check_in
@@ -113,17 +104,9 @@ window.loadBookingToUI = function (bkData, detailsData) {
 
     calcGrandTotal();
 
-    // StateProxy v3: beginEdit = snapshot baseline + install lazy collection proxy
-    if (window.StateProxy) {
-      StateProxy.clearSession(); // discard any previous form's tracking
-      const bk_id = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.id : bkData[0];
-      if (bk_id) StateProxy.beginEdit('bookings', bk_id);
-      // detailsArr đã được normalize từ detailsData ở trên (hỗ trợ cả Array & Object format)
-      detailsArr.forEach((row) => {
-        const sid = typeof row === 'object' && !Array.isArray(row) ? row.id : row[0];
-        if (sid) StateProxy.beginEdit('operator_entries', sid);
-      });
-    }
+    // ── StateProxy: KHÔNG gọi beginEdit() eagerly nữa ─────────────────────
+    // Proxy sẽ được khởi tạo LAZY bởi _onDelegatedFocusIn khi user focus field.
+    // Ưu điểm: 0 proxy op lúc render, baseline snapshot chính xác hơn.
 
     // Switch to form tab
     try {
@@ -135,6 +118,9 @@ window.loadBookingToUI = function (bkData, detailsData) {
     }
   } catch (e) {
     log('ERROR in loadBookingToUI: ' + e.message, 'error');
+  } finally {
+    // ── Luôn resume auto-binding dù có lỗi hay không ───────────────────
+    if (window.StateProxy) StateProxy.resumeAutoBinding();
   }
 };
 
@@ -212,8 +198,7 @@ window.fillFormFromSearch = function (res) {
     loadBookingToUI(bkData, detailsData);
     const sourceMsg = res.source === 'local' ? ' (⚡ Local)' : ' (🐢 Database)';
     const bookingId = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.id : bkData[0];
-    const custName =
-      typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.customer_full_name : bkData[2];
+    const custName = typeof bkData === 'object' && !Array.isArray(bkData) ? bkData.customer_full_name : bkData[2];
     log(`Loaded Booking: ${bookingId} - ${custName}${sourceMsg}`, 'success');
   } else {
     logA('System error: Cannot display data in form.', 'error');
@@ -237,10 +222,7 @@ function addDetailRow(data = null) {
 
   // Options for suppliers
   const suppliers = lists.supplier || [];
-  const optsSupplier =
-    suppliers.length > 0
-      ? suppliers.map((s) => `<option value="${s}">${s}</option>`).join('')
-      : `<option value="">(No suppliers)</option>`;
+  const optsSupplier = suppliers.length > 0 ? suppliers.map((s) => `<option value="${s}">${s}</option>`).join('') : `<option value="">(No suppliers)</option>`;
 
   // 2. BUILD HTML TABLE ROW
   const tr = document.createElement('tr');
@@ -375,9 +357,7 @@ async function onSupplierChange(idx) {
   const supplier = tr.querySelector('select[data-field="supplier"]').value;
   const service = tr.querySelector('select[data-field="service_name"]').value;
   const type = tr.querySelector('select[data-field="service_type"]').value;
-  log(
-    `Fetching prices for service: ${service}, date: ${useDate}, supplier: ${supplier}, type: ${type}`
-  );
+  log(`Fetching prices for service: ${service}, date: ${useDate}, supplier: ${supplier}, type: ${type}`);
   if (service && useDate && type) {
     if (type === 'Phòng') {
       const hotel = tr.querySelector('select[data-field="hotel_name"]').value;
@@ -414,9 +394,7 @@ function updateLocationList(idx) {
   const allLocs = [...new Set([...hotels, ...others])];
   const elLoc = getE(`row-${idx}`).querySelector('.d-loc');
   let currentVal = getVal('.d-loc', getE(`row-${idx}`));
-  elLoc.innerHTML =
-    '<option value="">-</option>' +
-    allLocs.map((x) => `<option value="${x}">${x}</option>`).join('');
+  elLoc.innerHTML = '<option value="">-</option>' + allLocs.map((x) => `<option value="${x}">${x}</option>`).join('');
   setVal('.d-loc', currentVal, getE(`row-${idx}`));
 }
 // D. Hàm Fill Service Name / Room Type (CORE LOGIC)
@@ -445,9 +423,7 @@ function updateServiceNameList(idx) {
       .map((r) => r[1]); // Cột 1 là Tên
   }
   const currentVal = elName.value;
-  elName.innerHTML =
-    '<option value="">-</option>' +
-    options.map((x) => `<option value="${x}">${x}</option>`).join('');
+  elName.innerHTML = '<option value="">-</option>' + options.map((x) => `<option value="${x}">${x}</option>`).join('');
   // Cố gắng giữ lại giá trị cũ nếu có trong list mới
   if (options.includes(currentVal)) elName.value = currentVal;
 }

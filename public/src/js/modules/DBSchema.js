@@ -253,6 +253,30 @@ export const DB_SCHEMA = {
         initial: 'Đặt Lịch',
         dataSource: 'lists.status',
       },
+      {
+        index: 16,
+        name: 'note_internal',
+        displayNameEng: 'Internal Note',
+        displayName: 'Ghi chú nội bộ',
+        type: 'text',
+        tag: 'input',
+        attrs: [],
+        class: '',
+        placeholder: 'Ghi chú thêm...',
+        validation: {
+          maxLength: 1000,
+        },
+      },
+      {
+        index: 17,
+        name: 'history',
+        displayNameEng: 'History Log',
+        displayName: 'Lịch sử',
+        type: 'text',
+        tag: 'input',
+        attrs: ['readonly'],
+        class: '',
+      },
     ],
   },
 
@@ -330,8 +354,7 @@ export const DB_SCHEMA = {
         },
         dataSource: 'serviceNames',
         dependsOn: ['service_type', 'hotel_name'],
-        description:
-          'Depends on service_type and hotel_name - if Phòng: use hotelMatrix[hotel].slice(2), else use serviceMatrix',
+        description: 'Depends on service_type and hotel_name - if Phòng: use hotelMatrix[hotel].slice(2), else use serviceMatrix',
       },
       {
         index: 5,
@@ -1679,8 +1702,7 @@ export const DB_SCHEMA = {
     displayNameEng: 'Hotel Price Schedule',
     displayName: 'Bảng Giá Khách Sạn',
     primaryKey: 'id',
-    description:
-      'Bảng giá KS theo NCC × Hotel × Năm. priceData = flat-map {roomId_rateId_periodId_pkgId: number}.',
+    description: 'Bảng giá KS theo NCC × Hotel × Năm. priceData = flat-map {roomId_rateId_periodId_pkgId: number}.',
     fields: [
       {
         index: 0,
@@ -1755,8 +1777,7 @@ export const DB_SCHEMA = {
         tag: 'textarea',
         attrs: ['readonly'],
         class: '',
-        description:
-          'Firestore: priceData — {roomId_rateId_periodId_pkgId: number}. Chỉnh qua component at-tbl-hotel-price.',
+        description: 'Firestore: priceData — {roomId_rateId_periodId_pkgId: number}. Chỉnh qua component at-tbl-hotel-price.',
       },
       {
         index: 6,
@@ -1767,8 +1788,7 @@ export const DB_SCHEMA = {
         tag: 'textarea',
         attrs: [],
         class: '',
-        description:
-          'Firestore: info.viewConfig — {periods: string[], packages: string[], priceTypes: string[]}',
+        description: 'Firestore: info.viewConfig — {periods: string[], packages: string[], priceTypes: string[]}',
       },
       {
         index: 7,
@@ -1948,9 +1968,7 @@ export const DB_SCHEMA = {
     isSecondaryIndex: true,
     source: 'booking_details',
     groupBy: 'booking_id',
-    description:
-      'Secondary index của booking_details, nhóm theo booking_id. ' +
-      'APP_DATA.booking_details_by_booking[bookingId] → BookingDetail[]',
+    description: 'Secondary index của booking_details, nhóm theo booking_id. ' + 'APP_DATA.booking_details_by_booking[bookingId] → BookingDetail[]',
   },
 
   operator_entries_by_booking: {
@@ -1959,9 +1977,7 @@ export const DB_SCHEMA = {
     isSecondaryIndex: true,
     source: 'operator_entries',
     groupBy: 'booking_id',
-    description:
-      'Secondary index của operator_entries, nhóm theo booking_id. ' +
-      'APP_DATA.operator_entries_by_booking[bookingId] → OperatorEntry[]',
+    description: 'Secondary index của operator_entries, nhóm theo booking_id. ' + 'APP_DATA.operator_entries_by_booking[bookingId] → OperatorEntry[]',
   },
 
   transactions_by_booking: {
@@ -1970,9 +1986,7 @@ export const DB_SCHEMA = {
     isSecondaryIndex: true,
     source: 'transactions',
     groupBy: 'booking_id',
-    description:
-      'Secondary index của transactions, nhóm theo booking_id. ' +
-      'APP_DATA.transactions_by_booking[bookingId] → Transaction[]',
+    description: 'Secondary index của transactions, nhóm theo booking_id. ' + 'APP_DATA.transactions_by_booking[bookingId] → Transaction[]',
   },
 
   transactions_by_fund: {
@@ -1981,9 +1995,7 @@ export const DB_SCHEMA = {
     isSecondaryIndex: true,
     source: 'transactions',
     groupBy: 'fund_source',
-    description:
-      'Secondary index của transactions, nhóm theo fund_source. ' +
-      'APP_DATA.transactions_by_fund[fundAccountId] → Transaction[]',
+    description: 'Secondary index của transactions, nhóm theo fund_source. ' + 'APP_DATA.transactions_by_fund[fundAccountId] → Transaction[]',
   },
 
   FIELD_MAP: function (collectionName) {
@@ -2041,9 +2053,7 @@ export const DB_SCHEMA = {
 
   getCollectionNames: function (collectionNames) {
     if (!collectionNames || collectionNames.length === 0) {
-      collectionNames = Object.keys(this).filter(
-        (key) => (typeof this[key] === 'object' && this[key].fields) || this[key].isSecondaryIndex
-      );
+      collectionNames = Object.keys(this).filter((key) => (typeof this[key] === 'object' && this[key].fields) || this[key].isSecondaryIndex);
     }
     const map = {};
     for (let coll of collectionNames) {
@@ -2158,13 +2168,9 @@ export function createFormBySchema(collectionName, formId) {
   if (!fields || fields.length === 0) return '';
 
   // Separate fields into categories
-  const editableFields = fields.filter(
-    (f) => !f.attrs?.includes('readonly') && !f.attrs?.includes('hidden')
-  );
+  const editableFields = fields.filter((f) => !f.attrs?.includes('readonly') && !f.attrs?.includes('hidden'));
   const readonlyFields = fields.filter((f) => f.attrs?.includes('readonly'));
-  const hiddenFields = fields.filter(
-    (f) => f.attrs?.includes('hidden') || f.class?.includes('d-none')
-  );
+  const hiddenFields = fields.filter((f) => f.attrs?.includes('hidden') || f.class?.includes('d-none'));
 
   // Start building form HTML
   // IMPORTANT: data-collection must store the raw collection name (not translated),
@@ -2258,15 +2264,20 @@ export function createFormBySchema(collectionName, formId) {
   `;
 
   html += `</form>`;
+  const frag = document.createDocumentFragment(); // Dummy operation to hint DOM update
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = html;
+  frag.appendChild(tempDiv.firstChild);
 
   // Auto-populate dynamic selects after DOM is updated.
   // _setupFormActions is no longer needed here — handled by document-level delegation
   // (see _initDocumentFormActions, called once at module load).
   setTimeout(() => {
     _autoPopulateDynamicSelects(formId);
+    _initDocumentFormActions(); // No-op if already initialized, safe to call multiple times
   }, 100);
 
-  return html;
+  return frag.firstChild; // Return the form element
 }
 
 /**
@@ -2307,8 +2318,7 @@ function _getDataSourceArray(dataSourceName) {
         const itemId = item.id || item.uid || item.name || key;
 
         // Extract display text: try name, full_name, display_name, service_name
-        const itemName =
-          item.name || item.full_name || item.display_name || item.service_name || itemId;
+        const itemName = item.name || item.full_name || item.display_name || item.service_name || itemId;
 
         // Create standardized item object
         const convertedItem = {
@@ -2407,8 +2417,7 @@ function _initDocumentFormActions() {
       }
     } catch (err) {
       console.error(`[DBSchema] db-action error (action="${action}", form="${formId}"):`, err);
-      if (typeof log === 'function')
-        log(`❌ Lỗi khi thực hiện "${action}": ${err.message}`, 'error');
+      if (typeof log === 'function') log(`❌ Lỗi khi thực hiện "${action}": ${err.message}`, 'error');
     }
   });
 }
@@ -2492,17 +2501,11 @@ function _autoPopulateDynamicSelects(formId) {
  * @param {string} selectName - Name of the service_name select element
  */
 function _populateServiceNameSelect(form, selectName) {
-  const serviceNameSelect = form
-    ? form.querySelector(`[name="${selectName}"]`)
-    : document.querySelector(`[name="${selectName}"]`);
+  const serviceNameSelect = form ? form.querySelector(`[name="${selectName}"]`) : document.querySelector(`[name="${selectName}"]`);
   if (!serviceNameSelect) return;
 
-  const serviceTypeField = form
-    ? form.querySelector('[name="service_type"]')
-    : document.querySelector('[name="service_type"]');
-  const hotelNameField = form
-    ? form.querySelector('[name="hotel_name"]')
-    : document.querySelector('[name="hotel_name"]');
+  const serviceTypeField = form ? form.querySelector('[name="service_type"]') : document.querySelector('[name="service_type"]');
+  const hotelNameField = form ? form.querySelector('[name="hotel_name"]') : document.querySelector('[name="hotel_name"]');
 
   if (!serviceTypeField || !hotelNameField) return;
 
@@ -2605,11 +2608,7 @@ function _getSelectOptions(field, collectionName) {
   }
 
   // PRIORITY 2: Standard dataSource (with path support)
-  if (
-    field.dataSource &&
-    field.dataSource !== 'hotelLocations' &&
-    field.dataSource !== 'serviceNames'
-  ) {
+  if (field.dataSource && field.dataSource !== 'hotelLocations' && field.dataSource !== 'serviceNames') {
     const data = _getDataByPath(field.dataSource);
     const dataArray = _convertObjectToArray(data);
 
@@ -2638,9 +2637,7 @@ function _getHotelLocationOptions() {
   const lists = window.APP_DATA?.lists || {};
 
   // Get hotel names from matrix (column 0)
-  const hotelNames = (lists.hotelMatrix || [])
-    .map((row) => (row && row[0] ? row[0] : null))
-    .filter((name) => name !== null && name !== '');
+  const hotelNames = (lists.hotelMatrix || []).map((row) => (row && row[0] ? row[0] : null)).filter((name) => name !== null && name !== '');
 
   // Get other locations
   const otherLocs = lists.locOther || [];
@@ -2768,16 +2765,7 @@ function _createFieldGroup(field, collectionName) {
       } else if (typeof opt === 'object') {
         // Object option: try to get id/uid and display name
         optValue = opt.id || opt.uid || opt.code || opt.value || '';
-        optText =
-          opt.user_name ||
-          opt.full_name ||
-          opt.name ||
-          opt.displayNameEng ||
-          opt.displayName ||
-          opt.account ||
-          opt.value ||
-          optValue ||
-          '';
+        optText = opt.user_name || opt.full_name || opt.name || opt.displayNameEng || opt.displayName || opt.account || opt.value || optValue || '';
       } else {
         // Fallback
         optValue = String(opt);
@@ -2934,10 +2922,10 @@ async function deleteFormDataSchema(formId) {
  *   ...
  * });
  */
-async function loadFormDataSchema(formId, idorData) {
+export async function loadFormDataSchema(formId, idorData = null) {
   const form = document.getElementById(formId);
-  if (!form) {
-    console.error(`Form with ID '${formId}' not found`);
+  if (!form || !idorData) {
+    showAlert(`Form with ID '${formId}' not found or no data provided`, 'error');
     return;
   }
 
@@ -2951,43 +2939,35 @@ async function loadFormDataSchema(formId, idorData) {
       return;
     }
 
-    console.log(`🔍 Looking for ID '${idorData}' in collection '${collectionName}'`);
-
     // 1. Try to find in APP_DATA first
-    const collectionObjName = `${collectionName}_obj`;
-    if (window.APP_DATA && window.APP_DATA[collectionObjName]) {
-      const collection = window.APP_DATA[collectionObjName];
-      data = collection.find((item) => item.id === idorData || item.uid === idorData);
-
-      if (data) {
-        console.log(`✅ Found in APP_DATA.${collectionObjName}:`, data);
+    if (window.APP_DATA && window.APP_DATA[collectionName]) {
+      const doc = window.APP_DATA[collectionName][idorData];
+      if (doc) {
+        console.log(`✅ Found in APP_DATA.${collectionName}:`, doc);
+        data = { ...doc };
       }
     }
-
     // 2. If not found in APP_DATA, query Firestore
-    if (!data && window.db) {
+    if (!data && A.DB.db) {
       try {
         console.log(`📡 Querying Firestore: ${collectionName}/${idorData}`);
 
         // Firebase query pseudo-code
-        const docRef = window.db.collection(collectionName).doc(idorData);
+        const docRef = A.DB.db.collection(collectionName).doc(idorData);
         const docSnap = await docRef.get();
 
         if (docSnap.exists()) {
           data = { id: docSnap.id, ...docSnap.data() };
           console.log(`✅ Loaded from Firestore:`, data);
         } else {
-          console.warn(`⚠️ Document '${idorData}' not found in Firestore`);
           logA(`❌ No data found for ID: ${idorData}`, 'warning', 'alert');
           return;
         }
       } catch (error) {
-        console.error(`🚨 Error loading from Firestore:`, error);
         logA(`❌ Error loading data: ${error.message}`, 'error', 'alert');
         return;
       }
-    } else if (!data && !window.db) {
-      console.error(`⚠️ Firestore not available and data not in APP_DATA`);
+    } else if (!data && !A.DB.db) {
       logA(`❌ No data found for ID: ${idorData}`, 'warning', 'alert');
       return;
     }
@@ -2999,10 +2979,6 @@ async function loadFormDataSchema(formId, idorData) {
   }
   // ===== INVALID PARAMETER =====
   else {
-    console.error(
-      `Invalid parameter. Expected string (ID) or object (data), got:`,
-      typeof idorData
-    );
     logA(`❌ Invalid parameter type: ${typeof idorData}`, 'warning', 'alert');
     return;
   }
@@ -3024,26 +3000,9 @@ async function loadFormDataSchema(formId, idorData) {
       fieldsPopulated++;
     }
   });
-
-  console.log(`✅ Form '${formId}' loaded successfully! (${fieldsPopulated} fields populated)`);
-  console.log(`📋 Loaded data:`, data);
-  logA(`✅ Data loaded into form (${fieldsPopulated} fields, "warning", "alert")`);
+  form.dataset.item = data.id || ''; // Store loaded ID in form dataset for reference
 }
 
-// window.loadFormDataSchema exposed via _setupFormActions event delegation
-
-/**
- * Helper: Handle Load button click (prompts user for ID)
- *
- * Called by Load button in createFormBySchema
- *
- * @param {string} formId - ID of the form
- *
- * @example
- * // User clicks Load button
- * // System prompts for ID
- * // Loads data into form
- */
 function handleLoadFormDataSchema(formId) {
   const form = document.getElementById(formId);
   if (!form) {
@@ -3132,16 +3091,7 @@ function populateSelectFromSource(fieldName, dataSourceName) {
       itemText = item;
     } else if (typeof item === 'object') {
       // Try common display name properties
-      itemText =
-        item.user_name ||
-        item.full_name ||
-        item.name ||
-        item.displayNameEng ||
-        item.displayName ||
-        item.account ||
-        item.value ||
-        itemId ||
-        '';
+      itemText = item.user_name || item.full_name || item.name || item.displayNameEng || item.displayName || item.account || item.value || itemId || '';
     }
 
     if (itemId) {
@@ -3151,11 +3101,8 @@ function populateSelectFromSource(fieldName, dataSourceName) {
     }
   });
 
-  console.log(
-    `✅ Populated '${fieldName}' with ${dataArray.length} options from '${dataSourceName}'`
-  );
+  console.log(`✅ Populated '${fieldName}' with ${dataArray.length} options from '${dataSourceName}'`);
 }
-
 const COL_INDEX = {
   // BOOKINGS
   M_ID: 0,

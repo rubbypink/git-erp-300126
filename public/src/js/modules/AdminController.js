@@ -87,9 +87,7 @@ class FirestoreDataTable extends HTMLElement {
                 .toolbar { margin-top: 8px; display: flex; justify-content: space-between; align-items: center; }
             </style>`;
 
-    const headerHtml =
-      this._headers.map((h) => `<th>${h}<div class="resizer"></div></th>`).join('') +
-      '<th style="width:30px">#</th>';
+    const headerHtml = this._headers.map((h) => `<th>${h}<div class="resizer"></div></th>`).join('') + '<th style="width:30px">#</th>';
 
     // --- KHU VỰC SỬA ĐỔI QUAN TRỌNG ---
     // 1. Tạo HTML Input KHÔNG CÓ value="..."
@@ -163,9 +161,7 @@ class FirestoreDataTable extends HTMLElement {
         this.render();
       });
     });
-    this.shadowRoot
-      .getElementById('paste-zone')
-      .addEventListener('paste', (e) => this._handlePaste(e));
+    this.shadowRoot.getElementById('paste-zone').addEventListener('paste', (e) => this._handlePaste(e));
     this.shadowRoot.querySelectorAll('.resizer').forEach((r) => {
       r.addEventListener('mousedown', (e) => {
         e.preventDefault();
@@ -185,8 +181,7 @@ class FirestoreDataTable extends HTMLElement {
     });
   }
 }
-if (!customElements.get('table-db-data'))
-  customElements.define('table-db-data', FirestoreDataTable);
+if (!customElements.get('table-db-data')) customElements.define('table-db-data', FirestoreDataTable);
 
 // =============================================================================
 // PHẦN 2: LOGIC XỬ LÝ (Matrix Logic & Form Logic)
@@ -208,22 +203,17 @@ class MatrixLogic {
     // 2. Data Scan
     if (fetchedData.length > 0) {
       let autoHeaders = Object.keys(fetchedData[0]);
-      if (autoHeaders.includes('id'))
-        autoHeaders = ['id', ...autoHeaders.filter((h) => h !== 'id')];
+      if (autoHeaders.includes('id')) autoHeaders = ['id', ...autoHeaders.filter((h) => h !== 'id')];
       return autoHeaders;
     }
     // 3. User Input
-    const customInput = prompt(
-      `Collection [${path}] chưa có cấu hình. Nhập các cột (cách nhau dấu phẩy):`,
-      'id,name,description'
-    );
+    const customInput = prompt(`Collection [${path}] chưa có cấu hình. Nhập các cột (cách nhau dấu phẩy):`, 'id,name,description');
     if (customInput) return customInput.split(',').map((s) => s.trim());
     return ['id', 'name'];
   }
 
   async render(container, path) {
-    container.innerHTML =
-      '<div class="text-center mt-5"><div class="spinner-border text-primary"></div><p>Đang tải Matrix...</p></div>';
+    container.innerHTML = '<div class="text-center mt-5"><div class="spinner-border text-primary"></div><p>Đang tải Matrix...</p></div>';
     try {
       const snapshot = await this.db.collection(path).limit(50).get();
       let data = [];
@@ -262,8 +252,7 @@ class MatrixLogic {
   async decodeSubCollections(path, targetField = 'rooms') {
     const table = document.querySelector('#adm-matrix-table');
     if (!table) return;
-    if (!table._headers.includes(targetField))
-      return logA(`⚠️ Cột [${targetField}] không tồn tại.`, 'warning', 'alert');
+    if (!table._headers.includes(targetField)) return logA(`⚠️ Cột [${targetField}] không tồn tại.`, 'warning', 'alert');
 
     const data = table.getData();
     const btnDecode = document.getElementById('adm-btn-decode');
@@ -274,11 +263,7 @@ class MatrixLogic {
         data.map(async (row) => {
           if (!row.id) return row;
           try {
-            const subSnap = await this.db
-              .collection(path)
-              .doc(row.id)
-              .collection(targetField)
-              .get();
+            const subSnap = await this.db.collection(path).doc(row.id).collection(targetField).get();
             if (!subSnap.empty) {
               const subIds = subSnap.docs.map((d) => d.id);
               row[targetField] = `sub: ${subIds.join(', ')}`;
@@ -309,10 +294,7 @@ class MatrixLogic {
         Object.keys(row).forEach((key) => {
           if (String(row[key]).trim().startsWith('sub:')) return;
           let val = row[key];
-          if (
-            typeof val === 'string' &&
-            (val.trim().startsWith('{') || val.trim().startsWith('['))
-          ) {
+          if (typeof val === 'string' && (val.trim().startsWith('{') || val.trim().startsWith('['))) {
             try {
               newRow[key] = JSON.parse(val);
             } catch (e) {
@@ -329,9 +311,7 @@ class MatrixLogic {
       else {
         const batch = this.db.batch();
         cleanData.forEach((item) => {
-          const ref = item.id
-            ? this.db.collection(path).doc(item.id)
-            : this.db.collection(path).doc();
+          const ref = item.id ? this.db.collection(path).doc(item.id) : this.db.collection(path).doc();
           batch.set(ref, item, { merge: true });
         });
         await batch.commit();
@@ -350,11 +330,7 @@ class MatrixLogic {
               .map((s) => s.trim())
               .filter((s) => s);
             subIds.forEach((subId) => {
-              const subRef = this.db
-                .collection(path)
-                .doc(row.id)
-                .collection(key)
-                .doc(subId.replace(/\//g, '-'));
+              const subRef = this.db.collection(path).doc(row.id).collection(key).doc(subId.replace(/\//g, '-'));
               batchSub.set(subRef, { id: subId, parentId: row.id }, { merge: true });
               countSub++;
             });
@@ -374,8 +350,7 @@ class FormLogic {
     this.db = db;
   }
   async render(container, path) {
-    container.innerHTML =
-      '<div class="text-center mt-5"><div class="spinner-border text-warning"></div><p>Đang tải cấu hình...</p></div>';
+    container.innerHTML = '<div class="text-center mt-5"><div class="spinner-border text-warning"></div><p>Đang tải cấu hình...</p></div>';
     try {
       const snapshot = await this.db.collection(path).limit(1).get();
       if (snapshot.empty) throw new Error('Collection trống.');
@@ -523,9 +498,7 @@ class AdminController {
       // Lọc dữ liệu từ currentData dựa vào filter value
       const filtered = this.currentData.filter((row) => {
         // Kiểm tra nếu bất kỳ field nào chứa filter value
-        return Object.values(row).some((val) =>
-          String(val).toLowerCase().includes(filterValue.toLowerCase())
-        );
+        return Object.values(row).some((val) => String(val).toLowerCase().includes(filterValue.toLowerCase()));
       });
 
       // Update table với dữ liệu đã lọc
@@ -618,10 +591,7 @@ class AdminController {
         const type = path.includes('settings') ? 'FORM' : 'MATRIX';
         const coll = path.split('/')[0];
         const matchedConfig = this.collections.find((c) => c.path === coll);
-        getE('tbl-db-data-admin')?.setAttribute(
-          'data-collection',
-          matchedConfig ? matchedConfig.path : path
-        );
+        getE('tbl-db-data-admin')?.setAttribute('data-collection', matchedConfig ? matchedConfig.path : path);
         this.isFilterMode = false;
 
         // Load dữ liệu
@@ -675,10 +645,7 @@ class AdminController {
 
     btnDecode.addEventListener('click', () => {
       if (this.currentStrategy && this.currentStrategy instanceof MatrixLogic) {
-        const field = prompt(
-          'Nhập tên sub-collection cần decode (ví dụ: rooms, details):',
-          'rooms'
-        );
+        const field = prompt('Nhập tên sub-collection cần decode (ví dụ: rooms, details):', 'rooms');
         if (field) this.currentStrategy.decodeSubCollections(this.currentPath, field);
       }
     });
@@ -700,10 +667,7 @@ class AdminController {
       if (listId.length === 0) return logA('Không tìm thấy ID để xóa!', 'warning', 'alert');
 
       // Xác nhận xóa
-      const confirmMsg =
-        listId.length === 1
-          ? `Bạn có chắc chắn muốn xóa ID: ${listId[0]}?`
-          : `Bạn có chắc chắn muốn xóa ${listId.length} bản ghi?`;
+      const confirmMsg = listId.length === 1 ? `Bạn có chắc chắn muốn xóa ID: ${listId[0]}?` : `Bạn có chắc chắn muốn xóa ${listId.length} bản ghi?`;
 
       if (confirm(confirmMsg)) {
         if (typeof A === 'undefined' || !A.DB) {
@@ -795,19 +759,20 @@ class AdminController {
    */
   async openAdminSettings() {
     try {
-      if (this._initialized) {
+      if (this._initialized && this.modal) {
         // Nếu đã khởi tạo rồi, chỉ cần mở modal và reload config
-        if (this.modal) {
-          this.modal.render(await this._getLayout(), 'Admin Console (v3.2 Full Fix)');
-          await this.initSettingsTab();
-          this._bindEvents();
-          this.modal.show();
-          // Reload config từ Firestore lên form
-          await A._syncConfigToForm();
-        }
+
+        this.modal.render(await this._getLayout(), 'Admin Console (v3.2 Full Fix)');
+        await this.initSettingsTab();
+        this._bindEvents();
+        this.modal.show();
+        // Reload config từ Firestore lên form
+        await A._syncConfigToForm();
+
         return;
       } else {
         // Chưa khởi tạo, gọi init để tải HTML và bind sự kiện
+        this._initialized = false; // Đảm bảo init sẽ chạy
         await this.init();
         if (this.modal) {
           this.modal.show();
@@ -818,11 +783,7 @@ class AdminController {
     } catch (error) {
       console.error('❌ Lỗi khi mở Modal Settings:', error);
       // Tích hợp thông báo Toast/Alert của hệ thống vào đây
-      showAlert(
-        'Không thể tải giao diện cài đặt. Vui lòng kiểm tra lại đường dẫn file!',
-        'warning',
-        'alert'
-      );
+      showAlert('Không thể tải giao diện cài đặt. Vui lòng kiểm tra lại đường dẫn file!', 'warning', 'alert');
     }
   }
 
@@ -854,12 +815,7 @@ class AdminController {
       throw error;
     }
   }
-  async runFieldMigration(
-    collection = 'operator_entries',
-    oldField = 'customer_name',
-    newField = 'customer_full_name',
-    type = 'move'
-  ) {
+  async runFieldMigration(collection = 'operator_entries', oldField = 'customer_name', newField = 'customer_full_name', type = 'move') {
     console.log(`[AdminController] Starting migration...`);
     const result = await this.changeFieldName(collection, oldField, newField);
     console.log(`[AdminController] Migration complete:`, result);
