@@ -173,7 +173,7 @@ function addDetailRow(data = null) {
     setVal('.d-code', data.ref_code, tr);
     setVal('.d-note', data.note, tr);
     calcRow(idx);
-    // Snapshot initial values so filterUpdatedData can detect only actual changes.
+    // Snapshot initial values so HD.filterUpdatedData can detect only actual changes.
     // Must run AFTER calcRow() so derived fields (nights, total) are also captured.
     tr.querySelectorAll('input, select').forEach((el) => {
       el.setAttribute('data-initial', el.value);
@@ -653,7 +653,7 @@ function autoSetOrCalcDate(start, end) {
  * @param {boolean} [update=false]
  *   - false (default): trả về toàn bộ dữ liệu (tạo mới)
  *   - true: chỉ trả về các phần có dữ liệu thực sự thay đổi (cập nhật)
- *           Dùng filterUpdatedData để phát hiện thay đổi.
+ *           Dùng HD.filterUpdatedData để phát hiện thay đổi.
  *           Trả về null nếu không có gì thay đổi.
  */
 window.getFormData = async function (update = false) {
@@ -722,11 +722,11 @@ window.getFormData = async function (update = false) {
       return { bookings, customer, booking_details };
     }
 
-    // ── 3. UPDATE MODE: dùng filterUpdatedData để phát hiện thay đổi ─
+    // ── 3. UPDATE MODE: dùng HD.filterUpdatedData để phát hiện thay đổi ─
 
     // 3a. Kiểm tra thay đổi riêng cho booking và customer (2 fieldset khác nhau)
-    const [bookingChanges, hasBookingChanges] = await filterUpdatedData('fs_booking_info');
-    const [customerChanges, hasCustomerChanges] = await filterUpdatedData('fs_customer_info');
+    const [bookingChanges, hasBookingChanges] = await HD.filterUpdatedData('fs_booking_info');
+    const [customerChanges, hasCustomerChanges] = await HD.filterUpdatedData('fs_customer_info');
 
     // 3b. Kiểm tra từng dòng detail — chỉ giữ row có thay đổi
     const detailRows = [...document.querySelectorAll('#detail-tbody tr')];
@@ -734,7 +734,7 @@ window.getFormData = async function (update = false) {
     for (let i = 0; i < detailRows.length; i++) {
       const tr = detailRows[i];
       if (!tr.id) continue;
-      const [rowChanges, hasRowChanges] = await filterUpdatedData(tr.id, $('#detail-tbody'));
+      const [rowChanges, hasRowChanges] = await HD.filterUpdatedData(tr.id, $('#detail-tbody'));
       if (hasRowChanges > 0) {
         changedDetails.push(booking_details[i]);
       }
@@ -1009,7 +1009,7 @@ getCustomerData = async function (update = false) {
       return null;
     }
     if (update) {
-      const [changes, hasChanges] = await filterUpdatedData(custFieldset);
+      const [changes, hasChanges] = await HD.filterUpdatedData(custFieldset);
       if (hasChanges) {
         // Xóa prefix "customer_" khỏi tên field trước khi trả về
         const normalized = {};

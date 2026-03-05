@@ -2274,7 +2274,7 @@ export function createFormBySchema(collectionName, formId) {
   // (see _initDocumentFormActions, called once at module load).
   setTimeout(() => {
     _autoPopulateDynamicSelects(formId);
-    _initDocumentFormActions(); // No-op if already initialized, safe to call multiple times
+    _setupFormActions(formId); // No-op if already initialized, safe to call multiple times
   }, 100);
 
   return frag.firstChild; // Return the form element
@@ -2423,7 +2423,7 @@ function _initDocumentFormActions() {
 }
 
 // Initialize immediately when module loads
-_initDocumentFormActions();
+// _initDocumentFormActions();
 
 /**
  * Helper: Auto-populate all dynamic selects in a form

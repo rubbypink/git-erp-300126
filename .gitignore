@@ -9,8 +9,7 @@ firebase-debug.*.log*
 
 # Firebase cache
 .firebase/
-
-# Firebase config
+.firebaserc.local
 
 # Uncomment this if you'd like others to create their own Firebase project.
 # For a team working on the same Firebase project(s), it is recommended to leave
@@ -47,6 +46,11 @@ build/Release
 # Dependency directories
 node_modules/
 v2/
+.github/
+.vscode/
+.idea/
+*.swp/
+
 
 # Optional npm cache directory
 .npm
@@ -72,31 +76,11 @@ v2/
 # Build output
 dist/
 
-# Dependencies
-node_modules/
-
-# Firebase
-.firebase/
-.firebaserc.local
-firebase-debug.log
-firestore-debug.log
-ui-debug.log
-database-debug.log
-
 # Environment
 .env
 .env.local
 .env.production
 
-# Editor
-.vscode/
-.idea/
-*.swp
-
 # OS
 .DS_Store
 Thumbs.db
-
-# Logs
-*.log
-npm-debug.log*

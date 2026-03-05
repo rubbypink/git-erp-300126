@@ -46,18 +46,7 @@ const BookingOverviewController = (function () {
       _modalRef = await A.UI.renderModal('tpl_booking_overview.html', `Tổng Quan Booking — ${bookingId}`);
       if (_modalRef) {
         _modalRef.setFooter(false); // Footer được tích hợp sẵn trong template
-
-        // ★ FIX: Override default modal-dialog sizing (max-content → responsive width)
         const modalEl = _modalRef._getEl();
-        // if (modalEl) {
-        //   const dialog = modalEl.querySelector('.modal-dialog');
-        //   if (dialog) {
-        //     dialog.style.width = '90vw';
-        //     dialog.style.maxWidth = '1200px';
-        //     dialog.style.minWidth = '320px';
-        //   }
-        // }
-
         _modalRef.show();
       }
 
@@ -232,6 +221,14 @@ const BookingOverviewController = (function () {
     // Sort theo thứ tự ưu tiên
     const sorted = _sortDetails(_detailsData);
     sorted.forEach((row) => _addDetailRow(row));
+    // tbody.addEventListener('dblclick', (e) => {
+    //   const tr = e.target.closest('tr');
+    //   if (!tr) return;
+    //   const dataId = tr?.dataset?.item;
+    //   showConfirm('Bạn có muốn chỉnh sửa dịch vụ này không?', () => {
+    //     A.UI.renderForm('booking_details', dataId);
+    //   });
+    // });
 
     // Cập nhật tổng
     _calcServicesTotal();
@@ -709,7 +706,7 @@ const BookingOverviewController = (function () {
     sorted.forEach((txn) => {
       const color = typeColors[txn.type] || 'secondary';
       html += `
-        <tr>
+        <tr class="align-middle" data-item="${txn.id || ''}">
           <td class="fw-bold small">${escapeHtml(txn.id || '—')}</td>
           <td class="text-center">${formatDateVN(txn.transaction_date) || '—'}</td>
           <td class="text-center"><span class="badge bg-${color}">${escapeHtml(txn.type || '—')}</span></td>
@@ -723,6 +720,14 @@ const BookingOverviewController = (function () {
         </tr>`;
     });
     tbody.innerHTML = html;
+    // tbody.addEventListener('dblclick', (e) => {
+    //   const tr = e.target.closest('tr');
+    //   if (!tr) return;
+    //   const dataId = tr?.dataset?.item;
+    //   showConfirm('Bạn có muốn chỉnh sửa dịch vụ này không?', () => {
+    //     A.UI.renderForm('transactions', dataId);
+    //   });
+    // });
   }
 
   // =========================================================================
@@ -764,7 +769,33 @@ const BookingOverviewController = (function () {
     const detailTbody = getE('bkov-detail-tbody');
     if (detailTbody) {
       detailTbody.addEventListener('change', _handleDetailChange);
+      detailTbody.addEventListener('dblclick', _handleTblDblClick);
     }
+    const transTbody = getE('bkov-txn-tbody');
+    if (transTbody) {
+      transTbody.addEventListener('dblclick', _handleTblDblClick);
+    }
+  }
+
+  function _handleTblDblClick(e) {
+    const tr = e.target.closest('tr');
+    if (!tr) return;
+    const dataId = tr?.dataset?.item;
+    if (!dataId) return;
+    const parentId = tr.closest('#bkov-detail-tbody') ? 'booking_details' : tr.closest('#bkov-txn-tbody') ? 'transactions' : null;
+    if (!parentId) return;
+    showConfirm('Bạn có muốn chỉnh sửa mục này không?', async () => {
+      if (parentId === 'booking_details') {
+        A.UI.renderForm(parentId, dataId);
+      } else {
+        // Dynamic import AccountantController and call openTransactionModal
+        const module = await import('/accountant/controller_accountant.js');
+        if (module && module.default) {
+          const AccountantCtrl = module.default;
+          await AccountantCtrl.openTransactionModal('IN', dataId); // Pass transaction ID for editing
+        }
+      }
+    });
   }
 
   function _handleClick(e) {
@@ -877,17 +908,25 @@ const BookingOverviewController = (function () {
       }
     } catch (e) {
       logError('BookingOverview._saveBkOverview', e);
-      log('Lỗi khi lưu booking!', 'danger');
     } finally {
       showLoading(false);
     }
   }
 
-  /** Mở form thêm giao dịch (sử dụng A.UI.renderForm) */
-  function _openTransactionForm() {
-    if (A.UI?.renderForm) {
-      A.UI.renderForm('transactions', { booking_id: _bookingId });
-    }
+  async function _openTransactionForm() {
+    // Dynamic import AccountantController and call openTransactionModal
+    await import('/accountant/controller_accountant.js')
+      .then(async (mod) => {
+        const AccountantCtrl = mod.default || window.AccountantCtrl;
+        if (AccountantCtrl && typeof AccountantCtrl.openTransactionModal === 'function') {
+          await AccountantCtrl.openTransactionModal('IN'); // Default to 'IN', or pass type as needed
+        } else {
+          log('Không thể mở modal giao dịch: AccountantCtrl không khả dụng.', 'error');
+        }
+      })
+      .catch((e) => {
+        log('Lỗi import AccountantController: ' + e, 'error');
+      });
   }
 
   /** Thêm ghi chú nội bộ → lưu vào bookings.note_internal (arrayUnion) */

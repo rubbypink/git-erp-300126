@@ -73,10 +73,10 @@ class DBManager {
    */
   static #ROLE_COLL_MAP = {
     sale: ['bookings', 'booking_details', 'customers', 'transactions', 'fund_accounts'],
-    op: ['bookings', 'operator_entries', 'transactions'],
-    acc: ['transactions', 'fund_accounts', 'bookings'],
+    op: ['bookings', 'operator_entries', 'transactions', 'fund_accounts', 'suppliers', 'hotels', 'hotel_price_schedules', 'service_price_schedules'],
+    acc: ['transactions', 'fund_accounts', 'bookings', 'booking_details', 'operator_entries', 'hotel_price_schedules', 'service_price_schedules'],
     acc_thenice: ['transactions_thenice', 'fund_accounts_thenice'],
-    admin: ['bookings', 'booking_details', 'operator_entries', 'customers', 'transactions', 'fund_accounts'],
+    admin: ['bookings', 'booking_details', 'operator_entries', 'customers', 'transactions', 'fund_accounts', 'suppliers', 'hotels', 'hotel_price_schedules', 'service_price_schedules'],
   };
 
   /**
@@ -175,11 +175,11 @@ class DBManager {
   async loadAllData(forceNew = false) {
     await this.#initPromise; // đảm bảo #bootInit xong
     if (!this.#db) {
-      console.error('❌ DB chưa init');
+      log('❌ DB chưa init', 'error');
       return null;
     }
     if (!firebase.auth().currentUser) {
-      console.error('❌ Chưa đăng nhập');
+      log('❌ Chưa đăng nhập', 'warning');
       return null;
     }
 
@@ -2078,27 +2078,27 @@ class DBManager {
   }
 
   _updateAppDataObj(collectionName, dataObj) {
-    if (!APP_DATA || !dataObj?.id) return;
+    // if (!APP_DATA || !dataObj?.id) return;
 
-    // 1. Cập nhật primary collection trong APP_DATA
-    if (!APP_DATA[collectionName]) APP_DATA[collectionName] = {};
-    APP_DATA[collectionName][dataObj.id] = {
-      ...APP_DATA[collectionName][dataObj.id],
-      ...dataObj,
-    };
+    // // 1. Cập nhật primary collection trong APP_DATA
+    // if (!APP_DATA[collectionName]) APP_DATA[collectionName] = {};
+    // APP_DATA[collectionName][dataObj.id] = {
+    //   ...APP_DATA[collectionName][dataObj.id],
+    //   ...dataObj,
+    // };
 
-    // 2. Cập nhật secondary indexes liên quan
-    DBManager.#INDEX_CONFIG
-      .filter((cfg) => cfg.source === collectionName)
-      .forEach(({ index, groupBy }) => {
-        const groupKey = dataObj[groupBy];
-        if (!groupKey) return;
+    // // 2. Cập nhật secondary indexes liên quan
+    // DBManager.#INDEX_CONFIG
+    //   .filter((cfg) => cfg.source === collectionName)
+    //   .forEach(({ index, groupBy }) => {
+    //     const groupKey = dataObj[groupBy];
+    //     if (!groupKey) return;
 
-        if (!APP_DATA[index]) APP_DATA[index] = {};
-        if (!APP_DATA[index][groupKey]) APP_DATA[index][groupKey] = {};
+    //     if (!APP_DATA[index]) APP_DATA[index] = {};
+    //     if (!APP_DATA[index][groupKey]) APP_DATA[index][groupKey] = {};
 
-        APP_DATA[index][groupKey][dataObj.id] = APP_DATA[collectionName][dataObj.id];
-      });
+    //     APP_DATA[index][groupKey][dataObj.id] = APP_DATA[collectionName][dataObj.id];
+    //   });
 
     // 3. Đồng bộ vào IndexedDB (fire-and-forget — không await, không block)
     const docToStore = APP_DATA[collectionName][dataObj.id];

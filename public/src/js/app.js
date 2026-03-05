@@ -1257,7 +1257,7 @@ class Application {
     if (this.#modules['NotificationManager']) {
       try {
         await this._call('NotificationManager', 'init');
-        this.#modules['NotificationManager'].sendToAdmin('User Login', `${CURRENT_USER.name} (${CURRENT_USER.email}) vừa đăng nhập.`);
+        // this.#modules['NotificationManager'].sendToAdmin('User Login', `${CURRENT_USER.name} (${CURRENT_USER.email}) vừa đăng nhập.`);
       } catch (e) {
         console.warn('[PostBoot] NotificationManager:', e.message);
       }
