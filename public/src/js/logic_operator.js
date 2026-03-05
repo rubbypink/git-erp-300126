@@ -964,7 +964,7 @@ const PartnerMailModule = (function () {
         logA('Email sent successfully!', 'success');
       }
     } catch (e) {
-      logError(e);
+      Opps(e);
       logA('System error: ' + e.message, 'danger');
     } finally {
       if (btnSend) {

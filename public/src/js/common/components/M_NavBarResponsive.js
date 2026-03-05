@@ -8,8 +8,10 @@ class NavBarMenuController {
    * @param {string} containerId - ID của thẻ <div> trống sẽ chứa menu
    * @param {Array} tabsData - Mảng Object chứa cấu hình các tab
    */
+
   constructor(containerId, tabsData) {
     this.containerId = containerId;
+    this._initialized = false;
     this.tabsData = tabsData || [];
     this.container = document.getElementById(this.containerId);
     /** @type {number} Index của tab đang active, dùng để tính hướng animation */
@@ -17,22 +19,26 @@ class NavBarMenuController {
     this.init();
   }
 
-  init() {
+  init(reset = false) {
     try {
+      if (this._initialized && !reset) {
+        log(`[ResponsiveTabManager] Menu tại #${this.containerId} đã được khởi tạo trước đó.`, 'warning');
+        return;
+      }
       if (!this.container) {
-        console.warn(`[ResponsiveTabManager] Không tìm thấy vùng chứa #${this.containerId} hoặc đã được khởi tạo trước đó.`);
+        log(`[ResponsiveTabManager] Không tìm thấy vùng chứa #${this.containerId} hoặc đã được khởi tạo trước đó.`, 'warning');
         return;
       }
       if (!this.tabsData || this.tabsData.length === 0) {
-        console.warn(`[ResponsiveTabManager] Dữ liệu truyền vào rỗng cho #${this.containerId}`);
+        log(`[ResponsiveTabManager] Dữ liệu truyền vào rỗng cho #${this.containerId}`, 'error');
         return;
       }
+
       this._render();
       this._bindEvents();
-
-      console.log(`[ResponsiveTabManager] Khởi tạo thành công menu tại #${this.containerId}`);
+      this._initialized = true;
     } catch (error) {
-      console.error(`[ResponsiveTabManager] Lỗi khởi tạo #${this.containerId}:`, error);
+      Opps(`[ResponsiveTabManager] Lỗi khởi tạo #${this.containerId}:`, error);
     }
   }
 
@@ -44,7 +50,7 @@ class NavBarMenuController {
       this.currentIndex = this.tabsData.indexOf(defaultTab);
 
       let html = `
-                <div class="rtm-container mb-3">
+                <div class="rtm-container">
                     <button class="btn btn-outline-primary d-md-none align-items-center rtm-toggle-btn" type="button">
                         <span class="rtm-active-text fw-bold">
                             ${defaultTab.iconHtml || ''} ${defaultTab.title}
@@ -96,7 +102,7 @@ class NavBarMenuController {
       this.tabList = this.container.querySelector('.rtm-tabs-list');
       this.tabLinks = this.container.querySelectorAll('.nav-link');
     } catch (error) {
-      console.error(`[ResponsiveTabManager] Lỗi render DOM tại #${this.containerId}:`, error);
+      Opps(`[ResponsiveTabManager] Lỗi render DOM tại #${this.containerId}:`, error);
     }
   }
 

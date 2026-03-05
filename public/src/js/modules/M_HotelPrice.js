@@ -943,9 +943,7 @@ export class HotelPriceController {
       const formattedRooms = rooms.map((room) => ({
         id: room.id,
         name: room.name,
-        rateTypes: this.masterData.priceTypes
-          .filter((t) => activeTypeIds.includes(t.id))
-          .map((t) => ({ id: t.id, name: t.name })),
+        rateTypes: this.masterData.priceTypes.filter((t) => activeTypeIds.includes(t.id)).map((t) => ({ id: t.id, name: t.name })),
       }));
 
       // ─────────────────────────────────────────────────────────────
@@ -1010,11 +1008,7 @@ export class HotelPriceController {
       const payload = { ...dataToSave };
       delete payload._docId;
 
-      await firebase
-        .firestore()
-        .collection(DB_PATHS.PRICE_SCHEDULES)
-        .doc(docId)
-        .set(payload, { merge: true });
+      await firebase.firestore().collection(DB_PATHS.PRICE_SCHEDULES).doc(docId).set(payload, { merge: true });
 
       // ─────────────────────────────────────────────────────────────
       // STEP 3: Update cache data after successful save
@@ -1028,7 +1022,7 @@ export class HotelPriceController {
       logA(`Đã lưu thành công (Trạng thái: ${currentStatus.toUpperCase()})`);
     } catch (error) {
       console.error('Lỗi lưu DB:', error);
-      logError('Lỗi hệ thống khi lưu: ', error.message);
+      Opps('Lỗi hệ thống khi lưu: ', error.message);
     } finally {
       this.toggleLoading(false);
     }

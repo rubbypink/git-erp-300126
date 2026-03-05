@@ -43,7 +43,7 @@ class ShortcutManager {
   constructor() {
     // Cấu hình lưu trữ — dùng chung DB qua DBLocalStorage singleton
     this.STORE_NAME = 'app_config';
-    this.CONFIG_KEY = 'general/settings/shortcuts';
+    this.CONFIG_KEY = 'general';
 
     /** @type {Map<string, Function>} Registry ES6 commands */
     this._registry = new Map();
@@ -62,17 +62,20 @@ class ShortcutManager {
   async _loadFromDB() {
     try {
       const doc = await localDB.get(this.STORE_NAME, this.CONFIG_KEY);
-      return doc?.value ?? null;
+      return doc?.settings?.shortcuts ?? null;
     } catch {
       return null;
     }
   }
 
   async _saveToDB() {
-    return localDB.put(this.STORE_NAME, {
-      id: this.CONFIG_KEY,
-      value: this.shortcuts,
-    });
+    let general = {
+      id: 'general',
+      settings: {
+        shortcuts: this.shortcuts,
+      },
+    };
+    return localDB.put(this.STORE_NAME, general);
   }
 
   // ==========================================
@@ -102,9 +105,9 @@ class ShortcutManager {
 
       document.addEventListener('keydown', this.handleGlobalShortcuts);
       this.renderSettingsForm(); // Render UI ngay sau khi load config
-      console.info('🚀 [ShortcutManager] Đã load config từ DBLocalStorage & Sẵn sàng.');
+      log('🚀 [ShortcutManager] Đã load config từ DBLocalStorage & Sẵn sàng.');
     } catch (error) {
-      console.error('❌ [ShortcutManager] Lỗi khởi tạo init():', error);
+      Opps('❌ [ShortcutManager] Lỗi khởi tạo init():', error);
       // Fallback: Vẫn cho chạy với default config nếu IDB sập
       document.addEventListener('keydown', this.handleGlobalShortcuts);
     }
@@ -116,7 +119,7 @@ class ShortcutManager {
   destroy() {
     document.removeEventListener('keydown', this.handleGlobalShortcuts);
     this._registry.clear();
-    console.info('🛑 [ShortcutManager] Đã destroy & gỡ toàn bộ listener.');
+    log('🛑 [ShortcutManager] Đã destroy & gỡ toàn bộ listener.');
   }
 
   /**
@@ -129,7 +132,7 @@ class ShortcutManager {
     if (typeof callback === 'function') {
       this._registry.set(commandName, callback);
     } else {
-      console.warn(`⚠️ [ShortcutManager] Lệnh "${commandName}" không hợp lệ (callback phải là function).`);
+      log(`⚠️ [ShortcutManager] Lệnh "${commandName}" không hợp lệ (callback phải là function).`, 'warning');
     }
   }
 
@@ -208,24 +211,24 @@ class ShortcutManager {
         command(...args);
         return true;
       } catch (error) {
-        console.error(`❌ [ShortcutManager] Lỗi thực thi Registry Command [${name}]:`, error);
+        Opps(`❌ [ShortcutManager] Lỗi thực thi Registry Command [${name}]:`, error);
         return false;
       }
     }
 
     // 2. Fallback: Gọi hàm ở window (Kiến trúc cũ)
     if (typeof window[name] === 'function') {
-      console.warn(`⚠️ [Tech Debt] Đang gọi hàm cũ ở Global Window: ${name}. Cần sớm refactor!`);
+      log(`⚠️ [Tech Debt] Đang gọi hàm cũ ở Global Window: ${name}. Cần sớm refactor!`, 'warning');
       try {
         window[name](...args);
         return true;
       } catch (error) {
-        console.error(`❌ [ShortcutManager] Lỗi thực thi Window Function [${name}]:`, error);
+        Opps(`❌ [ShortcutManager] Lỗi thực thi Window Function [${name}]:`, error);
         return false;
       }
     }
 
-    console.error(`❌ Lệnh "${name}" KHÔNG TỒN TẠI ở Registry và Window.`);
+    Opps(`❌ Lệnh "${name}" KHÔNG TỒN TẠI ở Registry và Window.`);
     return false;
   }
 
@@ -245,7 +248,7 @@ class ShortcutManager {
         e.preventDefault();
         e.stopPropagation();
 
-        console.info(`🔥 [ShortcutManager] Bắt phím: ${combo} -> ${funcCall}`);
+        log(`🔥 [ShortcutManager] Bắt phím: ${combo} -> ${funcCall}`);
         this._executeCommand(funcCall);
         return;
       }
@@ -269,7 +272,7 @@ class ShortcutManager {
     // Validate: kiểm tra duplicate key
     const duplicateCmd = this._findCommandByCombo(keyCombo);
     if (duplicateCmd) {
-      alert(`⚠️ Phím tắt "${keyCombo}" đã được gán cho "${duplicateCmd}".`);
+      showAlert(`⚠️ Phím tắt "${keyCombo}" đã được gán cho "${duplicateCmd}".`, 'warning');
       return false;
     }
 
@@ -281,7 +284,7 @@ class ShortcutManager {
     } else if (source === 'window') {
       const { args } = this._parseFunctionCall(commandName);
       if (argsExpected > 0 && args.length !== argsExpected) {
-        console.warn(`⚠️ [ShortcutManager] Hàm "${commandName}" cần ${argsExpected} args, nhập ${args.length}.`);
+        log(`⚠️ [ShortcutManager] Hàm "${commandName}" cần ${argsExpected} args, nhập ${args.length}.`, 'warning');
       }
     }
 
@@ -289,10 +292,10 @@ class ShortcutManager {
       this.shortcuts[commandName] = keyCombo;
       await this._saveToDB();
       await this.renderSettingsForm(); // Re-render UI
-      console.info(`✅ [ShortcutManager] Đã thêm: ${commandName} -> ${keyCombo}`);
+      log(`✅ [ShortcutManager] Đã thêm: ${commandName} -> ${keyCombo}`);
       return true;
     } catch (error) {
-      console.error('❌ [ShortcutManager] Lỗi lưu phím tắt mới:', error);
+      Opps('❌ [ShortcutManager] Lỗi lưu phím tắt mới:', error);
       return false;
     }
   }
@@ -313,9 +316,9 @@ class ShortcutManager {
       const item = document.getElementById(domId);
       if (item) item.remove();
 
-      console.info(`✅ [ShortcutManager] Xóa thành công ${funcCall}`);
+      log(`✅ [ShortcutManager] Xóa thành công ${funcCall}`);
     } catch (error) {
-      console.error('❌ [ShortcutManager] Lỗi xóa phím tắt:', error);
+      Opps('❌ [ShortcutManager] Lỗi xóa phím tắt:', error);
     }
   }
 
@@ -333,10 +336,10 @@ class ShortcutManager {
       this.shortcuts = { ...DEFAULT_SHORTCUTS };
       await this._saveToDB();
       await this.renderSettingsForm();
-      console.info('✅ [ShortcutManager] Đã reset về mặc định.');
+      log('✅ [ShortcutManager] Đã reset về mặc định.');
       return true;
     } catch (error) {
-      console.error('❌ [ShortcutManager] Lỗi reset:', error);
+      Opps('❌ [ShortcutManager] Lỗi reset:', error);
       return false;
     }
   }

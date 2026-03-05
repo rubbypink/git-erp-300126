@@ -53,7 +53,7 @@ const BookingOverviewController = (function () {
       // 2. Lấy root element sau khi modal đã render
       _rootEl = getE('bkov-root');
       if (!_rootEl) {
-        logError('BookingOverview', 'Không tìm thấy bkov-root');
+        Opps('BookingOverview', 'Không tìm thấy bkov-root');
         return;
       }
 
@@ -83,7 +83,7 @@ const BookingOverviewController = (function () {
         _switchTab(options.activeTab);
       }
     } catch (e) {
-      logError('BookingOverview.open', e);
+      Opps('BookingOverview.open', e);
     } finally {
       showLoading(false);
       setClass('#tab-form', 'd-none', true);
@@ -125,7 +125,7 @@ const BookingOverviewController = (function () {
   async function _loadData(bookingId) {
     const data = window.APP_DATA;
     if (!data) {
-      logError('BookingOverview._loadData', 'APP_DATA chưa sẵn sàng');
+      Opps('BookingOverview._loadData', 'APP_DATA chưa sẵn sàng');
       return;
     }
 
@@ -907,7 +907,7 @@ const BookingOverviewController = (function () {
         log('Booking Overview: Đã lưu thành công!', 'success');
       }
     } catch (e) {
-      logError('BookingOverview._saveBkOverview', e);
+      Opps('BookingOverview._saveBkOverview', e);
     } finally {
       showLoading(false);
     }

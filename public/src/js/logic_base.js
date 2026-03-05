@@ -248,7 +248,7 @@ function handleSearchResult(data) {
     fillFormFromSearch(data);
   } else {
     showLoading(false);
-    logError('Lỗi: Chưa có hàm fillFormFromSearch để hiển thị dữ liệu.');
+    Opps('Lỗi: Chưa có hàm fillFormFromSearch để hiển thị dữ liệu.');
   }
 }
 
@@ -779,10 +779,14 @@ calculateSummary = function (dataRows) {
     if (colQty) IDX_QTY = colQty.i;
   } else {
     log('calculateSummary: Chưa định nghĩa GRID_COLS', 'error');
+    return;
   }
 
   // Log cảnh báo nếu không tìm thấy cột (để Dev biết tại sao Stats = 0)
-  if (IDX_TOTAL === -1) log('Calc Summary: Không tìm thấy cột [Thành Tiền/Tổng Cộng]', 'error');
+  if (IDX_TOTAL === -1) {
+    log('Calc Summary: Không tìm thấy cột [Thành Tiền/Tổng Cộng]', 'error');
+    return;
+  }
   if (IDX_QTY === -1) log('Calc Summary: Không tìm thấy cột [SL/Số Lượng]', 'error');
 
   // =================================================================
@@ -884,7 +888,7 @@ async function openSettingsModal() {
 
     // --- DELEGATE ALL THEME LOGIC TO THEME_MANAGER ---
     if (!THEME_MANAGER) {
-      logError('Theme manager not initialized');
+      Opps('Theme manager not initialized');
       return;
     }
 
@@ -905,7 +909,7 @@ async function openSettingsModal() {
       getE('st-logo-preview').src = mainLogo ? mainLogo.src : 'https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp';
     }
   } catch (e) {
-    logError('Lỗi mở Cài Đặt:', e);
+    Opps('Lỗi mở Cài Đặt:', e);
   }
 }
 
@@ -1052,7 +1056,7 @@ async function downloadData(type = 'excel') {
     }
     if (typeof logA === 'function') logA('Đã xuất file thành công!', true);
   } catch (err) {
-    logError(err);
+    Opps(err);
     logA('Lỗi khi xuất file: ' + err.message, 'error', 'alert');
   }
 }
@@ -1248,7 +1252,7 @@ function reloadSystemMode(modeCode) {
 }
 
 function handleServerError(err) {
-  logError('Lỗi kết nối: ' + err.message);
+  Opps('Lỗi kết nối: ' + err.message);
   handleRetry('Lỗi kết nối: ' + err.message);
 }
 
@@ -1363,7 +1367,7 @@ function handleSearchClick() {
     log(`🔍 Tìm thấy ${topResults.length} kết quả`, 'info');
   } catch (error) {
     console.error('Lỗi search:', error);
-    logError('Lỗi tìm kiếm: ' + error.message);
+    Opps('Lỗi tìm kiếm: ' + error.message);
   }
 }
 

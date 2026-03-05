@@ -220,7 +220,7 @@ class DBManager {
         }
 
         // Tải meta (app_config + users) — nhỏ, luôn fresh từ Firestore
-        await this.loadMeta(APP_DATA).catch((e) => console.warn('⚠️ loadMeta thất bại:', e));
+        await this.loadMeta(APP_DATA).catch((e) => Opps('⚠️ loadMeta thất bại:', e));
 
         this.#rebuildAllSecondaryIndexes();
         this.#applyAllPostSorts(APP_DATA);
@@ -232,7 +232,7 @@ class DBManager {
         // Khi network_saver=true → bỏ qua hoàn toàn (tiết kiệm network tối đa)
         const networkSaver = window.A?.getConfig?.('network_saver');
         if (!networkSaver) {
-          this.#smartDeltaSync(currentRoleColls).catch((e) => console.warn('⚠️ Smart Delta Sync lỗi:', e));
+          this.#smartDeltaSync(currentRoleColls).catch((e) => Opps('⚠️ Smart Delta Sync lỗi:', e));
         } else {
           log('🌐 Network Saver ON — bỏ qua background sync');
         }
@@ -255,7 +255,7 @@ class DBManager {
       await this.#saveAppDataCache(currentRoleColls, forceNew); // await: forceNew cần clear IDB trước khi trả về
       return APP_DATA;
     } catch (e) {
-      logError('❌ loadAllData thất bại:', e);
+      Opps('❌ loadAllData thất bại:', e);
       console.timeEnd('loadAllData');
       return null;
     }
@@ -330,9 +330,15 @@ class DBManager {
     const cutoffDate = new Date(cutoffMs);
 
     log(`🔔 Notifications listener: query từ ${cutoffDate.toLocaleString()}`);
+    const user = window.CURRENT_USER;
 
+    if (!user) {
+      log('⚠️ Notifications listener: không xác định được người dùng', 'warning');
+      return;
+    }
+    const role = window.CURRENT_USER.role;
     // Admin: xóa các notification cũ hơn 3 ngày
-    if (CURRENT_USER.role === 'admin') {
+    if (role === 'admin') {
       const deleteCutoff = new Date(now - 3 * 24 * 60 * 60 * 1000);
       this.#db
         .collection('notifications')
@@ -351,23 +357,60 @@ class DBManager {
     }
     const query = this.#db.collection('notifications').where('created_at', '>=', cutoffDate);
 
+    // 1. CHUẨN HÓA DỮ LIỆU USER (Nên để trước khi gọi onSnapshot)
+    // Đảm bảo userGroups luôn là một mảng và các phần tử đều là chữ thường
+    const userGroups = (Array.isArray(user.group) ? user.group : [user.group])
+      .filter(Boolean) // Loại bỏ các giá trị null/undefined nếu có
+      .map((g) => String(g).toLowerCase());
+
+    const userName = String(user.name || '').toLowerCase();
+
+    // 2. KHỞI TẠO LISTENER
     const unsubscribe = query.onSnapshot(
       (snapshot) => {
         if (snapshot.empty) return;
 
         const dataChangeDocs = [];
-        const notifDocs = [];
+        const notifDocsRaw = []; // Chứa tất cả notif lấy về
 
+        // Lọc data từ docChanges (tối ưu hơn là quét toàn bộ docs)
         snapshot.docChanges().forEach((change) => {
           if (change.type === 'removed') return;
+
           const doc = { id: change.doc.id, ...change.doc.data() };
-          if (doc.type === 'data-change') dataChangeDocs.push(doc);
-          else notifDocs.push(doc);
+
+          if (doc.type === 'data-change') {
+            dataChangeDocs.push(doc);
+          } else {
+            notifDocsRaw.push(doc);
+          }
         });
 
-        if (dataChangeDocs.length > 0) this.#autoSyncData(dataChangeDocs);
-        if (notifDocs.length > 0) {
-          window.dispatchEvent(new CustomEvent('new-notifications-arrived', { detail: notifDocs }));
+        // Xử lý Auto Sync Data
+        if (dataChangeDocs.length > 0) {
+          this.#autoSyncData(dataChangeDocs);
+        }
+
+        // Xử lý Notifications
+        if (notifDocsRaw.length > 0) {
+          // Dùng .filter() thay vì .some() để loại bỏ các notif của người khác lọt vào
+          const validNotifs = notifDocsRaw.filter((d) => {
+            const docGroups = (Array.isArray(d.group) ? d.group : [d.group])
+              .filter(Boolean) // Loại bỏ các giá trị null/undefined nếu có
+              .map((g) => String(g).toLowerCase());
+            const docTargetUsers = (d?.target_users || []).map((u) => String(u).toLowerCase());
+            // Kiểm tra xem có group nào của user nằm trong mảng group của doc không (Giao thoa 2 mảng)
+            const isGroupMatch = docGroups.some((docG) => userGroups.includes(docG));
+            const isRoleMatch = d?.role === role; // Nếu doc có trường role thì phải khớp với role user
+            // Kiểm tra user.name có nằm trong target_users không
+            const isUserMatch = docTargetUsers.includes(userName);
+            return isGroupMatch || isUserMatch || isRoleMatch;
+          });
+
+          // Chỉ dispatch event khi thực sự có thông báo dành cho user này
+          if (validNotifs.length > 0) {
+            window.dispatchEvent(new CustomEvent('new-notifications-arrived', { detail: validNotifs }));
+          }
         }
       },
       (err) => console.error('❌ Notifications listener error:', err)
@@ -436,7 +479,7 @@ class DBManager {
     }
 
     // ── 3. Cập nhật cache + LAST_SYNC ────────────────────────────────
-    await this.#saveAppDataCache();
+    // await this.#saveAppDataCache();
   }
 
   /**
@@ -973,7 +1016,7 @@ class DBManager {
 
       return totalChanges;
     } catch (e) {
-      logError(`Lỗi syncDelta (Hybrid): `, e);
+      Opps(`Lỗi syncDelta (Hybrid): `, e);
       return 0;
     } finally {
       showLoading(false);
@@ -981,40 +1024,139 @@ class DBManager {
   };
 
   /**
-   * Tải meta: app_config + users.
-   * @param {object} result
+   * Tải meta: app_config + users + hotels + suppliers.
+   * Cấu trúc: Ưu tiên lấy từ Cache IndexedDB, kiểm tra tính toàn vẹn, nếu thiếu thì CHỈ tải list thiếu từ Firestore và cập nhật Cache.
+   * @param {object} result - Đối tượng chứa APP_DATA
    */
   async loadMeta(result) {
-    // ★ FIX: đảm bảo result.lists và result.users tồn tại trước khi ghi
+    // Đảm bảo cấu trúc khởi tạo an toàn
     if (!result.lists) result.lists = {};
     if (!result.users) result.users = {};
 
-    const [cfgSnap, usersSnap] = await Promise.all([this.#db.collection('app_config').doc('current').get(), this.#db.collection('users').get()]);
+    // Mảng lưu trữ tên các collection bị thiếu trong cache cần tải từ Firestore
+    const missingCollections = [];
 
-    // app_config
-    if (cfgSnap?.exists) {
-      const rawCfg = cfgSnap.data();
-      log(`📋 app_config/current: ${Object.keys(rawCfg).length} keys`);
-      for (const k in rawCfg) {
-        try {
-          result.lists[k] = typeof rawCfg[k] === 'string' && rawCfg[k].startsWith('[') ? JSON.parse(rawCfg[k]) : rawCfg[k];
-        } catch {
-          result.lists[k] = rawCfg[k];
+    // ==========================================
+    // BƯỚC 1: KIỂM TRA TÍNH TOÀN VẸN INDEXEDDB CACHE
+    // ==========================================
+    try {
+      const cachedAppCFgObj = await this.#localDB.getAllAsObject('app_config');
+      let parsedUsers = await this.#localDB.getAllAsObject('users');
+      let parsedLists = cachedAppCFgObj?.current || null;
+      log(Object.keys(parsedLists));
+
+      if (Object.keys(parsedLists) && Object.keys(parsedUsers)) {
+        // Kiểm tra kỹ xem cache có mảng dữ liệu của hotels và suppliers chưa
+        const hasStaff = Array.isArray(parsedLists?.staff) && parsedLists.staff.length > 0;
+        const hasHotels = Array.isArray(parsedLists?.hotel) && parsedLists.hotel.length > 0;
+        const hasSuppliers = Array.isArray(parsedLists?.supplier) && parsedLists.supplier.length > 0;
+        const hasUsers = parsedUsers && Object.keys(parsedUsers).length > 0;
+
+        // Cấu hình app_config thường có nhiều key ngoài staff, hotel, supplier
+        const hasAppConfig = parsedLists && Object.keys(parsedLists).filter((k) => !['staff', 'hotel', 'supplier'].includes(k)).length > 0;
+
+        // Lưu các list thiếu vào biến
+        if (!hasAppConfig) missingCollections.push('app_config');
+        if (!hasUsers || !hasStaff) missingCollections.push('users');
+        if (!hasHotels) missingCollections.push('hotels');
+        if (!hasSuppliers) missingCollections.push('suppliers');
+
+        // Nạp trước những dữ liệu ĐÃ CÓ vào result
+        Object.assign(result.lists, parsedLists || {});
+        Object.assign(result.users, parsedUsers || {});
+
+        // Chỉ return nếu TẤT CẢ list đều đầy đủ
+        if (missingCollections.length === 0) {
+          log('📦 [loadMeta] Đã load Meta (lists, users, hotels, suppliers) đầy đủ từ cache IndexedDB');
+          return; // Kết thúc hàm an toàn
+        } else {
+          log(`⚠️ [loadMeta] Cache hiện tại bị thiếu [${missingCollections.join(', ')}], tiến hành tải phần thiếu từ Firestore...`);
         }
+      } else {
+        log('⚠️ [loadMeta] Cache IndexedDB không tồn tại hoặc rỗng, tiến hành tải toàn bộ từ Firestore...');
+        missingCollections.push('app_config', 'users', 'hotels', 'suppliers');
       }
-    } else {
-      log('⚠️ app_config/current không tồn tại — lists sẽ rỗng');
+    } catch (e) {
+      console.warn('⚠️ [loadMeta] Lỗi đọc cache Meta từ IndexedDB, tiến hành fetch mới toàn bộ:', e);
+      // Fallback: nếu lỗi parse thì tải lại tất cả
+      missingCollections.push('app_config', 'users', 'hotels', 'suppliers');
     }
 
-    // users
-    const staffList = [];
-    usersSnap?.forEach((doc) => {
-      result.users[doc.id] = { id: doc.id, ...doc.data() };
-      staffList.push(doc.data().user_name || 'No Name');
-    });
-    result.lists.staff = staffList;
-  }
+    // ==========================================
+    // BƯỚC 2: TẢI TỪ FIRESTORE (CHỈ NHỮNG PHẦN BỊ THIẾU) VÀ XỬ LÝ DỮ LIỆU
+    // ==========================================
+    log(`📥 [loadMeta] Fetch data từ Firestore: ${missingCollections.join(', ')}...`);
 
+    const promises = [];
+
+    // Dynamic Query: Nếu không có trong missingCollections thì trả về null (bỏ qua query)
+    promises.push(missingCollections.includes('app_config') ? this.#db.collection('app_config').doc('current').get() : Promise.resolve(null));
+    promises.push(missingCollections.includes('users') ? this.#db.collection('users').get() : Promise.resolve(null));
+    promises.push(missingCollections.includes('hotels') ? this.#db.collection('hotels').get() : Promise.resolve(null));
+    promises.push(missingCollections.includes('suppliers') ? this.#db.collection('suppliers').get() : Promise.resolve(null));
+
+    const [cfgSnap, usersSnap, hotelsSnap, suppliersSnap] = await Promise.all(promises);
+
+    // 1. Xử lý app_config (Chỉ chạy nếu có dữ liệu tải về)
+    if (cfgSnap) {
+      if (cfgSnap.exists) {
+        const rawCfg = cfgSnap.data();
+        log(`📋 [loadMeta] app_config/current: ${Object.keys(rawCfg).length} keys`);
+        for (const k in rawCfg) {
+          try {
+            result.lists[k] = typeof rawCfg[k] === 'string' && rawCfg[k].startsWith('[') ? JSON.parse(rawCfg[k]) : rawCfg[k];
+          } catch {
+            result.lists[k] = rawCfg[k];
+          }
+        }
+      } else {
+        log('⚠️ [loadMeta] app_config/current không tồn tại — lists sẽ rỗng');
+      }
+    }
+
+    // 2. Xử lý users & tạo staffList (Chỉ chạy nếu có dữ liệu tải về)
+    if (usersSnap) {
+      const staffList = [];
+      usersSnap.forEach((doc) => {
+        result.users[doc.id] = { id: doc.id, ...doc.data() };
+        staffList.push(doc.data().user_name || 'No Name');
+      });
+      result.lists.staff = staffList;
+    }
+
+    // 3. Xử lý hotels (Chỉ chạy nếu có dữ liệu tải về)
+    if (hotelsSnap) {
+      const hotelList = [];
+      hotelsSnap.forEach((doc) => {
+        const data = doc.data();
+        if (data.name) hotelList.push(data.name);
+      });
+      result.lists.hotel = hotelList;
+    }
+
+    // 4. Xử lý suppliers (Chỉ chạy nếu có dữ liệu tải về)
+    if (suppliersSnap) {
+      const supplierList = [];
+      suppliersSnap.forEach((doc) => {
+        const data = doc.data();
+        if (data.name) supplierList.push(data.name);
+      });
+      result.lists.supplier = supplierList;
+    }
+
+    // ==========================================
+    // BƯỚC 3: CẬP NHẬT LẠI INDEXEDDB CACHE
+    // ==========================================
+    try {
+      var lists = result.lists;
+      lists.id = 'current'; // Đảm bảo luôn có doc id cho app_config
+      this.#localDB.put('app_config', lists);
+      this.#saveAppDataCache('users', true); // users lưu riêng, xóa cũ trước khi ghi
+      log(`💾 [loadMeta] Đã lưu cập nhật cache Meta mới (bổ sung: ${missingCollections.join(', ')}) vào IndexedDB thành công`);
+    } catch (e) {
+      console.warn('⚠️ [loadMeta] Lỗi khi lưu cache Meta vào IndexedDB:', e);
+    }
+  }
   // Dùng cho .get() — snapshot.forEach() là đúng
   #hydrateCollection(result, collName, snapshot) {
     if (!result[collName]) result[collName] = {};
@@ -1225,11 +1367,18 @@ class DBManager {
 
       switch (action) {
         case 'get': {
-          const snap = await this.#db.collection(collection).orderBy('id', 'desc').limit(2000).get();
-          if (snap.empty) return { success: false, error: 'Collection không tồn tại' };
+          let snap;
+          let data;
+          if (!id) {
+            snap = await this.#db.collection(collection).orderBy('id', 'desc').limit(2000).get();
+            data = snap.exists ? snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })) : [];
+          } else {
+            snap = await this.#db.collection(collection).doc(String(id)).get();
+            data = snap.exists ? { id: snap.id, ...snap.data() } : null;
+          }
           opResult = {
             success: true,
-            data: snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+            data: data,
           };
           return opResult;
         }
@@ -1392,8 +1541,6 @@ class DBManager {
       return { success: false, error: e.message };
     }
   }
-
-  // ─── Booking History ────────────────────────────────────────────────
 
   /**
    * Xác định booking_id từ collection / data / APP_DATA.
@@ -1591,7 +1738,7 @@ class DBManager {
       log(`Converting array to object for ${collectionName} saving...`);
       dataObj = this.#schema.arrayToObject(dataArray, collectionName);
     }
-    let docId = dataObj.id;
+    let docId = collectionName === 'users' ? dataObj.uid : dataObj.id;
 
     if (!docId || docId === '') {
       let bookingId = null;
@@ -1601,7 +1748,9 @@ class DBManager {
       if (!idResult) return { success: false, message: 'Failed to generate ID' };
 
       docId = idResult.newId;
-      dataObj.id = docId;
+      if (collectionName === 'users')
+        dataObj.uid = docId; // Với users, id = uid
+      else dataObj.id = docId;
       if (Array.isArray(dataArray)) dataArray[0] = docId;
       isNew = true;
     }
@@ -1643,7 +1792,7 @@ class DBManager {
 
     // ── 0. Customer name lookup ───────────────────────────────────────
     let customerName = '';
-    const bkId = Array.isArray(dataArrayList[0]) ? dataArrayList[0][1] : dataArrayList[0].booking_id;
+    const bkId = Array.isArray(dataArrayList[0]) ? dataArrayList[0][1] : dataArrayList[0]?.booking_id;
     const bkRef = this.#db.collection('bookings').doc(String(bkId));
     const bkSnap = await bkRef.get();
     if (bkSnap.exists) customerName = bkSnap.data().customer_full_name || 'null';
@@ -1745,6 +1894,9 @@ class DBManager {
   };
 
   deleteRecord = async (collectionName, id) => {
+    if (collectionName === 'bookings') {
+      return this.handleDeleteBooking(id);
+    }
     if (!id) return;
     try {
       const res = await this.#firestoreCRUD(collectionName, 'delete', id);
@@ -1757,7 +1909,7 @@ class DBManager {
       }
       return { success: true, message: 'Deleted' };
     } catch (e) {
-      logError('❌ Delete Error:', e);
+      Opps('❌ Delete Error:', e);
       return { success: false, error: e.message };
     }
   };
@@ -2078,27 +2230,27 @@ class DBManager {
   }
 
   _updateAppDataObj(collectionName, dataObj) {
-    // if (!APP_DATA || !dataObj?.id) return;
+    if (!APP_DATA || !dataObj?.id) return;
 
-    // // 1. Cập nhật primary collection trong APP_DATA
-    // if (!APP_DATA[collectionName]) APP_DATA[collectionName] = {};
-    // APP_DATA[collectionName][dataObj.id] = {
-    //   ...APP_DATA[collectionName][dataObj.id],
-    //   ...dataObj,
-    // };
+    // 1. Cập nhật primary collection trong APP_DATA
+    if (!APP_DATA[collectionName]) APP_DATA[collectionName] = {};
+    APP_DATA[collectionName][dataObj.id] = {
+      ...APP_DATA[collectionName][dataObj.id],
+      ...dataObj,
+    };
 
-    // // 2. Cập nhật secondary indexes liên quan
-    // DBManager.#INDEX_CONFIG
-    //   .filter((cfg) => cfg.source === collectionName)
-    //   .forEach(({ index, groupBy }) => {
-    //     const groupKey = dataObj[groupBy];
-    //     if (!groupKey) return;
+    // 2. Cập nhật secondary indexes liên quan
+    DBManager.#INDEX_CONFIG
+      .filter((cfg) => cfg.source === collectionName)
+      .forEach(({ index, groupBy }) => {
+        const groupKey = dataObj[groupBy];
+        if (!groupKey) return;
 
-    //     if (!APP_DATA[index]) APP_DATA[index] = {};
-    //     if (!APP_DATA[index][groupKey]) APP_DATA[index][groupKey] = {};
+        if (!APP_DATA[index]) APP_DATA[index] = {};
+        if (!APP_DATA[index][groupKey]) APP_DATA[index][groupKey] = {};
 
-    //     APP_DATA[index][groupKey][dataObj.id] = APP_DATA[collectionName][dataObj.id];
-    //   });
+        APP_DATA[index][groupKey][dataObj.id] = APP_DATA[collectionName][dataObj.id];
+      });
 
     // 3. Đồng bộ vào IndexedDB (fire-and-forget — không await, không block)
     const docToStore = APP_DATA[collectionName][dataObj.id];
@@ -2142,6 +2294,61 @@ class DBManager {
     this.stopNotificationsListener();
     console.log('🔄 DB options đã reset');
   };
+
+  async handleDeleteBooking(bookingId) {
+    // 1. (Tùy chọn) Frontend check IndexedDB để khóa UI ở đây...
+
+    // 2. Xác nhận lại người dùng
+    const confirm = await Swal.fire({
+      title: 'Bạn có chắc chắn muốn xóa?',
+      text: 'Hành động này không thể hoàn tác!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Đồng ý xóa',
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      // Show loading
+      Swal.showLoading();
+
+      // 3. Khởi tạo Callable Function (v8)
+      // Nếu bạn không dùng mặc định (firebase.functions()), bạn phải trỏ đúng app và region
+      const functions = firebase.app().functions('asia-southeast1');
+      const deleteBookingCall = functions.httpsCallable('deleteBooking');
+
+      // 4. Gọi hàm và truyền tham số lên Server
+      const result = await deleteBookingCall({ bookingId: bookingId });
+
+      // 5. Xử lý thành công
+      Swal.fire('Thành công!', result.data.message, 'success');
+
+      // TOD0: Viết hàm cập nhật lại UI, xóa booking khỏi IndexedDB (APP_DATA) và render lại bảng
+      this._removeFromAppDataObj('bookings', bookingId);
+      // Nếu có bảng booking_details, cũng xóa các details liên quan khỏi APP_DATA và render lại
+      if (APP_DATA?.booking_details) {
+        Object.values(APP_DATA.booking_details)
+          .filter((detail) => detail.booking_id === bookingId)
+          .forEach((detail) => this._removeFromAppDataObj('booking_details', detail.id));
+        Object.values(APP_DATA.operator_entries)
+          .filter((detail) => detail.booking_id === bookingId)
+          .forEach((detail) => this._removeFromAppDataObj('operator_entries', detail.id));
+        Object.values(APP_DATA.transactions)
+          .filter((detail) => detail.booking_id === bookingId)
+          .forEach((detail) => this._removeFromAppDataObj('transactions', detail.id));
+      }
+    } catch (error) {
+      console.error('Lỗi xóa Booking:', error);
+
+      // Bắt lỗi HttpsError từ Backend ném về (Ví dụ: Lỗi cọc, lỗi Level...)
+      Swal.fire({
+        icon: 'error',
+        title: 'Từ chối thao tác',
+        text: error.message || 'Có lỗi xảy ra khi kết nối máy chủ.',
+      });
+    }
+  }
 }
 
 // ─── Singleton Export ─────────────────────────────────────────────────────

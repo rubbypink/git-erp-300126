@@ -232,7 +232,7 @@ export default class ThemeManager {
     const theme = THEME_CONFIG[themeName] || THEME_CONFIG['light'];
 
     if (!theme) {
-      logError('Invalid theme: ' + themeName);
+      Opps('Invalid theme: ' + themeName);
       return;
     }
 
@@ -310,13 +310,7 @@ export default class ThemeManager {
    * @private
    */
   _generateSelectors(className) {
-    return [
-      `.${className}`,
-      `.${className}:hover`,
-      `.${className}:focus`,
-      `[class*=" ${className}"]`,
-      `[class^="${className}"]`,
-    ];
+    return [`.${className}`, `.${className}:hover`, `.${className}:focus`, `[class*=" ${className}"]`, `[class^="${className}"]`];
   }
 
   /**
@@ -420,7 +414,7 @@ export default class ThemeManager {
    */
   updateColors(colorUpdates) {
     if (!colorUpdates || typeof colorUpdates !== 'object') {
-      logError('updateColors requires an object with color mappings');
+      Opps('updateColors requires an object with color mappings');
       return;
     }
 
@@ -494,29 +488,7 @@ export default class ThemeManager {
    * Marks theme as custom when any color is changed
    */
   setupColorSync() {
-    const colorPairs = [
-      'st-app-bg',
-      'st-header-bg',
-      'st-footer-bg',
-      'st-tbl-head-bg',
-      'st-tbl-head-text',
-      'st-tab-active-bg',
-      'st-tab-active-text',
-      'st-tab-inactive-bg',
-      'st-tab-inactive-text',
-      'st-glass-bg',
-      'st-glass-text',
-      'st-btn-primary',
-      'st-btn-success',
-      'st-btn-danger',
-      'st-btn-info',
-      'st-btn-secondary',
-      'st-text-color',
-      'st-border-color',
-      'st-surface-color',
-      'st-hover-bg',
-      'st-input-bg',
-    ];
+    const colorPairs = ['st-app-bg', 'st-header-bg', 'st-footer-bg', 'st-tbl-head-bg', 'st-tbl-head-text', 'st-tab-active-bg', 'st-tab-active-text', 'st-tab-inactive-bg', 'st-tab-inactive-text', 'st-glass-bg', 'st-glass-text', 'st-btn-primary', 'st-btn-success', 'st-btn-danger', 'st-btn-info', 'st-btn-secondary', 'st-text-color', 'st-border-color', 'st-surface-color', 'st-hover-bg', 'st-input-bg'];
 
     colorPairs.forEach((id) => {
       const picker = getE(id);
@@ -549,7 +521,7 @@ export default class ThemeManager {
     const themePreset = getE('st-theme-preset')?.value;
 
     if (!themePreset) {
-      logError('❌ Please select a theme before saving');
+      Opps('❌ Please select a theme before saving');
       return false;
     }
 
@@ -564,7 +536,7 @@ export default class ThemeManager {
       }
       return true;
     } catch (e) {
-      logError('❌ Error saving theme: ' + e.message);
+      Opps('❌ Error saving theme: ' + e.message);
       return false;
     }
   }
@@ -767,7 +739,7 @@ window.previewLogo = previewLogo;
  */
 function saveThemeSettings() {
   if (!THEME_MANAGER) {
-    logError('Theme manager not initialized');
+    Opps('Theme manager not initialized');
     return false;
   }
 

@@ -3,7 +3,6 @@
 // =====================================================================
 import Swal from 'sweetalert2';
 window.Swal = Swal; // Expose globally for legacy plain scripts (utils.js, logA, etc.)
-
 import DB_MANAGER from './modules/DBManager.js';
 import { AUTH_MANAGER, SECURITY_MANAGER } from './modules/LoginModule.js';
 import { DraggableSetup, Resizable, WindowMinimizer } from './libs/ui_helper.js';
@@ -704,24 +703,6 @@ class Application {
     return this.#createProxy(topKey);
   }
 
-  // get Notification() {
-  //     if (!this.#modules['Notifications']) {
-  //         if (!window.CURRENT_USER) {
-  //             console.warn('[App] Notification module not ready - CURRENT_USER not set');
-  //             return null;
-  //         }
-  //         // Import trực tiếp class nếu module Loader chưa chạy xong
-  //         if(typeof NotificationManager !== 'undefined') {
-  //             this.#modules['Notifications'] = NotificationManager.getInstance();
-  //         }
-  //     }
-  //     return this.#modules['Notifications'];
-  // }
-
-  // =========================================================================
-  // ★ QUẢN LÝ MODULE ĐỘNG (Đã khôi phục)
-  // =========================================================================
-
   /**
    * Register a module under `name` and expose it as `A.<name>`.
    *
@@ -825,7 +806,10 @@ class Application {
   }
 
   setConfig(updates) {
-    if (this.#state.user && this.#state.user.role !== 'admin' && !this.#config.saveLoad) throw new Error('Only admin can update config');
+    if (this.#state.user && this.#state.user.role !== 'admin' && !this.#config.saveLoad) {
+      log('Only admin can update config');
+      return;
+    }
 
     // 🔧 Xử lý disabledModules - merge vào thay vì ghi đè
     const mergedUpdates = { ...updates };
@@ -859,7 +843,6 @@ class Application {
    */
   async loadAppConfig() {
     try {
-      if (this.#state.user && this.#state.user.role !== 'admin' && !this.#config.saveLoad) throw new Error('Only admin can update config');
       const db = this.#modules['Database']?.db || (window.firebase?.firestore && window.firebase.firestore());
 
       if (!db) {
@@ -1090,23 +1073,16 @@ class Application {
 
         // 3. Gán CURRENT_USER + xử lý role masking
         const userProfile = docSnap.data();
-        this.#state.user = userProfile;
-        if ((userProfile.role === 'admin' || userProfile.level >= 50) && typeof applyModeFromUrl === 'function' && applyModeFromUrl()) return;
 
-        window.CURRENT_USER = window.CURRENT_USER || {};
-        CURRENT_USER.uid = user.uid;
-        CURRENT_USER.email = user.email;
-        CURRENT_USER.name = userProfile.user_name || '';
-        CURRENT_USER.level = userProfile.level;
-        CURRENT_USER.profile = userProfile;
-        CURRENT_USER.group = userProfile.group || '';
+        if ((userProfile.role === 'admin' || userProfile.level >= 50) && typeof applyModeFromUrl === 'function' && applyModeFromUrl()) return;
 
         const masker = localStorage.getItem('erp-mock-role');
         if (masker) {
           const mockData = JSON.parse(masker);
           const realRole = mockData.realRole;
-          if (realRole === 'admin' || realRole === 'manager' || CURRENT_USER.level >= 50) {
-            CURRENT_USER.role = mockData.maskedRole;
+          if (realRole === 'admin' || realRole === 'manager' || userProfile.level >= 50) {
+            userProfile.role = mockData.maskedRole;
+            window.CURRENT_USER = window.CURRENT_USER || {};
             CURRENT_USER.realRole = realRole;
             localStorage.removeItem('erp-mock-role');
             this.#modules['UI'].renderedTemplates = {};
@@ -1122,13 +1098,19 @@ class Application {
                 });
             });
           }
-        } else {
-          CURRENT_USER.role = userProfile.role || 'guest';
         }
+        this.#state.user = userProfile;
+        CURRENT_USER.uid = user.uid;
+        CURRENT_USER.email = user.email;
+        CURRENT_USER.name = userProfile.user_name || '';
+        CURRENT_USER.level = userProfile.level;
+        CURRENT_USER.profile = userProfile;
+        CURRENT_USER.group = userProfile.group || '';
+        CURRENT_USER.role = userProfile.role;
 
         // ★ URL mode override: chạy ngay sau khi có role — trước khi render bất cứ thứ gì.
         // Nếu có ?mode= hợp lệ và user là admin/manager → reloadSystemMode + return (bỏ qua toàn bộ boot).
-        if (typeof applyModeFromUrl === 'function' && applyModeFromUrl()) return;
+        // if (typeof applyModeFromUrl === 'function' && applyModeFromUrl()) return;
 
         // 4. Khởi tạo UI renderer + render template theo role (song song)
         const moduleManager = new MODULELOADER(this, this.#config.disabledModules);
@@ -1138,6 +1120,7 @@ class Application {
         CR_COLLECTION = (typeof ROLE_DATA !== 'undefined' ? ROLE_DATA[CURRENT_USER.role] : '') || '';
 
         await Promise.all([this._call('UI', 'init', moduleManager), SECURITY_MANAGER.applySecurity(CURRENT_USER)]);
+        moduleManager.loadModule('Router', false);
 
         this.#config.saveLoad = false;
         SECURITY_MANAGER.cleanDOM(document);
@@ -1325,6 +1308,7 @@ class MODULELOADER {
     this.#config.disabledModules = (disabledModules || []).map((m) => m);
     this.registry = {
       DB: () => import('./modules/DBManager.js').then((m) => m.default),
+      Router: () => import('./common/Router.js').then((m) => m.default),
       HotelPriceController: () => import('./modules/M_HotelPrice.js').then((m) => m.HotelPriceController),
       ServicePriceController: () => import('./modules/M_ServicePrice.js').then((m) => m.default),
       PriceManager: () => import('./modules/M_PriceManager.js').then((m) => m.default),
@@ -1356,6 +1340,22 @@ class MODULELOADER {
           },
         };
       },
+      ModalFull: async () => {
+        await import('./common/components/at_modal_full.js');
+        const getEl = () => document.querySelector('at-modal-full');
+        return {
+          init: () => getEl()?.init(),
+          show: (...args) => getEl()?.show(...args),
+          render: (...args) => getEl()?.render(...args),
+          setFooter: (...args) => getEl()?.setFooter(...args),
+          setSaveHandler: (...args) => getEl()?.setSaveHandler(...args),
+          setResetHandler: (...args) => getEl()?.setResetHandler(...args),
+          hide: () => getEl()?.hide(),
+          getEl: () => {
+            return getEl();
+          },
+        };
+      },
     };
 
     this.roleMap = {
@@ -1365,9 +1365,9 @@ class MODULELOADER {
       sale: ['PriceManager'],
       acc_thenice: ['PriceManager'],
     };
-    this.forAllModules = ['ReportModule', 'CalculatorWidget', 'ThemeManager', 'Lang', 'NotificationManager', 'PriceManager', 'ShortKey', 'BookingOverview'];
+    this.forAllModules = ['ReportModule', 'CalculatorWidget', 'ThemeManager', 'Lang', 'NotificationManager', 'PriceManager', 'ShortKey', 'BookingOverview', 'Router'];
     this.commonModules = ['Lang', 'ThemeManager'];
-    this.uiModules = ['ErpHeaderMenu', 'ErpFooterMenu', 'ChromeMenuController', 'OffcanvasMenu'];
+    this.uiModules = ['ErpHeaderMenu', 'ErpFooterMenu', 'ChromeMenuController', 'OffcanvasMenu', 'ModalFull'];
     this.asyncModules = ['AdminConsole', 'ReportModule', 'CalculatorWidget', 'HotelPriceController', 'ServicePriceController', 'PriceManager', 'NotificationManager', 'ShortKey', 'BookingOverview'];
   }
 

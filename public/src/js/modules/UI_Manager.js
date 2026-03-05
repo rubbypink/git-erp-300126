@@ -281,7 +281,7 @@ const UI_RENDERER = {
         // Chạy hàm logic được truyền vào
         await newActionFunc(e);
       } catch (err) {
-        logError('Lỗi hàm bindBtnEvent: ', err);
+        Opps('Lỗi hàm bindBtnEvent: ', err);
         logA('Có lỗi xảy ra: ' + err.message);
       } finally {
         // Mở lại nút sau khi xong (hoặc tùy logic đóng modal của bạn)
@@ -312,7 +312,7 @@ const UI_RENDERER = {
       } else A.Modal.setResetHandler(this.resetForm, 'Đặt Lại');
       return A.Modal;
     } catch (e) {
-      logError('Lỗi trong renderModal: ', e);
+      Opps('Lỗi trong renderModal: ', e);
     }
   },
   renderForm: async function (collection, dataorId = null) {

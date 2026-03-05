@@ -1351,7 +1351,7 @@ class ContextMenu {
               await navigator.clipboard.writeText(JSON.stringify(window.CURRENT_ROW_DATA));
               typeof logA === 'function' && logA('✅ Copied row to clipboard!', 'success');
             } catch (err) {
-              typeof logError === 'function' && logError('❌ Copy failed: ' + err.message);
+              typeof Opps === 'function' && Opps('❌ Copy failed: ' + err.message);
             }
           },
         },

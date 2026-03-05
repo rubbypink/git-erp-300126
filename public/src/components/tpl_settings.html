@@ -1,42 +1,8 @@
 <div class="d-flex flex-column h-100 w-auto">
-  <div class="card-header nav-container px-3 border-bottom" id="settings-navbar-container">
-      <li class="nav-item" role="presentation">
-        <button
-          class="nav-link active fw-bold small"
-          id="tab-theme-btn"
-          onclick="selectTab('tab-adm-app-config')"
-          data-bs-target="#tab-adm-app-config"
-          type="button"
-          role="tab"
-        >
-          <i class="fa-solid fa-palette me-2 text-primary"></i>App Configs
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button
-          class="nav-link fw-bold small"
-          id="tab-shortcut-btn"
-          onclick="selectTab('tab-adm-database-control')"
-          data-bs-target="#tab-adm-database-control"
-          type="button"
-          role="tab"
-        >
-          <i class="fa-solid fa-keyboard me-2 text-danger"></i>Quản Lý Database
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button
-          class="nav-link fw-bold small"
-          id="tab-users-btn"
-          onclick="selectTab('tab-adm-users')"
-          data-bs-target="#tab-adm-users"
-          type="button"
-          role="tab"
-        >
-          <i class="fa-solid fa-users me-2 text-success"></i>Quản Lý Người Dùng
-        </button>
-      </li>
-    </ul> -->
+  <div class="d-flex align-items-center w-100 justify-content-between mb-2">
+    <div class="nav-container px-3 border-bottom" id="settings-navbar-container"></div>
+    <button class="btn btn-warning ms-auto" onclick="A.AdminConsole.handleArchiveClick()"><i class="fas fa-archive"></i>
+      Lưu trữ dữ liệu cũ</button>
   </div>
 
   <div class="tab-content p-1 scrollable-area" style="overflow-y: auto">
@@ -46,10 +12,8 @@
         <div class="row g-3 mb-3">
           <!-- 1. Module Nghiệp Vụ Core -->
           <div class="col-12 col-md-6 col-xl-4">
-            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%;">
-              <legend>
-                <i class="fa-solid fa-puzzle-piece me-1 text-primary"></i>Module Nghiệp Vụ Core
-              </legend>
+            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%">
+              <legend><i class="fa-solid fa-puzzle-piece me-1 text-primary"></i>Module Nghiệp Vụ Core</legend>
 
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
@@ -57,7 +21,8 @@
                   <div class="text-muted" style="font-size: 0.72rem">Kích hoạt tạo & nhận thông báo.</div>
                 </div>
                 <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
-                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="module_NotificationModule" />
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
+                    data-key="module_NotificationModule" />
                 </div>
               </div>
 
@@ -67,7 +32,8 @@
                   <div class="text-muted" style="font-size: 0.72rem">Kích hoạt quản lý giao diện.</div>
                 </div>
                 <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
-                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="module_ThemeManager" />
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
+                    data-key="module_ThemeManager" />
                 </div>
               </div>
 
@@ -77,7 +43,8 @@
                   <div class="text-muted" style="font-size: 0.72rem">Điều hành tour, nhà cung cấp, đối tác.</div>
                 </div>
                 <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
-                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="module_Lang" />
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
+                    data-key="module_Lang" />
                 </div>
               </div>
 
@@ -87,7 +54,8 @@
                   <div class="text-muted" style="font-size: 0.72rem">Tải dữ liệu từ hệ thống.</div>
                 </div>
                 <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
-                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="module_Download" />
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
+                    data-key="module_Download" />
                 </div>
               </div>
 
@@ -97,7 +65,8 @@
                   <div class="text-muted" style="font-size: 0.72rem">Kích hoạt tải giá tự động.</div>
                 </div>
                 <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
-                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="module_PriceManager" />
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
+                    data-key="module_PriceManager" />
                 </div>
               </div>
 
@@ -107,19 +76,17 @@
                   <div class="text-muted" style="font-size: 0.72rem">Kích hoạt chức năng báo cáo.</div>
                 </div>
                 <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
-                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="module_ReportModule" />
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
+                    data-key="module_ReportModule" />
                 </div>
               </div>
-
             </fieldset>
           </div>
 
           <!-- 2. Giao diện & Tiện ích -->
           <div class="col-12 col-md-6 col-xl-4">
-            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%;">
-              <legend>
-                <i class="fa-solid fa-palette me-1 text-info"></i>Giao diện & Tiện ích
-              </legend>
+            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%">
+              <legend><i class="fa-solid fa-palette me-1 text-info"></i>Giao diện & Tiện ích</legend>
 
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
@@ -127,7 +94,8 @@
                   <div class="text-muted" style="font-size: 0.72rem">Máy tính mini kéo thả nổi trên màn hình.</div>
                 </div>
                 <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
-                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="module_CalculatorWidget" />
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
+                    data-key="module_CalculatorWidget" />
                 </div>
               </div>
 
@@ -137,7 +105,8 @@
                   <div class="text-muted" style="font-size: 0.72rem">Bật/tắt menu offcanvas.</div>
                 </div>
                 <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
-                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="module_OffcanvasMenu" />
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
+                    data-key="module_OffcanvasMenu" />
                 </div>
               </div>
 
@@ -147,7 +116,8 @@
                   <div class="text-muted" style="font-size: 0.72rem">Mặc định dòng hiển thị trên DataTables.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <select class="form-select form-select-sm erp-config-input cursor-pointer" data-key="table_page_size" style="min-width: 110px">
+                  <select class="form-select form-select-sm erp-config-input cursor-pointer" data-key="table_page_size"
+                    style="min-width: 110px">
                     <option value="20">20 dòng</option>
                     <option value="50">50 dòng</option>
                     <option value="100">100 dòng</option>
@@ -158,12 +128,14 @@
               <div class="d-flex justify-content-between align-items-center py-2">
                 <div class="pe-2">
                   <div class="fw-semibold small">Định dạng ngày</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Mặc định định dạng ngày hiển thị trên DataTables.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Mặc định định dạng ngày hiển thị trên DataTables.
+                  </div>
                 </div>
                 <div class="flex-shrink-0">
-                  <select class="form-select form-select-sm erp-config-input cursor-pointer" data-key="consts/date_format" style="min-width: 110px">
+                  <select class="form-select form-select-sm erp-config-input cursor-pointer"
+                    data-key="consts/date_format" style="min-width: 110px">
                     <option value="dd/mm/yyyy">dd/mm/yyyy</option>
-                    <option value="d/m/yy">d/m/yy</option>                    
+                    <option value="d/m/yy">d/m/yy</option>
                     <option value="dd/mm/yy">dd/mm/yy</option>
                     <option value="yyyy-mm-dd">yyyy-mm-dd</option>
                   </select>
@@ -174,10 +146,8 @@
 
           <!-- 3. Hệ thống & Thông báo -->
           <div class="col-12 col-md-6 col-xl-4">
-            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%;">
-              <legend>
-                <i class="fa-solid fa-gear me-1 text-warning"></i>Hệ thống & Thông báo
-              </legend>
+            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%">
+              <legend><i class="fa-solid fa-gear me-1 text-warning"></i>Hệ thống & Thông báo</legend>
 
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
@@ -185,13 +155,8 @@
                   <div class="text-muted" style="font-size: 0.72rem">Thông báo tự động biến mất sau n giây.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input
-                    type="number"
-                    class="form-control form-control-sm erp-config-input text-center"
-                    data-key="toast_duration"
-                    min="1" max="15"
-                    style="width: 70px"
-                  />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="toast_duration" min="1" max="15" style="width: 70px" />
                 </div>
               </div>
 
@@ -201,7 +166,8 @@
                   <div class="text-muted" style="font-size: 0.72rem">Giảm tần suất đồng bộ Realtime.</div>
                 </div>
                 <div class="form-check form-switch fs-5 mb-0 flex-shrink-0">
-                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="network_saver" />
+                  <input class="form-check-input erp-config-input cursor-pointer" type="checkbox"
+                    data-key="network_saver" />
                 </div>
               </div>
 
@@ -214,62 +180,60 @@
                   <input class="form-check-input erp-config-input cursor-pointer" type="checkbox" data-key="debug" />
                 </div>
               </div>
-
             </fieldset>
           </div>
-
         </div>
         <!-- ── NHÓM 4–8: CẤU HÌNH NÂNG CAO ── -->
-        <h6 class="fw-bold text-secondary mt-1 mb-2 border-bottom pb-1">
-          <i class="fa-solid fa-sliders me-1"></i>Cấu hình nâng cao
-        </h6>
+        <h6 class="fw-bold text-secondary mt-1 mb-2 border-bottom pb-1"><i class="fa-solid fa-sliders me-1"></i>Cấu hình
+          nâng cao</h6>
         <div class="row g-3 mb-3">
           <!-- 4. Undo & Edit History -->
           <div class="col-12 col-md-6 col-xl-4">
-            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%;">
-              <legend>
-                <i class="fa-solid fa-clock-rotate-left me-1 text-purple"></i>Undo & Lịch sử chỉnh sửa
-              </legend>
+            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%">
+              <legend><i class="fa-solid fa-clock-rotate-left me-1 text-purple"></i>Undo & Lịch sử chỉnh sửa</legend>
 
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
                   <div class="fw-semibold small">Số bước Undo tối đa</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Giới hạn undo stack mỗi document. Mặc định: 15.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Giới hạn undo stack mỗi document. Mặc định: 15.
+                  </div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="undo_max_steps" min="5" max="50" placeholder="15" style="width: 70px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="undo_max_steps" min="5" max="50" placeholder="15" style="width: 70px" />
                 </div>
               </div>
 
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
                   <div class="fw-semibold small">Max lịch sử Local</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Số entry lịch sử lưu localStorage/booking. Mặc định: 100.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Số entry lịch sử lưu localStorage/booking. Mặc
+                    định: 100.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="history_max_local" min="20" max="500" placeholder="100" style="width: 70px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="history_max_local" min="20" max="500" placeholder="100" style="width: 70px" />
                 </div>
               </div>
 
               <div class="d-flex justify-content-between align-items-center py-2">
                 <div class="pe-2">
                   <div class="fw-semibold small">Max flush lên Server</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Entries đẩy lên Firestore mỗi lần commit. Mặc định: 20.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Entries đẩy lên Firestore mỗi lần commit. Mặc định:
+                    20.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="history_max_flush" min="5" max="50" placeholder="20" style="width: 70px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="history_max_flush" min="5" max="50" placeholder="20" style="width: 70px" />
                 </div>
               </div>
-
             </fieldset>
           </div>
 
           <!-- 5. Database Query Limits -->
           <div class="col-12 col-md-6 col-xl-4">
-            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%;">
-              <legend>
-                <i class="fa-solid fa-database me-1 text-danger"></i>Giới hạn Query Database
-              </legend>
+            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%">
+              <legend><i class="fa-solid fa-database me-1 text-danger"></i>Giới hạn Query Database</legend>
 
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
@@ -277,27 +241,35 @@
                   <div class="text-muted" style="font-size: 0.72rem">Số booking tải tối đa. Mặc định: 1000.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="query_limit_bookings" min="100" max="5000" step="100" placeholder="1000" style="width: 80px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="query_limit_bookings" min="100" max="5000" step="100" placeholder="1000"
+                    style="width: 80px" />
                 </div>
               </div>
 
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
                   <div class="fw-semibold small">Booking Details</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Số chi tiết booking tải tối đa. Mặc định: 2000.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Số chi tiết booking tải tối đa. Mặc định: 2000.
+                  </div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="query_limit_booking_details" min="500" max="5000" step="100" placeholder="2000" style="width: 80px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="query_limit_booking_details" min="500" max="5000" step="100" placeholder="2000"
+                    style="width: 80px" />
                 </div>
               </div>
 
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
                   <div class="fw-semibold small">Operator Entries</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Số operator entries tải tối đa. Mặc định: 2000.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Số operator entries tải tối đa. Mặc định: 2000.
+                  </div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="query_limit_operator_entries" min="500" max="5000" step="100" placeholder="2000" style="width: 80px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="query_limit_operator_entries" min="500" max="5000" step="100" placeholder="2000"
+                    style="width: 80px" />
                 </div>
               </div>
 
@@ -307,7 +279,9 @@
                   <div class="text-muted" style="font-size: 0.72rem">Số khách hàng tải tối đa. Mặc định: 1000.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="query_limit_customers" min="100" max="5000" step="100" placeholder="1000" style="width: 80px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="query_limit_customers" min="100" max="5000" step="100" placeholder="1000"
+                    style="width: 80px" />
                 </div>
               </div>
 
@@ -317,27 +291,28 @@
                   <div class="text-muted" style="font-size: 0.72rem">Số giao dịch tải tối đa. Mặc định: 2000.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="query_limit_transactions" min="500" max="5000" step="100" placeholder="2000" style="width: 80px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="query_limit_transactions" min="500" max="5000" step="100" placeholder="2000"
+                    style="width: 80px" />
                 </div>
               </div>
-
             </fieldset>
           </div>
 
           <!-- 6. Cache TTL -->
           <div class="col-12 col-md-6 col-xl-4">
-            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%;">
-              <legend>
-                <i class="fa-solid fa-hard-drive me-1 text-success"></i>Cache & Đồng bộ dữ liệu
-              </legend>
+            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%">
+              <legend><i class="fa-solid fa-hard-drive me-1 text-success"></i>Cache & Đồng bộ dữ liệu</legend>
 
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
                   <div class="fw-semibold small">TTL Bookings</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Thời gian cache bookings (phút). Mặc định: 60.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Thời gian cache bookings (phút). Mặc định: 60.
+                  </div>
                 </div>
                 <div class="flex-shrink-0">
-                  <select class="form-select form-select-sm erp-config-input cursor-pointer" data-key="cache_ttl_bookings" style="min-width: 120px">
+                  <select class="form-select form-select-sm erp-config-input cursor-pointer"
+                    data-key="cache_ttl_bookings" style="min-width: 120px">
                     <option value="30">30 phút</option>
                     <option value="60">60 phút ●</option>
                     <option value="120">120 phút</option>
@@ -352,7 +327,8 @@
                   <div class="text-muted" style="font-size: 0.72rem">Cache chi tiết booking (phút). Mặc định: 60.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <select class="form-select form-select-sm erp-config-input cursor-pointer" data-key="cache_ttl_booking_details" style="min-width: 120px">
+                  <select class="form-select form-select-sm erp-config-input cursor-pointer"
+                    data-key="cache_ttl_booking_details" style="min-width: 120px">
                     <option value="30">30 phút</option>
                     <option value="60">60 phút ●</option>
                     <option value="120">120 phút</option>
@@ -367,7 +343,8 @@
                   <div class="text-muted" style="font-size: 0.72rem">Cache giao dịch (phút). Mặc định: 120.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <select class="form-select form-select-sm erp-config-input cursor-pointer" data-key="cache_ttl_transactions" style="min-width: 120px">
+                  <select class="form-select form-select-sm erp-config-input cursor-pointer"
+                    data-key="cache_ttl_transactions" style="min-width: 120px">
                     <option value="60">60 phút</option>
                     <option value="120">120 phút ●</option>
                     <option value="240">240 phút</option>
@@ -382,7 +359,8 @@
                   <div class="text-muted" style="font-size: 0.72rem">Cache khách hàng (phút). Mặc định: 120.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <select class="form-select form-select-sm erp-config-input cursor-pointer" data-key="cache_ttl_customers" style="min-width: 120px">
+                  <select class="form-select form-select-sm erp-config-input cursor-pointer"
+                    data-key="cache_ttl_customers" style="min-width: 120px">
                     <option value="60">60 phút</option>
                     <option value="120">120 phút ●</option>
                     <option value="240">240 phút</option>
@@ -394,10 +372,12 @@
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
                   <div class="fw-semibold small">TTL Master Data</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Cache hotels, suppliers, app_config (giờ). Mặc định: 72h.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Cache hotels, suppliers, app_config (giờ). Mặc
+                    định: 72h.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <select class="form-select form-select-sm erp-config-input cursor-pointer" data-key="cache_ttl_master_data" style="min-width: 120px">
+                  <select class="form-select form-select-sm erp-config-input cursor-pointer"
+                    data-key="cache_ttl_master_data" style="min-width: 120px">
                     <option value="1440">24 giờ</option>
                     <option value="2880">48 giờ</option>
                     <option value="4320">72 giờ ●</option>
@@ -409,10 +389,12 @@
               <div class="d-flex justify-content-between align-items-center py-2">
                 <div class="pe-2">
                   <div class="fw-semibold small">Max Age Cache</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Buộc refresh nếu cache cũ hơn (giờ). Mặc định: 72h.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Buộc refresh nếu cache cũ hơn (giờ). Mặc định: 72h.
+                  </div>
                 </div>
                 <div class="flex-shrink-0">
-                  <select class="form-select form-select-sm erp-config-input cursor-pointer" data-key="cache_max_age_hours" style="min-width: 120px">
+                  <select class="form-select form-select-sm erp-config-input cursor-pointer"
+                    data-key="cache_max_age_hours" style="min-width: 120px">
                     <option value="24">24 giờ</option>
                     <option value="48">48 giờ</option>
                     <option value="72">72 giờ ●</option>
@@ -420,104 +402,117 @@
                   </select>
                 </div>
               </div>
-
             </fieldset>
           </div>
 
           <!-- 7. Hiệu suất & Debounce -->
           <div class="col-12 col-md-6 col-xl-4">
-            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%;">
-              <legend>
-                <i class="fa-solid fa-gauge-high me-1 text-primary"></i>Hiệu suất & Throttle
-              </legend>
+            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%">
+              <legend><i class="fa-solid fa-gauge-high me-1 text-primary"></i>Hiệu suất & Throttle</legend>
 
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
                   <div class="fw-semibold small">Throttle tìm kiếm (ms)</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Delay throttle khi gõ tìm kiếm global. Mặc định: 500.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Delay throttle khi gõ tìm kiếm global. Mặc định:
+                    500.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="search_throttle_ms" min="200" max="2000" step="100" placeholder="500" style="width: 80px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="search_throttle_ms" min="200" max="2000" step="100" placeholder="500"
+                    style="width: 80px" />
                 </div>
               </div>
 
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
                   <div class="fw-semibold small">Throttle bộ lọc cột (ms)</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Delay khi lọc theo cột trên bảng. Mặc định: 1000.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Delay khi lọc theo cột trên bảng. Mặc định: 1000.
+                  </div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="filter_throttle_ms" min="300" max="3000" step="100" placeholder="1000" style="width: 80px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="filter_throttle_ms" min="300" max="3000" step="100" placeholder="1000"
+                    style="width: 80px" />
                 </div>
               </div>
 
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
                   <div class="fw-semibold small">Debounce nhập số (ms)</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Delay sau khi nhập ô số trước khi xử lý. Mặc định: 1000.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Delay sau khi nhập ô số trước khi xử lý. Mặc định:
+                    1000.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="number_input_debounce_ms" min="300" max="2000" step="100" placeholder="1000" style="width: 80px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="number_input_debounce_ms" min="300" max="2000" step="100" placeholder="1000"
+                    style="width: 80px" />
                 </div>
               </div>
 
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
                   <div class="fw-semibold small">Số lần Retry khi lỗi</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Retry load data khi gặp lỗi mạng. Mặc định: 3.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Retry load data khi gặp lỗi mạng. Mặc định: 3.
+                  </div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="max_retries" min="1" max="5" placeholder="3" style="width: 70px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="max_retries" min="1" max="5" placeholder="3" style="width: 70px" />
                 </div>
               </div>
 
               <div class="d-flex justify-content-between align-items-center py-2">
                 <div class="pe-2">
                   <div class="fw-semibold small">Delay giữa Retry (ms)</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Thời gian chờ giữa mỗi lần retry. Mặc định: 2000.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Thời gian chờ giữa mỗi lần retry. Mặc định: 2000.
+                  </div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="retry_delay_ms" min="1000" max="5000" step="500" placeholder="2000" style="width: 80px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="retry_delay_ms" min="1000" max="5000" step="500" placeholder="2000" style="width: 80px" />
                 </div>
               </div>
-
             </fieldset>
           </div>
 
           <!-- 8. Giao diện bảng & Dashboard -->
           <div class="col-12 col-md-6 col-xl-4">
-            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%;">
-              <legend>
-                <i class="fa-solid fa-table-columns me-1 text-info"></i>Giao diện Bảng & Dashboard
-              </legend>
+            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%">
+              <legend><i class="fa-solid fa-table-columns me-1 text-info"></i>Giao diện Bảng & Dashboard</legend>
 
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
                   <div class="fw-semibold small">Badge "Mới" (ngày)</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Booking hiện badge mới trong n ngày. Mặc định: 14.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Booking hiện badge mới trong n ngày. Mặc định: 14.
+                  </div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="new_booking_badge_days" min="7" max="30" placeholder="14" style="width: 70px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="new_booking_badge_days" min="7" max="30" placeholder="14" style="width: 70px" />
                 </div>
               </div>
 
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
                   <div class="fw-semibold small">Arrivals nhìn trước (ngày)</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Hiển thị arrivals trong bao nhiêu ngày tới. Mặc định: 30.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Hiển thị arrivals trong bao nhiêu ngày tới. Mặc
+                    định: 30.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="arrival_lookahead_days" min="7" max="90" placeholder="30" style="width: 70px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="arrival_lookahead_days" min="7" max="90" placeholder="30" style="width: 70px" />
                 </div>
               </div>
 
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
                   <div class="fw-semibold small">Mobile breakpoint (px)</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Ngưỡng pixel phát hiện thiết bị mobile. Mặc định: 768.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Ngưỡng pixel phát hiện thiết bị mobile. Mặc định:
+                    768.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <select class="form-select form-select-sm erp-config-input cursor-pointer" data-key="mobile_breakpoint" style="min-width: 110px">
+                  <select class="form-select form-select-sm erp-config-input cursor-pointer"
+                    data-key="mobile_breakpoint" style="min-width: 110px">
                     <option value="480">480px</option>
                     <option value="640">640px</option>
                     <option value="768">768px ●</option>
@@ -529,46 +524,48 @@
               <div class="d-flex justify-content-between align-items-center py-2">
                 <div class="pe-2">
                   <div class="fw-semibold small">Max items bộ lọc</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Giới hạn danh sách trong dropdown lọc cột. Mặc định: 500.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Giới hạn danh sách trong dropdown lọc cột. Mặc
+                    định: 500.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="filter_datalist_limit" min="100" max="2000" step="100" placeholder="500" style="width: 80px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="filter_datalist_limit" min="100" max="2000" step="100" placeholder="500"
+                    style="width: 80px" />
                 </div>
               </div>
-
             </fieldset>
           </div>
 
           <!-- 9. Lỗi & Logging -->
           <div class="col-12 col-md-6 col-xl-4">
-            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%;">
-              <legend>
-                <i class="fa-solid fa-bug me-1 text-danger"></i>Lỗi & Logging
-              </legend>
+            <fieldset style="grid-template-columns: 1fr; padding: 0.5rem 1rem 1rem; margin: 0; height: 100%">
+              <legend><i class="fa-solid fa-bug me-1 text-danger"></i>Lỗi & Logging</legend>
 
               <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div class="pe-2">
                   <div class="fw-semibold small">Max lỗi lưu trữ</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Giới hạn số log lỗi trong localStorage. Mặc định: 100.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Giới hạn số log lỗi trong localStorage. Mặc định:
+                    100.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="max_stored_errors" min="20" max="500" step="10" placeholder="100" style="width: 80px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="max_stored_errors" min="20" max="500" step="10" placeholder="100" style="width: 80px" />
                 </div>
               </div>
 
               <div class="d-flex justify-content-between align-items-center py-2">
                 <div class="pe-2">
                   <div class="fw-semibold small">Max dòng log UI</div>
-                  <div class="text-muted" style="font-size: 0.72rem">Số dòng tối đa hiển thị trong panel log. Mặc định: 100.</div>
+                  <div class="text-muted" style="font-size: 0.72rem">Số dòng tối đa hiển thị trong panel log. Mặc định:
+                    100.</div>
                 </div>
                 <div class="flex-shrink-0">
-                  <input type="number" class="form-control form-control-sm erp-config-input text-center" data-key="max_ui_log_lines" min="50" max="500" step="10" placeholder="100" style="width: 80px" />
+                  <input type="number" class="form-control form-control-sm erp-config-input text-center"
+                    data-key="max_ui_log_lines" min="50" max="500" step="10" placeholder="100" style="width: 80px" />
                 </div>
               </div>
-
             </fieldset>
           </div>
-
         </div>
         <!-- ── LƯU Ý ── -->
         <div class="alert alert-info py-2 px-3 mb-3 small">
@@ -582,19 +579,15 @@
 
         <!-- ── BUTTONS ── -->
         <div class="d-flex justify-content-end gap-2">
-          <button id="sync-config-btn" class="btn btn-sm btn-outline-danger fw-bold">
-            <i class="fas fa-rotate-left"></i> Sync Lại Config
-          </button>
-          <button id="reset-config-btn" class="btn btn-sm btn-outline-danger fw-bold">
-            <i class="fas fa-rotate-left"></i> Reset mặc định
-          </button>
-          <button id="save-config-btn" class="btn btn-sm btn-success fw-bold">
-            <i class="fas fa-save"></i> Lưu cài đặt
-          </button>
+          <button id="sync-config-btn" class="btn btn-sm btn-outline-danger fw-bold"><i class="fas fa-rotate-left"></i>
+            Sync Lại Config</button>
+          <button id="reset-config-btn" class="btn btn-sm btn-outline-danger fw-bold"><i class="fas fa-rotate-left"></i>
+            Reset mặc định</button>
+          <button id="save-config-btn" class="btn btn-sm btn-success fw-bold"><i class="fas fa-save"></i> Lưu cài
+            đặt</button>
         </div>
-
       </div>
-    </div>  
+    </div>
     <div class="tab-pane fade" id="tab-adm-database-control" role="tabpanel">
       <div class="container-fluid h-100 d-flex flex-column p-0">
         <div class="d-flex align-items-center justify-content-start bg-light p-2 border-bottom gap-2 flex-wrap">
@@ -604,27 +597,18 @@
           </select>
 
           <div class="input-group input-group-sm" style="width: 300px">
-            <input
-              type="text"
-              id="adm-input-path"
-              class="form-control"
-              placeholder="Nhập path collection..."
-            />
-            <button class="btn btn-outline-secondary" id="adm-btn-fetch">
-              <i class="fas fa-arrow-right"></i> Load
-            </button>
+            <input type="text" id="adm-input-path" class="form-control" placeholder="Nhập path collection..." />
+            <button class="btn btn-outline-secondary" id="adm-btn-fetch"><i class="fas fa-arrow-right"></i>
+              Load</button>
           </div>
 
           <div class="ms-auto d-flex gap-2">
-            <button id="adm-btn-decode" class="btn btn-sm btn-info text-white fw-bold" disabled>
-              <i class="fas fa-network-wired"></i> Decode Sub (rooms)
-            </button>
-            <button id="adm-btn-save" class="btn btn-sm btn-success fw-bold px-3" disabled>
-              <i class="fas fa-save"></i> LƯU
-            </button>
-            <button id="adm-btn-delete" class="btn btn-sm btn-danger fw-bold px-3">
-              <i class="fas fa-trash"></i> XÓA
-            </button>
+            <button id="adm-btn-decode" class="btn btn-sm btn-info text-white fw-bold" disabled><i
+                class="fas fa-network-wired"></i> Decode Sub (rooms)</button>
+            <button id="adm-btn-save" class="btn btn-sm btn-success fw-bold px-3" disabled><i class="fas fa-save"></i>
+              LƯU</button>
+            <button id="adm-btn-delete" class="btn btn-sm btn-danger fw-bold px-3"><i class="fas fa-trash"></i>
+              XÓA</button>
           </div>
         </div>
 
@@ -637,195 +621,141 @@
       </div>
     </div>
 
-  
     <div class="tab-pane fade" id="tab-adm-users" role="tabpanel">
       <div id="users-config-container">
         <div class="card shadow-sm border-0 h-100">
           <div class="card-body h-100">
             <div class="d-flex flex-row justify-content-between border-bottom pb-2 mb-3">
-              <h6 class="fw-bold text-success">
-                <i class="fa-solid fa-users me-2"></i>Quản Lý Người Dùng
-              </h6>
-              <button type="button"
-                class="btn btn-sm btn-secondary"
-                onclick="A.Auth.renderUsersConfig()">
-                Load
-              </button>
+              <h6 class="fw-bold text-success"><i class="fa-solid fa-users me-2"></i>Quản Lý Người Dùng</h6>
+              <button type="button" class="btn btn-sm btn-secondary"
+                onclick="A.AdminConsole.renderUsersConfig()">Load</button>
             </div>
             <!-- Phần Form Nhập Liệu -->
-            <form
-              id="users-form"
-              class="row g-2 mb-2 p-2 rounded border h-100"
-              style="font-size: 0.75rem"
-            >
+            <form id="users-form" class="row g-2 mb-2 p-2 rounded border h-100" style="font-size: 0.75rem">
               <div class="col-md-3 form-floating">
-                <input
-                  type="text"
-                  class="form-control form-control-sm"
-                  id="form-account"
-                  placeholder="Account name"
-                  style="max-height: 1.2rem"
-                />
+                <input type="text" class="form-control form-control-sm" id="form-account" placeholder="Account name"
+                  style="max-height: 1.2rem" />
                 <label for="form-account">Tên Tài Khoản</label>
               </div>
-
               <div class="col-md-3 form-floating">
-                <input
-                  type="text"
-                  class="form-control form-control-sm"
-                  id="form-user-name"
-                  placeholder="Họ tên"
-                  style="max-height: 1.2rem"
-                />
+                <input type="text" class="form-control form-control-sm" id="form-user-name" placeholder="Họ tên"
+                  style="max-height: 1.2rem" />
                 <label for="form-user-name">Tên Người Dùng</label>
+              </div>
+              <div class="col-md-3 form-floating position-relative">
+                <input type="password" class="form-control form-control-sm" id="form-user-password"
+                  placeholder="Mật khẩu" autocomplete="current-password" style="max-height: 1.2rem" />
+                <label for="form-user-password">Mật Khẩu</label>
+                <span class="position-absolute top-50 translate-middle-y"
+                  style="cursor: pointer; z-index: 2; right: 0.75rem" onclick="
+                    const pwdInput = getE('form-user-password');
+                    const isPwd = pwdInput.type === 'password';
+                    pwdInput.type = isPwd ? 'text' : 'password';
+                    this.querySelector('i').className = isPwd ? 'fa-solid fa-eye-slash text-secondary' : 'fa-solid fa-eye text-secondary';
+                  ">
+                  <i class="fa-solid fa-eye text-secondary"></i>
+                </span>
               </div>
 
               <div class="col-md-3 form-floating">
-                <input
-                  type="text"
-                  class="form-control form-control-sm"
-                  id="form-user-phone"
-                  placeholder="0123456789"
-                  style="max-height: 1.2rem"
-                />
+                <input type="text" class="form-control form-control-sm" id="form-user-phone" placeholder="0123456789"
+                  autocomplete="tel" style="max-height: 1.2rem" />
                 <label for="form-user-phone">Số Điện Thoại</label>
               </div>
 
               <div class="col-md-3 form-floating">
-                <input
-                  type="email"
-                  class="form-control form-control-sm"
-                  id="form-email"
-                  placeholder="user@example.com"
-                  style="max-height: 1.2rem"
-                />
+                <input type="email" class="form-control form-control-sm" id="form-email" placeholder="user@example.com"
+                  autocomplete="username" style="max-height: 1.2rem" />
                 <label for="form-email">Email</label>
               </div>
 
               <div class="col-md-3">
                 <div class="form-floating">
-                  <select
-                    class="form-select form-select-sm"
-                    style="max-height: 1.2rem"
-                    id="form-role"
-                    onchange="
+                  <select class="form-select form-select-sm" style="max-height: 1.2rem" id="form-role" onchange="
                       const selectedOption = this.options[this.selectedIndex];
                       const level = selectedOption.getAttribute('data-level') || '0';
                       getE('form-level').value = level;
-                    "
-                  >
+                    ">
                     <option value="sale" data-level="1">Sales</option>
                     <option value="sale_sup" data-level="2">Sales Supervisor</option>
                     <option value="op" data-level="1">Operator</option>
                     <option value="acc" data-level="3">Accountant</option>
                     <option value="supervisor" data-level="5">Supervisor</option>
-                    <option value="manager" data-level="10">Manager</option>
+                    <option value="manager" data-level="50">Manager</option>
                     <option value="admin" data-level="99">Admin</option>
                   </select>
                   <label for="form-role">Vai Trò</label>
                 </div>
               </div>
-
-              <div class="col-md-6">
-                <label class="form-label small fw-bold">Group</label>
-                <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto">
-                  <div class="form-check form-check-inline">
-                    <input
-                      class="form-check-input group-role-checkbox"
-                      type="checkbox"
-                      id="group-guests"
-                      value="GUESTS"
-                    />
-                    <label class="form-check-label small" for="group-guests">Khách</label>
-                  </div>
-                  <div class="form-check form-check-inline">
-                    <input
-                      class="form-check-input group-role-checkbox"
-                      type="checkbox"
-                      id="group-sales"
-                      value="SALES"
-                    />
-                    <label class="form-check-label small" for="group-sales">Sales Team</label>
-                  </div>
-                  <div class="form-check form-check-inline">
-                    <input
-                      class="form-check-input group-role-checkbox"
-                      type="checkbox"
-                      id="group-operations"
-                      value="OPERATIONS"
-                    />
-                    <label class="form-check-label small" for="group-operations"
-                      >Operations Team</label
-                    >
-                  </div>
-                  <div class="form-check form-check-inline">
-                    <input
-                      class="form-check-input group-role-checkbox"
-                      type="checkbox"
-                      id="group-accountant"
-                      value="ACCOUNTANT"
-                    />
-                    <label class="form-check-label small" for="group-accountant">Kế toán</label>
-                  </div>
-                  <div class="form-check form-check-inline">
-                    <input
-                      class="form-check-input group-role-checkbox"
-                      type="checkbox"
-                      id="group-admin"
-                      value="ADMIN"
-                    />
-                    <label class="form-check-label small" for="group-admin">Admin</label>
-                  </div>
+              <div class="col-md-3">
+                <div class="form-floating">
+                  <select class="form-select form-select-sm" style="max-height: 1.2rem" id="form-status">
+                    <option value="true" selected>Active</option>
+                    <option value="false">Inactive</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+                  <label for="form-status">Trạng Thái</label>
                 </div>
               </div>
-
-              <div class="col-md-3 form-floating" style="max-height: 1.2rem">
-                <input
-                  type="date"
-                  class="form-control form-control-sm"
-                  id="form-created-at"
-                  readonly
-                />
+              <div class="col-md-3 form-floating d-none">
+                <input type="date" class="form-control form-control-sm" id="form-created-at" readonly />
+                <label for="form-created-at">Ngày Tạo</label>
+              </div>
+              <div class="col-md-3 form-floating d-none">
+                <input type="date" class="form-control form-control-sm" id="form-created-at" readonly />
                 <label for="form-created-at">Ngày Tạo</label>
               </div>
 
+              <div class="col-12 col-md-3 form-floating">
+                <div class="form-group form-group-sm" id="form-group" style="max-height: fit-content">
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input group-role-checkbox" type="checkbox" id="group-guests"
+                      value="GUESTS" />
+                    <label class="form-check-label small" for="group-guests">Khách</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input group-role-checkbox" type="checkbox" id="group-sales"
+                      value="SALES" />
+                    <label class="form-check-label small" for="group-sales">Sales Team</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input group-role-checkbox" type="checkbox" id="group-operations"
+                      value="OPERATIONS" />
+                    <label class="form-check-label small" for="group-operations">Operations Team</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input group-role-checkbox" type="checkbox" id="group-accountant"
+                      value="ACCOUNTANT" />
+                    <label class="form-check-label small" for="group-accountant">Kế toán</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input group-role-checkbox" type="checkbox" id="group-admin"
+                      value="ADMIN" />
+                    <label class="form-check-label small" for="group-admin">Admin</label>
+                  </div>
+                </div>
+                <label for="form-group">Group</label>
+              </div>
               <div class="text-muted small" style="max-height: 1.2rem">
-                <input
-                  type="hidden"
-                  class="form-control form-control-sm"
-                  id="form-level"
-                  placeholder="1"
-                  min="0"
-                  readonly
-                />
+                <input type="hidden" class="form-control form-control-sm" id="form-level" placeholder="1" min="0"
+                  readonly />
               </div>
               <div class="text-muted small">
-                <input
-                  type="hidden"
-                  class="form-control form-control-sm"
-                  id="form-uid"
-                  readonly
-                  placeholder="Tự động"
-                  style="max-height: 1.2rem"
-                />
+                <input type="hidden" class="form-control form-control-sm" id="form-uid" readonly placeholder="Tự động"
+                  style="max-height: 1.2rem" />
               </div>
             </form>
 
             <!-- Phần Bảng Dữ Liệu -->
-            <h6 class="fw-bold text-info border-bottom pb-2 mb-3">
-              <i class="fa-solid fa-table me-2"></i>Danh Sách Người Dùng
-            </h6>
+            <h6 class="fw-bold text-info border-bottom pb-2 mb-3"><i class="fa-solid fa-table me-2"></i>Danh Sách Người
+              Dùng</h6>
             <div class="table-responsive" style="max-height: 50vh; overflow-y: auto">
-              <table
-                class="table table-bordered table-hover table-sm"
-                id="users-table"
-                data-collection="users"
-              >
+              <table class="table table-bordered table-hover table-sm" id="users-table" data-collection="users">
                 <thead class="table-light sticky-top text-center">
                   <tr class="text-center align-middle">
                     <th style="width: 15%">UID</th>
                     <th style="width: 12%">Account</th>
-                    <th style="width: 12%">Password</th>
+                    <th style="display: none">Password</th>
                     <th style="width: 15%">Họ & Tên</th>
                     <th style="width: 12%">Điện Thoại</th>
                     <th style="width: 15%">Email</th>

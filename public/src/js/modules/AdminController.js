@@ -392,7 +392,6 @@ class FormLogic {
 // PHẦN 3: MAIN CONTROLLER (Updated v3.2)
 // =============================================================================
 class AdminController {
-  _initialized = false;
   constructor() {
     this.collections = [
       { name: '📦 Booking', path: 'bookings', type: 'MATRIX' },
@@ -419,11 +418,14 @@ class AdminController {
       { name: '🏦 DS Tài khoản TheNice', path: 'fund_accounts_thenice', type: 'MATRIX' },
     ];
     this.currentStrategy = null;
+    this.modal = null;
     this.currentPath = '';
     this.currentData = [];
+
     this.isFilterMode = false;
     this.selectedCollectionIndex = null;
     this.migration = migrationHelper;
+    this._initialized = false;
   }
 
   async init() {
@@ -442,14 +444,12 @@ class AdminController {
 
     modal.render(await this._getLayout(), 'Admin Console (v3.2 Full Fix)');
     await this.initSettingsTab();
-    modal.setFooter(false);
     this._bindEvents();
     this.modal = modal;
   }
 
   async _getLayout() {
     const opts = this.collections.map((c, i) => `<option value="${i}">${c.name}</option>`).join('');
-    // console.log("⚙️ Đang tải giao diện Settings lần đầu...");
 
     // Gọi Fetch lấy file HTML
     const response = await fetch('./src/components/tpl_settings.html');
@@ -762,7 +762,7 @@ class AdminController {
       if (this._initialized && this.modal) {
         // Nếu đã khởi tạo rồi, chỉ cần mở modal và reload config
 
-        this.modal.render(await this._getLayout(), 'Admin Console (v3.2 Full Fix)');
+        await this.modal.render(await this._getLayout(), 'Admin Console (v3.2 Full)');
         await this.initSettingsTab();
         this._bindEvents();
         this.modal.show();
@@ -781,7 +781,6 @@ class AdminController {
         }
       }
     } catch (error) {
-      console.error('❌ Lỗi khi mở Modal Settings:', error);
       // Tích hợp thông báo Toast/Alert của hệ thống vào đây
       showAlert('Không thể tải giao diện cài đặt. Vui lòng kiểm tra lại đường dẫn file!', 'warning', 'alert');
     }
@@ -854,6 +853,269 @@ class AdminController {
     ];
     new NavBarMenuController('settings-navbar-container', settingsTabConfig);
   }
+
+  // --- QUẢN LÝ USER (ADMIN) ---
+
+  /**
+   * Load danh sách users từ Firestore để hiển thị
+   */
+  async loadUsersData(fromFireStore = false) {
+    try {
+      let users = APP_DATA.users || {};
+      if (fromFireStore || !users || Object.keys(users).length === 0) {
+        // ✅ FIRESTORE: Lấy toàn bộ collection users
+        users = await A.DB.getCollection('users');
+      }
+      if (!users || Object.keys(users).length === 0) {
+        document.getElementById('users-table-body').innerHTML = '<tr><td colspan="10">Chưa có user nào</td></tr>';
+        return;
+      }
+      let html = '';
+      // ✅ FIRESTORE: Duyệt qua từng document
+      Object.entries(users).forEach(([uid, user]) => {
+        const createdDate = new Date(user.created_at || Date.now()).toLocaleDateString('vi-VN');
+
+        html += `
+                    <tr class="text-center" style="cursor: pointer;" onclick="A.AdminConsole.loadUserToForm('${uid}')">
+                        <td><small title="${uid}">${uid.substring(0, 5)}...</small></td>
+                        <td>${user.account || '-'}</td>
+                        <td style="display: none;">${user.password || '-'}</td>
+                        <td>${user.user_name || '-'}</td>
+                        <td>${user.user_phone || '-'}</td>
+                        <td><small>${user.email || '-'}</small></td>
+                        <td><span class="badge bg-info">${(user.role || '').toUpperCase()}</span></td>
+                        <td>${user.level || 0}</td>
+                        <td>${user.group || ''}</td>
+                        <td>${createdDate}</td>
+                        <td><button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); A.AdminConsole.deleteUser('${uid}')"><i class="fa-solid fa-trash"></i></button></td>
+                    </tr>
+                `;
+      });
+
+      const tbody = document.getElementById('users-table-body');
+      if (tbody) tbody.innerHTML = html;
+    } catch (e) {
+      console.error('Lỗi tải users:', e);
+    }
+  }
+
+  /**
+   * Load chi tiết user vào form để edit
+   * Chỉ đọc từ Firestore
+   */
+  async loadUserToForm(uid) {
+    try {
+      // ✅ FIRESTORE: Lấy dữ liệu user
+      const user = APP_DATA.users?.[uid] || (await A.DB.getCollection('users', uid));
+      if (!user) return;
+
+      // Fill form (Giữ nguyên logic cũ)
+      getE('form-uid').value = uid;
+      getE('form-account').value = user.account || '';
+      getE('form-user-name').value = user.user_name || '';
+      getE('form-user-password').value = user.password || '';
+      getE('form-user-phone').value = user.user_phone || '';
+      getE('form-email').value = user.email || '';
+      getE('form-role').value = user.role || 'sale';
+      getE('form-status').value = user.status || 'true';
+      getE('form-level').value = user.level || 0;
+      $$('.group-role-checkbox').forEach((checkbox) => {
+        checkbox.checked = false; // Reset
+      });
+      if (user.group) {
+        const groups = user.group.split(',').map((g) => g.trim());
+        groups.forEach((g) => {
+          const checkbox = document.querySelector(`.group-role-checkbox[value="${g}"]`);
+          if (checkbox) checkbox.checked = true;
+        });
+      }
+
+      // Scroll
+      getE('users-form').scrollIntoView({ behavior: 'smooth' });
+    } catch (e) {
+      Opps(e);
+    }
+  }
+
+  /**
+   * Lưu/Cập nhật user vào Firestore
+   *
+   * Flow mới (Firestore-first):
+   * 1. CASE 1 (Update): Save Firestore → Trigger sync sang Auth
+   * 2. CASE 2 (Create): Generate UID (role-ddmmyy) → Save Firestore (kèm password)
+   *                     → Trigger functions tự động tạo Auth user
+   *
+   * ⭐ Không còn tạo Auth trực tiếp, toàn bộ do Trigger xử lý
+   */
+  async saveUser() {
+    const userData = {};
+    userData.uid = document.getElementById('form-uid').value.trim();
+    userData.account = document.getElementById('form-account').value.trim();
+    userData.user_name = document.getElementById('form-user-name').value.trim();
+    userData.password = document.getElementById('form-user-password').value.trim();
+    userData.user_phone = document.getElementById('form-user-phone').value.trim();
+    userData.email = document.getElementById('form-email').value.trim();
+    userData.role = document.getElementById('form-role').value;
+    userData.status = document.getElementById('form-status').value;
+    userData.level = parseInt(document.getElementById('form-level').value) || 1;
+    userData.created_at = document.getElementById('form-created-at')?.value || new Date().toISOString();
+
+    // Lấy các group roles được check
+    const groupRoles = [];
+    document.querySelectorAll('.group-role-checkbox:checked').forEach((checkbox) => {
+      groupRoles.push(checkbox.value);
+    });
+    userData.group = groupRoles.join(', ');
+
+    // ─── Validation ───
+    if (!userData.email || !userData.role) {
+      showAlert('Vui lòng nhập Email/Vai trò', 'warning');
+      return;
+    }
+    if (!userData.account) {
+      userData.account = userData.email.split('@')[0];
+    }
+    if (!userData.password) {
+      // Bước 2: Tạo mật khẩu mặc định
+      const defaultPassword = userData.email.split('@')[0] + '@2026';
+      userData.password = defaultPassword;
+    }
+
+    try {
+      showLoading(true);
+      // CASE 1: Cập nhật user hiện tại
+      // Chỉ cần lưu Firestore → Trigger sẽ auto sync sang Auth
+      if (userData.uid) {
+        userData.updated_at = new Date().toISOString();
+        await A.DB.saveRecord('users', userData, { merge: true });
+        log(`✅ User ${userData.uid} updated in Firestore`, 'success');
+        this.renderUsersConfig();
+        return;
+      }
+
+      await A.DB.saveRecord('users', userData);
+
+      // Bước 3: Trigger sẽ tự động đọc dữ liệu từ Firestore và tạo Firebase Auth user
+      logA(`✅ Tạo người dùng thành công!\n📧 Email: ${userData.email}\n🔑 Trigger sẽ tạo Auth account\n⏳ Vui lòng đợi...`, 'success');
+
+      this.renderUsersConfig();
+    } catch (error) {
+      Opps('❌ Lỗi lưu user: ' + error.message);
+    } finally {
+      showLoading(false);
+    }
+  }
+  /**
+   * Xóa user khỏi Firestore
+   * Trigger "syncUserAuthDeleteOnDelete" sẽ tự động xóa Firebase Auth account
+   */
+  async deleteUser(uid) {
+    if (!confirm('Chắc chắn xóa user này?\n⚠️ Trigger sẽ tự động xóa Auth account')) return;
+    try {
+      showLoading(true);
+      // ✅ FIRESTORE DELETE → Trigger xóa Auth (route qua DBManager để đồng bộ notification)
+      await A.DB.deleteRecord('users', uid);
+      log(`✅ User ${uid} deleted from Firestore`, 'success');
+      this.loadUsersData();
+    } catch (error) {
+      Opps('❌ Lỗi xóa user: ' + error.message);
+    } finally {
+      showLoading(false);
+    }
+  }
+  async renderUsersConfig() {
+    //   $('.modal-footer').style.display = 'none'; // Ẩn footer nếu có
+    // Set ngày tạo mặc định là hôm nay
+    document.getElementById('users-form').reset();
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('form-created-at').value = today;
+
+    // Load dữ liệu users vào bảng
+    await this.loadUsersData();
+  }
+  /**
+   * Hàm gọi API Archive dữ liệu cũ (Dùng Firebase v8)
+   * Gọi liên tục cho đến khi Backend báo cáo không còn dữ liệu cần Archive
+   */
+  async handleArchiveClick() {
+    // 1. Xác nhận từ Admin trước khi chạy (Tránh click nhầm)
+    const confirm = await Swal.fire({
+      title: 'Bắt đầu lưu trữ dữ liệu?',
+      text: 'Hệ thống sẽ quét và chuyển các Booking cũ (trước 6 tháng, đã thu đủ tiền) sang kho lưu trữ để tối ưu hệ thống.',
+      icon: 'info',
+      showCancelButton: true,
+      confirmButtonText: 'Bắt đầu dọn dẹp',
+      cancelButtonText: 'Hủy',
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      // 2. Khởi tạo kết nối Functions (Trỏ về đúng Region Châu Á)
+      const functions = firebase.app().functions('asia-southeast1');
+      const archiveCall = functions.httpsCallable('archiveOldData');
+
+      let totalProcessed = 0;
+      let isDone = false;
+
+      // 3. Mở Popup Loading chặn tương tác người dùng
+      Swal.fire({
+        title: 'Đang dọn dẹp hệ thống...',
+        html: 'Vui lòng không đóng trình duyệt.<br/>Đã chuyển: <b>0</b> bookings.',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      // 4. Chạy vòng lặp dọn dẹp (Mỗi lần 20 bookings từ Backend)
+      while (!isDone) {
+        const result = await archiveCall();
+        const processedThisTurn = result.data.processed;
+
+        if (processedThisTurn > 0) {
+          totalProcessed += processedThisTurn;
+
+          // Cập nhật con số trên Popup để Admin nhìn thấy tiến độ
+          Swal.update({
+            html: `Vui lòng không đóng trình duyệt.<br/>Đã chuyển: <b>${totalProcessed}</b> bookings.`,
+          });
+        } else {
+          // Backend trả về 0 -> Nghĩa là đã quét sạch
+          isDone = true;
+        }
+      }
+
+      // 5. Thông báo hoàn tất
+      if (totalProcessed > 0) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Hoàn tất!',
+          text: `Đã dọn dẹp và lưu trữ thành công ${totalProcessed} Bookings.`,
+        });
+
+        // TÙY CHỌN: Gọi hàm clear/update lại biến APP_DATA và render lại UI ở đây
+        // renderTable();
+      } else {
+        Swal.fire({
+          icon: 'info',
+          title: 'Hệ thống đã tối ưu',
+          text: 'Hiện tại không có dữ liệu cũ nào cần lưu trữ thêm.',
+        });
+      }
+    } catch (error) {
+      console.error('❌ Lỗi khi chạy Archive:', error);
+
+      // Bắt và hiển thị lỗi (Ví dụ: Lỗi không phải Admin...)
+      Swal.fire({
+        icon: 'error',
+        title: 'Từ chối thao tác',
+        text: error.message || 'Lỗi kết nối máy chủ khi thực hiện lưu trữ.',
+      });
+    }
+  }
 }
 
 /**
@@ -870,4 +1132,4 @@ class AdminController {
  */
 
 export const AdminConsole = new AdminController();
-window.AdminConsole = AdminConsole;
+// window.AdminConsole = AdminConsole;

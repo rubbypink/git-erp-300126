@@ -366,9 +366,11 @@ tbody td {
   border-color: var(--border-color) !important;
 }
 
-.modal-footer {
+.modal-footer,
+.modal-full-footer {
   background-color: var(--hover-bg) !important;
   border-color: var(--border-color) !important;
+  width: 100%;
 }
 
 .btn-close {
@@ -501,7 +503,6 @@ body {
 .nav-container {
   grid-row: 1 / 3; /* Spans both rows of header */
   grid-column: 1 / -1;
-  background: var(--header-bg);
   color: var(--text-color);
   padding: 0;
   display: flex;
@@ -775,7 +776,7 @@ body.dark-theme .chrome-trigger-btn:focus {
 /* ERP TASKBAR (Chứa các cửa sổ thu nhỏ) */
 .erp-taskbar {
   position: fixed;
-  bottom: 15px;
+  bottom: 5px;
   background-color: transparent;
   left: 15px;
   display: flex;

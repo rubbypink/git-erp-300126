@@ -151,7 +151,7 @@ function toggleContextUI(targetTabIdOrIndex) {
       A.Event?.trigger('btn-dash-update', 'click');
     }
   } catch (e) {
-    logError('Lỗi trong toggleContextUI: ', e);
+    Opps('Lỗi trong toggleContextUI: ', e);
   }
 }
 
@@ -169,26 +169,36 @@ function selectTab(targetTabId) {
   }
   const tabEl = getE(targetTabId);
   A.Modal.setFooter(false); // Ẩn footer mặc định
-  if (targetTabId === 'tab-theme-content') {
-    setClass($(targetTabId), 'd-none', false);
-    setClass($('#tab-shortcut-content'), 'd-none', true);
-
-    A.Modal.setSaveHandler(saveThemeSettings, 'Áp Dụng Theme');
-    A.Modal.setResetHandler(THEME_MANAGER.resetToDefault, 'Đặt Lại');
-  } else if (targetTabId === 'tab-shortcut-content') {
-    setClass($(targetTabId), 'd-none', false);
-    setClass($('#tab-theme-content'), 'd-none', true);
-    A.ShortKey.renderSettingsForm();
-    // A.Modal.setSaveHandler(saveShortcutsConfig, 'Lưu Phím Tắt');
-    // A.Modal.setResetHandler(() => {}, 'Đặt Lại');
-  } else if (targetTabId === 'tab-admin-users') {
-    setClass($(targetTabId), 'd-none', false);
-    A.Auth.renderUsersConfig();
-    A.Modal.setSaveHandler(A.Auth.saveUser, 'Lưu User');
-    A.Modal.setResetHandler(() => {
-      document.getElementById('users-form').reset();
-      document.getElementById('form-created-at').valueAsDate = new Date();
-    }, 'Nhập Lại');
+  switch (targetTabId) {
+    case 'tab-theme-content':
+      setClass($(targetTabId), 'd-none', false);
+      setClass($('#tab-shortcut-content'), 'd-none', true);
+      A.Modal.setSaveHandler(saveThemeSettings, 'Áp Dụng Theme');
+      A.Modal.setResetHandler(THEME_MANAGER.resetToDefault, 'Đặt Lại');
+      break;
+    case 'tab-shortcut-content':
+      setClass($(targetTabId), 'd-none', false);
+      setClass($('#tab-theme-content'), 'd-none', true);
+      A.ShortKey.renderSettingsForm();
+      break;
+    case 'tab-adm-users':
+      setClass($(targetTabId), 'd-none', false);
+      A.AdminConsole.modal.setFooter(true); // Hiện footer để show nút lưu/xóa
+      A.AdminConsole.modal.setSaveHandler(A.AdminConsole?.saveUser, 'Lưu User');
+      A.AdminConsole.modal.setResetHandler(() => {
+        document.getElementById('users-form').reset();
+        document.getElementById('form-created-at').valueAsDate = new Date();
+      }, 'Nhập Lại');
+      A.AdminConsole.loadUsersData();
+      break;
+    case 'tab-adm-database-control':
+      A.AdminConsole.modal.setFooter(false);
+      break;
+    case 'tab-adm-app-config':
+      A.AdminConsole.modal.setFooter(false);
+      break;
+    default:
+      setClass($(targetTabId), 'd-none', false);
   }
   // Thêm delay nhỏ để đảm bảo DOM ready
   setTimeout(() => {
@@ -719,7 +729,7 @@ function renderSecondaryIndexFromFlat(key, flatData, tblId) {
       } catch (_) {}
     }
   } catch (e) {
-    logError(`Lỗi render secondary index flat [${key}]: ${e.message}`);
+    Opps(`Lỗi render secondary index flat [${key}]: ${e.message}`);
   }
 }
 
@@ -859,7 +869,7 @@ function renderTableByKey(key, tblId) {
     }
     initFilterUI();
   } catch (e) {
-    logError(`Lỗi hiển thị bảng [${key}]: ${e.message}`);
+    Opps(`Lỗi hiển thị bảng [${key}]: ${e.message}`);
   }
 }
 

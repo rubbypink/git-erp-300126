@@ -23,10 +23,7 @@ const AUTH_MANAGER = {
       // ─── TẮT PERSISTENCE TRÊN MOBILE ────────────────────────────────────────
       // Trên mobile/WebView Firestore có thể tự bật offline cache → tắt thủ công
       // clearPersistence() phải gọi TRƯỚC khi bất kỳ Firestore operation nào chạy
-      const isMobile =
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-          navigator.userAgent
-        ) || window.innerWidth < 768;
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
 
       if (isMobile) {
         try {
@@ -66,20 +63,14 @@ const AUTH_MANAGER = {
     const userEmail = CURRENT_USER.email;
     const userRole = CURRENT_USER.role;
 
-    if (document.getElementById('user-menu-text'))
-      document.getElementById('user-menu-text').innerText = userFullName;
-    if (document.getElementById('user-menu-name'))
-      document.getElementById('user-menu-name').innerText = userFullName;
-    if (document.getElementById('user-menu-email'))
-      document.getElementById('user-menu-email').innerText = userEmail;
-    if (document.getElementById('user-menu-role'))
-      document.getElementById('user-menu-role').innerText = userRole.toUpperCase();
+    if (document.getElementById('user-menu-text')) document.getElementById('user-menu-text').innerText = userFullName;
+    if (document.getElementById('user-menu-name')) document.getElementById('user-menu-name').innerText = userFullName;
+    if (document.getElementById('user-menu-email')) document.getElementById('user-menu-email').innerText = userEmail;
+    if (document.getElementById('user-menu-role')) document.getElementById('user-menu-role').innerText = userRole.toUpperCase();
 
-    if (document.getElementById('btn-logout-menu'))
-      document.getElementById('btn-logout-menu').style.display = 'flex';
+    if (document.getElementById('btn-logout-menu')) document.getElementById('btn-logout-menu').style.display = 'flex';
     const modalTitle = A.getConfig('moduleTitle') || '9 Trip System';
-    if (document.getElementById('module-title'))
-      document.getElementById('module-title').innerText = modalTitle;
+    if (document.getElementById('module-title')) document.getElementById('module-title').innerText = modalTitle;
   },
 
   // Hiển thị màn hình lựa chọn Khách / Nhân sự
@@ -389,7 +380,7 @@ const AUTH_MANAGER = {
       await this.auth.signInWithPopup(provider);
     } catch (e) {
       console.error(e);
-      logA('Lỗi đăng nhập Social: ' + e.message, 'error', 'alert');
+      logA('Lỗi đăng nhập: ' + e.message, 'error', 'alert');
     } finally {
       showLoading(false);
     }
@@ -400,213 +391,6 @@ const AUTH_MANAGER = {
       A.DB.stopNotificationsListener(); // Hủy tất cả subscription khi logout
       location.reload(); // Reload trang cho sạch
     });
-  },
-
-  // --- QUẢN LÝ USER (ADMIN) ---
-
-  /**
-   * Load danh sách users từ Firestore để hiển thị
-   */
-  loadUsersData: async function () {
-    try {
-      // ✅ FIRESTORE: Lấy toàn bộ collection users
-      const snapshot = await A.DB.db.collection('users').get();
-
-      if (snapshot.empty) {
-        document.getElementById('users-table-body').innerHTML =
-          '<tr><td colspan="10">Chưa có user nào</td></tr>';
-        return;
-      }
-
-      let html = '';
-      // ✅ FIRESTORE: Duyệt qua từng document
-      snapshot.forEach((doc) => {
-        const user = doc.data();
-        const uid = doc.id; // Lấy ID từ doc
-        const createdDate = new Date(user.created_at || Date.now()).toLocaleDateString('vi-VN');
-
-        html += `
-                    <tr class="text-center" style="cursor: pointer;" onclick="A.Auth.loadUserToForm('${uid}')">
-                        <td><small>${uid.substring(0, 5)}...</small></td>
-                        <td>${user.account || '-'}</td>
-                        <td>${user.user_name || '-'}</td>
-                        <td>${user.user_phone || '-'}</td>
-                        <td><small>${user.email || '-'}</small></td>
-                        <td><span class="badge bg-info">${(user.role || '').toUpperCase()}</span></td>
-                        <td>${user.level || 0}</td>
-                        <td>${user.group || ''}</td>
-                        <td>${createdDate}</td>
-                        <td><button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); A.Auth.deleteUser('${uid}')"><i class="fa-solid fa-trash"></i></button></td>
-                    </tr>
-                `;
-      });
-
-      const tbody = document.getElementById('users-table-body');
-      if (tbody) tbody.innerHTML = html;
-    } catch (e) {
-      console.error('Lỗi tải users:', e);
-    }
-  },
-
-  /**
-   * Load chi tiết user vào form để edit
-   * Chỉ đọc từ Firestore
-   */
-  loadUserToForm: async function (uid) {
-    try {
-      // ✅ FIRESTORE: Lấy dữ liệu user
-      const doc = await A.DB.db.collection('users').doc(uid).get();
-      if (!doc.exists) return;
-
-      const user = doc.data();
-
-      // Fill form (Giữ nguyên logic cũ)
-      getE('form-uid').value = uid;
-      getE('form-account').value = user.account || '';
-      getE('form-user-name').value = user.user_name || '';
-      getE('form-user-phone').value = user.user_phone || '';
-      getE('form-email').value = user.email || '';
-      getE('form-role').value = user.role || 'sale';
-      getE('form-level').value = user.level || 0;
-      $$('.group-role-checkbox').forEach((checkbox) => {
-        checkbox.checked = false; // Reset
-      });
-      if (user.group) {
-        const groups = user.group.split(',').map((g) => g.trim());
-        groups.forEach((g) => {
-          const checkbox = document.querySelector(`.group-role-checkbox[value="${g}"]`);
-          if (checkbox) checkbox.checked = true;
-        });
-      }
-
-      // Scroll
-      getE('users-form').scrollIntoView({ behavior: 'smooth' });
-    } catch (e) {
-      console.error(e);
-    }
-  },
-
-  /**
-   * Lưu/Cập nhật user vào Firestore
-   *
-   * Flow mới (Firestore-first):
-   * 1. CASE 1 (Update): Save Firestore → Trigger sync sang Auth
-   * 2. CASE 2 (Create): Generate UID (role-ddmmyy) → Save Firestore (kèm password)
-   *                     → Trigger functions tự động tạo Auth user
-   *
-   * ⭐ Không còn tạo Auth trực tiếp, toàn bộ do Trigger xử lý
-   */
-  saveUser: async function () {
-    const userData = {};
-    userData.uid = document.getElementById('form-uid').value.trim();
-    userData.account = document.getElementById('form-account').value.trim();
-    userData.user_name = document.getElementById('form-user-name').value.trim();
-    userData.user_phone = document.getElementById('form-user-phone').value.trim();
-    userData.email = document.getElementById('form-email').value.trim();
-    userData.role = document.getElementById('form-role').value;
-    userData.level = parseInt(document.getElementById('form-level').value) || 1;
-    userData.created_at =
-      document.getElementById('form-created-at')?.value || new Date().toISOString();
-
-    // Lấy các group roles được check
-    const groupRoles = [];
-    document.querySelectorAll('.group-role-checkbox:checked').forEach((checkbox) => {
-      groupRoles.push(checkbox.value);
-    });
-    userData.group = groupRoles.join(', ');
-
-    // ─── Validation ───
-    if (!userData.email) {
-      logA('Vui lòng nhập Email');
-      return;
-    }
-    if (!userData.account) {
-      userData.account = userData.email.split('@')[0];
-    }
-
-    try {
-      showLoading(true);
-      // CASE 1: Cập nhật user hiện tại
-      // Chỉ cần lưu Firestore → Trigger sẽ auto sync sang Auth
-      if (userData.uid) {
-        await A.DB.saveRecord('users', userData, { merge: true });
-        log(`✅ User ${userData.uid} updated in Firestore`, 'success');
-        log('💡 Trigger sẽ tự động đồng bộ sang Firebase Auth', 'info');
-        this.renderUsersConfig();
-        return;
-      }
-      const today = new Date();
-      const dd = String(today.getDate()).padStart(2, '0');
-      const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const yy = String(today.getFullYear()).slice(-2);
-      const newUid = `${userData.role.toUpperCase()}-${dd}${mm}${yy}`;
-
-      log(`📝 Generated UID: ${newUid}`, 'info');
-
-      // Bước 2: Tạo mật khẩu mặc định
-      const defaultPassword = userData.email.split('@')[0] + '@2026';
-
-      // Bước 3: Lưu vào Firestore (kèm password để trigger tạo Auth)
-      userData.uid = newUid;
-      userData.password = defaultPassword; // Trigger sẽ đọc field này để tạo Auth
-
-      await A.DB.saveRecord('users', userData);
-      log(`✅ Firestore document created: ${newUid}`, 'success');
-
-      // Bước 4: Trigger sẽ tự động đọc dữ liệu từ Firestore và tạo Firebase Auth user
-      logA(
-        `✅ Tạo người dùng thành công!\n📧 Email: ${userData.email}\n🔑 Trigger sẽ tạo Auth account\n⏳ Vui lòng đợi...`
-      );
-
-      this.renderUsersConfig();
-    } catch (error) {
-      logError('❌ Lỗi lưu user: ' + error.message);
-    } finally {
-      showLoading(false);
-    }
-  },
-  renderUsersConfig: function () {
-    //   $('.modal-footer').style.display = 'none'; // Ẩn footer nếu có
-    // Set ngày tạo mặc định là hôm nay
-    document.getElementById('users-form').reset();
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('form-created-at').value = today;
-
-    // Load dữ liệu users vào bảng
-    this.loadUsersData();
-  },
-
-  /**
-   * Tạo UID theo định dạng: ROLE-DDMMYY
-   * Ví dụ: "OP-200226" (Operator, ngày 20/02/26)
-   */
-  generateUserUID: function (role) {
-    const today = new Date();
-    const dd = String(today.getDate()).padStart(2, '0');
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const yy = String(today.getFullYear()).slice(-2);
-    const newId = `${role.toUpperCase()}-${dd}${mm}${yy}`;
-    return newId;
-  },
-
-  /**
-   * Xóa user khỏi Firestore
-   * Trigger "syncUserAuthDeleteOnDelete" sẽ tự động xóa Firebase Auth account
-   */
-  deleteUser: async function (uid) {
-    if (!confirm('Chắc chắn xóa user này?\n⚠️ Trigger sẽ tự động xóa Auth account')) return;
-    try {
-      showLoading(true);
-      // ✅ FIRESTORE DELETE → Trigger xóa Auth (route qua DBManager để đồng bộ notification)
-      await A.DB.deleteRecord('users', uid);
-      log(`✅ User ${uid} deleted from Firestore`, 'success');
-      log('💡 Trigger sẽ tự động xóa Firebase Auth account', 'info');
-      this.loadUsersData();
-    } catch (error) {
-      logError('❌ Lỗi xóa user: ' + error.message);
-    } finally {
-      showLoading(false);
-    }
   },
 };
 
@@ -679,13 +463,7 @@ const SECURITY_MANAGER = {
 
       // Render Footer riêng cho kế toán nếu có
       if (activeConfig.footerTemplate) {
-        await A.UI.renderTemplate(
-          'body',
-          activeConfig.footerTemplate,
-          false,
-          '#main-footer',
-          'prepend'
-        );
+        await A.UI.renderTemplate('body', activeConfig.footerTemplate, false, '#main-footer', 'prepend');
       }
 
       // Cập nhật thông tin tiêu đề
@@ -755,11 +533,7 @@ const SECURITY_MANAGER = {
     }
 
     // Nếu KHÔNG PHẢI (Admin, Manager, Sup) -> Xóa .sup-only
-    if (
-      !body.classList.contains('is-admin') &&
-      !body.classList.contains('is-manager') &&
-      !body.classList.contains('is-sup')
-    ) {
+    if (!body.classList.contains('is-admin') && !body.classList.contains('is-manager') && !body.classList.contains('is-sup')) {
       container.querySelectorAll('.sup-only').forEach((el) => el.remove());
     }
 

@@ -965,7 +965,7 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: [],
         class: 'phone_number',
-        placeholder: '0xxx-xxx-xxx',
+        placeholder: '0xxxxxxxxx',
       },
       {
         index: 5,
@@ -1023,6 +1023,18 @@ export const DB_SCHEMA = {
       },
       {
         index: 9,
+        name: 'status',
+        displayNameEng: 'User Status',
+        displayName: 'Trạng thái',
+        type: 'select',
+        tag: 'select',
+        attrs: [],
+        class: '',
+        options: ['active', 'inactive', 'suspended'],
+        placeholder: 'Status',
+      },
+      {
+        index: 10,
         name: 'created_at',
         displayNameEng: 'Created Date',
         displayName: 'Ngày Tạo',
@@ -2835,24 +2847,30 @@ function resetFormSchema(formId) {
  * Save form data and log to console
  * @param {string} formId - ID of the form
  */
-function saveFormDataSchema(formId) {
-  const form = document.getElementById(formId);
-  if (!form) return;
+async function saveFormDataSchema(formId) {
+  try {
+    showLoading(true, 'Saving data...');
+    const form = document.getElementById(formId);
+    if (!form) return;
 
-  const data = {};
-  const inputs = form.querySelectorAll('[data-field]');
+    const data = {};
+    const inputs = form.querySelectorAll('[data-field]');
 
-  inputs.forEach((el) => {
-    const fieldName = el.dataset.field;
-    data[fieldName] = el.value;
-  });
-  if (Object.keys(data).length === 0) {
-    logA('⚠️ No data to save!', 'warning', 'alert');
-    return;
+    inputs.forEach((el) => {
+      const fieldName = el.dataset.field;
+      data[fieldName] = el.value;
+    });
+    if (Object.keys(data).length === 0) {
+      logA('⚠️ No data to save!', 'warning', 'alert');
+      return;
+    }
+    console.log(`Form Data from '${formId}':`, data);
+    await A.DB.saveRecord(form.dataset.collection, data);
+  } catch (error) {
+    Opps(`❌ Lỗi: ${error.message}`, error);
+  } finally {
+    showLoading(false);
   }
-  console.log(`Form Data from '${formId}':`, data);
-  console.log('JSON:', JSON.stringify(data, null, 2));
-  A.DB.saveRecord(form.dataset.collection, data);
 }
 // window.saveFormDataSchema exposed via _setupFormActions event delegation
 
@@ -2884,21 +2902,27 @@ async function deleteFormDataSchema(formId) {
   }
 
   const confirmMsg = `⚠️ Xác nhận xóa record:\n\nCollection: ${collectionName}\nID: ${id}\n\nHành động này không thể hoàn tác!`;
-  if (!confirm(confirmMsg)) return;
-
-  try {
-    const res = await A.DB.deleteRecord(collectionName, id);
-    if (res?.success) {
-      logA(`✅ Đã xóa thành công: ${collectionName}/${id}`, 'warning', 'alert');
-      // Reset form sau khi xóa
-      resetFormSchema(formId);
-    } else {
-      logA(`❌ Xóa thất bại: ${res?.error ?? 'Lỗi không xác định'}`, 'error', 'alert');
+  showConfirm(
+    confirmMsg,
+    async () => {
+      try {
+        const res = await A.DB.deleteRecord(collectionName, id);
+        if (res?.success) {
+          logA(`✅ Đã xóa thành công: ${collectionName}/${id}`, 'warning', 'alert');
+          // Reset form sau khi xóa
+          resetFormSchema(formId);
+        } else {
+          logA(`❌ Xóa thất bại: ${res?.error ?? 'Lỗi không xác định'}`, 'error', 'alert');
+        }
+      } catch (e) {
+        logA(`❌ Lỗi: ${e.message}`, 'error', 'alert');
+      }
+    },
+    () => {
+      console.log('Delete cancelled');
+      return;
     }
-  } catch (e) {
-    console.error('❌ deleteFormDataSchema error:', e);
-    logA(`❌ Lỗi: ${e.message}`, 'error', 'alert');
-  }
+  );
 }
 // window.deleteFormDataSchema exposed via _setupFormActions event delegation
 

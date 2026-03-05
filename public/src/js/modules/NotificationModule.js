@@ -161,7 +161,7 @@ class NotificationModule {
   /**
    * Bước 3: Hàm tạo thông báo mới (Dành cho Admin/Hệ thống)
    */
-  async _send(title, message, group, options = {}) {
+  async _send(title, message, group, role, options = {}) {
     try {
       const newDoc = {
         title: title,
@@ -179,22 +179,22 @@ class NotificationModule {
       await A.DB.saveRecord('notifications', { ...newDoc, id: notifId });
       return notifId;
     } catch (e) {
-      console.error('❌ Gửi thông báo thất bại:', e);
+      log(`❌ Gửi thông báo thất bại: ${e.message}`, 'error');
       return null;
     }
   }
 
   async sendToOperator(title, message) {
-    return await this._send(title, message, 'Operator');
+    return await this._send(title, message, 'Operator', 'op');
   }
   async sendToSales(title, message) {
-    return await this._send(title, message, 'Sales');
+    return await this._send(title, message, 'Sales', 'sale');
   }
   async sendToAccountant(title, message) {
-    return await this._send(title, message, 'Accountant');
+    return await this._send(title, message, 'Accountant', 'acc');
   }
   async sendToAdmin(title, message) {
-    return await this._send(title, message, 'Admin');
+    return await this._send(title, message, 'Admin', 'admin');
   }
   sendToAll = async (title, message) => {
     return await this._send(title, message, 'All');

@@ -113,7 +113,7 @@ async function syncUserToAuth(uid, firestoreData, previousData = null) {
   // Prefer the `uid` field inside the document over the passed-in param.
   // This ensures we always target the correct Firebase Auth user even when
   // the Firestore document ID differs from the Auth UID.
-  const authUid = firestoreData?.uid || uid;
+  const authUid = uid || firestoreData?.uid;
   try {
     // Get changed fields.
     // For new users (no previousData): collect all non-empty fields so the
@@ -129,9 +129,7 @@ async function syncUserToAuth(uid, firestoreData, previousData = null) {
         };
 
     // Filter empty-string values (new users only) — they carry no information.
-    const changes = previousData
-      ? rawChanges
-      : Object.fromEntries(Object.entries(rawChanges).filter(([, v]) => v !== ''));
+    const changes = previousData ? rawChanges : Object.fromEntries(Object.entries(rawChanges).filter(([, v]) => v !== ''));
 
     // If no changes, return early
     if (Object.keys(changes).length === 0) {
@@ -181,10 +179,8 @@ async function syncUserToAuth(uid, firestoreData, previousData = null) {
     // status = "active" → disabled = false
     // status = "inactive" or empty → disabled = true
     if ('status' in changes) {
-      updatePayload.disabled = changes.status !== 'active' && changes.status !== 'enabled';
-      logger.info(
-        `⚠️ User ${authUid}: disabled=${updatePayload.disabled}` + ` (status: ${changes.status})`
-      );
+      updatePayload.disabled = changes.status !== 'active' && changes.status !== 'enabled' && changes.status !== 'true';
+      logger.info(`⚠️ User ${authUid}: disabled=${updatePayload.disabled}` + ` (status: ${changes.status})`);
     }
 
     // Apply updates to Firebase Auth

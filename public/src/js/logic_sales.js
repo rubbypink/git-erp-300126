@@ -91,10 +91,10 @@ window.loadBookingToUI = function (bkData, customerData, detailsData) {
       if (tabTrigger) bootstrap.Tab.getOrCreateInstance(tabTrigger).show();
       toggleContextUI('tab-form');
     } catch (e) {
-      logError('LỖI khi chuyển tab về Form', e.message);
+      Opps('LỖI khi chuyển tab về Form', e.message);
     }
   } catch (e) {
-    logError('LỖI hàm loadBookingToUI', e.message);
+    Opps('LỖI hàm loadBookingToUI', e.message);
   } finally {
     // ── Luôn resume auto-binding dù có lỗi hay không ───────────────────
     if (window.StateProxy) StateProxy.resumeAutoBinding();
@@ -753,7 +753,7 @@ window.getFormData = async function (update = false) {
       booking_details: changedDetails,
     };
   } catch (error) {
-    logError('Lỗi khi trích xuất dữ liệu từ Form: ' + error.message);
+    Opps('Lỗi khi trích xuất dữ liệu từ Form: ' + error.message);
     return null;
   }
 };
@@ -766,7 +766,7 @@ function fillFormFromSearch(res) {
   showLoading(false);
   // 1. Kiểm tra lỗi từ Server
   if (!res) {
-    logError('Không tìm thấy dữ liệu phù hợp! - Lỗi biến res');
+    Opps('Không tìm thấy dữ liệu phù hợp! - Lỗi biến res');
     return;
   }
 
@@ -784,7 +784,7 @@ function fillFormFromSearch(res) {
     }
     // log("FillForm end");
   } catch (e) {
-    logError('Lỗi khi điền dữ liệu vào Form: ' + e.message, e);
+    Opps('Lỗi khi điền dữ liệu vào Form: ' + e.message, e);
   } finally {
     showLoading(false);
   }
@@ -1217,7 +1217,7 @@ const ConfirmationModule = (function () {
         logA(`Không tìm thấy Booking ID: ${bookingId}`, 'error');
       }
     } catch (e) {
-      logError(e);
+      Opps(e);
       logA(`Lỗi: ${e.message}`, 'error');
     }
   }
@@ -1587,12 +1587,12 @@ async function saveForm(update = true) {
       // =========================================================================
       // LƯU BOOKINGS (bỏ qua nếu chỉ chứa field 'id')
       // =========================================================================
-      let newBk = null;
+      let updateBk = null;
       if (hasBookingChanges) {
         // Truyền thẳng object để saveRecord giữ đúng field 'id' (không qua array conversion)
-        newBk = await A.DB.saveRecord('bookings', bookings);
-        if (newBk && !bookingId) {
-          A.NotificationManager.sendToAll('NEW BOOKING', `Booking mới đã được tạo với ID: ${newBk.id} - ${newBk.staff_id}`);
+        updateBk = await A.DB.saveRecord('bookings', bookings);
+        if (updateBk && !bookingId && updateBk?.status !== 'Hủy') {
+          A.NotificationManager.sendToAll('NEW BOOKING', `Booking mới đã được tạo với ID: ${updateBk.id} - ${updateBk.staff_id}`);
         }
       }
 
@@ -1600,7 +1600,7 @@ async function saveForm(update = true) {
       // CẬP NHẬT BOOKING_ID CHO TẤT CẢ BOOKING_DETAILS NẾU CHƯA CÓ GIÁ TRỊ
       // =========================================================================
       if (hasDetails) {
-        const resolvedBkId = newBk?.id ?? bookings.id;
+        const resolvedBkId = updateBk?.id ?? bookings.id;
         const updatedDetails = booking_details.map((detail) => {
           if (!detail.booking_id) {
             detail.booking_id = resolvedBkId;
@@ -1624,11 +1624,11 @@ async function saveForm(update = true) {
       logA('Lưu dữ liệu thành công!', true);
     } catch (e) {
       if (window.StateProxy) StateProxy.rollbackSession(); // revert to baseline
-      logError(e);
+      Opps(e);
       return;
     }
   } catch (e) {
-    logError('Lỗi hàm try: ', e);
+    Opps('Lỗi hàm try: ', e);
   } finally {
     setBtnLoading('btn-save-form', false);
   }
@@ -1636,7 +1636,7 @@ async function saveForm(update = true) {
 // =========================================================================
 // DELETE / CANCEL BOOKING HANDLER
 // =========================================================================
-async function deleteForm() {
+async function cancelBooking() {
   // 1. Lấy ID Booking hiện tại
   const bkId = getE('BK_ID')?.value;
   const currentStatus = getE('BK_Status')?.value;
@@ -1651,30 +1651,33 @@ async function deleteForm() {
   }
 
   // 4. Gọi Server xử lý
-  logA(`Đang yêu cầu hủy Booking: ${bkId}...`);
+  logA(`Đang hủy Booking: ${bkId}...`);
   showLoading(true);
-  const res = await requestAPI('cancelBookingHandler', bkId);
-  if (res) {
-    loadDataFromFirebase();
-    // B. Cập nhật giao diện ngay lập tức (Phản hồi tức thì)
-    // Không cần load lại form, chỉ cần đổi trạng thái để user thấy
-    const elStatus = getE('BK_Status');
-    const elTotal = getE('BK_Total');
-    const elBalance = getE('BK_Balance');
-    const elNote = getE('BK_Note');
-    if (elStatus) {
-      elStatus.value = 'Hủy';
-      elStatus.className = 'form-control form-control-sm fw-bold text-danger bg-danger bg-opacity-10'; // Đổi màu đỏ
-    }
-    // Backend đã reset tiền về 0, Frontend cũng nên hiện về 0
-    if (elTotal) elTotal.value = '0';
-    if (elBalance) elBalance.value = '0'; // Giả định hủy là hoàn cọc hoặc mất cọc tùy nghiệp vụ, ở đây về 0 theo logic backend
-    // C. Ghi chú thêm vào Note (Optional)
-    if (elNote) {
-      const time = new Date().toLocaleTimeString('vi-VN');
-      elNote.value = `[Hủy lúc ${time}] ` + elNote.value;
-    }
+  // B. Cập nhật giao diện ngay lập tức (Phản hồi tức thì)
+  // Không cần load lại form, chỉ cần đổi trạng thái để user thấy
+  const elStatus = getE('BK_Status');
+  const elTotal = getE('BK_Total');
+  const elBalance = getE('BK_Balance');
+  const elNote = getE('BK_Note');
+  if (elStatus) {
+    elStatus.value = 'Hủy';
+    elStatus.className = 'form-control form-control-sm fw-bold text-danger bg-danger bg-opacity-10'; // Đổi màu đỏ
   }
+  // Backend đã reset tiền về 0, Frontend cũng nên hiện về 0
+  if (elTotal) elTotal.value = '0';
+  // C. Ghi chú thêm vào Note (Optional)
+  if (elNote) {
+    const time = new Date().toLocaleTimeString('vi-VN');
+    elNote.value = `[Hủy lúc ${time}] ` + elNote.value;
+  }
+  const body = getE('detail-body');
+  if (body) {
+    body.querySelectorAll('.number, .number-only, input[type="number"]').forEach((el) => {
+      setVal(el, '0');
+    });
+  }
+  await saveForm(false); // Lưu mà không cần validate lại toàn bộ form (giữ nguyên dữ liệu đã có, chỉ cập nhật trạng thái và tiền)
+  A.NotificationManager.sendToOperator('HỦY BOOKING', `Booking Đã Hủy: ${bkId} - ${CURRENT_USER.name}`);
 }
 
 async function saveCustomer() {
@@ -1712,7 +1715,7 @@ async function saveCustomer() {
       logA('Lỗi khi lưu khách hàng: ' + (res?.message || 'Vui lòng thử lại'), 'error');
     }
   } catch (e) {
-    logError(e);
+    Opps(e);
     logA('Lỗi: ' + e.message, 'error');
   } finally {
     showLoading(false);
@@ -1820,7 +1823,7 @@ async function createContract() {
     }
     setBtnLoading('btn-create-contract', false);
   } catch (e) {
-    logError('Catch Lỗi: ' + e.message, e);
+    Opps('Catch Lỗi: ' + e.message, e);
   } finally {
     setBtnLoading('btn-create-contract', false);
   }
@@ -1895,14 +1898,14 @@ async function saveCurrentTemplate() {
 
     showLoading(true, 'Đang lưu Template...');
   } catch (e) {
-    logError(e?.message ?? String(e), e);
+    Opps(e?.message ?? String(e), e);
   }
 
   try {
     const res = await requestAPI('saveBookingTemplateAPI', tempName, booking_details, newDate);
     logA(res?.message ?? 'Đã lưu.', 'success');
   } catch (err) {
-    logError(err?.message ?? String(err), err);
+    Opps(err?.message ?? String(err), err);
   } finally {
     showLoading(false);
   }
@@ -1932,7 +1935,7 @@ async function checkAndLoadTemplate() {
       logA(template.message || 'Không có template', 'info');
     }
   } catch (e) {
-    logError(e?.message ?? String(e), e);
+    Opps(e?.message ?? String(e), e);
   }
 }
 
@@ -1957,7 +1960,7 @@ function askToLoadTemplate(res, tempName) {
       processAndFillTemplate(res.booking_details, res.anchorDate, startDate, adult);
     }
   } catch (e) {
-    logError(e?.message ?? String(e), e);
+    Opps(e?.message ?? String(e), e);
   }
 }
 /**
@@ -1987,7 +1990,7 @@ window.handleSaveCustomer = async function () {
       if (tab1Btn) bootstrap.Tab.getOrCreateInstance(tab1Btn).show();
     }
   } catch (e) {
-    logError(e?.message ?? String(e), e);
+    Opps(e?.message ?? String(e), e);
   } finally {
     showLoading(false);
   }

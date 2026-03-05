@@ -31,17 +31,13 @@ const MenuUtils = {
   },
   toggleTheme: function (e) {
     if (e) e.stopPropagation();
-    document.documentElement.getAttribute('data-bs-theme') === 'dark'
-      ? THEME_MANAGER.applyTheme('light')
-      : THEME_MANAGER.applyTheme('dark');
+    document.documentElement.getAttribute('data-bs-theme') === 'dark' ? THEME_MANAGER.applyTheme('light') : THEME_MANAGER.applyTheme('dark');
     const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
     const themeText = document.getElementById('theme-toggle-text');
     const themeIcon = document.getElementById('theme-toggle-icon');
     if (themeText && themeIcon) {
       themeText.innerText = isDark ? 'Giao diện Sáng' : 'Giao diện Tối';
-      themeIcon.className = isDark
-        ? 'menu-icon fa-solid fa-sun text-warning'
-        : 'menu-icon fa-solid fa-moon text-secondary';
+      themeIcon.className = isDark ? 'menu-icon fa-solid fa-sun text-warning' : 'menu-icon fa-solid fa-moon text-secondary';
     }
   },
 };
@@ -92,8 +88,7 @@ export const ChromeMenuController = {
       type: 'item',
       label: 'Cập Nhật Dữ Liệu',
       icon: 'fa-solid fa-cloud-arrow-down text-info',
-      actionCode:
-        "if(typeof A !== 'undefined' && A.DB) A.DB.syncDelta(null, { forceNew: true }); else log('❌ DBManager không khả dụng');",
+      actionCode: "if(typeof A !== 'undefined' && A.DB) A.DB.syncDelta(null, { forceNew: true }); else log('❌ DBManager không khả dụng');",
     },
     { type: 'divider' },
     {
@@ -119,15 +114,13 @@ export const ChromeMenuController = {
           type: 'item',
           label: 'Cấu Hình Admin',
           icon: 'fa-solid fa-cog text-warning',
-          actionCode:
-            "if(typeof A.AdminConsole.openAdminSettings === 'function') A.AdminConsole.openAdminSettings()",
+          actionCode: "if(typeof A.AdminConsole.openAdminSettings === 'function') A.AdminConsole.openAdminSettings()",
         },
         {
           type: 'item',
           label: 'Xem Debug Proxy',
           icon: 'fa-solid fa-bug text-warning',
-          actionCode:
-            "if(typeof StateProxy.showProxyDebug === 'function') StateProxy.showProxyDebug()",
+          actionCode: "if(typeof StateProxy.showProxyDebug === 'function') StateProxy.showProxyDebug()",
         },
         {
           type: 'item',
@@ -173,9 +166,7 @@ export const ChromeMenuController = {
   addMenu: function (menuItem, targetSubmenuLabel = null, insertIndex = -1) {
     let targetArray = this.config;
     if (targetSubmenuLabel) {
-      const parent = this.config.find(
-        (item) => item.label === targetSubmenuLabel && item.type === 'submenu'
-      );
+      const parent = this.config.find((item) => item.label === targetSubmenuLabel && item.type === 'submenu');
       if (parent) targetArray = parent.children = parent.children || [];
     }
 
@@ -227,9 +218,7 @@ export const ChromeMenuController = {
     const wrapperClass = item.cssClass ? ` ${item.cssClass}` : '';
 
     // Kích hoạt sự kiện lấy từ Registry
-    const clickEvent = item._internalActionId
-      ? `onclick="A.ChromeMenuController.executeAction('${item._internalActionId}')"`
-      : '';
+    const clickEvent = item._internalActionId ? `onclick="A.ChromeMenuController.executeAction('${item._internalActionId}')"` : '';
 
     switch (item.type) {
       case 'divider':
@@ -243,9 +232,7 @@ export const ChromeMenuController = {
       case 'role_switcher':
         return `<div class="px-3 py-2 border-top${wrapperClass}" ${styleAttr}><select id="btn-select-masked-role" class="form-select form-select-sm fw-bold text-primary" onchange="if(typeof reloadSystemMode === 'function') reloadSystemMode(this.value); A.ChromeMenuController.hideMenu();"><option id="user-menu-role" value="" selected>-- Chọn Role --</option><option value="sale">Sales Mode</option><option value="op">Operator Mode</option></select></div>`;
       case 'submenu':
-        const childrenHtml = item.children
-          ? item.children.map((child) => this.buildItemHtml(child)).join('')
-          : '';
+        const childrenHtml = item.children ? item.children.map((child) => this.buildItemHtml(child)).join('') : '';
         return `
                     <div class="erp-submenu${wrapperClass}" ${styleAttr}>
                         <div class="erp-menu-item" onclick="A.ChromeMenuController.toggleSubmenu(event, this)" ${idAttr}>
@@ -336,9 +323,7 @@ export const ChromeMenuController = {
               logA('Chưa tải module báo cáo. Vui lòng refresh trang.', 'warning', 'alert');
             }
           } else {
-            console.error(
-              'Modal component not found. Please ensure at-modal-full is included in the page.'
-            );
+            console.error('Modal component not found. Please ensure at-modal-full is included in the page.');
             logA('Không tìm thấy thành phần modal. Vui lòng refresh trang.', 'warning', 'alert');
           }
         },

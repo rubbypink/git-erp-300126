@@ -38,7 +38,7 @@ class EventManager {
       log('[EventManager] ✅ Tất cả events đã khởi tạo', 'success');
     } catch (err) {
       console.error('[EventManager] ❌ Lỗi khởi tạo:', err);
-      logError(err.message);
+      Opps(err.message);
     }
   }
 
@@ -188,8 +188,8 @@ class EventManager {
           handler.call(e.currentTarget, e, e.currentTarget);
         }
       } catch (handlerErr) {
-        if (typeof logError === 'function') {
-          logError(`[EventManager] Handler error (${eventNames}): ${handlerErr.message}`);
+        if (typeof Opps === 'function') {
+          Opps(`[EventManager] Handler error (${eventNames}): ${handlerErr.message}`);
         } else {
           console.error('[EventManager] Handler error:', handlerErr);
         }
@@ -317,7 +317,7 @@ class EventManager {
           await requestAPI(funcName);
         }
       } catch (err) {
-        logError(`Lỗi gọi ${funcName}: ${err.message}`);
+        Opps(`Lỗi gọi ${funcName}: ${err.message}`);
       }
     };
 
@@ -472,7 +472,7 @@ class EventManager {
           const deposit = getNum('BK_Deposit');
           const balance = grandTotal - deposit;
           setNum('BK_Balance', balance);
-        }, 500);
+        }, 250);
       },
       true
     );
@@ -640,7 +640,7 @@ class EventManager {
           menu.style.display = 'none';
           logA('✅ Copied data to clipboard!', 'success');
         } catch (err) {
-          logError('❌ Copy failed: ' + err.message);
+          Opps('❌ Copy failed: ' + err.message);
         }
       };
     }

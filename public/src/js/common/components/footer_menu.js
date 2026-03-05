@@ -272,17 +272,17 @@ export default class ErpFooterMenu {
     style.innerHTML = `
             .erp-footer-wrapper {
                 position: fixed; bottom: 0; left: 0; width: 100%;
-                height: ${this.config.height}; background-color: ${this.config.bgColor};
+                height: ${this.config.height};
                 box-shadow: ${this.config.boxShadow}; z-index: ${this.config.zIndex};
                 display: flex; align-items: center; padding: 0 1.5rem; transition: transform 0.3s ease;
                 user-select: none;
             }
             .erp-footer-desktop { 
                 display: flex; gap: 0.5rem; align-items: center; width: 100%; justify-content: flex-end;
-                user-select: none;
+                user-select: none; background-color: ${this.config.bgColor};
             }
             .erp-footer-mobile { 
-                display: none; width: 100%; position: relative; user-select: none;
+                display: none; width: 100%; position: relative; pointer-events: none;
             }
             .erp-mobile-dropup {
                 position: absolute; bottom: calc(${this.config.height} + 10px); left: 0;
@@ -296,7 +296,7 @@ export default class ErpFooterMenu {
             }
             .erp-mobile-dropup button { 
                 width: 100%; text-align: left; border: none; background: none; padding: 10px 20px; 
-                transition: background 0.2s; cursor: pointer; user-select: none;
+                transition: background 0.2s; cursor: pointer; user-select: none;  pointer-events: auto;
             }
             .erp-mobile-dropup button:hover { background: #f8f9fa; }
             /* ⭐ Ngăn chặn ALL tương tác khi menu ẩn (cascade inheritance) */
@@ -352,9 +352,12 @@ export default class ErpFooterMenu {
                     display: none !important; pointer-events: none !important;
                 }
                 .erp-footer-mobile { 
-                    display: flex !important; justify-content: flex-start; align-items: center;
-                    pointer-events: auto;
+                    display: flex !important; justify-content: flex-start; align-items: center; background-color: transparent;
+                    pointer-events: none;
                 }
+                #erp-f-mobile-trigger { 
+                  display: flex !important; pointer-events: auto !important;
+              }
             }
             
             @media (min-width: 992px) {
@@ -580,7 +583,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
         iconClass: 'fa-solid fa-trash',
         btnClass: 'btn-danger sales-only',
         callback: () => {
-          if (typeof logA === 'function') logA('CẢNH BÁO: Hủy Booking?', 'danger', deleteForm);
+          if (typeof logA === 'function') logA('CẢNH BÁO: Hủy Booking?', 'danger', cancelBooking);
         },
         attributes: { 'data-ontabs': '2' },
       },

@@ -735,7 +735,7 @@ function resolveEls(target, root) {
     return Array.from(safeRoot.querySelectorAll(str));
   } catch (e) {
     // Fallback log
-    if (typeof logError === 'function') logError(`[DOM] resolveEls lỗi: ${target}`, e);
+    if (typeof Opps === 'function') Opps(`[DOM] resolveEls lỗi: ${target}`, e);
     else console.warn(`[DOM] resolveEls crash:`, e);
     return [];
   }
@@ -807,7 +807,7 @@ function getFromEl(el, opt = {}) {
 
     return val;
   } catch (e) {
-    if (typeof logError === 'function') logError(`[DOM] getFromEl lỗi ID: ${el.id}`, e);
+    if (typeof Opps === 'function') Opps(`[DOM] getFromEl lỗi ID: ${el.id}`, e);
     else console.error(e);
     return opt.fallback ?? '';
   }
@@ -885,7 +885,7 @@ function setToEl(el, value) {
     // el.textContent = String(vRaw); thử chuyển vào case D để tránh trường hợp value="" nhưng vẫn muốn set textContent
     return true;
   } catch (err) {
-    if (typeof logError === 'function') logError(`[DOM] setToEl lỗi`, err);
+    if (typeof Opps === 'function') Opps(`[DOM] setToEl lỗi`, err);
     else console.error(err);
     return false;
   }
@@ -913,7 +913,7 @@ function getVal(id, root = document, opt = {}) {
 
     return opt.fallback ?? '';
   } catch (err) {
-    if (typeof logError === 'function') logError(`[DOM] getVal lỗi`, 'danger');
+    if (typeof Opps === 'function') Opps(`[DOM] getVal lỗi`, 'danger');
     return opt.fallback ?? '';
   }
 }
@@ -922,13 +922,13 @@ function setVal(id, value, root = document) {
     const el = $(id, root);
     if (!el) {
       // Không tìm thấy element để set -> Log warning nhẹ
-      if (typeof logError === 'function') logError(`[DOM] setVal: Không tìm thấy ID "${id}"`, 'warning');
+      if (typeof Opps === 'function') Opps(`[DOM] setVal: Không tìm thấy ID "${id}"`, 'warning');
       else console.warn(`[DOM] setVal missing: ${id}`);
       return false;
     }
     return setToEl(el, value);
   } catch (e) {
-    if (typeof logError === 'function') logError(`[DOM] setVal lỗi`, e);
+    if (typeof Opps === 'function') Opps(`[DOM] setVal lỗi`, e);
     return false;
   }
 }
@@ -961,7 +961,7 @@ function setNum(idOrEl, val) {
       el.value = typeof formatMoney === 'function' ? formatMoney(rawNum) : new Intl.NumberFormat('vi-VN').format(rawNum);
     }
   } catch (e) {
-    if (typeof logError === 'function') logError(`[DOM] setNum lỗi`, 'danger');
+    if (typeof Opps === 'function') Opps(`[DOM] setNum lỗi`, 'danger');
   }
 }
 
@@ -1017,7 +1017,7 @@ function getNum(target) {
     // Kiểm tra NaN (Not a Number) lần cuối
     return isNaN(num) ? 0 : num;
   } catch (e) {
-    if (typeof logError === 'function') logError(`[DOM] getNum crash`, 'danger');
+    if (typeof Opps === 'function') Opps(`[DOM] getNum crash`, 'danger');
     return 0; // Luôn return 0 khi lỗi hệ thống
   }
 }
@@ -1451,7 +1451,7 @@ async function requestAPI(funcName, ...args) {
     }
   } catch (err) {
     const errMsg = err.message || String(err);
-    logError(errMsg, err);
+    Opps(errMsg, err);
     return null;
   } finally {
     showLoading(false);
@@ -1907,45 +1907,18 @@ function _bsBtnColors() {
   };
 }
 
-function showAlert(message, type = 'info', title = '', options = {}) {
+function showAlert(message, type = 'info', title = 'Thông Báo', options = {}) {
   return logA(message, type, 'alert', title ? { title, ...options } : options);
 }
 
-function showConfirm(message, okFn, denyFn, opts = {}) {
-  if (okFn) opts.onConfirm = okFn;
-  if (denyFn) opts.onDeny = denyFn;
-  return logA(message, 'question', 'confirm', opts);
-}
-
-function logError(p1, p2) {
-  // -----------------------------------------------------------
-  if (typeof p1 === 'string' && !p2) {
-    log(`ℹ️ [ERROR]: ${p1}`, 'error');
-    return; // Dừng hàm, không xử lý báo lỗi phía sau
-  }
-  let msg = '';
-  let e = null;
-
-  // 3. LOGIC ĐẢO THAM SỐ (Adapter)
-
-  if (typeof p1 === 'string') {
-    msg = p1;
-    e = p2;
-  }
-  // Ngược lại: Nếu p1 là Object/Error -> CHUẨN MỚI (e, msg)
-  else {
-    e = p1;
-    // Nếu p2 là string thì lấy làm msg, nếu không thì để trống
-    if (typeof p2 === 'string') {
-      msg = p2;
-    }
-  }
-
-  // Chuẩn hóa message
-  msg = msg ? String(msg) : 'Lỗi không xác định';
-
+function Opps(message, e, options = {}) {
   // Trích xuất nội dung lỗi
   let errorDetail = '';
+  let msg = message ? message : null;
+  if (typeof message !== 'string' || typeof e === 'string') {
+    msg = e ? String(e) : 'Lỗi không xác định';
+    e = message;
+  }
   if (e) {
     if (e instanceof Error) {
       errorDetail = `\n[Name]: ${e.name}\n[Message]: ${e.message}\n[Stack]: ${e.stack}`;
@@ -1959,24 +1932,24 @@ function logError(p1, p2) {
       errorDetail = String(e);
     }
   }
-
-  // -----------------------------------------------------------
-  // 5. THỰC THI (Console.error)
-  // -----------------------------------------------------------
   const timestamp = new Date().toLocaleString('vi-VN');
   const finalLog = `[${timestamp}] ❌ ERROR: ${msg} ${errorDetail}`;
-
-  showAlert(finalLog, 'error', '❌ Lỗi', { timer: 5000, showConfirmButton: true });
+  return logA(finalLog, 'error', 'alert', options);
 }
 
-// Biến lưu timer để xử lý conflict nếu thông báo đến liên tục
+function showConfirm(message, okFn, denyFn, opts = {}) {
+  if (okFn) opts.onConfirm = okFn;
+  if (denyFn) opts.onDeny = denyFn;
+  return logA(message, 'question', 'confirm', opts);
+}
+
 var _notifTimer = null;
 
 // --- BỔ SUNG HÀM FULL SCREEN ---
 function toggleFullScreen() {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen().catch((err) => {
-      console.log(`Lỗi khi bật Fullscreen: ${err.message}`);
+      Opps(`Lỗi khi bật Fullscreen: ${err.message}`);
     });
   } else {
     if (document.exitFullscreen) {
@@ -1997,7 +1970,7 @@ function runFnByRole(baseFuncName, ...args) {
   // 1. Kiểm tra an toàn: Biến CURRENT_USER có tồn tại không?
   let targetFuncName;
   if (typeof CURRENT_USER === 'undefined' || !CURRENT_USER.role) {
-    logError('❌ [runFnByRole] Không tìm thấy thông tin Role (CURRENT_USER chưa init).');
+    Opps('❌ [runFnByRole] Không tìm thấy thông tin Role (CURRENT_USER chưa init).');
     targetFuncName = baseFuncName;
   } else {
     // 2. Xử lý tên Role để ghép chuỗi
@@ -2015,7 +1988,7 @@ function runFnByRole(baseFuncName, ...args) {
       // Gọi hàm và truyền nguyên vẹn các tham số vào
       return window[targetFuncName](...args);
     } catch (err) {
-      logError(`❌ [AutoRun] Hàm ${targetFuncName} bị lỗi khi chạy:`, err);
+      Opps(`❌ [AutoRun] Hàm ${targetFuncName} bị lỗi khi chạy:`, err);
     }
   } else {
     // (Option) Nếu muốn chạy hàm mặc định khi không có hàm riêng
@@ -2093,7 +2066,7 @@ async function loadLibraryAsync(libName) {
   // 1. Kiểm tra library có tồn tại trong config không
   const libConfig = _LibraryLoadStatus[libName];
   if (!libConfig) {
-    logError(`❌ loadLibraryAsync: Unknown library [${libName}]`);
+    Opps(`❌ loadLibraryAsync: Unknown library [${libName}]`);
     return false;
   }
 
@@ -2134,7 +2107,7 @@ async function loadLibraryAsync(libName) {
           };
 
           script.onerror = () => {
-            logError(`❌ Failed to load: ${url}`);
+            Opps(`❌ Failed to load: ${url}`);
             resolve(false);
           };
 
@@ -2153,11 +2126,11 @@ async function loadLibraryAsync(libName) {
         log(`✅ Library [${libName}] loaded successfully`, 'success');
         return true;
       } else {
-        logError(`❌ Library [${libName}] loaded but check failed`);
+        Opps(`❌ Library [${libName}] loaded but check failed`);
         return false;
       }
     } catch (err) {
-      logError(`❌ Error loading library [${libName}]:`, err);
+      Opps(`❌ Error loading library [${libName}]:`, err);
       return false;
     }
   })();
@@ -2186,7 +2159,7 @@ function preloadExportLibraries() {
 function downloadTableData_Csv(tableId, fileName = 'table_data.csv') {
   const table = getE(tableId);
   if (!table) {
-    logError(`❌ Table with ID "${tableId}" not found.`);
+    Opps(`❌ Table with ID "${tableId}" not found.`);
     return;
   }
   let csvContent = '';
@@ -2278,7 +2251,7 @@ async function downloadTableData(exportData, type = 'pdf', fileName = 'export_da
     if (typeof showNotify === 'function') showNotify('Đã xuất file thành công!', true);
   } catch (err) {
     showLoading(false);
-    logError(err);
+    Opps(err);
     alert('Lỗi khi xuất file: ' + err.message);
   }
 }
@@ -2411,7 +2384,7 @@ function getHtmlContent(url, options = {}) {
             log(`⚠️ HTML fetch failed (attempt ${attempt}/${retry}), retrying...`, 'warning');
             setTimeout(() => fetchWithTimeout(path, attempt + 1), 500);
           } else {
-            logError(`❌ Failed to load HTML from: ${finalSourcePath} (${err.message})`);
+            Opps(`❌ Failed to load HTML from: ${finalSourcePath} (${err.message})`);
             reject(err);
           }
         });
@@ -2453,7 +2426,7 @@ function loadJSFile(filePath, userRole = null, targetIdorEl = null) {
       targetIdorEl = el;
     } else {
       const errorMsg = `❌ [loadJSFile] Target element not found: ${targetIdorEl}`;
-      if (typeof logError === 'function') logError(errorMsg);
+      if (typeof Opps === 'function') Opps(errorMsg);
       return Promise.reject(new Error(errorMsg));
     }
   }
@@ -2479,7 +2452,7 @@ function loadJSFile(filePath, userRole = null, targetIdorEl = null) {
 
       s.onerror = (e) => {
         const errorMsg = `❌ Failed to load JS file: ${filePath}`;
-        if (typeof logError === 'function') logError(errorMsg);
+        if (typeof Opps === 'function') Opps(errorMsg);
         reject(new Error(errorMsg));
       };
 
@@ -2487,7 +2460,7 @@ function loadJSFile(filePath, userRole = null, targetIdorEl = null) {
       targetIdorEl.appendChild(s);
     } catch (err) {
       // Catch các lỗi đồng bộ khi tạo element
-      if (typeof logError === 'function') logError(`❌ Error inside loadJSFile: ${err.message}`);
+      if (typeof Opps === 'function') Opps(`❌ Error inside loadJSFile: ${err.message}`);
       reject(err);
     }
   });
@@ -2514,7 +2487,7 @@ async function loadJSForRole(userRole, baseFilePath = './src/js/') {
   const loadPromises = fileNames.map((fname) => {
     const path = baseFilePath + fname;
     return loadJSFile(path, userRole).catch((err) => {
-      logError(`❌ Error loading JS for role ${userRole}, file ${fname}:`, err);
+      Opps(`❌ Error loading JS for role ${userRole}, file ${fname}:`, err);
       // Don't throw - continue loading other files
       return null;
     });
@@ -2524,7 +2497,7 @@ async function loadJSForRole(userRole, baseFilePath = './src/js/') {
     await Promise.all(loadPromises);
     return true;
   } catch (err) {
-    logError(`❌ Error in loadJSForRole:`, err);
+    Opps(`❌ Error in loadJSForRole:`, err);
     return false;
   }
 }
@@ -2602,7 +2575,7 @@ const HD = {
       // Trường hợp Object: Đổ vào Form fields
       return this._handleObjectSet(rootEl, data, isNew, prefix);
     } catch (e) {
-      logError('Lỗi setFormData: ', e);
+      Opps('Lỗi setFormData: ', e);
       return 0;
     }
   },
