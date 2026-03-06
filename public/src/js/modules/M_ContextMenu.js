@@ -711,9 +711,9 @@ class ContextMenu {
             const info = _getDocInfo(ctx);
             const coll = info?.coll || _getCollection(ctx);
             let data;
-            if (typeof getRowData === 'function') {
+            if (typeof HD.getRowData === 'function') {
               const tbody = ctx.row.closest('tbody');
-              data = getRowData(coll, ctx.row, tbody);
+              data = HD.getRowData(coll, ctx.row, tbody);
             } else {
               // Fallback: gather data-field inputs from row
               data = {};
@@ -1332,8 +1332,8 @@ class ContextMenu {
         const sidInput = row.querySelector('.d-sid');
         window.CURRENT_CTX_ID = sidInput ? sidInput.value : '';
 
-        if (typeof getRowData === 'function') {
-          window.CURRENT_ROW_DATA = getRowData(collection, row, tbody);
+        if (typeof HD.getRowData === 'function') {
+          window.CURRENT_ROW_DATA = HD.getRowData(collection, row, tbody);
         }
       },
 

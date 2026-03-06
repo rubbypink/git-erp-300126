@@ -2188,17 +2188,9 @@ export function createFormBySchema(collectionName, formId) {
   // IMPORTANT: data-collection must store the raw collection name (not translated),
   // because saveRecord / deleteRecord / loadFormDataSchema use it as Firestore collection key.
   const displayCollectionName = A.Lang?.t(collectionName) || collectionName;
-  let html = `<form id="${formId}" class="db-schema-form" data-collection="${collectionName}" style="max-width: 800px; margin: auto; padding: 16px; min-height: 400px;">`;
+  let html = `<form id="${formId}" class="db-schema-form h-100" data-collection="${collectionName}" style="max-width: 85vw; margin: auto; padding-bottom: 1.5rem; min-height: 400px;" gap: 16px; position: relative">`;
 
-  // ===== MAIN EDITABLE FIELDS SECTION =====
-  // Mobile-first responsive grid: 2 cols mobile, auto-fit desktop
-  // html += `<div class="form-fields-grid" style="
-  //   display: grid;
-  //   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  //   gap: 12px;
-  //   margin-bottom: 16px;
-  // ">`;
-  html += `<fieldset class="border p-3 mb-3" data-collection="${collectionName}" style="border-radius: 4px; border-color: #ced4da;">`;
+  html += `<fieldset class="border p-3 mb-3" data-collection="${collectionName}" style="border-radius: 4px; border-color: #ced4da; flex: 1 1 auto;">`;
   html += `<legend class="w-auto px-2" style="font-size: 1.1em;">${displayCollectionName}</legend>
     `;
 
@@ -2254,11 +2246,13 @@ export function createFormBySchema(collectionName, formId) {
   // ===== FOOTER WITH BUTTONS =====
   html += `
   <div class="form-footer" style="
+    position: absolute;
+    bottom: 0;
     display: flex;
-    gap: 8px;
-    margin-top: 16px;
-    justify-content: flex-end;
-    flex-wrap: wrap;
+    width: 100%;
+    gap: 1rem;
+    padding: 0.5rem 1rem 1rem 1rem;
+    justify-content: center;
   ">
     <button type="button" class="btn btn-danger me-auto" data-db-action="delete">
       <i class="fa-solid fa-trash me-1"></i> Xóa
@@ -2307,13 +2301,13 @@ function _getDataSourceArray(dataSourceName) {
   }
 
   // Try to get from APP_DATA[dataSourceName]
-  let data = window.APP_DATA[dataSourceName];
+  let data = Object.values(APP_DATA[dataSourceName]);
   if (Array.isArray(data)) {
     return data;
   }
 
   // Try to get from APP_DATA[dataSourceName_obj]
-  data = window.APP_DATA[`${dataSourceName}_obj`];
+  data = window.APP_DATA[`${dataSourceName}`];
   if (Array.isArray(data)) {
     return data;
   }
@@ -2948,7 +2942,7 @@ async function deleteFormDataSchema(formId) {
  */
 export async function loadFormDataSchema(formId, idorData = null) {
   const form = document.getElementById(formId);
-  if (!form || !idorData) {
+  if (!form) {
     showAlert(`Form with ID '${formId}' not found or no data provided`, 'error');
     return;
   }
@@ -2956,7 +2950,7 @@ export async function loadFormDataSchema(formId, idorData = null) {
   let data = null;
 
   // ===== CASE 1: idorData is a STRING (ID) =====
-  if (typeof idorData === 'string') {
+  if (typeof idorData === 'string' && idorData.trim() !== '') {
     const collectionName = form.dataset.collection;
     if (!collectionName) {
       console.error(`Form '${formId}' does not have data-collection attribute`);
@@ -2988,11 +2982,11 @@ export async function loadFormDataSchema(formId, idorData = null) {
           return;
         }
       } catch (error) {
-        logA(`❌ Error loading data: ${error.message}`, 'error', 'alert');
+        Opps(`❌ Error loading data: ${error.message}`, error);
         return;
       }
     } else if (!data && !A.DB.db) {
-      logA(`❌ No data found for ID: ${idorData}`, 'warning', 'alert');
+      showAlert(`❌ No data found for ID: ${idorData}`, 'warning');
       return;
     }
   }
@@ -3003,7 +2997,7 @@ export async function loadFormDataSchema(formId, idorData = null) {
   }
   // ===== INVALID PARAMETER =====
   else {
-    logA(`❌ Invalid parameter type: ${typeof idorData}`, 'warning', 'alert');
+    log(`❌ Invalid parameter type: ${typeof idorData}`, 'warning');
     return;
   }
 

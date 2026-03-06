@@ -1067,7 +1067,7 @@ function renderDashTable1() {
 				<td class="text-center">${formatDateVN(row.end_date || row.created_at || row.start_date)}</td>
 				<td class="text-center text-success">${formatMoney(row.total_amount)}</td>
 				<td class="text-center ${balClass}">${formatMoney(row.deposit_amount)}</td>
-				<td class="small text-center"><at-status status="${row.status}">${row.status}</at-status></td>
+				<td class="small text-center"><at-status status="${row.status}"></at-status></td>
 				<td class="small text-center">${row.staff_id}</td>
 			`;
       tr.style.cursor = 'pointer';

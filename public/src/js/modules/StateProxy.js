@@ -321,6 +321,7 @@ const StateProxy = (() => {
 
   /** Install a Proxy on APP_DATA[coll] if not already installed */
   function _installProxy(coll) {
+    return;
     if (_proxyCache.has(coll)) {
       _dbg('_installProxy SKIP (cached)', coll);
       return;
@@ -1088,6 +1089,7 @@ const StateProxy = (() => {
      * @param {string}  field
      */
     bindElement(el, coll, id, field) {
+      return;
       if (!el || !coll || !id || !field) {
         _dbgWarn('bindElement ABORT — missing params', { el: !!el, coll, id, field });
         return;
@@ -1122,6 +1124,7 @@ const StateProxy = (() => {
      * @param {string} id
      */
     beginEdit(coll, id) {
+      return;
       _ensureTracked(coll, id);
     },
 

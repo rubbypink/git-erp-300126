@@ -272,17 +272,17 @@ export default class ErpFooterMenu {
     style.innerHTML = `
             .erp-footer-wrapper {
                 position: fixed; bottom: 0; left: 0; width: 100%;
-                height: ${this.config.height};
+                height: ${this.config.height}; background: transparent;
                 box-shadow: ${this.config.boxShadow}; z-index: ${this.config.zIndex};
                 display: flex; align-items: center; padding: 0 1.5rem; transition: transform 0.3s ease;
-                user-select: none;
+                pointer-events: none;
             }
             .erp-footer-desktop { 
                 display: flex; gap: 0.5rem; align-items: center; width: 100%; justify-content: flex-end;
-                user-select: none; background-color: ${this.config.bgColor};
+                pointer-events: none; background-color: ${this.config.bgColor};
             }
             .erp-footer-mobile { 
-                display: none; width: 100%; position: relative; pointer-events: none;
+                display: none; width: 100%; position: fixed; bottom: 0; background: transparent; pointer-events: none;
             }
             .erp-mobile-dropup {
                 position: absolute; bottom: calc(${this.config.height} + 10px); left: 0;
@@ -331,7 +331,7 @@ export default class ErpFooterMenu {
             }
             /* 🔥 FIX: Explicitly show #erp-f-mobile-trigger in NORMAL mode (non-widget) */
             #erp-f-mobile-trigger {
-                display: flex; align-items: center; justify-content: center;
+                display: flex; align-items: center; justify-content: center; pointer-events: auto;
             }
             #erp-f-mobile-widget-icon {
                 position: fixed; bottom: 20px; left: 20px; width: 50px; height: 50px;
@@ -392,6 +392,9 @@ export default class ErpFooterMenu {
                 #widget-btn-toggle-widget-mode {
                     display: none !important; pointer-events: none !important;
                 }
+                #btn-toggle-offcanvas-menu {
+                    display: none !important; pointer-events: none !important;
+                }
             }
         `;
     document.head.appendChild(style);
@@ -404,11 +407,11 @@ export default class ErpFooterMenu {
       container.id = this.containerId;
       document.body.appendChild(container);
     }
-    container.className = 'erp-footer-wrapper';
+    container.className = 'erp-footer-wrapper bg-transparent';
     container.innerHTML = `
             <div id="erp-f-desktop-container" class="erp-footer-desktop"></div>
             <div class="erp-footer-mobile">
-                <button id="erp-f-mobile-trigger" class="btn btn-outline-primary d-flex align-items-center gap-2">
+                <button id="erp-f-mobile-trigger" class="btn btn-secondary d-flex align-items-center gap-2">
                     <i class="fas fa-bars"></i> Thao tác
                 </button>
                 <div id="erp-f-mobile-dropup" class="erp-mobile-dropup"></div>
@@ -564,7 +567,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
         iconClass: 'fa-solid fa-user-plus',
         btnClass: 'btn-info sales-only',
         callback: () => {
-          A.UI.renderForm('customers', 'form-customer');
+          A.UI.renderForm('customers', null, 'Tạo Khách Hàng Mới');
         },
       },
       {
@@ -682,11 +685,20 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
         callback: () => {
           const currentMode = localStorage.getItem('erp-footer-widget-mode') === 'true';
           footerInstance._setWidgetMode(!currentMode);
-          if (typeof log === 'function') {
-            log(currentMode ? 'Chuyển sang thanh công cụ' : 'Chuyển sang chế độ widget', 'info');
-          }
         },
         attributes: { title: 'Chuyển đổi giữa thanh công cụ và chế độ widget' },
+      },
+      {
+        id: 'btn-toggle-offcanvas-menu',
+        label: 'Offcanvas menu',
+        iconClass: 'fa-solid fa-bars',
+        btnClass: 'btn-info',
+        callback: () => {
+          if (A.OffcanvasMenu && typeof A.OffcanvasMenu.toggle === 'function') {
+            A.OffcanvasMenu.toggle();
+          }
+        },
+        attributes: { title: 'Bật/Tắt Offcanvas menu' },
       },
     ];
 

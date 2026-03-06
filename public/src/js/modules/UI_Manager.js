@@ -299,11 +299,11 @@ const UI_RENDERER = {
       form.reset();
     }
   },
-  renderModal: async function (tmplId, title, btnSaveHandler = null, btnResetHandler = null) {
+  renderModal: async function (tmplId, title, btnSaveHandler = null, btnResetHandler = null, opts = {}) {
     try {
       const modalContent = await this.renderTemplate(null, tmplId);
 
-      A.Modal.render(modalContent, title);
+      A.Modal.render(modalContent, title, opts);
       if (btnSaveHandler) {
         A.Modal.setSaveHandler(btnSaveHandler, 'Lưu');
       }
@@ -315,9 +315,9 @@ const UI_RENDERER = {
       Opps('Lỗi trong renderModal: ', e);
     }
   },
-  renderForm: async function (collection, dataorId = null) {
+  renderForm: async function (collection, dataorId = null, title = null, opts = {}) {
     const html = await createFormBySchema(collection);
-    A.Modal.render(html, null); // Có thể tùy chỉnh title theo collection hoặc formId nếu muốn
+    A.Modal.render(html, title, opts); // Có thể tùy chỉnh title theo collection hoặc formId nếu muốn
     A.Modal.show();
     if (dataorId) {
       const formId = `${collection}-schema-form`;

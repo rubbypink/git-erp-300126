@@ -976,7 +976,7 @@ body:not(.is-acc):not(.is-admin) .acc-only {
   body {
     overflow: hidden !important;
     height: auto !important;
-    touch-action: auto !important;
+    touch-action: manipulation !important;
     -webkit-overflow-scrolling: touch;
     height: 100dvh;
   }
@@ -1012,8 +1012,15 @@ body:not(.is-acc):not(.is-admin) .acc-only {
     flex-direction: column;
     /* Bỏ max-height: 88dvh (magic number không chính xác) */
     /* Thay bằng padding để tránh content bị footer che */
-    padding-bottom: var(--footer-actual-height, calc(var(--footer-height)));
+    padding-bottom: 0.5rem !important;
     position: relative;
+  }
+
+  .tab-content {
+    flex: 1 1 auto;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* 5. FIX NAV-CONTAINER NGANG */
@@ -1046,6 +1053,12 @@ body:not(.is-acc):not(.is-admin) .acc-only {
     padding: 0.15rem !important;
   }
 
+  #tab-dashboard .card.active .card-body {
+    max-height: 38vh;
+    height: unset;
+    transition: max-height 0.5s ease-in-out;
+  }
+
   /* --- 2. FIX MODAL BACKDROP CLICK-THROUGH --- */
 
   /* Đảm bảo Modal Container bao phủ toàn màn hình nhưng cho phép click xuyên qua vùng trống */
@@ -1070,9 +1083,7 @@ body:not(.is-acc):not(.is-admin) .acc-only {
   /* 4. ĐẢM BẢO CÁC VÙNG NHẬP LIỆU LUÔN TƯƠNG TÁC ĐƯỢC */
   input,
   select,
-  textarea,
-  button,
-  .btn {
+  textarea {
     pointer-events: auto !important;
     touch-action: manipulation !important; /* Cho phép zoom nhấp nhưng không lag */
     width: fit-content;
@@ -1080,16 +1091,22 @@ body:not(.is-acc):not(.is-admin) .acc-only {
     margin: 0.15rem;
   }
 
-  .btn {
+  button,
+  .btn,
+  .btn-sm {
+    touch-action: manipulation !important;
     display: inline-block; /* Stack buttons vertically if multiple */
-    margin: 10px 0; /* Add vertical spacing */
-    box-sizing: border-box;
+    margin: 0.5rem 0.25rem; /* Add vertical spacing */
+    cursor: pointer;
+    --webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+    --webkit-user-select: none; /* Prevent text selection on buttons */
+    --webkit-touch-callout: none; /* Disable callout on long press */
+    user-select: none;
   }
-
-  .btn .btn-sm {
-    padding: 0.15rem 0.25rem !important;
-    font-size: 0.75rem !important;
-    min-height: 2rem !important;
+  button:active,
+  .btn:active {
+    transform: scale(0.98);
+    transition: all 0.1s ease;
   }
 
   .nav-tabs {

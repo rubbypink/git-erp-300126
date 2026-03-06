@@ -690,8 +690,6 @@ const fitToViewport = (target, padding = 20) => {
   }
 };
 
-window.fitToViewport = fitToViewport; // Export ra toàn cục để tiện sử dụng
-
 /* =================================================================
  * DOM HELPERS V3: FINAL & FLEXIBLE
  * Tech Lead: 9Trip Team
@@ -946,7 +944,8 @@ function setNum(idOrEl, val) {
 
     let rawNum = 0;
     if (val !== '' && val !== null && val !== undefined) {
-      rawNum = Number(val);
+      rawNum = String(val).replace(/[^0-9]/g, '');
+      rawNum = Number(rawNum);
       if (isNaN(rawNum)) rawNum = 0;
     }
     if (el.dataset && !el.dataset.initial) el.dataset.initial = String(rawNum);
@@ -1005,14 +1004,14 @@ function getNum(target) {
     }
 
     // 4. Clean & Parse (Trái tim của hàm xử lý)
-    // Chỉ giữ lại: Số (0-9), Dấu chấm (.), Dấu trừ (-)
+    // Chỉ giữ lại: Số (0-9)
     // Loại bỏ: Dấu phẩy, chữ cái, khoảng trắng...
-    const cleanStr = rawVal.replace(/[^0-9.-]/g, '');
+    const cleanStr = rawVal.replace(/[^0-9]/g, '');
 
     // Nếu chuỗi rỗng sau khi clean (VD: input là "abc") -> 0
     if (cleanStr === '' || cleanStr === '-') return 0;
 
-    const num = parseFloat(cleanStr);
+    const num = parseInt(cleanStr, 10);
 
     // Kiểm tra NaN (Not a Number) lần cuối
     return isNaN(num) ? 0 : num;
@@ -1128,53 +1127,6 @@ function setMany(spec, data, optOrRoot = {}) {
     }
   }
   return count;
-}
-
-/**
- * Helper: Trích xuất dữ liệu từ Table Form dựa trên dataset
- * @param {string} tableId - ID của table cần lấy dữ liệu
- * @returns {Array} - Mảng các object đã được map với Firestore field
- */
-async function getTableData(tableId) {
-  try {
-    const table = document.getElementById(tableId);
-    if (!table) throw new Error(`Table với ID ${tableId} không tồn tại.`);
-
-    // Lấy tất cả các hàng trong tbody để tránh lấy header
-    const rows = table.querySelectorAll('tbody tr');
-    const dataResult = [];
-
-    rows.forEach((row, index) => {
-      const rowData = {};
-      // Tìm tất cả phần tử có data-field bên trong hàng
-      const inputs = row.querySelectorAll('[data-field]');
-
-      let hasData = false;
-      inputs.forEach((input) => {
-        const fieldName = input.dataset.field; // Lấy tên field từ data-field
-        if (!fieldName) return;
-
-        let value = getVal(input); // Sử dụng hàm getVal để lấy giá trị đúng định dạng
-
-        rowData[fieldName] = value;
-
-        // Kiểm tra xem hàng có dữ liệu không (tránh lưu hàng trống)
-        if (value !== '' && value !== 0 && value !== false) {
-          hasData = true;
-        }
-      });
-
-      if (hasData) {
-        dataResult.push(rowData);
-        log(Object.entries(rowData));
-      }
-    });
-
-    return dataResult;
-  } catch (error) {
-    console.error('Lỗi tại Utils.getTableData:', error);
-    return [];
-  }
 }
 
 function showLoading(show, text = 'Loading...') {
@@ -2617,7 +2569,16 @@ const HD = {
       }
     });
 
-    return results;
+    // Nếu không thu thập được trường dữ liệu nào, trả về object rỗng
+    if (Object.keys(results).length === 0) return {};
+
+    // Lấy ID của bản ghi (Ưu tiên 'id', rồi đến 'uid', nếu dòng mới tinh chưa có thì tạo temp ID)
+    const recordId = results.id || results.uid || `temp_${Date.now()}`;
+
+    // Trả về cấu trúc Object có key là ID để đồng bộ với hệ thống
+    return {
+      [recordId]: results,
+    };
   },
 
   // --- Private Methods ---
@@ -2815,4 +2776,404 @@ const HD = {
 
     return [updatedData, hasRealChanges];
   },
+  /**
+   * Helper: Trích xuất dữ liệu từ Table Form dựa trên dataset
+   * @param {string} tableId - ID của table cần lấy dữ liệu
+   * @returns {Array} - Mảng các object đã được map với Firestore field
+   */
+  async getTableData(tableId) {
+    try {
+      const table = document.getElementById(tableId);
+      if (!table) throw new Error(`Table với ID ${tableId} không tồn tại.`);
+
+      // Lấy tất cả các hàng trong tbody để tránh lấy header
+      const rows = table.querySelectorAll('tbody tr');
+      const dataResult = [];
+
+      rows.forEach((row, index) => {
+        const rowData = {};
+        // Tìm tất cả phần tử có data-field bên trong hàng
+        const inputs = row.querySelectorAll('[data-field]');
+
+        let hasData = false;
+        inputs.forEach((input) => {
+          const fieldName = input.dataset.field; // Lấy tên field từ data-field
+          if (!fieldName) return;
+
+          let value = getVal(input); // Sử dụng hàm getVal để lấy giá trị đúng định dạng
+
+          rowData[fieldName] = value;
+
+          // Kiểm tra xem hàng có dữ liệu không (tránh lưu hàng trống)
+          if (value !== '' && value !== 0 && value !== false) {
+            hasData = true;
+          }
+        });
+
+        if (hasData) {
+          dataResult.push(rowData);
+          log(Object.entries(rowData));
+        }
+      });
+
+      return dataResult;
+    } catch (error) {
+      Opps('Lỗi tại Utils.getTableData:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Extract row data from HTML form using data-field attributes
+   * Supports both object and array formats dynamically
+   *
+   * @param {string} collectionName - Collection name (e.g., 'operator_entries', 'booking_details')
+   * @param {string} rowId - Row ID or row index (for searching the TR element)
+   * @param {string|Element} rootIdOrEl - Container ID (e.g., 'detail-tbody') or Element containing the row
+   * @returns {Object} - Object with field names as keys mapped from data-field attributes
+   *
+   * @example
+   * // Get data from row with id="row-5" inside container with id="detail-tbody"
+   * const rowData = getRowData('operator_entries', 5, 'detail-tbody');
+   *
+   * @example
+   * // Get data using Element reference
+   * const container = document.getElementById('detail-tbody');
+   * const rowData = getRowData('operator_entries', 1, container);
+   */
+  getRowData(collectionName, rowIdorEl, rootIdOrEl) {
+    try {
+      // 2. Find the TR element
+      let trElement;
+      if (rowIdorEl instanceof Element) trElement = rowIdorEl;
+      else {
+        let root = $(rootIdOrEl);
+        if (!root) root = document.body;
+        rowId = rowIdorEl;
+
+        // Try to find by id first (format: row-{idx})
+        trElement = root.querySelector(`tr#row-${rowId}`) || root.querySelector(`tr[data-row="${rowId}"]`);
+
+        // Fallback: search by data-row-id or similar
+        if (!trElement) {
+          trElement = root.querySelector(`tr[data-item="${rowId}"]`);
+        }
+
+        // Fallback: if rowId is numeric, use as nth-child
+        if (!trElement && !isNaN(rowId)) {
+          const childIndex = parseInt(rowId) + 1;
+          trElement = container.querySelector(`tr:nth-child(${childIndex})`);
+        }
+
+        if (!trElement) {
+          console.warn(`⚠️ Row not found with rowId: ${rowId}`);
+          return {};
+        }
+      }
+
+      // 3. Get array field names for this collection
+      const fieldNames = A.DB.schema.getFieldNames(collectionName);
+
+      if (fieldNames.length === 0) {
+        console.error(`❌ No field mapping found for collection: ${collectionName}`);
+        return {};
+      }
+
+      // 4. Extract data from TR using data-field attributes
+      const rowData = {};
+
+      fieldNames.forEach((fieldName) => {
+        // Find input/select with data-field attribute matching this fieldName
+        const field = trElement.querySelector(`[data-field="${fieldName}"]`);
+
+        if (field) {
+          rowData[fieldName] = getVal(field);
+        } else {
+          // Field not found in this row - set empty value
+          rowData[fieldName] = '';
+        }
+      });
+
+      return rowData;
+    } catch (e) {
+      console.error(`❌ Error in getRowDataByField:`, e);
+      return {};
+    }
+  },
+};
+
+// ============================================================================
+// HD DATA PIPELINE HELPERS
+// Hỗ trợ xử lý dữ liệu mạnh mẽ, nhận/trả về Object (key là id) theo chuẩn DB
+// ============================================================================
+window.HD = window.HD || {};
+
+/**
+ * 1. Lọc dữ liệu đa năng
+ * @param {Object|Array} source - Dữ liệu gốc (Object hoặc Array)
+ * @param {any} value - Giá trị cần tìm
+ * @param {string} op - Toán tử (==, !=, >, <, >=, <=, includes) mặc định '=='
+ * @param {string} field - Tên trường, mặc định 'booking_id'
+ * @returns {Object} Dữ liệu đã lọc dạng Object { id: item }
+ */
+HD.filter = function (source, value, op = '==', field = 'booking_id') {
+  const result = {};
+  if (!source) return result;
+
+  // Xử lý đầu vào: đồng bộ thành mảng [key, item] để giữ nguyên ID gốc
+  const entries = Array.isArray(source) ? source.map((item, idx) => [item.id || `temp_${idx}`, item]) : Object.entries(source);
+
+  if (!entries.length) return result;
+
+  // Tiền xử lý kiểu dữ liệu của value cần tìm
+  const isNumVal = value !== '' && value !== null && !isNaN(value);
+  const numValue = isNumVal ? Number(value) : value;
+
+  const parseDate = (v) => (!v ? NaN : new Date(v).getTime());
+  const isDateVal = value instanceof Date || (typeof value === 'string' && isNaN(value) && !isNaN(Date.parse(value)));
+  const dateValue = isDateVal ? parseDate(value) : NaN;
+
+  entries.forEach(([key, item]) => {
+    let itemVal = item[field];
+    if (itemVal === undefined || itemVal === null) return;
+
+    let match = false;
+
+    // So sánh Date
+    if (isDateVal && (typeof itemVal === 'string' || itemVal instanceof Date)) {
+      const itemDate = parseDate(itemVal);
+      if (!isNaN(itemDate)) {
+        switch (op) {
+          case '==':
+            match = itemDate === dateValue;
+            break;
+          case '!=':
+            match = itemDate !== dateValue;
+            break;
+          case '>':
+            match = itemDate > dateValue;
+            break;
+          case '<':
+            match = itemDate < dateValue;
+            break;
+          case '>=':
+            match = itemDate >= dateValue;
+            break;
+          case '<=':
+            match = itemDate <= dateValue;
+            break;
+        }
+      }
+    }
+    // So sánh Number
+    else if (isNumVal) {
+      const itemNum = Number(itemVal);
+      if (!isNaN(itemNum)) {
+        switch (op) {
+          case '==':
+            match = itemNum === numValue;
+            break;
+          case '!=':
+            match = itemNum !== numValue;
+            break;
+          case '>':
+            match = itemNum > numValue;
+            break;
+          case '<':
+            match = itemNum < numValue;
+            break;
+          case '>=':
+            match = itemNum >= numValue;
+            break;
+          case '<=':
+            match = itemNum <= numValue;
+            break;
+        }
+      }
+    }
+    // So sánh String (Text, includes)
+    else {
+      const sItem = String(itemVal).toLowerCase().trim();
+      const sVal = String(value).toLowerCase().trim();
+      switch (op) {
+        case '==':
+          match = sItem === sVal;
+          break;
+        case '!=':
+          match = sItem !== sVal;
+          break;
+        case 'includes':
+          match = sItem.includes(sVal);
+          break;
+      }
+    }
+
+    if (match) result[key] = item; // Giữ nguyên key ID
+  });
+
+  return result;
+};
+
+/**
+ * 2. Tính toán tổng hợp (Agg/Sum)
+ * @param {Object|Array} source - Dữ liệu gốc
+ * @param {string|null} field - Tên trường cần tính (Nếu null sẽ tính tự động)
+ * @returns {number|Object} Tổng số tiền (nếu truyền field) HOẶC Object {sum, count, quantity}
+ */
+HD.agg = function (source, field = null) {
+  const items = Array.isArray(source) ? source : Object.values(source || {});
+
+  // Trường hợp 1: Có chỉ định field cụ thể -> Trả về thẳng giá trị Number
+  if (field) {
+    return items.reduce((acc, item) => acc + (Number(item[field]) || 0), 0);
+  }
+
+  // Trường hợp 2: Tính toán tự động tổng thể
+  let sum = 0;
+  let quantity = 0;
+  const count = items.length;
+
+  const sumFields = ['total_amount', 'total', 'total_cost', 'amount', 'balance', 'balance_amount'];
+  const qtyFields = ['quantity', 'qtt', 'adults', 'adult', 'no_of_guest', 'so_luong'];
+
+  items.forEach((item) => {
+    // Ưu tiên tìm field tiền tệ đầu tiên có dữ liệu
+    const sField = sumFields.find((f) => item[f] !== undefined && item[f] !== null && item[f] !== '');
+    if (sField) sum += Number(item[sField]) || 0;
+
+    // Ưu tiên tìm field số lượng đầu tiên có dữ liệu
+    const qField = qtyFields.find((f) => item[f] !== undefined && item[f] !== null && item[f] !== '');
+    if (qField) quantity += Number(item[qField]) || 0;
+  });
+
+  return { sum, count, quantity };
+};
+
+/**
+ * 3. Gom nhóm (Group)
+ * @param {Object|Array} source - Dữ liệu gốc
+ * @param {string} field - Tên trường dùng để group
+ * @returns {Object} { [group_value]: { [item_id]: item } }
+ */
+HD.group = function (source, field) {
+  const result = {};
+  if (!source) return result;
+
+  const entries = Array.isArray(source) ? source.map((item, idx) => [item.id || `temp_${idx}`, item]) : Object.entries(source);
+
+  entries.forEach(([key, item]) => {
+    const groupVal = item[field] || 'Khác';
+    if (!result[groupVal]) result[groupVal] = {};
+
+    result[groupVal][key] = item; // Gắn item vào group bằng chính key ID
+  });
+
+  return result;
+};
+
+/**
+ * 4. Sắp xếp (Sort)
+ * @param {Object|Array} source - Dữ liệu gốc
+ * @param {string} field - Trường cần sắp xếp
+ * @param {string} dir - Chiều sắp xếp ('asc' hoặc 'desc')
+ * @returns {Object} Object đã được sắp xếp (Giữ nguyên ID làm key)
+ */
+HD.sort = function (source, field, dir = 'asc') {
+  if (!source) return {};
+
+  const entries = Array.isArray(source) ? source.map((item, idx) => [item.id || `temp_${idx}`, item]) : Object.entries(source);
+
+  // Sắp xếp mảng entries
+  entries.sort((a, b) => {
+    let valA = a[1][field];
+    let valB = b[1][field];
+
+    if (valA === undefined || valA === null) valA = '';
+    if (valB === undefined || valB === null) valB = '';
+
+    // Ưu tiên so sánh số
+    const numA = Number(valA);
+    const numB = Number(valB);
+    if (!isNaN(numA) && !isNaN(numB) && valA !== '' && valB !== '') {
+      return dir === 'asc' ? numA - numB : numB - numA;
+    }
+
+    // Ưu tiên so sánh Date
+    const dateA = new Date(valA).getTime();
+    const dateB = new Date(valB).getTime();
+    if (!isNaN(dateA) && !isNaN(dateB) && isNaN(valA) && isNaN(valB)) {
+      return dir === 'asc' ? dateA - dateB : dateB - dateA;
+    }
+
+    // So sánh chuỗi (Fallback)
+    const strA = String(valA).toLowerCase();
+    const strB = String(valB).toLowerCase();
+    if (strA < strB) return dir === 'asc' ? -1 : 1;
+    if (strA > strB) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  // Rebuild lại thành Object
+  // LƯU Ý JS: Object đảm bảo thứ tự key insertion order nếu key là String (VD: "BK01").
+  // Nếu ID key của bạn là số nguyên (như "1", "2"), JS Engine có thể tự sắp xếp lại key.
+  const result = {};
+  entries.forEach(([key, item]) => {
+    result[key] = item;
+  });
+
+  return result;
+};
+
+HD.find = function (source, value, field) {
+  const items = Array.isArray(source) ? source : Object.values(source || {});
+  // Tìm thấy là return ngay lập tức, không quét hết mảng
+  return items.find((item) => item && String(item[field]).trim() === String(value).trim()) || null;
+};
+/**
+ * 6. Sắp xếp (Sort)
+ * @param {Object|Array} source - Dữ liệu gốc
+ * @param {string} field - Trường cần sắp xếp
+ * @param {boolean} unique - Có loại bỏ giá trị trùng lặp hay không (mặc định: true)
+ * @returns {Array} Mảng các giá trị của trường đã chọn
+ */
+HD.pluck = function (source, field, unique = true) {
+  const items = Array.isArray(source) ? source : Object.values(source || {});
+  const result = items.map((item) => item[field]).filter((val) => val !== undefined && val !== null && val !== '');
+  return unique ? [...new Set(result)] : result;
+};
+
+/**
+ * 5. Lấy giá trị duy nhất (Unique)
+ * @param {Object|Array} source - Dữ liệu gốc
+ * @param {string} field - Trường cần lấy giá trị duy nhất
+ * @returns {Array} Mảng các giá trị duy nhất của trường đã chọn
+ */
+HD.unique = function (source, field) {
+  return HD.pluck(source, field, true); // Tận dụng luôn hàm pluck ở trên
+};
+
+/**
+ * Nối dữ liệu từ bảng khác vào bảng hiện tại
+ * @param {Object} source - Bảng gốc (VD: danh sách booking)
+ * @param {string} localField - Tên trường khóa ngoại ở bảng gốc (VD: 'customer_id')
+ * @param {Object} targetData - Dữ liệu bảng đích (VD: APP_DATA.customers)
+ * @param {string} asField - Tên trường mới sẽ được tạo ra chứa dữ liệu nối (VD: '_customer')
+ */
+HD.join = function (source, localField, targetData, asField) {
+  const result = { ...source }; // Clone shallow tránh ảnh hưởng data gốc
+
+  Object.keys(result).forEach((key) => {
+    const item = { ...result[key] };
+    const targetId = item[localField];
+
+    // Tìm trong targetData bằng độ phức tạp O(1)
+    if (targetId && targetData[targetId]) {
+      item[asField] = targetData[targetId];
+    } else {
+      item[asField] = null;
+    }
+    result[key] = item;
+  });
+
+  return result;
 };

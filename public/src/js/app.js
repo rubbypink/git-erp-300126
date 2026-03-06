@@ -12,6 +12,7 @@ import StateProxy from './modules/StateProxy.js';
 import ShortKey from './modules/M_ShortKey.js';
 import ContextMenu from './modules/M_ContextMenu.js';
 import './modules/M_AutoMobileEvents.js'; // Self-initializing: tap→click, double-tap→dblclick, long-press→contextmenu
+import { HotelPriceController } from './modules/M_HotelPrice.js';
 
 // Expose globally so legacy scripts (logic_operator, api_operator, etc.) can access it
 window.StateProxy = StateProxy;
@@ -48,7 +49,7 @@ class Application {
       DB_DATE_FMT: 'YYYY-MM-DD',
       CURRENCY: 'VND',
     },
-    disabledModules: [],
+    disabledModules: ['Router'],
   };
 
   #modules = {
@@ -95,6 +96,8 @@ class Application {
         if (!this.instance) {
           // Lưu config gốc để reset nếu cần
           this._defaultOptions = { backdrop: false, keyboard: false }; /* global bootstrap */
+          this.fullscreen = false; // Flag kích hoạt handler fullscreen tích hợp sẵn
+          this.header = true;
           this.instance = bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el, { ...this._defaultOptions });
 
           const dialog = el.querySelector('.modal-dialog');
@@ -112,7 +115,7 @@ class Application {
           this._initEscListener();
           this._draggable = new DraggableSetup(this._getEl(), {
             targetSelector: '.modal-dialog',
-            handleSelector: '.modal-header',
+            handleSelector: this.header ? '.modal-header' : '.modal-dialog',
           });
           new Resizable(this._getEl(), {
             targetSelector: '.modal-content',
@@ -218,6 +221,29 @@ class Application {
             document.querySelectorAll('.modal-backdrop').forEach((b) => b.remove());
           }
         }
+        if (opts.header) {
+          this.header = opts.header === true; // Cập nhật flag header để DraggableSetup biết handle mới
+          const headerEl = el.querySelector('.modal-header');
+          if (headerEl) setClass(headerEl, opts.header === true ? 'd-block' : 'd-none');
+        }
+        if (opts.footer) {
+          this.setFooter(opts.footer);
+        }
+        if (opts.size) {
+          const dialogEl = el.querySelector('.modal-dialog');
+          if (dialogEl) {
+            dialogEl.classList.remove('modal-sm', 'modal-lg', 'modal-xl');
+            dialogEl.classList.add(opts.size);
+          }
+        } else if (opts.fullscreen) {
+          this.fullscreen = opts.fullscreen; // Kích hoạt handler fullscreen tích hợp sẵn
+        }
+        if (opts.customClass) {
+          const dialogEl = el.querySelector('.modal-dialog');
+          if (dialogEl) {
+            dialogEl.classList.add(opts.customClass);
+          }
+        }
       },
 
       /**
@@ -233,7 +259,7 @@ class Application {
        * - Ngược lại → inject vào modal này.
        * @returns {object} Modal object mà nội dung đã được inject vào (this hoặc stacked)
        */
-      render: function (htmlContent, title = 'Thông báo') {
+      render: function (htmlContent, title = 'Thông báo', opts = {}) {
         // ── Stacking: modal bận → tạo/tìm modal mới, inject vào đó ──
         if (this._isOccupied) {
           const existingNums = Object.keys(appInstance.#modules)
@@ -249,9 +275,9 @@ class Application {
           });
           appInstance.#modules[newKey] = stackedModal;
           // Đệ quy: nếu stacked cũng bận thì tiếp tục leo lên
-          return stackedModal.render(htmlContent, title);
+          return stackedModal.render(htmlContent, title, opts);
         }
-
+        if (opts) this.setOptions(opts);
         // ── Inject vào modal này, trả về this để show() biết target ──
         this._injectContent(htmlContent, title);
         return this;
@@ -435,7 +461,7 @@ class Application {
         if (this._fullscreenHandler) btn.removeEventListener('click', this._fullscreenHandler);
 
         this._fullscreenHandler = () => {
-          const isFullscreen = dialog.classList.contains('modal-fullscreen');
+          const isFullscreen = dialog.classList.contains('modal-fullscreen') || this.fullscreen;
 
           // ★ Reset DraggableSetup state — tránh transform offset xung đột
           if (this._draggable) {
@@ -1123,7 +1149,6 @@ class Application {
         moduleManager.loadModule('Router', false);
 
         this.#config.saveLoad = false;
-        SECURITY_MANAGER.cleanDOM(document);
         this._ensureModalExists();
 
         // 5. Hiển thị app — xóa màn hình loading
@@ -1134,7 +1159,7 @@ class Application {
 
         this.#state.isReady = true;
         log('✅ App ready', 'success');
-
+        window.dispatchEvent(new CustomEvent('app-ready'));
         // Chạy tất cả tác vụ background — KHÔNG block UI
         this.#runPostBoot(user, moduleManager);
       } catch (err) {
@@ -1175,6 +1200,8 @@ class Application {
 
     try {
       await Promise.all([mgr.loadCommonModules(), mgr.loadAsyncModules(CURRENT_USER.role), dataPromise]);
+      // ServicePriceController.init(); // ★ Init module cần thiết cho booking trước để tránh lỗi khi render booking widget (có thể bỏ qua nếu không dùng widget)
+      // HotelPriceController.init(); // ★ Init module cần thiết cho booking trước để tránh lỗi khi render booking widget (có thể bỏ qua nếu không dùng widget)
     } catch (e) {
       console.warn('[PostBoot] Module load error:', e.message);
     }
@@ -1197,21 +1224,6 @@ class Application {
       StateProxy.hookSetters();
     } catch (e) {
       console.warn('[PostBoot] StateProxy.hookSetters:', e.message);
-    }
-
-    // e-bis. Activate đúng startup tab sau khi:
-    //   • loadUiModules() (bước b) đã tạo nav buttons trong DOM
-    //   • data đã load và handleServerData đã chạy
-    // Ghi đè lần gọi activateTab sớm trong applySecurity (lúc đó chưa có nav btn).
-    // Mobile sẽ override tiếp tại bước j.
-    if (typeof activateTab === 'function' && window.innerWidth > 768) {
-      try {
-        // tab-admin-dashboard không có render targets → dùng tab-dashboard cho mọi role
-        // Admin có thể chuyển sang Admin Dashboard qua header dropdown.
-        activateTab('tab-dashboard');
-      } catch (e) {
-        console.warn('[PostBoot] activateTab:', e.message);
-      }
     }
 
     // f. Event manager — instance đã tồn tại từ #modules init, chỉ cần gọi init()
@@ -1249,9 +1261,6 @@ class Application {
     // j. Mobile-specific tweaks (chạy sau khi UI đã render)
     const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
     if (isMobile) {
-      // if (typeof activateTab === 'function' && document.getElementById('tab-form')) {
-      //   activateTab('tab-form');
-      // }
       document.querySelectorAll('.desktop-only').forEach((el) => el.remove());
       document.body.classList.add('no-select');
     }
@@ -1279,17 +1288,6 @@ class Application {
       });
       // menu.toggleSide();
     }
-    // ⚠️ Đã xóa đoạn getE('at-modal-full') trùng lặp.
-    // getE() dùng getElementById → không tìm thấy vì <at-modal-full> không có id="at-modal-full"
-    // → luôn tạo element thứ 2 → 2 WindowMinimizer → 2 taskbar icons khi minimize.
-    // Đoạn querySelector ở bước k (line 1285) đã xử lý đủ.
-    function _updateMenuState(updates) {
-      const state = JSON.parse(localStorage.getItem('offcanvas-menu-state') || '{}');
-      Object.assign(state, updates);
-      localStorage.setItem('offcanvas-menu-state', JSON.stringify(state));
-    }
-
-    log('⌨️ Initializing keyboard shortcuts...');
     await ShortKey.init();
   }
 }
@@ -1359,15 +1357,15 @@ class MODULELOADER {
     };
 
     this.roleMap = {
-      admin: ['AdminConsole'],
-      op: ['HotelPriceController', 'ServicePriceController', 'PriceManager'],
+      admin: ['AdminConsole', 'HotelPriceController', 'ServicePriceController'],
+      op: ['HotelPriceController', 'ServicePriceController'],
       acc: [],
-      sale: ['PriceManager'],
-      acc_thenice: ['PriceManager'],
+      sale: [],
+      acc_thenice: [],
     };
     this.forAllModules = ['ReportModule', 'CalculatorWidget', 'ThemeManager', 'Lang', 'NotificationManager', 'PriceManager', 'ShortKey', 'BookingOverview', 'Router'];
     this.commonModules = ['Lang', 'ThemeManager'];
-    this.uiModules = ['ErpHeaderMenu', 'ErpFooterMenu', 'ChromeMenuController', 'OffcanvasMenu', 'ModalFull'];
+    this.uiModules = ['OffcanvasMenu', 'ModalFull'];
     this.asyncModules = ['AdminConsole', 'ReportModule', 'CalculatorWidget', 'HotelPriceController', 'ServicePriceController', 'PriceManager', 'NotificationManager', 'ShortKey', 'BookingOverview'];
   }
 

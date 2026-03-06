@@ -7,6 +7,7 @@
 <style>
   /* ── Mobile-first Layout ────────────────────────────────────── */
   .bkov-wrap {
+    height: 100%;
     font-size: 0.85rem;
     width: 100%;
     margin: 0 auto;
@@ -22,7 +23,7 @@
     margin: 0 0 0.75rem 0;
   }
 
-  .bkov-wrap fieldset > legend {
+  .bkov-wrap fieldset>legend {
     float: none !important;
   }
 
@@ -176,7 +177,7 @@
   /* ── Footer Actions ─────────────────────────────────────────── */
   .bkov-footer {
     position: sticky;
-    bottom: 0;
+    bottom: 0.5rem;
     z-index: 15;
     background: #f8f9fa;
     border-top: 1px solid #dee2e6;
@@ -212,7 +213,7 @@
       <div class="bkov-summary flex-grow-1">
         <div class="d-flex flex-wrap align-items-center justify-content-evenly w-100 px-5">
           <div>
-            <div class="bkov-summary-label">Họ tên khách</div>
+            <div class="bkov-summary-label">Khách Hàng</div>
             <div class="bkov-summary-value" id="bkov-cust-name">—</div>
           </div>
           <div>
@@ -246,33 +247,40 @@
 
         <!-- Action Dropdown -->
         <div class="btn-group btn-group-sm">
-          <button type="button" class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Tác vụ">
+          <button type="button" class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown"
+            aria-expanded="false" title="Tác vụ">
             <i class="fa-solid fa-print"></i>
           </button>
           <ul class="dropdown-menu dropdown-menu-end shadow-sm" id="bkov-action-menu">
             <li>
-              <a class="dropdown-item small" href="javascript:void(0)" data-action="confirm-email"> <i class="fa-solid fa-envelope me-2 text-primary"></i> Gửi Email Xác Nhận </a>
+              <a class="dropdown-item small" href="javascript:void(0)" data-action="confirm-email"> <i
+                  class="fa-solid fa-envelope me-2 text-primary"></i> Tạo Xác Nhận Booking </a>
+            </li>
+            <li>
+              <a class="dropdown-item small" href="javascript:void(0)" data-action="create-contract"> <i
+                  class="fa-solid fa-arrow-up-right-from-square me-2"></i> Tạo Hợp Đồng </a>
             </li>
             <li>
               <hr class="dropdown-divider my-1" />
             </li>
             <li>
-              <a class="dropdown-item small" href="javascript:void(0)" data-action="update-deposit"> <i class="fa-solid fa-coins me-2 text-success"></i> Cập Nhật Deposit </a>
+              <a class="dropdown-item small" href="javascript:void(0)" data-action="update-deposit"> <i
+                  class="fa-solid fa-coins me-2 text-success"></i> Cập Nhật Deposit </a>
             </li>
             <li>
-              <a class="dropdown-item small" href="javascript:void(0)" data-action="update-status"> <i class="fa-solid fa-refresh me-2 text-info"></i> Cập Nhật Trạng Thái </a>
+              <a class="dropdown-item small" href="javascript:void(0)" data-action="update-status"> <i
+                  class="fa-solid fa-refresh me-2 text-info"></i> Cập Nhật Trạng Thái </a>
             </li>
             <li>
-              <a class="dropdown-item small" href="javascript:void(0)" data-action="recalc-total"> <i class="fa-solid fa-calculator me-2 text-warning"></i> Tính Lại Tổng </a>
+              <a class="dropdown-item small" href="javascript:void(0)" data-action="recalc-total"> <i
+                  class="fa-solid fa-calculator me-2 text-warning"></i> Tính Lại Tổng </a>
             </li>
             <li>
               <hr class="dropdown-divider my-1" />
             </li>
             <li>
-              <a class="dropdown-item small" href="javascript:void(0)" data-action="export-pdf"> <i class="fa-solid fa-file-pdf me-2 text-danger"></i> Xuất PDF </a>
-            </li>
-            <li>
-              <a class="dropdown-item small" href="javascript:void(0)" data-action="create-contract"> <i class="fa-solid fa-arrow-up-right-from-square me-2"></i> Tạo Hợp Đồng </a>
+              <a class="dropdown-item small" href="javascript:void(0)" data-action="export-pdf"> <i
+                  class="fa-solid fa-file-pdf me-2 text-danger"></i> Xuất PDF </a>
             </li>
           </ul>
         </div>
@@ -284,24 +292,31 @@
          2. NAV TABS (Scrollable on mobile)
          ══════════════════════════════════════════════════════════ -->
   <nav class="bkov-tabs">
-    <ul class="nav nav-tabs border-0 flex-nowrap overflow-auto" id="bkov-nav-tabs" role="tablist" style="-webkit-overflow-scrolling: touch; scrollbar-width: none">
+    <ul class="nav nav-tabs border-0 flex-nowrap overflow-auto" id="bkov-nav-tabs" role="tablist"
+      style="-webkit-overflow-scrolling: touch; scrollbar-width: none">
       <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="bkov-tab-detail" data-bs-toggle="tab" data-bs-target="#bkov-pane-detail" type="button" role="tab"><i class="fa-solid fa-info-circle me-1 d-none d-sm-inline"></i>Chi tiết</button>
+        <button class="nav-link active" id="bkov-tab-detail" data-bs-toggle="tab" data-bs-target="#bkov-pane-detail"
+          type="button" role="tab"><i class="fa-solid fa-info-circle me-1 d-none d-sm-inline"></i>Chi tiết</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="bkov-tab-customer" data-bs-toggle="tab" data-bs-target="#bkov-pane-customer" type="button" role="tab"><i class="fa-solid fa-user me-1 d-none d-sm-inline"></i>Khách hàng</button>
+        <button class="nav-link" id="bkov-tab-customer" data-bs-toggle="tab" data-bs-target="#bkov-pane-customer"
+          type="button" role="tab"><i class="fa-solid fa-user me-1 d-none d-sm-inline"></i>Khách hàng</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="bkov-tab-services" data-bs-toggle="tab" data-bs-target="#bkov-pane-services" type="button" role="tab"><i class="fa-solid fa-concierge-bell me-1 d-none d-sm-inline"></i>Dịch vụ</button>
+        <button class="nav-link" id="bkov-tab-services" data-bs-toggle="tab" data-bs-target="#bkov-pane-services"
+          type="button" role="tab"><i class="fa-solid fa-concierge-bell me-1 d-none d-sm-inline"></i>Dịch vụ</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="bkov-tab-payment" data-bs-toggle="tab" data-bs-target="#bkov-pane-payment" type="button" role="tab"><i class="fa-solid fa-credit-card me-1 d-none d-sm-inline"></i>Thanh toán</button>
+        <button class="nav-link" id="bkov-tab-payment" data-bs-toggle="tab" data-bs-target="#bkov-pane-payment"
+          type="button" role="tab"><i class="fa-solid fa-credit-card me-1 d-none d-sm-inline"></i>Thanh toán</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="bkov-tab-notes" data-bs-toggle="tab" data-bs-target="#bkov-pane-notes" type="button" role="tab"><i class="fa-solid fa-sticky-note me-1 d-none d-sm-inline"></i>Ghi chú</button>
+        <button class="nav-link" id="bkov-tab-notes" data-bs-toggle="tab" data-bs-target="#bkov-pane-notes"
+          type="button" role="tab"><i class="fa-solid fa-sticky-note me-1 d-none d-sm-inline"></i>Ghi chú</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="bkov-tab-history" data-bs-toggle="tab" data-bs-target="#bkov-pane-history" type="button" role="tab"><i class="fa-solid fa-clock-rotate-left me-1 d-none d-sm-inline"></i>Lịch sử</button>
+        <button class="nav-link" id="bkov-tab-history" data-bs-toggle="tab" data-bs-target="#bkov-pane-history"
+          type="button" role="tab"><i class="fa-solid fa-clock-rotate-left me-1 d-none d-sm-inline"></i>Lịch sử</button>
       </li>
     </ul>
   </nav>
@@ -317,11 +332,13 @@
         <div class="info-row">
           <div class="info-cell">
             <span class="info-label">Mã Booking</span>
-            <input type="text" class="form-control form-control-sm fw-bold text-danger" id="bkov-f-id" data-field="id" readonly />
+            <input type="text" class="form-control form-control-sm fw-bold text-danger" id="bkov-f-id" data-field="id"
+              readonly />
           </div>
           <div class="info-cell">
             <span class="info-label">Ngày đặt</span>
-            <input type="date" class="form-control form-control-sm" id="bkov-f-created" data-field="created_at" readonly />
+            <input type="date" class="form-control form-control-sm" id="bkov-f-created" data-field="created_at"
+              readonly />
           </div>
           <div class="info-cell">
             <span class="info-label">Ngày đi</span>
@@ -335,16 +352,19 @@
         <div class="info-row">
           <div class="info-cell">
             <span class="info-label">Người lớn</span>
-            <input type="text" inputmode="numeric" class="form-control form-control-sm number-only" id="bkov-f-adult" data-field="adults" value="2" />
+            <input type="text" inputmode="numeric" class="form-control form-control-sm number-only" id="bkov-f-adult"
+              data-field="adults" value="2" />
           </div>
           <div class="info-cell">
             <span class="info-label">Trẻ em</span>
-            <input type="text" inputmode="numeric" class="form-control form-control-sm number-only" id="bkov-f-child" data-field="children" />
+            <input type="text" inputmode="numeric" class="form-control form-control-sm number-only" id="bkov-f-child"
+              data-field="children" />
           </div>
           <div class="info-cell">
             <span class="info-label">Trạng thái</span>
             <at-status class="input-group" style="height: fit-content">
-              <input type="text" class="form-control form-control-sm fw-bold bg-opacity-25 border-0" id="bkov-f-status" data-field="status" readonly value="Đặt Lịch" />
+              <input type="text" class="form-control form-control-sm fw-bold bg-opacity-25 border-0" id="bkov-f-status"
+                data-field="status" readonly value="Đặt Lịch" />
             </at-status>
           </div>
           <div class="info-cell">
@@ -355,15 +375,18 @@
         <div class="info-row">
           <div class="info-cell">
             <span class="info-label">Tổng Booking</span>
-            <input type="text" class="form-control form-control-sm fw-bold text-end bg-warning number" id="bkov-f-total" data-field="total_amount" readonly value="0" />
+            <input type="text" class="form-control form-control-sm fw-bold text-end bg-warning number" id="bkov-f-total"
+              data-field="total_amount" readonly value="0" />
           </div>
           <div class="info-cell">
             <span class="info-label">Đặt cọc</span>
-            <input type="text" class="form-control form-control-sm text-end border-success number" id="bkov-f-deposit" data-field="deposit_amount" value="0" />
+            <input type="text" class="form-control form-control-sm text-end border-success number" id="bkov-f-deposit"
+              data-field="deposit_amount" value="0" />
           </div>
           <div class="info-cell">
             <span class="info-label">Còn lại</span>
-            <input type="text" class="form-control form-control-sm text-end fw-bold text-danger number" id="bkov-f-balance" data-field="balance_amount" readonly value="0" />
+            <input type="text" class="form-control form-control-sm text-end fw-bold text-danger number"
+              id="bkov-f-balance" data-field="balance_amount" readonly value="0" />
           </div>
           <div class="info-cell">
             <span class="info-label">Phương thức TT</span>
@@ -390,7 +413,8 @@
         <div class="info-row">
           <div class="info-cell full-width">
             <span class="info-label">Họ và tên (*)</span>
-            <input type="text" class="form-control form-control-sm" id="bkov-c-name" data-field="customer_full_name" placeholder="Họ tên khách" required />
+            <input type="text" class="form-control form-control-sm" id="bkov-c-name" data-field="customer_full_name"
+              placeholder="Họ tên khách" required />
           </div>
         </div>
         <div class="info-row">
@@ -404,17 +428,20 @@
           </div>
           <div class="info-cell">
             <span class="info-label">Ngày cấp</span>
-            <input type="date" class="form-control form-control-sm" id="bkov-c-idcard-date" data-field="customer_id_card_date" />
+            <input type="date" class="form-control form-control-sm" id="bkov-c-idcard-date"
+              data-field="customer_id_card_date" />
           </div>
         </div>
         <div class="info-row">
           <div class="info-cell">
             <span class="info-label">Số điện thoại (*)</span>
-            <input type="text" class="form-control form-control-sm phone_number" id="bkov-c-phone" data-field="customer_phone" placeholder="SĐT" required />
+            <input type="text" class="form-control form-control-sm phone_number" id="bkov-c-phone"
+              data-field="customer_phone" placeholder="SĐT" required />
           </div>
           <div class="info-cell">
             <span class="info-label">Email</span>
-            <input type="email" class="form-control form-control-sm" id="bkov-c-email" data-field="customer_email" placeholder="Email" />
+            <input type="email" class="form-control form-control-sm" id="bkov-c-email" data-field="customer_email"
+              placeholder="Email" />
           </div>
           <div class="info-cell">
             <span class="info-label">Nguồn khách</span>
@@ -424,13 +451,15 @@
         <div class="info-row">
           <div class="info-cell full-width">
             <span class="info-label">Địa chỉ</span>
-            <input type="text" class="form-control form-control-sm" id="bkov-c-addr" data-field="customer_address" placeholder="Địa chỉ" />
+            <input type="text" class="form-control form-control-sm" id="bkov-c-addr" data-field="customer_address"
+              placeholder="Địa chỉ" />
           </div>
         </div>
         <div class="info-row">
           <div class="info-cell">
             <span class="info-label">Tổng chi tiêu</span>
-            <input type="text" class="form-control form-control-sm number" id="bkov-c-total-spend" data-field="customer_total_spend" readonly />
+            <input type="text" class="form-control form-control-sm number" id="bkov-c-total-spend"
+              data-field="customer_total_spend" readonly />
           </div>
         </div>
       </fieldset>
@@ -441,10 +470,12 @@
       <div class="info-group">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <div class="info-group-title mb-0"><i class="fa-solid fa-list me-1"></i>Chi Tiết Dịch Vụ</div>
-          <button type="button" class="btn btn-sm btn-primary" data-action="add-service-row"><i class="fa-solid fa-plus me-1"></i>Thêm</button>
+          <button type="button" class="btn btn-sm btn-primary" data-action="add-service-row"><i
+              class="fa-solid fa-plus me-1"></i>Thêm</button>
         </div>
         <div class="table-responsive" style="max-height: 50vh; overflow-y: auto">
-          <table class="table table-bordered table-sm table-hover mb-0 bkov-detail-table" data-collection="booking_details" id="bkov-detail-table">
+          <table class="table table-bordered table-sm table-hover mb-0 bkov-detail-table"
+            data-collection="booking_details" id="bkov-detail-table">
             <thead class="table-secondary text-center align-middle">
               <tr>
                 <th width="30">#</th>
@@ -470,7 +501,8 @@
           </table>
         </div>
         <div class="d-flex justify-content-end mt-2 gap-3">
-          <div class="small"><strong>Tổng:</strong> <span id="bkov-services-total" class="fw-bold text-primary number">0</span></div>
+          <div class="small"><strong>Tổng:</strong> <span id="bkov-services-total"
+              class="fw-bold text-primary number">0</span></div>
         </div>
       </div>
     </div>
@@ -507,10 +539,12 @@
       <div class="info-group mt-3">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <div class="info-group-title mb-0"><i class="fa-solid fa-receipt me-1"></i>Lịch Sử Giao Dịch</div>
-          <button type="button" class="btn btn-sm btn-outline-success" data-action="add-transaction"><i class="fa-solid fa-plus me-1"></i>Thêm GD</button>
+          <button type="button" class="btn btn-sm btn-outline-success" data-action="add-transaction"><i
+              class="fa-solid fa-plus me-1"></i>Thêm GD</button>
         </div>
         <div class="table-responsive">
-          <table class="table table-sm table-hover table-striped mb-0 bkov-txn-table" id="bkov-txn-table" data-collection="transactions">
+          <table class="table table-sm table-hover table-striped mb-0 bkov-txn-table" id="bkov-txn-table"
+            data-collection="transactions">
             <thead class="table-light text-center align-middle">
               <tr>
                 <th>Mã GD</th>
@@ -537,7 +571,8 @@
     <div class="tab-pane fade" id="bkov-pane-notes" role="tabpanel">
       <fieldset class="info-group" data-collection="bookings">
         <div class="info-group-title"><i class="fa-solid fa-sticky-note me-1"></i>Ghi Chú Booking</div>
-        <textarea class="form-control form-control-sm w-100 h-100" id="bkov-n-note" data-field="note" rows="5" placeholder="Nhập ghi chú tổng quan cho booking..."></textarea>
+        <textarea class="form-control form-control-sm w-100 h-100" id="bkov-n-note" data-field="note" rows="5"
+          placeholder="Nhập ghi chú tổng quan cho booking..."></textarea>
       </fieldset>
 
       <!-- Internal Notes / Comments Feed -->
@@ -573,10 +608,12 @@
          ══════════════════════════════════════════════════════════ -->
   <div class="bkov-footer d-flex justify-content-between align-items-center">
     <div class="d-flex gap-2" id="bkov-footer-left">
-      <button type="button" class="btn btn-sm btn-outline-secondary" data-action="close-overview"><i class="fa-solid fa-times me-1"></i>Đóng</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary" data-action="close-overview"><i
+          class="fa-solid fa-times me-1"></i>Đóng</button>
     </div>
     <div class="d-flex gap-2" id="bkov-footer-right">
-      <button type="button" class="btn btn-sm btn-info" data-action="save-booking"><i class="fa-solid fa-save me-1"></i>Lưu</button>
+      <button type="button" class="btn btn-sm btn-info" data-action="save-booking"><i
+          class="fa-solid fa-save me-1"></i>Lưu</button>
     </div>
   </div>
 </div>

@@ -96,20 +96,20 @@ export class OffcanvasMenu extends HTMLElement {
                 </div>
 
                 <div class="section function-section">
-                    <div class="section-title">CHỨC NĂNG HỆ THỐNG</div>
-                    <div class="function-grid admin-only">
-                        <button class="func-btn" data-action="AdminConsole.init" onclick="AdminConsole.init()">
-                            <i class="fas fa-chart-line fa-fw" style="color: #dc3545"></i>
-                            <span>Admin Console</span>
-                        </button>
-                        ${this._renderFuncBtn('import', 'Report', 'file-upload', '#007bff')}
-                        <button class="func-btn" data-action="openReport" onclick="this.getRootNode().host.openReport()">
-                            <i class="fas fa-chart-line fa-fw" style="color: #dc3545"></i>
-                            <span>Báo cáo</span>
-                        </button>
-                        ${this._renderFuncBtn('openSettingsModal', 'Cấu hình', 'cog', '#6c757d')}
-
+                  <div class="section-title">CHỨC NĂNG HỆ THỐNG</div>
+                    <div class="function-grid">
+                      <button class="func-btn" data-action="A.AdminConsole.openAdminSettings">
+                          <i class="fas fa-chart-line fa-fw" style="color: #dc3545"></i>
+                          <span>Admin Console</span>
+                      </button>
+                      ${this._renderFuncBtn('import', 'Nhập liệu', 'file-upload', '#007bff')}
+                      <button class="func-btn" data-action="openReport">
+                          <i class="fas fa-chart-line fa-fw" style="color: #dc3545"></i>
+                          <span>Báo cáo</span>
+                      </button>
+                      ${this._renderFuncBtn('openSettingsModal', 'Cấu hình', 'cog', '#6c757d')}
                     </div>
+                  </div>
                 </div>
               </div>
 
@@ -439,19 +439,23 @@ export class OffcanvasMenu extends HTMLElement {
             }
 
             .func-btn { 
-                display: flex; 
-                flex-direction: column; 
-                align-items: center; 
-                justify-content: center; 
-                gap: 5px; 
-                padding: 8px 6px; 
-                background: #f8f9fa; 
-                border: 1px solid var(--border); 
-                border-radius: 5px; 
-                cursor: pointer; 
-                transition: all 0.2s;
-                text-align: center;
-                min-height: 70px;
+              display: flex; 
+              flex-direction: column; 
+              align-items: center; 
+              justify-content: center; 
+              gap: 5px; 
+              padding: 8px 6px; 
+              background: #f8f9fa; 
+              border: 1px solid var(--border); 
+              border-radius: 5px; 
+              cursor: pointer; 
+              transition: all 0.2s;
+              text-align: center;
+              min-height: 70px;
+              /* Thêm tối ưu Mobile Touch */
+              touch-action: manipulation; 
+              -webkit-tap-highlight-color: transparent;
+              user-select: none;
             }
 
             .func-btn:hover { 
@@ -574,10 +578,12 @@ export class OffcanvasMenu extends HTMLElement {
 
   _attachEvents() {
     this.dom.closeBtn.addEventListener('click', () => this.close());
+
     this.dom.btnReset.addEventListener('click', () => this._resetFilters());
 
     this.dom.searchInput.addEventListener('input', (e) => {
       this.state.searchQuery = e.target.value.trim();
+
       this._dispatchUpdate();
     });
 
@@ -586,8 +592,18 @@ export class OffcanvasMenu extends HTMLElement {
     });
 
     this.dom.funcButtons.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const action = btn.dataset.action;
+      // Dùng 'click' kết hợp event delegation để chắc chắn ăn sự kiện trên mobile
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation(); // Ngăn event nổi bọt gây loạn trong Shadow DOM
+
+        // Lấy đúng button chứa action (đề phòng click trúng thẻ <i> hoặc <span> bên trong)
+        const targetBtn = e.target.closest('.func-btn') || btn;
+        const action = targetBtn.dataset.action;
+
+        if (!action) return;
+
+        // 1. Dispatch event ra ngoài cho hệ thống (nếu có ai lắng nghe)
         this.dispatchEvent(
           new CustomEvent('offcanvas-action', {
             detail: { action },
@@ -595,16 +611,42 @@ export class OffcanvasMenu extends HTMLElement {
             composed: true,
           })
         );
-        if (typeof window[action] === 'function') {
-          window[action]();
+
+        // 2. THỰC THI HÀM (GLOBAL EXECUTOR)
+        try {
+          // A. Xử lý các hàm nội bộ của Offcanvas Component (VD: openReport, openSettings)
+          if (typeof this[action] === 'function') {
+            this[action]();
+            return;
+          }
+
+          // B. Xử lý các hàm Global bên ngoài (VD: AdminConsole.init)
+          // Kỹ thuật này ép mã chạy ở Global Scope, y hệt như bạn viết onclick="AdminConsole.init()"
+          const globalExecutor = new Function(`
+            try {
+                return ${action}();
+            } catch (err) {
+                console.error("Không tìm thấy hàm hoặc biến:", "${action}");
+                throw err;
+            }
+          `);
+
+          globalExecutor(); // Kích hoạt chạy
+        } catch (error) {
+          console.error(`[OffcanvasMenu] Lỗi khi kích hoạt tính năng [${action}]:`, error);
+
+          // Hiển thị popup để bạn dễ dàng bắt lỗi khi test trên điện thoại thật
+          alert(`Lỗi chạy hàm: ${action}. Vui lòng kiểm tra Console.`);
         }
       });
     });
 
     this.dom.wrapper.addEventListener('mouseleave', this._handleMouseLeave);
+
     this.dom.testBtn.addEventListener('click', () => this._test());
 
     this.dom.btnPin.addEventListener('click', () => this._togglePin());
+
     this.dom.btnToggleSide.addEventListener('click', () => this._toggleSide());
   }
 
@@ -1061,8 +1103,12 @@ export class OffcanvasMenu extends HTMLElement {
       this.style.setProperty('--w-panel', `${state.menuWidth}px`);
     }
   }
+  _updateMenuState(updates) {
+    const state = JSON.parse(localStorage.getItem('offcanvas-menu-state') || '{}');
+    Object.assign(state, updates);
+    localStorage.setItem('offcanvas-menu-state', JSON.stringify(state));
+  }
 }
-
 // Register Component
 if (!customElements.get('offcanvas-menu')) {
   customElements.define('offcanvas-menu', OffcanvasMenu);

@@ -60,10 +60,11 @@ class DBManager {
   // ─── Cấu hình secondary indexes ──────────────────────────────────────
   // Khai báo tập trung — dễ thêm index mới sau này
   static #INDEX_CONFIG = [
-    { index: 'booking_details_by_booking', source: 'booking_details', groupBy: 'booking_id' },
-    { index: 'operator_entries_by_booking', source: 'operator_entries', groupBy: 'booking_id' },
-    { index: 'transactions_by_booking', source: 'transactions', groupBy: 'booking_id' },
-    { index: 'transactions_by_fund', source: 'transactions', groupBy: 'fund_source' },
+    { index: 'booking_details_by_booking', source: 'booking_details', groupBy: 'booking_id', sumBy: 'total' },
+    { index: 'operator_entries_by_booking', source: 'operator_entries', groupBy: 'booking_id', sumBy: 'total_cost' },
+    { index: 'operator_entries_by_month', source: 'operator_entries', groupBy: 'check_in', sumBy: 'total_cost' },
+    { index: 'transactions_by_booking', source: 'transactions', groupBy: 'booking_id', sumBy: 'amount' },
+    { index: 'transactions_by_fund', source: 'transactions', groupBy: 'fund_source', sumBy: 'amount' },
   ];
 
   /**
@@ -119,10 +120,12 @@ class DBManager {
 
     // Khởi tạo IndexedDB song song với Firestore
     await this.#localDB.initDB().catch((e) => console.warn('⚠️ IndexedDB initDB thất bại:', e));
+    window.addEventListener('app-ready', () => {
+      this.#startNotificationsListener();
+      log('🔔 Notifications listener started');
+    });
 
-    this.#startNotificationsListener();
     this._initialized = true;
-    log('🚀 DBManager ready (IndexedDB + Firestore)');
   }
 
   /**
@@ -653,57 +656,6 @@ class DBManager {
   }
 
   /**
-   * Rebuild toàn bộ secondary indexes từ primary collections trong APP_DATA.
-   * Gọi sau khi nạp data từ IndexedDB (secondary indexes không được lưu trong IndexedDB).
-   */
-  #rebuildAllSecondaryIndexes() {
-    if (!APP_DATA) return;
-    // Reset secondary indexes
-    DBManager.#INDEX_CONFIG.forEach(({ index }) => {
-      APP_DATA[index] = {};
-    });
-    // Rebuild từ primary collections
-    for (const { source, index, groupBy } of DBManager.#INDEX_CONFIG) {
-      const coll = APP_DATA[source];
-      if (!coll) continue;
-      for (const doc of Object.values(coll)) {
-        const groupKey = doc[groupBy];
-        if (!groupKey) continue;
-        if (!APP_DATA[index][groupKey]) APP_DATA[index][groupKey] = {};
-        APP_DATA[index][groupKey][doc.id] = doc;
-      }
-    }
-  }
-
-  /**
-   * Fetcher callback dùng cho localDB.autoSync().
-   * Tải docs từ Firestore cho 1 collection (incremental nếu có sinceDate).
-   *
-   * @param {string} collName
-   * @param {Date|null} sinceDate - Chỉ lấy docs có updated_at > sinceDate; null = full load
-   * @returns {Promise<object[]>} Plain object array [{id, ...fields}]
-   */
-  async #fetchCollectionDocs(collName, sinceDate) {
-    if (!this.#db) return [];
-    const cfg = DBManager.#QUERY_CONFIG[collName];
-    let query = this.#db.collection(collName);
-
-    if (sinceDate) {
-      // Incremental: chỉ lấy docs đã thay đổi kể từ lần sync trước
-      query = query.where('updated_at', '>', sinceDate);
-    } else {
-      // Full load với limit
-      const lim = cfg?.limit;
-      if (lim) query = query.limit(lim);
-    }
-
-    const snap = await query.get();
-    const docs = [];
-    snap.forEach((doc) => docs.push({ id: doc.id, ...doc.data() }));
-    return docs;
-  }
-
-  /**
    * Background sync: cập nhật các collections đã vượt TTL từ Firestore → IndexedDB → APP_DATA.
    * Chạy ngầm — không block giao diện.
    *
@@ -1171,12 +1123,100 @@ class DBManager {
     DBManager.#INDEX_CONFIG
       .filter((cfg) => cfg.source === collName)
       .forEach(({ index, groupBy }) => {
-        const groupKey = data[groupBy];
+        let groupKey = data[groupBy];
+
+        // Bỏ qua nếu object không có field này
         if (!groupKey) return;
+
+        // -------------------------------------------------------------
+        // TỰ ĐỘNG FORMAT NGÀY THÁNG NẾU LÀ BẢNG INDEX "_by_month"
+        // -------------------------------------------------------------
+        if (index.endsWith('_by_month')) {
+          const dateObj = new Date(groupKey);
+
+          // RỦI RO: Khách chưa nhập Check-in hoặc nhập sai định dạng
+          // -> Nếu parse Date ra NaN thì bỏ qua, không đưa vào Index lỗi
+          if (isNaN(dateObj.getTime())) return;
+
+          const m = dateObj.getMonth() + 1; // getMonth() bắt đầu từ 0
+          const yy = dateObj.getFullYear().toString().slice(-2); // Lấy 2 số cuối của năm
+
+          groupKey = `${m}-${yy}`; // Kết quả: 3-26
+        }
+
+        // Khởi tạo cây Object nếu chưa tồn tại
         if (!result[index]) result[index] = {};
         if (!result[index][groupKey]) result[index][groupKey] = {};
+
+        // Gắn data vào nhánh (Luôn dùng data.id làm key đích cho chuẩn DB)
         result[index][groupKey][data.id] = data;
       });
+  }
+
+  /**
+   * Rebuild toàn bộ Index với kỹ thuật Time Slicing (Chống đơ UI khi data > 50.000 dòng)
+   */
+  async #rebuildAllSecondaryIndexes() {
+    if (!window.APP_DATA) return;
+
+    // 1. Reset các bảng Index
+    DBManager.#INDEX_CONFIG.forEach(({ index }) => {
+      window.APP_DATA[index] = {};
+    });
+
+    const uniqueSources = [...new Set(DBManager.#INDEX_CONFIG.map((cfg) => cfg.source))];
+
+    // 2. Xử lý từng bảng gốc
+    for (const sourceName of uniqueSources) {
+      const coll = window.APP_DATA[sourceName];
+      if (!coll) continue;
+
+      const docs = Object.values(coll);
+
+      // CHUNK_SIZE: Số lượng dòng xử lý trong 1 nhịp (2000 là mức tối ưu nhất)
+      const CHUNK_SIZE = 2000;
+
+      for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
+        // Lấy ra 2000 dòng để xử lý
+        const chunk = docs.slice(i, i + CHUNK_SIZE);
+
+        chunk.forEach((doc) => {
+          this.#buildSecondaryIndexes(window.APP_DATA, sourceName, doc);
+        });
+
+        // ĐIỂM SÁNG GIÁ NHẤT: Nhường CPU (Yield to Main Thread)
+        // Lệnh này ép JS tạm dừng 0ms để trình duyệt kịp cập nhật giao diện (UI)
+        // Nhờ vậy user vẫn có thể click, cuộn trang mượt mà dù app đang load data ngầm.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    }
+  }
+  /**
+   * Fetcher callback dùng cho localDB.autoSync().
+   * Tải docs từ Firestore cho 1 collection (incremental nếu có sinceDate).
+   *
+   * @param {string} collName
+   * @param {Date|null} sinceDate - Chỉ lấy docs có updated_at > sinceDate; null = full load
+   * @returns {Promise<object[]>} Plain object array [{id, ...fields}]
+   */
+  async #fetchCollectionDocs(collName, sinceDate) {
+    if (!this.#db) return [];
+    const cfg = DBManager.#QUERY_CONFIG[collName];
+    let query = this.#db.collection(collName);
+
+    if (sinceDate) {
+      // Incremental: chỉ lấy docs đã thay đổi kể từ lần sync trước
+      query = query.where('updated_at', '>', sinceDate);
+    } else {
+      // Full load với limit
+      const lim = cfg?.limit;
+      if (lim) query = query.limit(lim);
+    }
+
+    const snap = await query.get();
+    const docs = [];
+    snap.forEach((doc) => docs.push({ id: doc.id, ...doc.data() }));
+    return docs;
   }
 
   // ─── Private: Build Empty Result ─────────────────────────────────────
@@ -1195,7 +1235,6 @@ class DBManager {
     DBManager.#INDEX_CONFIG.forEach(({ index }) => {
       APP_DATA[index] = {};
     });
-
     return APP_DATA;
   }
 
@@ -1221,85 +1260,90 @@ class DBManager {
    * @param {string} [customerName=''] - Tên khách từ booking header (bookings.customer_full_name)
    * @returns {Promise<{success:boolean, error?:string}>}
    */
+  // ─── Sync Trigger ─────────────────────────────────────────────────────
+  /**
+   * Đồng bộ 1 booking_detail row sang collection operator_entries.
+   *
+   * Chỉ sync các field có trong booking_details → operator_entries.
+   * Các field operator-only (cost_adult, cost_child, total_cost,
+   * paid_amount, debt_balance, supplier, operator_note) KHÔNG ghi đè
+   * — dùng merge:true để giữ nguyên giá trị đã có.
+   *
+   * @param {object} detailRow - booking_detail bắt buộc dạng Object
+   * @param {string} [customerName=''] - Tên khách từ booking header
+   * @returns {Promise<{success:boolean, error?:string}>}
+   */
   async _syncOperatorEntry(detailRow, customerName = '') {
-    // ── 1. FORMAT DETECTION ───────────────────────────────────────────
-    const isObj = typeof detailRow === 'object' && !Array.isArray(detailRow);
-    const f = (objKey, arrIdx) => (isObj ? detailRow[objKey] : detailRow[arrIdx]);
+    // ── 1. GUARD: Bắt buộc là Object chuẩn ────────────────────────────
+    if (!detailRow || typeof detailRow !== 'object' || Array.isArray(detailRow)) {
+      log('[_syncOperatorEntry] ❌ Dữ liệu đầu vào không hợp lệ (Phải là Object)', 'error');
+      detailRow = this.schema.arrayToObject(detailRow);
+      log('[_syncOperatorEntry] 🔄 Đã chuyển đổi Array sang Object:', Object.entries(detailRow));
+    }
 
-    // ── 2. EXTRACT FIELDS từ booking_details schema ───────────────────
-    // index 0  → id
-    const d_id = f('id', COL_INDEX.D_SID);
-    // index 1  → booking_id
-    const d_bkid = f('booking_id', COL_INDEX.D_BKID);
-    // index 2  → service_type
-    const d_type = f('service_type', COL_INDEX.D_TYPE);
-    // index 3  → hotel_name
-    const d_hotel = f('hotel_name', COL_INDEX.D_HOTEL);
-    // index 4  → service_name
-    const d_service = f('service_name', COL_INDEX.D_SERVICE);
-    // index 5  → check_in
-    const d_in = f('check_in', COL_INDEX.D_IN);
-    // index 6  → check_out
-    const d_out = f('check_out', COL_INDEX.D_OUT);
-    // index 7  → nights
-    const d_night = f('nights', COL_INDEX.D_NIGHT);
-    // index 8  → quantity  (→ operator_entries.adults)
-    const d_qty = f('quantity', COL_INDEX.D_QTY);
-    // index 10 → child_qty (→ operator_entries.children)
-    const d_childQty = f('child_qty', COL_INDEX.D_CHILD);
-    // index 12 → surcharge
-    const d_sur = f('surcharge', COL_INDEX.D_SUR);
-    // index 13 → discount
-    const d_disc = f('discount', COL_INDEX.D_DISC);
-    // index 14 → total    (→ operator_entries.total_sale)
-    const d_total = f('total', COL_INDEX.D_TOTAL);
-    // index 15 → ref_code
-    const d_code = f('ref_code', COL_INDEX.D_CODE);
+    // ── 2. EXTRACT FIELDS (Destructuring cực nhanh và sạch) ───────────
+    const {
+      id,
+      booking_id,
+      service_type,
+      hotel_name,
+      service_name,
+      check_in,
+      check_out,
+      nights,
+      quantity, // booking_details.quantity -> operator.adults
+      child_qty, // booking_details.child_qty -> operator.children
+      surcharge,
+      discount,
+      total, // booking_details.total -> operator.total_sale
+      ref_code,
+    } = detailRow;
 
-    // ── 3. GUARD: id bắt buộc hợp lệ ────────────────────────────────
-    if (!d_id || String(d_id).trim() === '' || String(d_id) === 'undefined') {
-      log(`[_syncOperatorEntry] ❌ Bỏ qua: id không hợp lệ (${d_id})`, 'warning');
+    // ── 3. VALIDATE ID VÀ LẤY TÊN KHÁCH ───────────────────────────────
+    if (!id || String(id).trim() === '' || String(id) === 'undefined') {
+      log(`[_syncOperatorEntry] ❌ Bỏ qua: id không hợp lệ (${id})`, 'warning');
       return { success: false, error: 'Invalid id' };
     }
-    if (!customerName || String(customerName).trim() === '') {
-      const bkidInfo = APP_DATA.bookings?.[d_bkid]?.customer_full_name;
-      if (bkidInfo) {
-        customerName = bkidInfo;
-      }
+
+    let finalCustName = customerName;
+    if (!finalCustName || String(finalCustName).trim() === '') {
+      // Lookup siêu tốc qua Object Cache
+      finalCustName = window.APP_DATA?.bookings?.[booking_id]?.customer_full_name || '';
     }
 
-    // ── 4. BUILD syncData ─────────────────────────────────────────────
-    // CHỈ ghi các field lấy từ booking_details
-    // Các field operator-only (cost_adult, cost_child, ...) KHÔNG có ở đây
-    // → dùng merge:true để không xóa chúng nếu đã tồn tại
+    // ── 4. BUILD syncData (Chỉ đè các field của Sale) ─────────────────
     const syncData = {
-      id: String(d_id),
-      booking_id: d_bkid || '',
-      customer_full_name: customerName || '',
-      service_type: d_type || '',
-      hotel_name: d_hotel || '',
-      service_name: d_service || '',
-      check_in: d_in ? formatDateISO(d_in) : '',
-      check_out: d_out ? formatDateISO(d_out) : '',
-      nights: Number(d_night) || 0,
-      adults: Number(d_qty) || 0, // booking_details.quantity
-      children: Number(d_childQty) || 0, // booking_details.child_qty
-      surcharge: Number(d_sur) || 0,
-      discount: Number(d_disc) || 0,
-      total_sale: Number(d_total) || 0, // booking_details.total
-      ref_code: d_code || '',
+      id: String(id),
+      booking_id: booking_id || '',
+      customer_full_name: finalCustName,
+      service_type: service_type || '',
+      hotel_name: hotel_name || '',
+      service_name: service_name || '',
+      check_in: check_in ? formatDateISO(check_in) : '',
+      check_out: check_out ? formatDateISO(check_out) : '',
+      nights: Number(nights) || 0,
+      adults: Number(quantity) || 0, // Ánh xạ sang adults
+      children: Number(child_qty) || 0, // Ánh xạ sang children
+      surcharge: Number(surcharge) || 0,
+      discount: Number(discount) || 0,
+      total_sale: Number(total) || 0, // Ánh xạ sang total_sale
+      ref_code: ref_code || '',
       updated_at: firebase.firestore.FieldValue.serverTimestamp(),
     };
 
-    // ── 5. GHI FIRESTORE (merge:true = không xóa operator-only fields) ─
+    // ── 5. GHI FIRESTORE (merge:true) VÀ ĐỒNG BỘ CACHE LOCAL ──────────
     const res = await this.#firestoreCRUD('operator_entries', 'set', syncData.id, syncData, {
       merge: true,
     });
+
     if (res.success) {
+      // Cập nhật ngầm vào Cache để UI render ngay lập tức không cần tải lại
       this._updateAppDataObj('operator_entries', syncData);
+      log(`[_syncOperatorEntry] ✅ Đồng bộ thành công dòng: ${syncData.id}`, 'success');
     } else {
       log(`[_syncOperatorEntry] ❌ Firestore lỗi: ${res.error}`, 'error');
     }
+
     return res;
   }
 
@@ -1730,38 +1774,50 @@ class DBManager {
 
   saveRecord = async (collectionName, dataArray, isBatch = false, batchRef = null) => {
     let dataObj;
-    let isNew;
+    let isNew = false; // FIX: Phải khởi tạo giá trị mặc định để không bị undefined
 
+    // 1. Chuẩn hóa dữ liệu đầu vào
     if (typeof dataArray === 'object' && !Array.isArray(dataArray)) {
-      dataObj = dataArray;
+      dataObj = { ...dataArray }; // Shallow copy để không làm bẩn object gốc trên UI
     } else {
       log(`Converting array to object for ${collectionName} saving...`);
       dataObj = this.#schema.arrayToObject(dataArray, collectionName);
     }
+
     let docId = collectionName === 'users' ? dataObj.uid : dataObj.id;
 
-    if (!docId || docId === '') {
+    // 2. Tạo ID nếu chưa có
+    if (!docId || String(docId).trim() === '') {
       let bookingId = null;
-      if (collectionName === 'booking_details') bookingId = dataObj.booking_id || dataArray[COL_INDEX.D_BKID];
+      if (collectionName === 'booking_details') {
+        bookingId = dataObj.booking_id || (Array.isArray(dataArray) ? dataArray[COL_INDEX.D_BKID] : null);
+      }
 
       const idResult = await this.generateIds(collectionName, bookingId);
-      if (!idResult) return { success: false, message: 'Failed to generate ID' };
+      if (!idResult) return { success: false, message: 'Lỗi: Không thể sinh ID mới' };
 
       docId = idResult.newId;
-      if (collectionName === 'users')
-        dataObj.uid = docId; // Với users, id = uid
-      else dataObj.id = docId;
+
+      if (collectionName === 'users') {
+        dataObj.uid = docId;
+      } else {
+        dataObj.id = docId;
+      }
+
       if (Array.isArray(dataArray)) dataArray[0] = docId;
-      isNew = true;
+      isNew = true; // Đánh dấu chính xác là bản ghi mới
     }
 
     if (!docId) {
-      console.error('❌ Lỗi: Dữ liệu thiếu ID', dataArray);
+      console.error('❌ Lỗi: Dữ liệu bị thiếu ID sau khi cấp phát', dataObj);
       return { success: false, message: 'Missing ID' };
     }
 
+    // 3. Làm sạch dữ liệu trước khi gửi lên Firebase (Firebase cực ghét value undefined)
     dataObj.updated_at = firebase.firestore.FieldValue.serverTimestamp();
+    Object.keys(dataObj).forEach((key) => dataObj[key] === undefined && delete dataObj[key]);
 
+    // 4. Lưu dữ liệu
     if (isBatch && batchRef) {
       return this.#firestoreCRUD(collectionName, 'set', docId, dataObj, { batchRef, merge: true });
     }
@@ -1772,17 +1828,25 @@ class DBManager {
 
       this._updateAppDataObj(collectionName, dataObj);
 
+      // 5. Hệ thống Notification
       if (collectionName === 'booking_details') {
         await this._syncOperatorEntry(dataArray);
-        if (!isNew) A.NotificationManager.sendToOperator(`Booking Detail ${dataObj.id} cập nhật!`, `Khách: ${dataObj.customer_full_name || dataArray[COL_INDEX.M_CUST] || 'Unknown'} cập nhật DV ${dataObj.service_name || dataArray[COL_INDEX.D_SERVICE] || 'Unknown'}`);
+        if (!isNew) {
+          A.NotificationManager.sendToOperator(`Booking Detail ${dataObj.id} cập nhật!`, `Khách: ${dataObj.customer_full_name || 'Unknown'} cập nhật DV ${dataObj.service_name || 'Unknown'}`);
+        }
       } else if (collectionName === 'bookings') {
-        if (isNew) A.NotificationManager.sendToOperator(`Booking ${dataObj.id} mới!`, `Khách: ${dataObj.customer_full_name || dataArray[COL_INDEX.M_CUST] || 'Unknown'}`);
+        if (isNew) {
+          A.NotificationManager.sendToOperator(`Booking ${dataObj.id} mới!`, `Khách: ${dataObj.customer_full_name || 'Unknown'}`);
+        }
       }
-      return { success: true, id: docId };
+
+      return { success: true, id: docId, data: dataObj }; // FIX: Trả thêm data để logic bên ngoài tái sử dụng
     } catch (e) {
       console.error('Save Error:', e);
-      await this._updateCounter(collectionName, this.batchCounterUpdates[collectionName] - 1);
-      delete this.batchCounterUpdates[collectionName];
+      if (this.batchCounterUpdates && this.batchCounterUpdates[collectionName]) {
+        await this._updateCounter(collectionName, this.batchCounterUpdates[collectionName] - 1);
+        delete this.batchCounterUpdates[collectionName];
+      }
       return { success: false, error: e.message };
     }
   };
@@ -1875,7 +1939,10 @@ class DBManager {
     if (collectionName === 'booking_details' && detailsForTrigger.length > 0) {
       for (const detailRow of detailsForTrigger) {
         if (typeof detailRow === 'object') detailRow.customer_full_name = customerName;
-        else detailRow[COL_INDEX.M_CUST] = customerName;
+        else {
+          detailRow = this.#schema.arrayToObject(detailRow, collectionName);
+          detailRow.customer_full_name = customerName;
+        }
         await this._syncOperatorEntry(detailRow);
       }
     }
@@ -2147,7 +2214,7 @@ class DBManager {
 
   generateIds = async (collectionName, bookingId = null) => {
     if (!this.#db) {
-      console.error('❌ DB chưa init');
+      console.error(`❌ DB chưa init khi tạo ID cho ${collectionName}`);
       return null;
     }
 
@@ -2159,58 +2226,63 @@ class DBManager {
       let prefix = '';
       let useRandomId = false;
 
+      // TRƯỜNG HỢP 1: Có cấu hình counter trong DB
       if (counterSnap.exists) {
-        if (collectionName === 'booking_details') prefix = bookingId ? `${bookingId}_` : 'SID_';
-        else prefix = counterSnap.data().prefix || '';
-        lastNo = Number(counterSnap.data().last_no);
-        if (lastNo && lastNo > 0) await this._updateCounter(collectionName, lastNo + 1);
-      }
+        const data = counterSnap.data();
+        if (collectionName === 'booking_details') {
+          prefix = bookingId ? `${bookingId}_` : 'SID_';
+        } else {
+          prefix = data.prefix || '';
+        }
 
-      if (!counterSnap.exists) {
+        // FIX: Ép kiểu an toàn, mặc định là 0 nếu dữ liệu DB bị lỗi (undefined/null/"")
+        lastNo = Number(data.last_no) || 0;
+
+        if (lastNo > 0) {
+          await this._updateCounter(collectionName, lastNo + 1);
+        }
+      }
+      // TRƯỜNG HỢP 2: Fallback - Tìm document mới nhất để tự suy luận ID
+      else {
         try {
           const latestSnap = await this.#db.collection(collectionName).orderBy('id', 'desc').limit(1).get();
 
           if (!latestSnap.empty) {
-            const latestDoc = latestSnap.docs[0].data() || {};
-            const latestId = String(latestDoc.id || latestSnap.docs[0].id || '').trim();
+            const latestId = String(latestSnap.docs[0].id || '').trim();
 
-            if (/^\d+$/.test(latestId)) {
-              lastNo = parseInt(latestId, 10);
-              prefix = '';
-            } else if (latestId.includes('-')) {
-              const parts = latestId.split('-').filter(Boolean);
-              const lastPart = parts[parts.length - 1] || '';
-              if (/^\d+$/.test(lastPart)) {
-                lastNo = parseInt(lastPart, 10);
-                prefix = parts.slice(0, -1).join('-');
-                prefix = prefix ? `${prefix}-` : '';
-              } else if (!/\d/.test(latestId)) {
-                useRandomId = true;
-              }
-            } else if (!/\d/.test(latestId)) {
+            // FIX: Dùng Regex tìm chính xác tất cả các chữ số nằm ở CUỐI chuỗi (VD: BK-2023 -> 2023)
+            const match = latestId.match(/(\d+)$/);
+
+            if (match) {
+              lastNo = parseInt(match[1], 10);
+              prefix = latestId.substring(0, match.index); // Lấy phần chữ làm prefix
+            } else {
               useRandomId = true;
             }
           } else {
             useRandomId = true;
           }
         } catch (e) {
-          console.warn(`⚠️ Cannot derive lastNo from latest ${collectionName} id:`, e);
+          console.warn(`⚠️ Cảnh báo: Không thể suy luận lastNo cho ${collectionName}:`, e.message);
+          useRandomId = true; // Rơi vào fallback an toàn nhất
         }
       }
 
+      // XỬ LÝ KẾT QUẢ CUỐI CÙNG
       const newNo = lastNo + 1;
+      let newId = '';
 
       if (useRandomId) {
-        const newId = `${prefix}${Math.random().toString(36).slice(2, 8).toUpperCase()}`.trim();
-        console.log(`🆔 Generated RANDOM ID for ${collectionName}: ${newId}`);
-        return { newId, newNo };
+        newId = `${prefix}${Math.random().toString(36).slice(2, 8).toUpperCase()}`.trim();
+        console.log(`🆔 TẠO RANDOM ID cho ${collectionName}: ${newId}`);
+      } else {
+        newId = `${prefix}${newNo}`.trim();
+        console.log(`🆔 TẠO TỰ ĐỘNG ID cho ${collectionName}: ${newId} (Từ số: ${lastNo} -> ${newNo})`);
       }
 
-      const newId = `${prefix}${newNo}`.trim();
-      console.log(`🆔 Generated ID for ${collectionName}: ${newId} (lastNo: ${lastNo} -> ${newNo})`);
       return { newId, newNo };
     } catch (e) {
-      console.error(`❌ Error generating ID for ${collectionName}:`, e);
+      console.error(`❌ Lỗi nghiêm trọng khi tạo ID cho ${collectionName}:`, e);
       return null;
     }
   };

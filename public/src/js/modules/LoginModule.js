@@ -20,6 +20,17 @@ const AUTH_MANAGER = {
       }
       this.auth = firebase.auth();
 
+      // THÊM ĐOẠN NÀY: Tự động trỏ vào Emulator nếu chạy trên localhost
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        try {
+          connectFirestoreEmulator(db, '127.0.0.1', 8080);
+          connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+          logA('🔥 [DEV MODE] Đã kết nối thành công với Firebase Local Emulator!');
+        } catch (err) {
+          Opps("Lỗi kết nối Emulator. Đảm bảo bạn đã chạy 'firebase emulators:start'", err);
+        }
+      }
+
       // ─── TẮT PERSISTENCE TRÊN MOBILE ────────────────────────────────────────
       // Trên mobile/WebView Firestore có thể tự bật offline cache → tắt thủ công
       // clearPersistence() phải gọi TRƯỚC khi bất kỳ Firestore operation nào chạy
@@ -481,12 +492,12 @@ const SECURITY_MANAGER = {
 
         if (maskedRole) {
           document.body.classList.add(`is-${maskedRole}`);
-          if (typeof activateTab === 'function') activateTab('tab-dashboard');
+          if (typeof selectTab === 'function') selectTab('tab-dashboard');
         } else {
           if (typeof activateTab === 'function') activateTab('tab-admin-dashboard');
         }
       } else {
-        if (typeof activateTab === 'function') activateTab('tab-dashboard');
+        if (typeof selectTab === 'function') selectTab('tab-dashboard');
 
         if (level >= 10) permissionClass = 'is-manager';
         else if (level >= 5) permissionClass = 'is-sup';

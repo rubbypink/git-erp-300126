@@ -443,9 +443,11 @@ function calcRow(idx) {
   if (getVal('BK_Status') === 'Hủy') return;
   const tr = getE(`row-${idx}`);
   if (!tr) return;
-  const dInStr = tr.querySelector('.d-in').value;
-  const dOutStr = tr.querySelector('.d-out').value;
-  const type = tr.querySelector('.d-type').value;
+  const gV = (cls) => getVal(`[data-field="${cls}"]`, tr);
+  const sV = (cls, val) => setVal(`[data-field="${cls}"]`, val, tr);
+  const dInStr = gV('check_in');
+  const dOutStr = gV('check_out');
+  const type = gV('service_type');
   // --- FIX LOGIC ĐÊM ---
   let night = 0;
   if (dInStr && dOutStr) {
@@ -459,24 +461,20 @@ function calcRow(idx) {
       night = diff;
     }
   }
-  tr.querySelector('.d-night').value = night;
+  sV('nights', night);
   // ---------------------
-  // Tính tiền (Giữ nguyên logic nhân night cho 'Phòng')
-  const getNum = (cls) => Number(tr.querySelector('.' + cls).value) || 0;
-  const qtyA = getNum('d-qty');
-  const priA = getNum('d-pri');
-  const qtyC = getNum('d-qtyC');
-  const priC = getNum('d-priC');
-  const sur = getNum('d-sur');
-  const disc = getNum('d-disc');
+  const qtyA = gV('quantity');
+  const priA = gV('unit_price');
+  const qtyC = gV('child_qty');
+  const priC = gV('child_price');
+  const sur = gV('surcharge');
+  const disc = gV('discount');
   // Nếu là Phòng thì nhân số đêm, Dịch vụ khác thì night=1 (đã set ở trên) nên nhân 1 cũng đúng
   // Tuy nhiên để an toàn logic hiển thị:
   // Nếu type=Phòng, multiplier = night. Nếu khác, multiplier = 1 (vì bản chất dịch vụ tính theo lượt)
   const multiplier = type === 'Phòng' ? Math.max(1, night) : 1;
   const total = (qtyA * priA + qtyC * priC) * multiplier + sur - disc;
-  const elTotal = tr.querySelector('.d-total');
-  elTotal.value = formatMoney(total);
-  elTotal.dataset.val = total;
+  sV('total', total);
   calcGrandTotal();
 }
 
@@ -494,7 +492,7 @@ function calcGrandTotal() {
   let landChildTotal = 0; // Tổng tiền Landtour của Trẻ em
 
   // 1. Quét qua tất cả các ô Thành tiền (.d-total)
-  document.querySelectorAll('.d-total').forEach((elTotal) => {
+  $$('[data-field="total"]', getE('detail-tbody')).forEach((elTotal) => {
     const rowTotal = Number(elTotal.dataset.val) || 0;
     grandTotal += rowTotal;
 
@@ -539,8 +537,8 @@ function calcGrandTotal() {
   }
 
   // 3. Tính toán Giá Bình Quân (AVG Stats)
-  const countAdult = getNum('BK_Adult') || 1; // Tránh chia cho 0
-  const countChild = getNum('BK_Child') || 1;
+  const countAdult = getVal('BK_Adult') || 1; // Tránh chia cho 0
+  const countChild = getVal('BK_Child') || 1;
 
   // A. Giá TB Trẻ em (Landtour) = Tổng tiền land TE / Số TE
   // Nếu logic của bạn chỉ cần Tổng tiền thì bỏ đoạn chia countChild
@@ -561,12 +559,12 @@ function calcGrandTotal() {
   const elStatsTC = getE('Stats_TransportChild');
 
   if (elStatsA) elStatsA.innerText = formatMoney(Math.round(avgAdultPrice)); // Dùng innerText cho thẻ Span/Div
-  if (elStatsC) setVal(elStatsC, formatMoney(Math.round(avgChildPrice)));
-  if (elStatsTA) setVal(elStatsTA, formatMoney(transAdultPrice));
-  if (elStatsTC) setVal(elStatsTC, formatMoney(transChildPrice));
+  if (elStatsC) elStatsC.innerText = formatMoney(Math.round(avgChildPrice));
+  if (elStatsTA) elStatsTA.innerText = formatMoney(Math.round(transAdultPrice));
+  if (elStatsTC) elStatsTC.innerText = formatMoney(Math.round(transChildPrice));
 
-  const balance = grandTotal - getNum('BK_Deposit');
-  setNum('BK_Balance', balance);
+  const balance = grandTotal - getVal('BK_Deposit');
+  setVal('BK_Balance', balance);
   updateBkStatus();
 }
 
@@ -600,13 +598,14 @@ async function updateDeposit() {
 function updateBkStatus() {
   // Auto Status
   let curStatus = getVal('BK_Status');
+  let bkId = getVal('BK_ID');
   let grandTotal = getNum('BK_Total');
   let deposit = getNum('BK_Deposit');
   const startDate = new Date(getVal('BK_Start'));
   const today = new Date(); // YYYY-MM-DD
   let stt;
   if (curStatus !== 'Hủy') {
-    if (grandTotal === 0) stt = 'Hủy';
+    if (grandTotal === 0 && bkId) stt = 'Hủy';
     else if (startDate <= today && deposit === grandTotal) stt = 'Xong BK';
     else if (deposit === grandTotal && grandTotal > 0) stt = 'Thanh Toán';
     else if (startDate < today && deposit < grandTotal) stt = 'Công nợ';
@@ -646,117 +645,6 @@ function autoSetOrCalcDate(start, end) {
     }
   }
 }
-/**
- * HÀM TRÍCH XUẤT DỮ LIỆU: Được BaseForm gọi khi nhấn nút SAVE
- * Nhiệm vụ: Gom toàn bộ dữ liệu trên Form thành JSON để gửi về Server
- *
- * @param {boolean} [update=false]
- *   - false (default): trả về toàn bộ dữ liệu (tạo mới)
- *   - true: chỉ trả về các phần có dữ liệu thực sự thay đổi (cập nhật)
- *           Dùng HD.filterUpdatedData để phát hiện thay đổi.
- *           Trả về null nếu không có gì thay đổi.
- */
-window.getFormData = async function (update = false) {
-  try {
-    // ── 1. Thu thập toàn bộ dữ liệu (dùng cho cả 2 mode) ─────────────
-
-    // Bookings Data
-    const bookings = {
-      id: getVal('BK_ID'),
-      customer_id: getVal('Cust_Id'),
-      customer_full_name: getVal('Cust_Name'),
-      customer_phone: formatPhone(getVal('Cust_Phone')),
-      start_date: getVal('BK_Start'),
-      end_date: getVal('BK_End'),
-      adults: getVal('BK_Adult'),
-      children: getVal('BK_Child'),
-      total_amount: getVal('BK_Total'), // Lấy giá trị thô
-      deposit_amount: getVal('BK_Deposit'),
-      balance_amount: 0, // Sẽ tính lại ở server hoặc dòng dưới
-      payment_method: getVal('BK_PayType'),
-      payment_due_date: getVal('BK_PayDue'),
-      note: getVal('BK_Note'),
-      staff_id: getVal('BK_Staff') || CURRENT_USER.name || '',
-      status: '',
-      created_at: getVal('BK_Date'),
-      tour_name: getVal('BK_TourName'), // Thêm Tour Name
-    };
-
-    bookings.balance_amount = Number(bookings.total_amount) - Number(bookings.deposit_amount);
-    bookings.status = updateBkStatus();
-
-    // Customer Data
-    const customer = {
-      id: getVal('Cust_Id') || '',
-      full_name: getVal('Cust_Name'),
-      phone: formatPhone(getVal('Cust_Phone')),
-      source: getVal('Cust_Source'),
-    };
-
-    // Details Data
-    const booking_details = [];
-    document.querySelectorAll('#detail-tbody tr').forEach((tr) => {
-      booking_details.push({
-        sid: getVal('.d-sid', tr),
-        booking_id: bookings.id,
-        type: getVal('.d-type', tr),
-        location: getVal('.d-loc', tr),
-        name: getVal('.d-name', tr),
-        in: getVal('.d-in', tr),
-        out: getVal('.d-out', tr),
-        night: getVal('.d-night', tr),
-        qtyA: getVal('.d-qty', tr),
-        priA: getVal('.d-pri', tr),
-        qtyC: getVal('.d-qtyC', tr),
-        priC: getVal('.d-priC', tr),
-        sur: getVal('.d-sur', tr),
-        disc: getVal('.d-disc', tr),
-        total: getVal('.d-total', tr),
-        code: getVal('.d-code', tr),
-        note: getVal('.d-note', tr),
-      });
-    });
-
-    // ── 2. NON-UPDATE MODE: trả về toàn bộ ───────────────────────────
-    if (!update) {
-      return { bookings, customer, booking_details };
-    }
-
-    // ── 3. UPDATE MODE: dùng HD.filterUpdatedData để phát hiện thay đổi ─
-
-    // 3a. Kiểm tra thay đổi riêng cho booking và customer (2 fieldset khác nhau)
-    const [bookingChanges, hasBookingChanges] = await HD.filterUpdatedData('fs_booking_info');
-    const [customerChanges, hasCustomerChanges] = await HD.filterUpdatedData('fs_customer_info');
-
-    // 3b. Kiểm tra từng dòng detail — chỉ giữ row có thay đổi
-    const detailRows = [...document.querySelectorAll('#detail-tbody tr')];
-    const changedDetails = [];
-    for (let i = 0; i < detailRows.length; i++) {
-      const tr = detailRows[i];
-      if (!tr.id) continue;
-      const [rowChanges, hasRowChanges] = await HD.filterUpdatedData(tr.id, $('#detail-tbody'));
-      if (hasRowChanges > 0) {
-        changedDetails.push(booking_details[i]);
-      }
-    }
-
-    // 3c. Không có gì thay đổi → trả về null
-    if (!hasBookingChanges && !hasCustomerChanges && changedDetails.length === 0) {
-      log('⚠️ Không có dữ liệu nào thay đổi', 'warning');
-      return null;
-    }
-
-    log('Dữ liệu cập nhật (chỉ thay đổi) trích xuất từ Form OK!');
-    return {
-      bookings: hasBookingChanges ? bookings : { id: bookings.id }, // Nếu không có thay đổi nào, vẫn trả về ID để server biết update bản ghi nào
-      customer: hasCustomerChanges ? customer : { id: customer.id }, // Nếu không có thay đổi nào, vẫn trả về ID để server biết update bản ghi nào
-      booking_details: changedDetails,
-    };
-  } catch (error) {
-    Opps('Lỗi khi trích xuất dữ liệu từ Form: ' + error.message);
-    return null;
-  }
-};
 
 /**
  * Hàm này được BaseForm gọi sau khi Server trả về kết quả tìm kiếm
@@ -897,6 +785,7 @@ async function findCustByPhone(customerData = null, e) {
         setVal(el, custData[key]);
       }
     });
+    if (!getVal('Cust_Total')) loadCustSpend(custData.id);
   }
 }
 
@@ -918,7 +807,7 @@ function processAndFillTemplate(booking_details, anchorDateStr, newStartStr, new
     if (dStr instanceof Date) return dStr;
     return new Date(dStr);
   };
-
+  const bkId = getVal('BK_ID');
   const dOld = parseDate(anchorDateStr);
   const dNew = parseDate(newStartStr);
   // Tính độ lệch theo mili-giây
@@ -931,13 +820,13 @@ function processAndFillTemplate(booking_details, anchorDateStr, newStartStr, new
     // 1. Xử lý Ngày (Date Shifting)
     let shiftedIn = '';
     let shiftedOut = '';
-    if (row.in) {
-      const rIn = parseDate(row.in);
+    if (row.in || row.check_in) {
+      const rIn = parseDate(row.in || row.check_in);
       const newInDate = new Date(rIn.getTime() + diffTime);
       shiftedIn = newInDate.toISOString().split('T')[0]; // Format YYYY-MM-DD
     }
-    if (row.out) {
-      const rOut = parseDate(row.out);
+    if (row.out || row.check_out) {
+      const rOut = parseDate(row.out || row.check_out);
       const newOutDate = new Date(rOut.getTime() + diffTime);
       shiftedOut = newOutDate.toISOString().split('T')[0];
     }
@@ -946,20 +835,21 @@ function processAndFillTemplate(booking_details, anchorDateStr, newStartStr, new
     // Hay là override bằng số khách hiện tại?
     // Theo yêu cầu: "Cập nhật ngày... yêu cầu điền thông tin 3 ô (Start, End, Adult)..."
     // => Ngầm hiểu là cần update số lượng theo Adult mới.
-    let finalQtyA = row.qtyA;
-    let finalQtyC = row.qtyC; // Trẻ em thường giữ nguyên theo template hoặc set 0
+    let finalQtyA = row.qtyA || row.quantity;
+    let finalQtyC = row.qtyC || row.child_qty; // Trẻ em thường giữ nguyên theo template hoặc set 0
     // Logic thông minh:
     // Nếu là Phòng: Có thể giữ nguyên logic chia phòng hoặc lấy từ template
     // Nếu là Ăn/Vé/Tour: Thường bằng số khách.
     // Ở đây ta ưu tiên logic: Sử dụng hàm autoFillRowData có sẵn hoặc gán trực tiếp.
     // Phương án an toàn: Gán theo số người lớn mới nều loại DV không phải là Xe/HDV (thường cố định).
-    if (['Xe', 'HDV', 'Tàu', 'Ca nô'].includes(row.type)) {
+    let type = row.type || row.service_type;
+    if (['Xe', 'HDV', 'Tàu', 'Ca nô'].includes(type)) {
       // Giữ nguyên số lượng trong template (vì có thể là 1 xe, 1 tàu)
     } else {
       // Các loại khác (Vé, Ăn, Phòng...) -> Update theo số khách mới
       // Tuy nhiên nếu là Phòng, logic chia 2 có thể áp dụng.
       // Để đơn giản và chính xác theo yêu cầu: Ta gán lại row.qtyA = newAdult
-      if (row.type === 'Phòng') {
+      if (type === 'Phòng') {
         finalQtyA = Math.ceil(newAdult / 2); // Logic chia đôi
       } else {
         finalQtyA = newAdult;
@@ -968,25 +858,25 @@ function processAndFillTemplate(booking_details, anchorDateStr, newStartStr, new
     // 3. Construct Data Array cho hàm addDetailRow
     // Mapping lại format mảng mà addDetailRow mong đợi:
     // [sid, null, type, loc, name, in, out, null, qty, pri, qtyC, priC, sur, disc, null, code, note]
-    const rowData = [
-      '', // 0: SID (Mới nên rỗng)
-      '', // 1: Blank
-      row.type, // 2
-      row.location, // 3
-      row.name, // 4
-      shiftedIn, // 5: Date In (Đã tịnh tiến)
-      shiftedOut, // 6: Date Out (Đã tịnh tiến)
-      '', // 7: Time/Note
-      finalQtyA, // 8: Qty A (Đã update)
-      row.priA, // 9: Price A (Giữ nguyên)
-      row.qtyC, // 10: Qty C
-      row.priC, // 11: Price C
-      row.sur, // 12
-      row.disc, // 13
-      '', // 14: Total (Tự tính lại)
-      row.code, // 15
-      row.note, // 16
-    ];
+    const rowData = {
+      id: '', // 0: SID (Mới nên rỗng)
+      booking_id: bkId, // 1: Blank
+      service_type: type, // 2
+      hotel_name: row.location || row.hotel_name, // 3
+      service_name: row.name || row.service_name, // 4
+      check_in: shiftedIn, // 5: Date In (Đã tịnh tiến)
+      check_out: shiftedOut, // 6: Date Out (Đã tịnh tiến)
+      nights: '', // 7: Time/Note
+      quantity: finalQtyA, // 8: Qty A (Đã update)
+      unit_price: row.priA || row.unit_price, // 9: Price A (Giữ nguyên)
+      child_qty: finalQtyC, // 10: Qty C
+      child_price: row.priC || row.child_price, // 11: Price C
+      surcharge: row.sur || row.surcharge, // 12
+      discount: row.disc || row.discount, // 13
+      total: '', // 14: Total (Tự tính lại)
+      ref_code: row.code || row.ref_code, // 15
+      note: row.note, // 16
+    };
     // Gọi hàm có sẵn để render lên UI
     addDetailRow(rowData);
   });
@@ -1317,12 +1207,12 @@ const ConfirmationModule = (function () {
     // ============================================================
 
     // Lưu ý: _currentData phải có field adults/children. Nếu không có thì lấy từ giao diện.
-    const qtyAdult = parseInt(_currentData.bookings[COL_INDEX.M_ADULT]) || getVal('BK_Adult') || 0;
+    const qtyAdult = parseInt(_currentData.bookings[COL_INDEX.M_ADULT]) || Number(getVal('BK_Adult')) || 0;
     const qtyChild = parseInt(_currentData.bookings[COL_INDEX.M_CHILD]) || getVal('BK_Child') || 0;
-    const priceTourA = getNum(getVal('Stats_AvgAdult')) * 1000; // Giá Tour/Combo NL
-    const priceTourC = getNum(getVal('Stats_AvgChild')) * 1000; // Giá Tour/Combo TE
-    const priceTransA = getNum(getVal('Stats_TransportAdult')) * 1000; // Giá Vận chuyển NL
-    const priceTransC = getNum(getVal('Stats_TransportChild')) * 1000; // Giá Vận chuyển TE
+    const priceTourA = Number(getVal('Stats_AvgAdult')) * 1000; // Giá Tour/Combo NL
+    const priceTourC = Number(getVal('Stats_AvgChild')) * 1000; // Giá Tour/Combo TE
+    const priceTransA = Number(getVal('Stats_TransportAdult')) * 1000; // Giá Vận chuyển NL
+    const priceTransC = Number(getVal('Stats_TransportChild')) * 1000; // Giá Vận chuyển TE
 
     // 3. Xác định tên loại vận chuyển (Máy bay hay Tàu?)
     // Quét nhẹ qua list detail để xem có từ khóa nào
@@ -1515,11 +1405,11 @@ const ConfirmationModule = (function () {
   }
 
   async function sendEmail() {
-    const email = document.getElementById('conf-cust-email').textContent || '9tripphuquoc@gmail.com';
+    const email = getVal('conf-cust-email') || '9tripphuquoc@gmail.com';
     if (!email || email.length < 5) return logA('Booking này chưa có Email khách hàng.', 'warning');
 
-    const subject = `[9 TRIP] XÁC NHẬN ĐẶT DỊCH VỤ - CODE ${document.getElementById('conf-id').textContent}`;
-    var data = getFormData();
+    const subject = `[9 TRIP] XÁC NHẬN ĐẶT DỊCH VỤ - CODE ${getVal('conf-id')}`;
+    var data = getBkFormData();
     data.type = _mode;
     data.showPrice = _showPrice;
     const statVals = {
@@ -1552,55 +1442,183 @@ function createConfirmation(bkId) {
   if (!bkId) return logA('Vui lòng chọn Booking trước.', 'warning');
   ConfirmationModule.openModal(bkId);
 }
+/**
+ * HÀM TRÍCH XUẤT DỮ LIỆU: Được BaseForm gọi khi nhấn nút SAVE
+ * Nhiệm vụ: Gom toàn bộ dữ liệu trên Form thành JSON để gửi về Server
+ *
+ * @param {boolean} [update=false]
+ *   - false (default): trả về toàn bộ dữ liệu (tạo mới)
+ *   - true: chỉ trả về các phần có dữ liệu thực sự thay đổi (cập nhật)
+ *           Dùng HD.filterUpdatedData để phát hiện thay đổi.
+ *           Trả về null nếu không có gì thay đổi.
+ */
+window.getBkFormData = async function (update = false) {
+  try {
+    // ── 1. Thu thập toàn bộ dữ liệu (dùng cho cả 2 mode) ─────────────
 
-async function saveForm(update = true) {
+    // Bookings Data
+    const bookings = {
+      id: getVal('BK_ID'),
+      customer_id: getVal('Cust_Id'),
+      customer_full_name: getVal('Cust_Name'),
+      customer_phone: formatPhone(getVal('Cust_Phone')),
+      start_date: getVal('BK_Start'),
+      end_date: getVal('BK_End'),
+      adults: getVal('BK_Adult'),
+      children: getVal('BK_Child'),
+      total_amount: getVal('BK_Total'), // Lấy giá trị thô
+      deposit_amount: getVal('BK_Deposit'),
+      balance_amount: 0, // Sẽ tính lại ở server hoặc dòng dưới
+      payment_method: getVal('BK_PayType'),
+      payment_due_date: getVal('BK_PayDue'),
+      note: getVal('BK_Note'),
+      staff_id: getVal('BK_Staff') || CURRENT_USER.name || '',
+      status: '',
+      created_at: getVal('BK_Date'),
+    };
+
+    bookings.balance_amount = Number(bookings.total_amount) - Number(bookings.deposit_amount);
+    bookings.status = updateBkStatus();
+    if (getVal('BK_TourName')) bookings.tour_name = getVal('BK_TourName');
+
+    // Customer Data
+    const customer = {
+      id: getVal('Cust_Id') || '',
+      full_name: getVal('Cust_Name'),
+      dob: getVal('Cust_Birthdate'),
+      id_card: getVal('Cust_ID_Card'),
+      id_card_date: getVal('Cust_ID_Card_Date'),
+      address: getVal('Cust_Addr'),
+      phone: formatPhone(getVal('Cust_Phone')),
+      source: getVal('Cust_Source'),
+      email: getVal('Cust_Email'),
+      total_spend: getVal('Cust_Total'),
+    };
+
+    // Details Data
+    const booking_details = [];
+    document.querySelectorAll('#detail-tbody tr').forEach((tr) => {
+      booking_details.push({
+        id: getVal('.d-sid', tr),
+        booking_id: bookings.id,
+        service_type: getVal('.d-type', tr),
+        hotel_name: getVal('.d-loc', tr),
+        service_name: getVal('.d-name', tr),
+        check_in: getVal('.d-in', tr),
+        check_out: getVal('.d-out', tr),
+        nights: getVal('.d-night', tr),
+        quantity: getVal('.d-qty', tr),
+        unit_price: getVal('.d-pri', tr),
+        child_qty: getVal('.d-qtyC', tr),
+        child_price: getVal('.d-priC', tr),
+        surcharge: getVal('.d-sur', tr),
+        discount: getVal('.d-disc', tr),
+        total: getVal('.d-total', tr),
+        ref_code: getVal('.d-code', tr),
+        note: getVal('.d-note', tr),
+      });
+    });
+
+    // ── 2. NON-UPDATE MODE: trả về toàn bộ ───────────────────────────
+    if (!update) {
+      return { bookings, customer, booking_details };
+    }
+
+    // ── 3. UPDATE MODE: dùng HD.filterUpdatedData để phát hiện thay đổi ─
+
+    // 3a. Kiểm tra thay đổi riêng cho booking và customer (2 fieldset khác nhau)
+    const [bookingChanges, hasBookingChanges] = await HD.filterUpdatedData('fs_booking_info');
+    const [customerChanges, hasCustomerChanges] = await HD.filterUpdatedData('fs_customer_info');
+
+    // 3b. Kiểm tra từng dòng detail — chỉ giữ row có thay đổi
+    const detailRows = [...document.querySelectorAll('#detail-tbody tr')];
+    const changedDetails = [];
+    for (let i = 0; i < detailRows.length; i++) {
+      const tr = detailRows[i];
+      if (!tr.id) continue;
+      const [rowChanges, hasRowChanges] = await HD.filterUpdatedData(tr.id, $('#detail-tbody'));
+      if (hasRowChanges > 0) {
+        changedDetails.push(booking_details[i]);
+      }
+    }
+
+    // 3c. Không có gì thay đổi → trả về null
+    if (!hasBookingChanges && !hasCustomerChanges && changedDetails.length === 0) {
+      log('⚠️ Không có dữ liệu nào thay đổi', 'warning');
+      return null;
+    }
+
+    log('Dữ liệu cập nhật (chỉ thay đổi) trích xuất từ Form OK!');
+    return {
+      bookings: hasBookingChanges ? bookings : { id: bookings.id }, // Nếu không có thay đổi nào, vẫn trả về ID để server biết update bản ghi nào
+      customer: hasCustomerChanges ? customer : { id: customer.id }, // Nếu không có thay đổi nào, vẫn trả về ID để server biết update bản ghi nào
+      booking_details: changedDetails,
+    };
+  } catch (error) {
+    Opps('Lỗi khi trích xuất dữ liệu từ Form: ' + error.message);
+    return null;
+  }
+};
+
+async function saveForm(update = false) {
   try {
     setBtnLoading('btn-save-form', true, 'Saving...');
-    await saveCustomer();
-    var data = await getFormData(update);
-    const { bookings, booking_details, customer } = data;
+
+    const formData = await getBkFormData(update);
+    if (!formData) {
+      // getBkFormData sẽ trả về null nếu update=true và không có gì thay đổi
+      setBtnLoading('btn-save-form', false);
+      return;
+    }
+
+    const { bookings, booking_details } = formData;
     const bookingId = bookings?.id;
+
+    // Validate tạo mới
     if (!bookingId) {
-      // Validate đủ thông tin khách hàng trước khi lưu
       const missingFields = [];
       if (!bookings.customer_id) missingFields.push('customer_id');
       if (!bookings.customer_full_name) missingFields.push('customer_name');
       if (!bookings.customer_phone) missingFields.push('customer_phone');
+
       if (missingFields.length > 0) {
-        const msg = `Thiếu thông tin khách hàng: ${missingFields.join(', ')} - Hãy tạo khách hàng lại trước khi tạo booking!`;
+        const msg = `Thiếu thông tin khách hàng: ${missingFields.join(', ')} - Hãy hoàn thiện trước khi tạo booking!`;
         logA(msg, 'error');
+        setBtnLoading('btn-save-form', false);
         return { success: false, message: msg };
       }
     }
 
-    // Kiểm tra xem có dữ liệu cần lưu không (ngoài field 'id')
     const hasBookingChanges = Object.keys(bookings || {}).filter((k) => k !== 'id').length > 0;
-
     const hasDetails = Array.isArray(booking_details) && booking_details.length > 0;
 
     if (!hasBookingChanges && !hasDetails) {
       logA('Không có dữ liệu thay đổi để lưu.', 'warning');
+      setBtnLoading('btn-save-form', false);
       return;
     }
 
     try {
       // =========================================================================
-      // LƯU BOOKINGS (bỏ qua nếu chỉ chứa field 'id')
+      // LƯU BOOKINGS
       // =========================================================================
-      let updateBk = null;
+      let saveResult = null;
       if (hasBookingChanges) {
-        // Truyền thẳng object để saveRecord giữ đúng field 'id' (không qua array conversion)
-        updateBk = await A.DB.saveRecord('bookings', bookings);
-        if (updateBk && !bookingId && updateBk?.status !== 'Hủy') {
-          A.NotificationManager.sendToAll('NEW BOOKING', `Booking mới đã được tạo với ID: ${updateBk.id} - ${updateBk.staff_id}`);
+        saveResult = await A.DB.saveRecord('bookings', bookings);
+
+        // FIX: saveResult trả về {success, id, data}. Ta check theo Object này
+        if (saveResult && saveResult.success && !bookingId && bookings.status !== 'Hủy') {
+          A.NotificationManager.sendToAll('NEW BOOKING', `Booking mới đã được tạo với ID: ${saveResult.id} - ${bookings.staff_id || 'Unknown'}`);
         }
       }
 
       // =========================================================================
-      // CẬP NHẬT BOOKING_ID CHO TẤT CẢ BOOKING_DETAILS NẾU CHƯA CÓ GIÁ TRỊ
+      // CẬP NHẬT BOOKING_DETAILS VỚI ID MỚI NHẤT
       // =========================================================================
       if (hasDetails) {
-        const resolvedBkId = updateBk?.id ?? bookings.id;
+        // Lấy ID mới vừa tạo, hoặc lấy lại ID cũ
+        const resolvedBkId = saveResult && saveResult.id ? saveResult.id : bookings.id;
+
         const updatedDetails = booking_details.map((detail) => {
           if (!detail.booking_id) {
             detail.booking_id = resolvedBkId;
@@ -1608,27 +1626,27 @@ async function saveForm(update = true) {
           return detail;
         });
 
-        var details = updatedDetails.map((d) => Object.values(d));
+        const details = updatedDetails.map((d) => Object.values(d));
         await A.DB.batchSave('booking_details', details);
       }
-      if (window.StateProxy) StateProxy.commitSession(); // advance baseline, flush history
+
+      // Lưu khách hàng và update trạng thái UI...
+      if (typeof saveCustomer === 'function') await saveCustomer();
+      if (window.StateProxy) StateProxy.commitSession();
+
       const btnDashUpdate = getE('btn-dash-update');
-      if (btnDashUpdate) {
-        A.Event.trigger(btnDashUpdate, 'click');
-      }
+      if (btnDashUpdate) A.Event.trigger(btnDashUpdate, 'click');
 
       const btnSelectDatalist = getE('btn-select-datalist');
-      if (btnSelectDatalist) {
-        btnSelectDatalist.dispatchEvent(new Event('change'));
-      }
-      logA('Lưu dữ liệu thành công!', true);
+      if (btnSelectDatalist) btnSelectDatalist.dispatchEvent(new Event('change'));
+
+      logA('Lưu dữ liệu thành công!', 'success');
     } catch (e) {
-      if (window.StateProxy) StateProxy.rollbackSession(); // revert to baseline
+      if (window.StateProxy) StateProxy.rollbackSession();
       Opps(e);
-      return;
     }
   } catch (e) {
-    Opps('Lỗi hàm try: ', e);
+    Opps('Lỗi hệ thống khi bắt đầu save: ', e);
   } finally {
     setBtnLoading('btn-save-form', false);
   }
@@ -1740,12 +1758,9 @@ function loadCustSpend(custId) {
   const bookings = window.Object.values(APP_DATA.bookings) || [];
   let totalSpend = 0;
 
-  bookings.forEach((booking) => {
-    if (booking && booking.customer_id === custId && booking.status !== 'Hủy') {
-      const total = booking.total_amount || 0;
-      // Xử lý cả string (formatted) và number
-      const numValue = typeof total === 'string' ? getRawVal(total) : Number(total);
-      totalSpend += numValue;
+  HD.filter(bookings, custId, '==', 'customer_id').forEach((bk) => {
+    if (bk.status !== 'Hủy') {
+      totalSpend += Number(bk.total_amount) || 0;
     }
   });
   setVal('Cust_Total', totalSpend);
@@ -1758,9 +1773,9 @@ function loadCustSpend(custId) {
 async function createContract() {
   try {
     // 1. Kiểm tra dữ liệu cơ bản
-    if (typeof getFormData !== 'function') return;
+    if (typeof getBkFormData !== 'function') return;
 
-    const { bookings, customer, booking_details } = await getFormData();
+    const { bookings, customer, booking_details } = await getBkFormData();
 
     // 2. Lấy dữ liệu mở rộng từ Tab Customer
     let extendedCust = null;
@@ -1774,11 +1789,6 @@ async function createContract() {
       logA('Vui lòng điền đầy đủ thông tin khách hàng (Tên, SĐT) trước khi tạo hợp đồng!', 'warning');
       return;
     }
-
-    // 3. Xác định Tab hiện tại
-    // Tìm nút Tab đang có class 'active' để biết người dùng đang đứng ở đâu
-    const activeTabEl = document.querySelector('#mainTabs button.nav-link.active');
-    const activeTarget = activeTabEl ? activeTabEl.getAttribute('data-bs-target') : '';
 
     const payload = {
       bookings: bookings,
@@ -1870,21 +1880,20 @@ async function saveCurrentTemplate() {
       const getRowVal = (cls) => tr.querySelector('.' + cls)?.value || '';
       const getRowRaw = (cls) => tr.querySelector('.' + cls)?.dataset.val || getRowVal(cls); // Ưu tiên lấy raw data nếu có
       booking_details.push({
-        sid: tr.querySelector('.d-sid').value,
-        type: getRowVal('d-type'),
-        location: getRowVal('d-loc'),
-        name: getRowVal('d-name'),
-        in: getRowVal('d-in'),
-        out: getRowVal('d-out'),
-        night: getRowVal('d-night'),
-        qtyA: getRowVal('d-qty'),
-        priA: getRowVal('d-pri'),
-        qtyC: getRowVal('d-qtyC'),
-        priC: getRowVal('d-priC'),
-        sur: getRowVal('d-sur'),
-        disc: getRowVal('d-disc'),
+        service_type: getRowVal('d-type'),
+        hotel_name: getRowVal('d-loc'),
+        service_name: getRowVal('d-name'),
+        check_in: getRowVal('d-in'),
+        check_out: getRowVal('d-out'),
+        nights: getRowVal('d-night'),
+        quantity: getRowVal('d-qty'),
+        unit_price: getRowVal('d-pri'),
+        child_qty: getRowVal('d-qtyC'),
+        child_price: getRowVal('d-priC'),
+        surcharge: getRowVal('d-sur'),
+        discount: getRowVal('d-disc'),
         total: tr.querySelector('.d-total').dataset.val || 0,
-        code: getRowVal('d-code'),
+        ref_code: getRowVal('d-code'),
         note: getRowVal('d-note'),
       });
     });
@@ -2034,7 +2043,7 @@ async function saveBatchDetails() {
   };
 
   // 3. Details
-  const booking_details = [];
+  const booking_details = {};
   const currentTab = getE('tab-form');
   const rows = currentTab.querySelectorAll('#detail-tbody tr');
 
@@ -2051,7 +2060,7 @@ async function saveBatchDetails() {
       return el ? el.value : '';
     };
 
-    booking_details.push([getRowVal('.d-sid').value, getRowVal('d-type'), getRowVal('d-loc'), getRowVal('d-name'), getRowVal('d-in'), getRowVal('d-out'), getRowNum('d-night'), getRowNum('d-qty'), getRowNum('d-pri'), getRowNum('d-qtyC'), getRowNum('d-priC'), getRowNum('d-sur'), getRowNum('d-disc'), getRowNum('.d-total'), getRowVal('d-code'), getRowVal('d-note')]);
+    booking_details[index] = [getRowVal('.d-sid').value, getRowVal('d-type'), getRowVal('d-loc'), getRowVal('d-name'), getRowVal('d-in'), getRowVal('d-out'), getRowNum('d-night'), getRowNum('d-qty'), getRowNum('d-pri'), getRowNum('d-qtyC'), getRowNum('d-priC'), getRowNum('d-sur'), getRowNum('d-disc'), getRowNum('.d-total'), getRowVal('d-code'), getRowVal('d-note')];
   });
 
   setBtnLoading('btn-save-batch', true);

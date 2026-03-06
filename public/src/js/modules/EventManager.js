@@ -600,8 +600,8 @@ class EventManager {
         window.CURRENT_CTX_ID = sidInput ? sidInput.value : '';
 
         // Get row data
-        if (typeof getRowData === 'function') {
-          window.CURRENT_ROW_DATA = getRowData(collection, window.CURRENT_CTX_ROW, tbody);
+        if (typeof HD.getRowData === 'function') {
+          window.CURRENT_ROW_DATA = HD.getRowData(collection, window.CURRENT_CTX_ROW, tbody);
         }
 
         // Position menu
