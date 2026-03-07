@@ -38,7 +38,7 @@ class AppRouter {
       // Giả sử CURRENT_USER là biến global (window.CURRENT_USER)
       window.CURRENT_USER = window.CURRENT_USER || {};
       window.CURRENT_USER.role = roleOverride.toLowerCase();
-      console.log(`🔥 [Router] Đã ghi đè Role từ URL thành: ${window.CURRENT_USER.role}`);
+      L._(`🔥 [Router] Đã ghi đè Role từ URL thành: ${window.CURRENT_USER.role}`);
     }
   }
 
@@ -86,7 +86,7 @@ class AppRouter {
     // Nếu đường dẫn (pathname) không thay đổi (chỉ do Modal đẩy hash hoặc Iframe load)
     // thì tuyệt đối KHÔNG chạy lại route handler để tránh render đè liên tục.
     if (this.currentPath === targetPath) {
-      // console.log('⏸️ Bỏ qua render do pathname không đổi:', targetPath);
+      // L._('⏸️ Bỏ qua render do pathname không đổi:', targetPath);
       return;
     }
 
@@ -99,7 +99,7 @@ class AppRouter {
       if (match) {
         matchFound = true;
         const params = match.slice(1);
-        console.log(`✅ Route matched: ${route.path} → Handler: ${route.handler.name || 'anonymous'}`);
+        L._(`✅ Route matched: ${route.path} → Handler: ${route.handler.name || 'anonymous'}`);
         try {
           route.handler(...params);
         } catch (error) {
@@ -124,7 +124,7 @@ class AppRouter {
         this.navigate(target.getAttribute('href'));
       }
     });
-    console.log('🚀 Router đã khởi tạo và lắng nghe sự kiện popstate cũng như click trên các link [data-link]');
+    L._('🚀 Router đã khởi tạo và lắng nghe sự kiện popstate cũng như click trên các link [data-link]');
 
     // Chạy resolve ngay lần đầu load trang
     // Dùng setTimeout để đảm bảo các biến global (như CURRENT_USER, A) đã kịp khởi tạo

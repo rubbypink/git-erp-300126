@@ -55,7 +55,7 @@ function getAllRowDataByField(collectionName, rootIdOrEl, skipEmpty = true) {
       allRowsData.push(rowData);
     });
 
-    console.log(`✅ Extracted ${allRowsData.length} rows from [${collectionName}]`);
+    L._(`✅ Extracted ${allRowsData.length} rows from [${collectionName}]`);
     return allRowsData;
   } catch (e) {
     console.error(`❌ Error in getAllRowDataByField:`, e);
@@ -113,7 +113,7 @@ function setRowDataByField(collectionName, rowData, rootIdOrEl, rowId = null) {
       if (field) setVal(field, value);
     });
 
-    console.log(`✅ Set row data for [${collectionName}]`);
+    L._(`✅ Set row data for [${collectionName}]`);
     return true;
   } catch (e) {
     console.error(`❌ Error in setRowDataByField:`, e);
@@ -126,21 +126,21 @@ function setRowDataByField(collectionName, rowData, rootIdOrEl, rowId = null) {
  */
 async function onGridRowClick(bkId) {
   if (!bkId) return;
-  log('🖱 Đang tìm Booking ID: ' + bkId);
+  L._('🖱 Đang tìm Booking ID: ' + bkId);
   showLoading(true);
 
   // --- BƯỚC 1: TÌM TRONG LOCAL (APP_DATA) ---
   const localResult = findBookingInLocal(bkId);
 
   if (localResult) {
-    log('✅ Tìm thấy trong APP_DATA (Local Cache)');
+    L._('✅ Tìm thấy trong APP_DATA (Local Cache)');
     handleSearchResult(localResult);
     return; // Dừng ngay, không gọi Server
   }
 
   // --- BƯỚC 2: TÌM TRÊN FIREBASE (Nếu Local không thấy) ---
   // (Trường hợp dữ liệu vừa được người khác thêm mà mình chưa F5)
-  log('⚠️ Không thấy trong Local, thử tải lại từ Firebase...', 'warning');
+  L._('⚠️ Không thấy trong Local, thử tải lại từ Firebase...', 'warning');
 
   try {
     // Gọi hàm load lại dữ liệu (hàm bạn đã viết ở bài trước)
@@ -151,12 +151,12 @@ async function onGridRowClick(bkId) {
     const retryResult = findBookingInLocal(bkId);
 
     if (retryResult) {
-      log('✅ Tìm thấy sau khi đồng bộ Firebase');
+      L._('✅ Tìm thấy sau khi đồng bộ Firebase');
       handleSearchResult(retryResult);
       return;
     }
   } catch (e) {
-    log('Lỗi kết nối Firebase:', e, 'error');
+    L._('Lỗi kết nối Firebase:', e, 'error');
   }
 }
 
@@ -205,7 +205,7 @@ function findBookingInLocal(bkId) {
       const bkIdFromDetail = detailHit ? detailHit.booking_id || detailHit[1] : null;
       bookingData = bkIdFromDetail ? bookingsMap[bkIdFromDetail] : null;
       detailsData = bkIdFromDetail && detailsByBkMap[bkIdFromDetail] ? Object.values(detailsByBkMap[bkIdFromDetail]) : [];
-      log('⚠️ Không tìm thấy booking trực tiếp, thử tìm qua details với id: ' + bkIdFromDetail);
+      L._('⚠️ Không tìm thấy booking trực tiếp, thử tìm qua details với id: ' + bkIdFromDetail);
     }
 
     if (!bookingData) return null;
@@ -240,7 +240,7 @@ function findBookingInLocal(bkId) {
       });
 
       if (!custRow) {
-        log('Local search: Không tìm thấy khách theo SĐT');
+        L._('Local search: Không tìm thấy khách theo SĐT');
       }
     }
 
@@ -253,7 +253,7 @@ function findBookingInLocal(bkId) {
       source: 'local',
     };
   } catch (e) {
-    log('Lỗi tìm kiếm trong Local: ' + e.message, 'error');
+    L._('Lỗi tìm kiếm trong Local: ' + e.message, 'error');
     return null;
   } finally {
     showLoading(false);
@@ -318,7 +318,7 @@ function applyGridFilter() {
     const sourceData = typeof getAppDataFlat === 'function' ? getAppDataFlat(CURRENT_TABLE_KEY) : Object.values(APP_DATA[CURRENT_TABLE_KEY] ?? {});
 
     if (!sourceData.length) {
-      log('Không có dữ liệu để lọc', 'warning');
+      L._('Không có dữ liệu để lọc', 'warning');
       return;
     }
 
@@ -375,7 +375,7 @@ function applyGridFilter() {
       return matchKeyword && matchDate;
     });
 
-    log(`Đã lọc [${CURRENT_TABLE_KEY}]: ${filtered.length} kết quả`, 'success');
+    L._(`Đã lọc [${CURRENT_TABLE_KEY}]: ${filtered.length} kết quả`, 'success');
 
     // Update PG_DATA with filtered result → sorter and renderer will use this
     window.PG_DATA = filtered;
@@ -391,7 +391,7 @@ function applyGridFilter() {
     _renderFromPGData();
     if (typeof calculateSummary === 'function') calculateSummary(filtered);
   } catch (err) {
-    log('Lỗi applyGridFilter: ' + err.message, 'error');
+    L._('Lỗi applyGridFilter: ' + err.message, 'error');
   }
 }
 
@@ -467,7 +467,7 @@ function resetGridData() {
 
   _renderFromPGData();
   if (typeof calculateSummary === 'function') calculateSummary(freshData);
-  log('Đã reset bộ lọc về dữ liệu gốc', 'info');
+  L._('Đã reset bộ lọc về dữ liệu gốc', 'info');
 }
 
 /**
@@ -535,7 +535,7 @@ function applyGridSorter(dir = null) {
   const source = (window.PG_DATA || []).filter((r) => r?.id != null);
 
   if (!source.length) {
-    log('Không sort được: PG_DATA trống', 'warning');
+    L._('Không sort được: PG_DATA trống', 'warning');
     return;
   }
 
@@ -663,7 +663,7 @@ function handleTableChange(key) {
   if (typeof renderTableByKey === 'function') {
     renderTableByKey(key);
   } else {
-    log('Không tìm thấy hàm renderTableByKey', 'error');
+    L._('Không tìm thấy hàm renderTableByKey', 'error');
   }
 }
 
@@ -674,7 +674,7 @@ function handleTableChange(key) {
 calculateSummary = function (dataRows) {
   // 1. Guard Clause: Reset về 0 nếu không có dữ liệu
   if (!dataRows || !Array.isArray(dataRows) || dataRows.length === 0) {
-    log('calculateSummary lỗi tham số!');
+    L._('calculateSummary lỗi tham số!');
     if (typeof updateStatUI === 'function') updateStatUI(0, 0, 0);
     return;
   }
@@ -699,16 +699,16 @@ calculateSummary = function (dataRows) {
     });
     if (colQty) IDX_QTY = colQty.i;
   } else {
-    log('calculateSummary: Chưa định nghĩa GRID_COLS', 'error');
+    L._('calculateSummary: Chưa định nghĩa GRID_COLS', 'error');
     return;
   }
 
   // Log cảnh báo nếu không tìm thấy cột (để Dev biết tại sao Stats = 0)
   if (IDX_TOTAL === -1) {
-    log('Calc Summary: Không tìm thấy cột [Thành Tiền/Tổng Cộng]', 'error');
+    L._('Calc Summary: Không tìm thấy cột [Thành Tiền/Tổng Cộng]', 'error');
     return;
   }
-  if (IDX_QTY === -1) log('Calc Summary: Không tìm thấy cột [SL/Số Lượng]', 'error');
+  if (IDX_QTY === -1) L._('Calc Summary: Không tìm thấy cột [SL/Số Lượng]', 'error');
 
   // =================================================================
   // TÍNH TOÁN
@@ -921,7 +921,7 @@ async function downloadData(type = 'excel') {
 
   // 4. MAPPING DỮ LIỆU (ARRAY -> OBJECT with HEADERS)
   if (typeof GRID_COLS === 'undefined' || !GRID_COLS.length) {
-    logA('Lỗi: Không tìm thấy cấu hình cột (GRID_COLS).', 'error', 'alert');
+    Opps('Lỗi: Không tìm thấy cấu hình cột (GRID_COLS).');
     return;
   }
 
@@ -978,7 +978,7 @@ async function downloadData(type = 'excel') {
     if (typeof logA === 'function') logA('Đã xuất file thành công!', true);
   } catch (err) {
     Opps(err);
-    logA('Lỗi khi xuất file: ' + err.message, 'error', 'alert');
+    Opps('Lỗi khi xuất file: ' + err.message);
   }
 }
 // ==========================================
@@ -1110,7 +1110,7 @@ function clearLocalCache() {
     setTimeout(() => reloadPage(true), 1000);
   } catch (error) {
     console.error('❌ Lỗi khi xóa Local Cache:', error);
-    logA('❌ Có lỗi xảy ra khi xóa Local Cache', 'error');
+    Opps('❌ Có lỗi xảy ra khi xóa Local Cache');
   }
 }
 
@@ -1148,11 +1148,11 @@ function applyModeFromUrl() {
   _cleanModeFromUrl();
 
   if (!VALID_MODES.includes(modeCode)) {
-    log(`⚠️ URL mode không hợp lệ: "${modeParam}". Hợp lệ: ${VALID_MODES.join(', ')}`, 'warning');
+    L._(`⚠️ URL mode không hợp lệ: "${modeParam}". Hợp lệ: ${VALID_MODES.join(', ')}`, 'warning');
     return false;
   }
   // Áp dụng mock role
-  log(`🔗 Phát hiện URL mode: ?mode=${modeCode} → Đang chuyển chế độ...`, 'info');
+  L._(`🔗 Phát hiện URL mode: ?mode=${modeCode} → Đang chuyển chế độ...`, 'info');
   reloadSystemMode(modeCode);
   return true;
 }
@@ -1167,7 +1167,7 @@ function reloadSystemMode(modeCode) {
     maskedRole: modeCode,
   };
   localStorage.setItem('erp-mock-role', JSON.stringify(roleData));
-  log('🎭 Chuyển chế độ thành công sang: ' + Object.values(roleData).join(' -> ') + '. Đang tải lại trang...');
+  L._('🎭 Chuyển chế độ thành công sang: ' + Object.values(roleData).join(' -> ') + '. Đang tải lại trang...');
   A.DB.stopNotificationsListener(); // Hủy tất cả subscription trước khi reload
   window.location.reload();
 }
@@ -1184,17 +1184,17 @@ function handleRetry(reason) {
   if (retryCount < MAX_RETRIES) {
     retryCount++;
     // Chờ 2s rồi gọi lại hàm load
-    log('handleRetry run lần: ', retryCount);
+    L._('handleRetry run lần: ', retryCount);
     setTimeout(loadDataFromFirebase, RETRY_DELAY);
   } else {
     // Đã thử hết số lần cho phép -> Báo lỗi chết (Fatal Error)
     showLoading(false);
     const errorMsg = `Không thể kết nối Server sau ${MAX_RETRIES} lần thử.\nNguyên nhân: ${reason}\n\nVui lòng nhấn F5 để tải lại trang.`;
-    log('FATAL ERROR: ' + reason, 'error');
+    L._('FATAL ERROR: ' + reason, 'error');
   }
 }
 
-// ⏱️ Throttle variable cho handleSearchClick — overridable via Admin Settings
+// ⏱️ Throttle variable cho initGlobalTableSearch — overridable via Admin Settings
 let _lastSearchClickTime = 0;
 const SEARCH_THROTTLE_MS = () => window.A?.getConfig?.('search_throttle_ms') ?? 500;
 
@@ -1206,7 +1206,7 @@ const SEARCH_THROTTLE_MS = () => window.A?.getConfig?.('search_throttle_ms') ?? 
  * - Gọi onGridRowClick khi chọn item
  * ⏱️ Giới hạn: Chỉ chạy 1 lần mỗi 1 giây (throttle)
  */
-function handleSearchClick() {
+function handleBookingSearch() {
   // ⏱️ THROTTLE: Kiểm tra thời gian kể từ lần gọi cuối
   const now = Date.now();
   if (now - _lastSearchClickTime < SEARCH_THROTTLE_MS()) {
@@ -1214,7 +1214,7 @@ function handleSearchClick() {
   }
   _lastSearchClickTime = now;
 
-  const searchInput = getE('global-search');
+  const searchInput = getE('booking-search');
   const kRaw = searchInput?.value;
   const k = String(kRaw ?? '').trim();
 
@@ -1275,7 +1275,7 @@ function handleSearchClick() {
       logA(confirmMsg, 'info', async () => {
         if (typeof onGridRowClick === 'function') {
           onGridRowClick(result.id);
-          log(`✅ Mở booking: ${result.id}`, 'success');
+          L._(`✅ Mở booking: ${result.id}`, 'success');
         }
         // Clear input sau khi chọn
         searchInput.value = '';
@@ -1285,11 +1285,61 @@ function handleSearchClick() {
 
     // Populate datalist nếu có > 1 kết quả
     _populateSearchDatalist(topResults, searchInput);
-    log(`🔍 Tìm thấy ${topResults.length} kết quả`, 'info');
+    L._(`🔍 Tìm thấy ${topResults.length} kết quả`, 'info');
   } catch (error) {
     console.error('Lỗi search:', error);
     Opps('Lỗi tìm kiếm: ' + error.message);
   }
+}
+
+/**
+ * Khởi tạo tính năng tìm kiếm toàn cục cho tất cả các bảng (table tbody) trong UI
+ * Áp dụng kỹ thuật Debounce để tối ưu hiệu suất render.
+ * * @param {string} inputId - ID của thẻ input tìm kiếm (mặc định: 'global-search')
+ */
+function initGlobalTableSearch(inputId = 'global-search') {
+  // 1. Lấy element input tìm kiếm
+  const searchInput = getE(inputId);
+
+  // Nếu không tồn tại input trên giao diện thì bỏ qua để tránh lỗi JS
+  if (!searchInput) {
+    console.warn(`[Global Search] Không tìm thấy phần tử DOM với ID: #${inputId}`);
+    return;
+  }
+
+  let debounceTimer;
+
+  
+  // Chuẩn hóa từ khóa: bỏ khoảng trắng thừa ở 2 đầu và chuyển thành chữ thường
+  const searchTerm = e.target.value.trim().toLowerCase();
+
+  // 4. Thiết lập timer mới (chờ 300ms sau khi ngừng gõ mới xử lý)
+  debounceTimer = setTimeout(() => {
+    try {
+      // Quét tìm tất cả các thẻ <tr> nằm bên trong <tbody> của tất cả <table>
+      const tableRows = document.querySelectorAll('table tbody tr');
+      let matchCount = 0;
+
+      tableRows.forEach((row) => {
+        // Lấy toàn bộ nội dung text của dòng đó và chuyển thành chữ thường
+        // (Lưu ý: textContent lấy text thuần, nhanh và an toàn hơn innerHTML)
+        const rowText = row.textContent.toLowerCase();
+
+        // Kiểm tra xem nội dung dòng có chứa từ khóa không
+        if (rowText.includes(searchTerm)) {
+          row.style.display = ''; // Khôi phục hiển thị (hiển thị lại dòng)
+          matchCount++;
+        } else {
+          row.style.display = 'none'; // Ẩn dòng không khớp
+        }
+      });
+
+      // Ghi log để theo dõi luồng dữ liệu (tuân thủ quy tắc bảo toàn và theo dõi)
+      console.log(`[Global Search] Tìm kiếm "${searchTerm}" - Hiển thị ${matchCount}/${tableRows.length} dòng.`);
+    } catch (error) {
+      console.error(`[Global Search] Lỗi khi xử lý tìm kiếm: `, error);
+    }
+  }, 300); // 300ms là mức delay lý tưởng giữa hiệu năng và trải nghiệm người dùng
 }
 
 /**
@@ -1330,7 +1380,7 @@ function _populateSearchDatalist(results, inputElement) {
       // Gọi onGridRowClick với id
       if (typeof onGridRowClick === 'function') {
         onGridRowClick(selectedValue);
-        log(`✅ Mở booking: ${selectedValue}`, 'success');
+        L._(`✅ Mở booking: ${selectedValue}`, 'success');
       }
       // Clear input sau khi chọn
       this.value = '';
@@ -1377,7 +1427,7 @@ function handleServerData(data) {
 
   // 1. Kiểm tra an toàn lần cuối
   if (!data) {
-    logA('Lỗi hiển thị: Dữ liệu chưa sẵn sàng.', 'error');
+    Opps('Lỗi hiển thị: Dữ liệu chưa sẵn sàng.');
     return;
   }
 
@@ -1438,7 +1488,7 @@ async function loadDataFromFirebase(silent = false) {
     // Dùng ?? {} để tránh Object.values(undefined) khi collection chưa được load cho role này
     APP_DATA.activeDetails = userRole === 'op' ? Object.values(APP_DATA?.operator_entries ?? {}) : Object.values(APP_DATA?.booking_details ?? {});
 
-    log(`✅ Tải xong sau: ${Date.now() - startTime}ms`, 'success');
+    L._(`✅ Tải xong sau: ${Date.now() - startTime}ms`, 'success');
 
     retryCount = 0;
   } catch (error) {
@@ -1492,6 +1542,6 @@ async function loadModule_Accountant() {
     }
   } catch (error) {
     console.error('Lỗi tải module Accountant:', error);
-    logA('Không thể tải module Kế toán. Vui lòng kiểm tra console.', 'error', 'alert');
+    Opps('Không thể tải module Kế toán. Vui lòng kiểm tra console.');
   }
 }

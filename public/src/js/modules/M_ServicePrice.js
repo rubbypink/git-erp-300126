@@ -60,10 +60,7 @@ class ServicePriceTable extends HTMLElement {
   addItem() {
     this._items = this._getSnapshot();
 
-    const defaultType =
-      window.APP_DATA.lists.types && window.APP_DATA.lists.types[3]
-        ? window.APP_DATA.lists.types[3]
-        : 'Vé';
+    const defaultType = window.APP_DATA.lists.types && window.APP_DATA.lists.types[3] ? window.APP_DATA.lists.types[3] : 'Vé';
     this._items.push({
       type: defaultType,
       name: '',
@@ -83,10 +80,7 @@ class ServicePriceTable extends HTMLElement {
     if (lastItem) {
       this._items.push({ ...lastItem }); // Sao chép nội dung của dòng cuối cùng
     } else {
-      const defaultType =
-        window.APP_DATA.lists.types && window.APP_DATA.lists.types[3]
-          ? window.APP_DATA.lists.types[3]
-          : 'Vé';
+      const defaultType = window.APP_DATA.lists.types && window.APP_DATA.lists.types[3] ? window.APP_DATA.lists.types[3] : 'Vé';
       this._items.push({
         type: defaultType,
         name: '',
@@ -121,12 +115,7 @@ class ServicePriceTable extends HTMLElement {
 
   render() {
     // 1. Chuẩn bị Master Data Types
-    const types = window.APP_DATA.lists.types.filter((t) => t && t !== 'Phòng') || [
-      'Tour',
-      'Vé',
-      'Xe',
-      'Other',
-    ];
+    const types = window.APP_DATA.lists.types.filter((t) => t && t !== 'Phòng') || ['Tour', 'Vé', 'Xe', 'Other'];
 
     const style = `
             <style>
@@ -152,9 +141,7 @@ class ServicePriceTable extends HTMLElement {
         const datalistId = `list-svc-${index}`; // Tạo ID unique cho từng dòng
 
         // Generate Options cho Type Select
-        const typeOptions = types
-          .map((t) => `<option value="${t}" ${item.type === t ? 'selected' : ''}>${t}</option>`)
-          .join('');
+        const typeOptions = types.map((t) => `<option value="${t}" ${item.type === t ? 'selected' : ''}>${t}</option>`).join('');
 
         // Generate Options cho Service Name (Dựa trên Type hiện tại)
         const serviceOptions = this._getServiceOptions(item.type)
@@ -453,21 +440,17 @@ export default class ServicePriceController {
     const docId = `${supplierId}_${year}`.toUpperCase();
 
     if (cache.serviceSchedules[docId]) {
-      console.log('[ServicePriceController] ⚡ Cache hit! Dùng dữ liệu đã lưu');
+      L._('[ServicePriceController] ⚡ Cache hit! Dùng dữ liệu đã lưu');
       return;
     }
 
     // ─────────────────────────────────────────────────────────────
     // Fetch from Firestore if not in cache
     // ─────────────────────────────────────────────────────────────
-    console.log('[ServicePriceController] 🔄 Fetch data từ Firestore...');
+    L._('[ServicePriceController] 🔄 Fetch data từ Firestore...');
     try {
       // Get data từ service_price_schedules
-      const doc = await firebase
-        .firestore()
-        .collection(DB_PATHS.SERVICE_SCHEDULES)
-        .doc(docId)
-        .get();
+      const doc = await firebase.firestore().collection(DB_PATHS.SERVICE_SCHEDULES).doc(docId).get();
 
       const tableData = doc.exists ? doc.data() : { items: [], info: { status: 'actived' } };
 
@@ -476,7 +459,7 @@ export default class ServicePriceController {
       // ─────────────────────────────────────────────────────────────
       cache.serviceSchedules[docId] = tableData;
 
-      console.log('[ServicePriceController] ✅ Data fetched & cached');
+      L._('[ServicePriceController] ✅ Data fetched & cached');
     } catch (e) {
       console.error('[ServicePriceController] Lỗi tải:', e);
       throw e;
@@ -500,7 +483,7 @@ export default class ServicePriceController {
       return;
     }
 
-    console.log('[ServicePriceController] 🎨 Render từ cache...');
+    L._('[ServicePriceController] 🎨 Render từ cache...');
     this.table.setData(tableData.items || []);
     this.selStatus.value = tableData.info?.status || 'actived';
   }
@@ -514,7 +497,7 @@ export default class ServicePriceController {
       // ─────────────────────────────────────────────────────────────
       // STEP 1: Reset table to empty before loading new data
       // ─────────────────────────────────────────────────────────────
-      console.log('[ServicePriceController] 🔄 Reset bảng dữ liệu...');
+      L._('[ServicePriceController] 🔄 Reset bảng dữ liệu...');
       this.table.setData([]);
       this.selStatus.value = 'actived';
 
@@ -528,7 +511,7 @@ export default class ServicePriceController {
       // ─────────────────────────────────────────────────────────────
       this._renderTableData();
     } catch (error) {
-      logA('Lỗi tải: ' + error.message, 'error', 'alert');
+      Opps('Lỗi tải: ' + error.message);
     }
   }
 
@@ -649,7 +632,7 @@ export default class ServicePriceController {
 
         logA('Đã lưu thành công!', 'warning', 'alert');
       } catch (e) {
-        logA('Lỗi lưu: ' + e.message, 'error', 'alert');
+        Opps('Lỗi lưu: ' + e.message);
       }
     };
 

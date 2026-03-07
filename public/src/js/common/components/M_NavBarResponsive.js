@@ -22,15 +22,15 @@ class NavBarMenuController {
   init(reset = false) {
     try {
       if (this._initialized && !reset) {
-        log(`[ResponsiveTabManager] Menu tại #${this.containerId} đã được khởi tạo trước đó.`, 'warning');
+        L._(`[ResponsiveTabManager] Menu tại #${this.containerId} đã được khởi tạo trước đó.`, 'warning');
         return;
       }
       if (!this.container) {
-        log(`[ResponsiveTabManager] Không tìm thấy vùng chứa #${this.containerId} hoặc đã được khởi tạo trước đó.`, 'warning');
+        L._(`[ResponsiveTabManager] Không tìm thấy vùng chứa #${this.containerId} hoặc đã được khởi tạo trước đó.`, 'warning');
         return;
       }
       if (!this.tabsData || this.tabsData.length === 0) {
-        log(`[ResponsiveTabManager] Dữ liệu truyền vào rỗng cho #${this.containerId}`, 'error');
+        L._(`[ResponsiveTabManager] Dữ liệu truyền vào rỗng cho #${this.containerId}`, 'error');
         return;
       }
 

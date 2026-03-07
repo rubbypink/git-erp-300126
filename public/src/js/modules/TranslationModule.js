@@ -121,7 +121,7 @@ class TranslationModule {
 
         // Lưu IndexedDB (persistent cache)
         await localDB.setMeta(META_KEY_SCHEMA, JSON.stringify(schemaDict));
-        console.log(`✅ Lang: Synced ${addedCount} entries from DB_SCHEMA`);
+        L._(`✅ Lang: Synced ${addedCount} entries from DB_SCHEMA`);
       }
     } catch (error) {
       console.error('❌ Lang: syncFromSchema Failed', error);
@@ -178,7 +178,7 @@ class TranslationModule {
       // Format according to target format
       return targetFormat.replace('yyyy', y).replace('yy', y.slice(-2)).replace('mm', m).replace('m', m.replace(/^0/, '')).replace('dd', d).replace('d', d.replace(/^0/, ''));
     } catch (e) {
-      log('⚠️ Lang: Lỗi format date: ' + dateStr, 'warning');
+      L._('⚠️ Lang: Lỗi format date: ' + dateStr, 'warning');
       return dateStr;
     }
   }
@@ -197,7 +197,7 @@ class TranslationModule {
 
       // Cập nhật đường dẫn update
       await A.DB.db.collection(ROOT_COL).doc(GENERAL_DOC).collection(SETTINGS_COL).doc(LANG_DOC).update(updatePayload);
-      console.log(`✅ Lang: Updated [${key}]`);
+      L._(`✅ Lang: Updated [${key}]`);
     } catch (error) {
       console.error('❌ Lang: Update Failed', error);
     }

@@ -88,7 +88,7 @@ export const ChromeMenuController = {
       type: 'item',
       label: 'Cập Nhật Dữ Liệu',
       icon: 'fa-solid fa-cloud-arrow-down text-info',
-      actionCode: "if(typeof A !== 'undefined' && A.DB) A.DB.syncDelta(null, { forceNew: true }); else log('❌ DBManager không khả dụng');",
+      actionCode: "if(typeof A !== 'undefined' && A.DB) A.DB.syncDelta(null, { forceNew: true }); else L._('❌ DBManager không khả dụng');",
     },
     { type: 'divider' },
     {

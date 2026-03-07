@@ -92,7 +92,7 @@ class AccountantController {
   // --- INIT & FLOW CONTROL ---
 
   async init() {
-    console.log('Accountant Module: Initializing...');
+    L._('Accountant Module: Initializing...');
 
     // Fix #3: Đợi DOM load xong mới cache và bind event
     // Nếu file js được load async, có thể body chưa render xong
@@ -155,7 +155,7 @@ class AccountantController {
       // Set default date picker values
       this.updateDatePickerUI();
 
-      console.log(`Accountant Module: Ready (${this.currentEntity})`);
+      L._(`Accountant Module: Ready (${this.currentEntity})`);
     } catch (error) {
       console.error('Accountant Init Error:', error);
     }
@@ -207,7 +207,7 @@ class AccountantController {
   async getData(collectionName) {
     // Luôn fetch mới nhất để đảm bảo tính đúng đắn của kế toán
     // loadCollections viết thẳng vào APP_DATA và trả về số docs đã tải
-    console.log(`Fetching data for ${collectionName}...`);
+    L._(`Fetching data for ${collectionName}...`);
     if (window.A && window.A.DB) await window.A.DB.loadCollections(collectionName, { forceNew: true });
     return Object.values(APP_DATA?.[collectionName] ?? {});
   }
@@ -509,7 +509,7 @@ class AccountantController {
     const colorClass = mode === 'IN' ? 'text-success' : 'text-danger';
     const currentUser = window.A && CURRENT_USER ? CURRENT_USER.name || 'Hệ thống' : 'Hệ thống';
     if (!this.funds || this.funds.length === 0) this.funds = (await this.getData('fund_accounts')) || [];
-    console.log('Debug: Funds for modal', this.funds);
+    L._('Debug: Funds for modal', this.funds);
     // Fund Options
     let fundOptions = (this.funds || []).map((f) => `<option value="${f.id}" ${existingData && existingData.fund_source === f.id ? 'selected' : ''}>${f.name} (${formatCurrency(f.balance)})</option>`).join('');
     if (!fundOptions) fundOptions = '<option disabled selected>Chưa có quỹ</option>';
@@ -684,7 +684,7 @@ class AccountantController {
     if (data.booking_id) {
       const bookingData = window.APP_DATA?.bookings?.[data.booking_id];
       if (!bookingData) {
-        return logA(`❌ Lỗi: Booking ID [${data.booking_id}] không tồn tại trong hệ thống!`, 'error', 'alert');
+        return Opps(`❌ Lỗi: Booking ID [${data.booking_id}] không tồn tại trong hệ thống!`, `❌ Lỗi: Booking ID [${data.booking_id}] không tồn tại trong hệ thống!`);
       }
       // operatorRef không cần nữa — aggregateBookingBalance đọc từ APP_DATA
     }
@@ -748,7 +748,7 @@ class AccountantController {
 
       // Commit Batch 1: Lưu giao dịch & Cập nhật Quỹ trước
       await batch.commit();
-      console.log(`Saved Transaction ${transId}`);
+      L._(`Saved Transaction ${transId}`);
 
       // --- Ghi booking history (nếu giao dịch gắn booking) ---
       if (data.booking_id && window.A?.DB?.recordHistory) {
@@ -768,7 +768,7 @@ class AccountantController {
       this.refreshData();
     } catch (e) {
       console.error(e);
-      logA('❌ Lỗi: ' + e.message, 'error');
+      Opps('❌ Lỗi: ' + e.message);
       btnSave.innerText = 'Lưu lại';
       btnSave.disabled = false;
     }
@@ -779,7 +779,7 @@ class AccountantController {
    * Đọc từ APP_DATA (đã được saveRecord cập nhật) — không cần thêm Firestore read.
    */
   async aggregateBookingBalance(bookingId, type, amount) {
-    console.log(`Aggregating for Booking: ${bookingId}, Type: ${type}`);
+    L._(`Aggregating for Booking: ${bookingId}, Type: ${type}`);
     // Access NotificationManager from the main app bundle (avoids broken relative import in production)
     const NotificationManager = window.A?.NotificationManager;
 
@@ -909,7 +909,7 @@ class AccountantController {
       this.setupReportEventListeners();
     } catch (e) {
       console.error('❌ Report Modal Error:', e);
-      logA('Lỗi mở báo cáo: ' + e.message, 'error', 'alert');
+      Opps('Lỗi mở báo cáo: ' + e.message);
     }
   }
 

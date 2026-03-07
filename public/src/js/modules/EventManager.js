@@ -1,5 +1,5 @@
 // @ts-nocheck
-/**
+/**Logg
  * =========================================================================
  * EVENT MANAGER - Quản lý tập trung tất cả sự kiện
  * =========================================================================
@@ -23,7 +23,7 @@ class EventManager {
     }
 
     try {
-      log('[EventManager] 🚀 Khởi tạo sự kiện...');
+      L._('[EventManager] 🚀 Khởi tạo sự kiện...');
       // 1. Gắn events từ các module con
       this._setupServerActionEvents();
       this._setupGridFilterEvents();
@@ -35,7 +35,7 @@ class EventManager {
       this.setupGlobalEvents();
 
       this._initialized = true;
-      log('[EventManager] ✅ Tất cả events đã khởi tạo', 'success');
+      L._('[EventManager] ✅ Tất cả events đã khởi tạo', 'success');
     } catch (err) {
       console.error('[EventManager] ❌ Lỗi khởi tạo:', err);
       Opps(err.message);
@@ -112,7 +112,7 @@ class EventManager {
 
     // Guard: eventNames rỗng
     if (!events.length) {
-      log(`[EventManager.on] eventNames rỗng, bỏ qua.`, 'warning');
+      L._(`[EventManager.on] eventNames rỗng, bỏ qua.`, 'warning');
       return () => {};
     }
 
@@ -125,14 +125,14 @@ class EventManager {
     } else {
       try {
         if (!target) {
-          log(`[EventManager.on] Target null for "${eventNames}"`, 'warning');
+          L._(`[EventManager.on] Target null for "${eventNames}"`, 'warning');
           return () => {};
         }
         if (typeof target === 'string') {
           els = Array.from(document.querySelectorAll(target));
           // Warn nếu selector không match phần tử nào (chỉ với direct mode)
           if (!els.length && window._EM_DEBUG) {
-            log(`[EventManager.on] Selector không tìm thấy phần tử: "${target}"`, 'warning');
+            L._(`[EventManager.on] Selector không tìm thấy phần tử: "${target}"`, 'warning');
           }
         } else if (target && target.nodeType) {
           els = [target];
@@ -140,7 +140,7 @@ class EventManager {
           els = Array.from(target);
         }
       } catch (err) {
-        log(`[EventManager.on] Selector error: ${err.message}`, 'error');
+        L._(`[EventManager.on] Selector error: ${err.message}`, 'error');
         return () => {};
       }
 
@@ -157,7 +157,7 @@ class EventManager {
       oldCleaners.forEach((fn) => fn());
       this._listenerRegistry.delete(sigKey);
       if (window._EM_DEBUG) {
-        log(`[EventManager] ♻️ Auto-cleanup: "${sigKey}"`, 'warning');
+        L._(`[EventManager] ♻️ Auto-cleanup: "${sigKey}"`, 'warning');
       }
     }
 
@@ -237,14 +237,14 @@ class EventManager {
     const sigKey = this._makeKey(target, eventNames, options);
 
     if (!this._listenerRegistry.has(sigKey)) {
-      log(`[EventManager.off] Key không tồn tại: "${sigKey}"`, 'warning');
+      L._(`[EventManager.off] Key không tồn tại: "${sigKey}"`, 'warning');
       return;
     }
 
     const cleaners = this._listenerRegistry.get(sigKey);
     cleaners.forEach((fn) => fn());
     this._listenerRegistry.delete(sigKey);
-    log(`[EventManager] 🗑️ Removed: "${sigKey}"`, 'info');
+    L._(`[EventManager] 🗑️ Removed: "${sigKey}"`, 'info');
   }
 
   /**
@@ -258,7 +258,7 @@ class EventManager {
     });
     this._listenerRegistry.clear();
     this._initialized = false;
-    log(`[EventManager] 🗑️ Đã destroy ${total} listener(s)`, 'warning');
+    L._(`[EventManager] 🗑️ Đã destroy ${total} listener(s)`, 'warning');
   }
 
   // Hàm trigger event thủ công (nếu cần)
@@ -293,7 +293,7 @@ class EventManager {
     const confirmType = target.dataset.confirmType || 'warning';
 
     if (!funcName) {
-      log('❌ Thiếu data-func trên nút', 'error');
+      L._('❌ Thiếu data-func trên nút', 'error');
       return;
     }
 
@@ -428,8 +428,20 @@ class EventManager {
       'keyup',
       (e) => {
         if (e.key === 'Enter') {
-          if (typeof handleSearchClick === 'function') {
-            handleSearchClick();
+          if (typeof initGlobalTableSearch === 'function') {
+            initGlobalTableSearch();
+          }
+        }
+      },
+      true
+    );
+    this.on(
+      '#booking-search',
+      'keyup',
+      (e) => {
+        if (e.key === 'Enter') {
+          if (typeof handleBookingSearch === 'function') {
+            handleBookingSearch();
           }
         }
       },
@@ -457,22 +469,6 @@ class EventManager {
         if (startDate && endDate && endDate < startDate) {
           setVal('BK_End', formatDateForInput(target.value));
         }
-      },
-      true
-    );
-
-    // Khi thay đổi deposit
-    this.on(
-      '#BK_Deposit',
-      'change',
-      (e) => {
-        const el = e.target;
-        setTimeout(() => {
-          const grandTotal = getNum('BK_Total');
-          const deposit = getNum('BK_Deposit');
-          const balance = grandTotal - deposit;
-          setNum('BK_Balance', balance);
-        }, 250);
       },
       true
     );
@@ -533,11 +529,11 @@ class EventManager {
 
           // Trigger calculation
           const tr = target.closest('tr');
-          if (tr && tr.id && typeof calcRow === 'function') {
+          if (tr && typeof calcRow === 'function') {
             if (!window.CURRENT_CTX_ROW) {
               window.CURRENT_CTX_ROW = tr;
             }
-            const rowId = tr.id.replace('row-', '');
+            const rowId = tr.id.replace('row-', '') || tr.dataset.row;
             calcRow(rowId);
           }
 
@@ -734,7 +730,7 @@ class EventManager {
       }
     } catch (err) {
       console.error('[EventManager] Paste error:', err);
-      logA('❌ Lỗi: Dữ liệu clipboard không hợp lệ.', 'error', 'alert');
+      Opps('❌ Lỗi: Dữ liệu clipboard không hợp lệ.', err);
     }
   }
 
@@ -869,9 +865,9 @@ class EventManager {
 
   async setupGlobalEvents() {
     window.addEventListener('beforeunload', () => {
-      log('[EventManager] Trang sắp được tải lại, hủy tất cả subscription...');
+      L._('[EventManager] Trang sắp được tải lại, hủy tất cả subscription...');
       A.DB.stopNotificationsListener();
-      log('[EventManager] ✅ Đã hủy tất cả subscription');
+      L._('[EventManager] ✅ Đã hủy tất cả subscription');
     });
 
     // Handler chung cho cả dblclick và longpress

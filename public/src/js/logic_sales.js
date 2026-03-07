@@ -45,7 +45,7 @@ window.loadBookingToUI = function (bkData, customerData, detailsData) {
         tbody.innerHTML = '';
         tbody.style.display = 'none'; // Ẩn tạm thời để tăng tốc render
       } else {
-        log('Ko tìm thấy detail-tbody', 'error');
+        L._('Ko tìm thấy detail-tbody', 'error');
         return;
       }
     }
@@ -572,7 +572,7 @@ async function updateDeposit() {
   try {
     const bkId = getVal('BK_ID');
     if (!bkId) {
-      log('⚠️ Booking ID trống, không thể tải Deposit', 'warning');
+      L._('⚠️ Booking ID trống, không thể tải Deposit', 'warning');
       return 0;
     }
 
@@ -580,7 +580,7 @@ async function updateDeposit() {
     const result = await A.DB?.runQuery('transactions', 'booking_id', '==', bkId);
 
     if (!result || !Array.isArray(result)) {
-      log('⚠️ Không tìm thấy giao dịch cho booking này', 'warning');
+      L._('⚠️ Không tìm thấy giao dịch cho booking này', 'warning');
       setVal('BK_Deposit', 0);
       return 0;
     }
@@ -590,7 +590,7 @@ async function updateDeposit() {
     calcGrandTotal(); // Cập nhật lại tổng tiền sau khi có deposit mới
     return total;
   } catch (e) {
-    log(`❌ Lỗi cập nhật Deposit: ${e.message}`, 'error');
+    L._(`❌ Lỗi cập nhật Deposit: ${e.message}`, 'error');
     return 0;
   }
 }
@@ -641,7 +641,7 @@ function autoSetOrCalcDate(start, end) {
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       return diffDays;
     } else {
-      log("Tham số 'end' không phải là ID tồn tại, cũng không phải ngày hợp lệ.", 'error');
+      L._("Tham số 'end' không phải là ID tồn tại, cũng không phải ngày hợp lệ.", 'error');
     }
   }
 }
@@ -668,9 +668,9 @@ function fillFormFromSearch(res) {
       // Log thông báo
       const sourceMsg = res.source === 'local' ? ' (⚡ Local)' : ' (🐢 Database)';
     } else {
-      logA('Lỗi hệ thống: Không thể hiển thị dữ liệu lên Form.', 'error');
+      Opps('Lỗi hệ thống: Không thể hiển thị dữ liệu lên Form.');
     }
-    // log("FillForm end");
+    // L._("FillForm end");
   } catch (e) {
     Opps('Lỗi khi điền dữ liệu vào Form: ' + e.message, e);
   } finally {
@@ -686,7 +686,7 @@ async function findCustByPhone(customerData = null, e) {
   }
 
   if (!custFieldset) {
-    log('Không tìm thấy fieldset customers', 'warning');
+    L._('Không tìm thấy fieldset customers', 'warning');
     return;
   }
 
@@ -797,7 +797,7 @@ async function findCustByPhone(customerData = null, e) {
  * @param {number} newAdult - Số người lớn mới
  */
 function processAndFillTemplate(booking_details, anchorDateStr, newStartStr, newAdult) {
-  log('run processAndFillTemplate');
+  L._('run processAndFillTemplate');
   // A. Tính toán Offset (Độ lệch ngày)
   // Chuyển đổi an toàn sang Date Object
   // Lưu ý: new Date("YYYY-MM-DD") mặc định là UTC. Ta cần xử lý cẩn thận để tránh lệch múi giờ.
@@ -931,7 +931,7 @@ getCustomerData = async function (update = false) {
 
     return data;
   } catch (e) {
-    log('Lỗi hàm getCustomerData', e.message, 'error');
+    L._('Lỗi hàm getCustomerData', e.message, 'error');
     return null;
   }
 };
@@ -1104,11 +1104,11 @@ const ConfirmationModule = (function () {
           A.Modal.show();
         }
       } else {
-        logA(`Không tìm thấy Booking ID: ${bookingId}`, 'error');
+        Opps(`Không tìm thấy Booking ID: ${bookingId}`, `Không tìm thấy Booking ID: ${bookingId}`);
       }
     } catch (e) {
       Opps(e);
-      logA(`Lỗi: ${e.message}`, 'error');
+      Opps(`Lỗi: ${e.message}`, `Lỗi: ${e.message}`);
     }
   }
 
@@ -1393,7 +1393,7 @@ const ConfirmationModule = (function () {
       await html2pdf().set(opt).from(element).save();
     } catch (e) {
       console.error(e);
-      logA('Lỗi: ' + e.message, 'error', 'alert');
+      Opps('Lỗi: ' + e.message);
     } finally {
       // --- HOÀN TÁC: TRẢ LẠI GIAO DIỆN CŨ ---
       // Gỡ class compact để trên màn hình web nhìn vẫn to rõ
@@ -1442,16 +1442,6 @@ function createConfirmation(bkId) {
   if (!bkId) return logA('Vui lòng chọn Booking trước.', 'warning');
   ConfirmationModule.openModal(bkId);
 }
-/**
- * HÀM TRÍCH XUẤT DỮ LIỆU: Được BaseForm gọi khi nhấn nút SAVE
- * Nhiệm vụ: Gom toàn bộ dữ liệu trên Form thành JSON để gửi về Server
- *
- * @param {boolean} [update=false]
- *   - false (default): trả về toàn bộ dữ liệu (tạo mới)
- *   - true: chỉ trả về các phần có dữ liệu thực sự thay đổi (cập nhật)
- *           Dùng HD.filterUpdatedData để phát hiện thay đổi.
- *           Trả về null nếu không có gì thay đổi.
- */
 window.getBkFormData = async function (update = false) {
   try {
     // ── 1. Thu thập toàn bộ dữ liệu (dùng cho cả 2 mode) ─────────────
@@ -1466,19 +1456,19 @@ window.getBkFormData = async function (update = false) {
       end_date: getVal('BK_End'),
       adults: getVal('BK_Adult'),
       children: getVal('BK_Child'),
-      total_amount: getVal('BK_Total'), // Lấy giá trị thô
+      total_amount: getVal('BK_Total'),
       deposit_amount: getVal('BK_Deposit'),
-      balance_amount: 0, // Sẽ tính lại ở server hoặc dòng dưới
+      balance_amount: 0,
       payment_method: getVal('BK_PayType'),
       payment_due_date: getVal('BK_PayDue'),
       note: getVal('BK_Note'),
-      staff_id: getVal('BK_Staff') || CURRENT_USER.name || '',
+      staff_id: getVal('BK_Staff') || CURRENT_USER?.name || '',
       status: '',
       created_at: getVal('BK_Date'),
     };
 
     bookings.balance_amount = Number(bookings.total_amount) - Number(bookings.deposit_amount);
-    bookings.status = updateBkStatus();
+    bookings.status = typeof updateBkStatus === 'function' ? updateBkStatus() : '';
     if (getVal('BK_TourName')) bookings.tour_name = getVal('BK_TourName');
 
     // Customer Data
@@ -1495,64 +1485,89 @@ window.getBkFormData = async function (update = false) {
       total_spend: getVal('Cust_Total'),
     };
 
-    // Details Data
+    // Details Data (Sửa lỗi ID và mảng tại đây)
     const booking_details = [];
     document.querySelectorAll('#detail-tbody tr').forEach((tr) => {
+      // FIX 1: Lấy ID từ input, nếu rỗng (dòng mới) thì tạo ngay ID duy nhất (Prefix dt_ + timestamp)
+      let rowId = getVal('.d-sid', tr) || tr.dataset.item || tr.id;
+      if (!rowId || String(rowId).trim() === '') {
+        rowId = A.DB.generateIds('booking_details', bookings.id); // Tạo ID mới từ Server
+        // Gán ngược lại vào DOM để các xử lý sau (nếu có) không bị lỗi
+        setTimeout(() => {
+          L._(`[getBkFormData] Gán ID mới cho dòng detail: ${rowId}`, 'info');
+          tr.setAttribute('data-id', rowId);
+        }, 100);
+      }
+
       booking_details.push({
-        id: getVal('.d-sid', tr),
+        id: String(rowId),
         booking_id: bookings.id,
-        service_type: getVal('.d-type', tr),
-        hotel_name: getVal('.d-loc', tr),
-        service_name: getVal('.d-name', tr),
-        check_in: getVal('.d-in', tr),
-        check_out: getVal('.d-out', tr),
-        nights: getVal('.d-night', tr),
-        quantity: getVal('.d-qty', tr),
-        unit_price: getVal('.d-pri', tr),
-        child_qty: getVal('.d-qtyC', tr),
-        child_price: getVal('.d-priC', tr),
-        surcharge: getVal('.d-sur', tr),
-        discount: getVal('.d-disc', tr),
-        total: getVal('.d-total', tr),
-        ref_code: getVal('.d-code', tr),
-        note: getVal('.d-note', tr),
+        service_type: getVal('[data-field="service_type"]', tr),
+        hotel_name: getVal('[data-field="hotel_name"]', tr),
+        service_name: getVal('[data-field="service_name"]', tr),
+        check_in: getVal('[data-field="check_in"]', tr),
+        check_out: getVal('[data-field="check_out"]', tr),
+        nights: getVal('[data-field="nights"]', tr),
+        quantity: getVal('[data-field="quantity"]', tr),
+        unit_price: getVal('[data-field="unit_price"]', tr),
+        child_qty: getVal('[data-field="child_qty"]', tr),
+        child_price: getVal('[data-field="child_price"]', tr),
+        surcharge: getVal('[data-field="surcharge"]', tr),
+        discount: getVal('[data-field="discount"]', tr),
+        total: getVal('[data-field="total"]', tr),
+        ref_code: getVal('[data-field="ref_code"]', tr),
+        note: getVal('[data-field="note"]', tr),
       });
     });
 
-    // ── 2. NON-UPDATE MODE: trả về toàn bộ ───────────────────────────
+    // ── 2. NON-UPDATE MODE: Trả về toàn bộ (Tạo mới booking) ─────────
     if (!update) {
       return { bookings, customer, booking_details };
     }
 
-    // ── 3. UPDATE MODE: dùng HD.filterUpdatedData để phát hiện thay đổi ─
+    // ── 3. UPDATE MODE: Tìm ra dữ liệu thay đổi ──────────────────────
 
-    // 3a. Kiểm tra thay đổi riêng cho booking và customer (2 fieldset khác nhau)
+    // 3a. Kiểm tra thay đổi header
     const [bookingChanges, hasBookingChanges] = await HD.filterUpdatedData('fs_booking_info');
     const [customerChanges, hasCustomerChanges] = await HD.filterUpdatedData('fs_customer_info');
 
-    // 3b. Kiểm tra từng dòng detail — chỉ giữ row có thay đổi
+    // 3b. Kiểm tra từng dòng detail (Sửa lỗi mất dòng mới tại đây)
     const detailRows = [...document.querySelectorAll('#detail-tbody tr')];
     const changedDetails = [];
+
     for (let i = 0; i < detailRows.length; i++) {
       const tr = detailRows[i];
-      if (!tr.id) continue;
+      const detailData = booking_details[i]; // Data tương ứng đã xử lý ID ở bước 1
+
+      // Kỹ thuật: Nếu thẻ TR không có id hoặc data.id bắt đầu bằng 'dt_' -> Đây là dòng mới
+      const isNewRow = !tr.id || detailData.id.startsWith('dt_');
+
+      if (isNewRow) {
+        // Nếu là dòng mới thêm, bắt buộc phải update lên Server, không cần check diff
+        changedDetails.push(detailData);
+        L._(`[getBkFormData] Nhận diện dòng detail MỚI: ${detailData.id}`, 'info');
+        continue;
+      }
+
+      // Nếu là dòng cũ, dùng Helper để check xem user có sửa chữ nào không
       const [rowChanges, hasRowChanges] = await HD.filterUpdatedData(tr.id, $('#detail-tbody'));
       if (hasRowChanges > 0) {
-        changedDetails.push(booking_details[i]);
+        changedDetails.push(detailData);
       }
     }
 
-    // 3c. Không có gì thay đổi → trả về null
+    // 3c. Chặn nếu không có gì thay đổi
     if (!hasBookingChanges && !hasCustomerChanges && changedDetails.length === 0) {
-      log('⚠️ Không có dữ liệu nào thay đổi', 'warning');
+      L._('⚠️ Không có dữ liệu nào thay đổi', 'warning');
       return null;
     }
 
-    log('Dữ liệu cập nhật (chỉ thay đổi) trích xuất từ Form OK!');
+    L._('✅ Dữ liệu cập nhật (chỉ thay đổi) trích xuất từ Form OK!');
+
     return {
-      bookings: hasBookingChanges ? bookings : { id: bookings.id }, // Nếu không có thay đổi nào, vẫn trả về ID để server biết update bản ghi nào
-      customer: hasCustomerChanges ? customer : { id: customer.id }, // Nếu không có thay đổi nào, vẫn trả về ID để server biết update bản ghi nào
-      booking_details: changedDetails,
+      bookings: hasBookingChanges ? bookings : { id: bookings.id },
+      customer: hasCustomerChanges ? customer : { id: customer.id },
+      booking_details: changedDetails, // Trả về MẢNG các Object đã có ID chuẩn
     };
   } catch (error) {
     Opps('Lỗi khi trích xuất dữ liệu từ Form: ' + error.message);
@@ -1564,7 +1579,7 @@ async function saveForm(update = false) {
   try {
     setBtnLoading('btn-save-form', true, 'Saving...');
 
-    const formData = await getBkFormData(update);
+    const formData = await getBkFormData(false);
     if (!formData) {
       // getBkFormData sẽ trả về null nếu update=true và không có gì thay đổi
       setBtnLoading('btn-save-form', false);
@@ -1583,7 +1598,7 @@ async function saveForm(update = false) {
 
       if (missingFields.length > 0) {
         const msg = `Thiếu thông tin khách hàng: ${missingFields.join(', ')} - Hãy hoàn thiện trước khi tạo booking!`;
-        logA(msg, 'error');
+        Opps(msg);
         setBtnLoading('btn-save-form', false);
         return { success: false, message: msg };
       }
@@ -1730,11 +1745,11 @@ async function saveCustomer() {
         }
       }
     } else {
-      logA('Lỗi khi lưu khách hàng: ' + (res?.message || 'Vui lòng thử lại'), 'error');
+      Opps('Lỗi khi lưu khách hàng: ' + (res?.message || 'Vui lòng thử lại'));
     }
   } catch (e) {
     Opps(e);
-    logA('Lỗi: ' + e.message, 'error');
+    Opps('Lỗi: ' + e.message);
   } finally {
     showLoading(false);
   }
@@ -1756,16 +1771,13 @@ function loadCustSpend(custId) {
   if (!custId) custId = $("[data-field='customer_id']", getE('main-form'))?.value || getVal('Cust_Id');
 
   const bookings = window.Object.values(APP_DATA.bookings) || [];
-  let totalSpend = 0;
 
-  HD.filter(bookings, custId, '==', 'customer_id').forEach((bk) => {
-    if (bk.status !== 'Hủy') {
-      totalSpend += Number(bk.total_amount) || 0;
-    }
-  });
-  setVal('Cust_Total', totalSpend);
+  const data = HD.filter('bookings', custId, '==', 'customer_id');
+  const sum = HD.agg(data, 'total_amount');
+  L._(`Tổng chi tiêu của khách hàng ${custId}: ${sum} - ${Object.keys(data).length} booking(s)`, 'info');
+  setVal('Cust_Total', sum);
 
-  return totalSpend;
+  return sum;
 }
 
 // =========================================================================
@@ -1829,7 +1841,7 @@ async function createContract() {
       // GỌI HÀM MỚI TẠI ĐÂY:
       logA(htmlContent, 'success', 'alert');
     } else {
-      logA('Lỗi: ' + (res?.message || 'Không thể tạo hợp đồng. Vui lòng thử lại.'), 'error');
+      Opps('Lỗi: ' + (res?.message || 'Không thể tạo hợp đồng. Vui lòng thử lại.'));
     }
     setBtnLoading('btn-create-contract', false);
   } catch (e) {
@@ -1850,7 +1862,7 @@ async function requestDeleteFile(fileId) {
       logA(res.message || 'Done', 'success');
       closeSubModal(); // Đóng modal sau khi xóa
     } else {
-      logA('Lỗi: ' + (res?.message || 'Không thể xóa file. Vui lòng thử lại.'), 'error');
+      Opps('Lỗi: ' + (res?.message || 'Không thể xóa file. Vui lòng thử lại.'));
     }
   });
 }
@@ -1861,7 +1873,7 @@ async function requestDeleteFile(fileId) {
  * Action: Lưu Template hiện tại
  */
 async function saveCurrentTemplate() {
-  log('run saveCurrentTemplate');
+  L._('run saveCurrentTemplate');
   const tempName = getVal('BK_TourName');
   const newDate = getVal('BK_Start');
   try {
@@ -1934,7 +1946,7 @@ async function checkAndLoadTemplate() {
     const template = await requestAPI('getBookingTemplateAPI', tempName);
 
     if (!template) {
-      log('Server trả về null/undefined', 'error');
+      L._('Server trả về null/undefined', 'error');
       return;
     }
 
@@ -2074,6 +2086,6 @@ async function saveBatchDetails() {
     refreshForm();
     activateTab('tab-form');
   } else {
-    logA('Lỗi: ' + res.message, 'error');
+    Opps('Lỗi: ' + res.message);
   }
 }

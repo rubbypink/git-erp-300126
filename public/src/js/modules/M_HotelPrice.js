@@ -112,7 +112,7 @@ class HotelMatrixPrice extends HTMLElement {
     }
 
     // (Optional) Log để kiểm tra xem data đã ăn chưa
-    // console.log("Current Data:", this._values);
+    // L._("Current Data:", this._values);
   }
   /**
    * Xử lý sự kiện Paste từ Excel
@@ -893,13 +893,13 @@ export class HotelPriceController {
         activePeriodIds = savedData.info.viewConfig.periodIds || [];
         activePackageIds = savedData.info.viewConfig.packageIds || [];
         activeTypeIds = savedData.info.viewConfig.rateTypeIds || [];
-        console.log('[HotelPriceController] 💾 Sử dụng viewConfig từ bảng giá cũ');
+        L._('[HotelPriceController] 💾 Sử dụng viewConfig từ bảng giá cũ');
       } else {
         // CASE B: Use current checkbox selections (new price table)
         activePeriodIds = this._getCheckedIds(this.chkPeriods, 'chk-period');
         activePackageIds = this._getCheckedIds(this.chkPackages, 'chk-package');
         activeTypeIds = this._getCheckedIds(this.chkTypes, 'chk-type');
-        console.log('[HotelPriceController] 🔘 Sử dụng lựa chọn checkbox hiện tại');
+        L._('[HotelPriceController] 🔘 Sử dụng lựa chọn checkbox hiện tại');
       }
 
       // ─────────────────────────────────────────────────────────────
@@ -974,7 +974,7 @@ export class HotelPriceController {
       this.uiComponent.setData(schema, savedData);
     } catch (error) {
       console.error(error);
-      logA('Lỗi tải bảng giá: ' + error.message, 'error', 'alert');
+      Opps('Lỗi tải bảng giá: ' + error.message);
     } finally {
       this.toggleLoading(false);
     }

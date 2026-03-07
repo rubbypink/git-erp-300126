@@ -699,21 +699,21 @@ export class OffcanvasMenu extends HTMLElement {
     const val = this.shadowRoot.querySelector('#test-input')?.value || '';
 
     if (!val) {
-      log('Vui lòng nhập mã lệnh hoặc tên hàm', 'warning');
+      L._('Vui lòng nhập mã lệnh hoặc tên hàm', 'warning');
       return;
     }
 
     try {
       const fn1 = new Function(`return (${val.trim()})`);
       fn1();
-      log('Test executed successfully', 'success');
+      L._('Test executed successfully', 'success');
     } catch (e1) {
       try {
         const fn2 = new Function(val.trim());
         fn2();
-        log('Test executed successfully', 'success');
+        L._('Test executed successfully', 'success');
       } catch (e2) {
-        log(`Lỗi khi thực thi: ${e2.message}`, 'error');
+        L._(`Lỗi khi thực thi: ${e2.message}`, 'error');
       }
     }
   }
@@ -779,7 +779,7 @@ export class OffcanvasMenu extends HTMLElement {
       })
     );
 
-    log(this.state.isPinned ? 'Menu được ghim - không tự động ẩn' : 'Menu có thể tự động ẩn khi hover rời', 'info');
+    L._(this.state.isPinned ? 'Menu được ghim - không tự động ẩn' : 'Menu có thể tự động ẩn khi hover rời', 'info');
   }
 
   /**
@@ -805,7 +805,7 @@ export class OffcanvasMenu extends HTMLElement {
       })
     );
 
-    log(this.state.isRightSide ? 'Sidebar chuyển sang bên phải' : 'Sidebar chuyển sang bên trái', 'info');
+    L._(this.state.isRightSide ? 'Sidebar chuyển sang bên phải' : 'Sidebar chuyển sang bên trái', 'info');
   }
 
   // =========================================================================
@@ -928,7 +928,7 @@ export class OffcanvasMenu extends HTMLElement {
       // Save state
       this._saveResizeState();
 
-      log(`Menu width: ${this.state.menuWidth}px`, 'info');
+      L._(`Menu width: ${this.state.menuWidth}px`, 'info');
     } catch (err) {
       console.warn('Resize end error (non-fatal):', err.message);
     }

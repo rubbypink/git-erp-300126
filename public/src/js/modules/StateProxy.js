@@ -64,7 +64,7 @@ const StateProxy = (() => {
   function _dbg(step, ...args) {
     if (!_DEBUG) return;
     _logCount++;
-    console.log(`%c[SP #${_logCount}] ${step}`, 'color:#0af;font-weight:bold', ...args);
+    L._(`%c[SP #${_logCount}] ${step}`, 'color:#0af;font-weight:bold', ...args);
   }
   function _dbgWarn(step, ...args) {
     if (!_DEBUG) return;
@@ -252,7 +252,7 @@ const StateProxy = (() => {
   function _syncUndoStack(coll, id, el = null) {
     const key = _k(coll, id);
     if (_syncUndoStackPending[key]) {
-      log('Đang pending');
+      L._('Đang pending');
       return;
     }
     _syncUndoStackPending[key] = true;
@@ -819,6 +819,7 @@ const StateProxy = (() => {
    * @param {*} value
    */
   function _tryAutoBind(el, value) {
+    return;
     // ── Fast-exit when auto-binding is suppressed (initial form render) ──
     if (_suppressBind) return;
 
@@ -1201,7 +1202,7 @@ const StateProxy = (() => {
         _scheduleSync(coll, id, snap, Object.keys(snap));
       });
       _pendingHist.clear();
-      if (typeof log === 'function') log('[StateProxy] Session rolled back', 'warning');
+      if (typeof log === 'function') L._('[StateProxy] Session rolled back', 'warning');
     },
 
     /**
@@ -1485,6 +1486,7 @@ const StateProxy = (() => {
      * StateProxy.hookSetters();
      */
     hookSetters() {
+      return;
       if (window._stateProxyHooked) {
         _dbg('hookSetters SKIP (already hooked)');
         return;

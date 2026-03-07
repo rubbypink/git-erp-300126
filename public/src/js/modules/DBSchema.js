@@ -399,7 +399,7 @@ export const DB_SCHEMA = {
         attrs: [],
         class: 'd-qty number-only',
         validation: {
-          min: 1,
+          min: 0,
         },
       },
       {
@@ -411,6 +411,9 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: [],
         class: 'd-price number',
+        validation: {
+          format: 'number',
+        },
       },
       {
         index: 10,
@@ -421,6 +424,9 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: [],
         class: 'd-qtyC number-only',
+        validation: {
+          format: 'number',
+        },
       },
       {
         index: 11,
@@ -1363,6 +1369,16 @@ export const DB_SCHEMA = {
       },
       {
         index: 7,
+        name: 'receiver',
+        displayNameEng: 'Receiver',
+        displayName: 'Người nhận',
+        type: 'text',
+        tag: 'input',
+        attrs: [],
+        class: '',
+      },
+      {
+        index: 8,
         name: 'fund_source',
         displayNameEng: 'Fund Source',
         displayName: 'Nguồn tiền',
@@ -1373,7 +1389,7 @@ export const DB_SCHEMA = {
         dataSource: 'fund_accounts',
       },
       {
-        index: 8,
+        index: 9,
         name: 'status',
         displayNameEng: 'Status',
         displayName: 'Trạng thái',
@@ -1384,7 +1400,7 @@ export const DB_SCHEMA = {
         options: ['Hoàn thành', 'Chờ duyệt', 'Từ chối'],
       },
       {
-        index: 9,
+        index: 10,
         name: 'created_at',
         displayNameEng: 'Created Date',
         displayName: 'Ngày tạo',
@@ -1395,7 +1411,7 @@ export const DB_SCHEMA = {
         initial: 'today',
       },
       {
-        index: 10,
+        index: 11,
         name: 'created_by',
         displayNameEng: 'Created By',
         displayName: 'Tạo bởi',
@@ -2423,7 +2439,7 @@ function _initDocumentFormActions() {
       }
     } catch (err) {
       console.error(`[DBSchema] db-action error (action="${action}", form="${formId}"):`, err);
-      if (typeof log === 'function') log(`❌ Lỗi khi thực hiện "${action}": ${err.message}`, 'error');
+      if (typeof log === 'function') L._(`❌ Lỗi khi thực hiện "${action}": ${err.message}`, 'error');
     }
   });
 }
@@ -2496,7 +2512,7 @@ function _autoPopulateDynamicSelects(formId) {
     }
   });
 
-  console.log(`✅ Auto-populated ${selectsWithSource.length} dynamic selects in form '${formId}'`);
+  L._(`✅ Auto-populated ${selectsWithSource.length} dynamic selects in form '${formId}'`);
 }
 
 /**
@@ -2834,7 +2850,7 @@ function resetFormSchema(formId) {
     }
   });
 
-  console.log(`Form '${formId}' has been reset to initial values`);
+  L._(`Form '${formId}' has been reset to initial values`);
 }
 // window.resetFormSchema exposed via _setupFormActions event delegation
 /**
@@ -2858,7 +2874,7 @@ async function saveFormDataSchema(formId) {
       logA('⚠️ No data to save!', 'warning', 'alert');
       return;
     }
-    console.log(`Form Data from '${formId}':`, data);
+    L._(`Form Data from '${formId}':`, data);
     await A.DB.saveRecord(form.dataset.collection, data);
   } catch (error) {
     Opps(`❌ Lỗi: ${error.message}`, error);
@@ -2906,14 +2922,14 @@ async function deleteFormDataSchema(formId) {
           // Reset form sau khi xóa
           resetFormSchema(formId);
         } else {
-          logA(`❌ Xóa thất bại: ${res?.error ?? 'Lỗi không xác định'}`, 'error', 'alert');
+          Opps(`❌ Xóa thất bại: ${res?.error ?? 'Lỗi không xác định'}`, `❌ Xóa thất bại: ${res?.error ?? 'Lỗi không xác định'}`);
         }
       } catch (e) {
-        logA(`❌ Lỗi: ${e.message}`, 'error', 'alert');
+        Opps(`❌ Lỗi: ${e.message}`, `❌ Lỗi: ${e.message}`);
       }
     },
     () => {
-      console.log('Delete cancelled');
+      L._('Delete cancelled');
       return;
     }
   );
@@ -2961,14 +2977,14 @@ export async function loadFormDataSchema(formId, idorData = null) {
     if (window.APP_DATA && window.APP_DATA[collectionName]) {
       const doc = window.APP_DATA[collectionName][idorData];
       if (doc) {
-        console.log(`✅ Found in APP_DATA.${collectionName}:`, doc);
+        L._(`✅ Found in APP_DATA.${collectionName}:`, doc);
         data = { ...doc };
       }
     }
     // 2. If not found in APP_DATA, query Firestore
     if (!data && A.DB.db) {
       try {
-        console.log(`📡 Querying Firestore: ${collectionName}/${idorData}`);
+        L._(`📡 Querying Firestore: ${collectionName}/${idorData}`);
 
         // Firebase query pseudo-code
         const docRef = A.DB.db.collection(collectionName).doc(idorData);
@@ -2976,7 +2992,7 @@ export async function loadFormDataSchema(formId, idorData = null) {
 
         if (docSnap.exists()) {
           data = { id: docSnap.id, ...docSnap.data() };
-          console.log(`✅ Loaded from Firestore:`, data);
+          L._(`✅ Loaded from Firestore:`, data);
         } else {
           logA(`❌ No data found for ID: ${idorData}`, 'warning', 'alert');
           return;
@@ -2993,11 +3009,11 @@ export async function loadFormDataSchema(formId, idorData = null) {
   // ===== CASE 2: idorData is an OBJECT (data) =====
   else if (typeof idorData === 'object' && idorData !== null) {
     data = idorData;
-    console.log(`📦 Loading from provided data object:`, data);
+    L._(`📦 Loading from provided data object:`, data);
   }
   // ===== INVALID PARAMETER =====
   else {
-    log(`❌ Invalid parameter type: ${typeof idorData}`, 'warning');
+    L._(`❌ Invalid parameter type: ${typeof idorData}`, 'warning');
     return;
   }
 
@@ -3032,7 +3048,7 @@ function handleLoadFormDataSchema(formId) {
   const id = prompt(`📥 Nhập ID để load dữ liệu từ ${collectionName}:\n\n(Để trống để hủy)`);
 
   if (id === null || id.trim() === '') {
-    console.log('Load cancelled');
+    L._('Load cancelled');
     return;
   }
 
@@ -3119,7 +3135,7 @@ function populateSelectFromSource(fieldName, dataSourceName) {
     }
   });
 
-  console.log(`✅ Populated '${fieldName}' with ${dataArray.length} options from '${dataSourceName}'`);
+  L._(`✅ Populated '${fieldName}' with ${dataArray.length} options from '${dataSourceName}'`);
 }
 const COL_INDEX = {
   // BOOKINGS

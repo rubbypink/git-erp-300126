@@ -5,10 +5,10 @@
 var isSetupTabForm = false;
 const setupMainFormUI = function (lists) {
   if (isSetupTabForm) {
-    log('Đã SetupTabForm - Pass!');
+    L._('Đã SetupTabForm - Pass!');
     return;
   }
-  log('setupMainFormUI running');
+  L._('setupMainFormUI running');
 
   if (!lists) return;
 
@@ -77,7 +77,7 @@ const setupMainFormUI = function (lists) {
         thead.innerHTML = headerHtml;
       }
     } else {
-      log(`[Form] Không lấy được header cho [${collectionName}]`, 'warning');
+      L._(`[Form] Không lấy được header cho [${collectionName}]`, 'warning');
     }
   }
 
@@ -107,7 +107,7 @@ function toggleContextUI(targetTabIdOrIndex) {
     const activeTabIndex = typeof targetTabIdOrIndex === 'number' ? targetTabIdOrIndex : TAB_INDEX_BY_ID[String(targetTabIdOrIndex)];
 
     // Log để debug xem đang vào tab nào
-    // console.log(`[UI] Switching to tab: ${targetTabIdOrIndex} (Index: ${activeTabIndex})`);
+    // L._(`[UI] Switching to tab: ${targetTabIdOrIndex} (Index: ${activeTabIndex})`);
 
     // 2. Quét tất cả các element có thuộc tính data-ontabs
     const els = document.querySelectorAll('[data-ontabs]');
@@ -140,7 +140,7 @@ function toggleContextUI(targetTabIdOrIndex) {
       setClass('#tab-form', 'd-none', false); // Hiện tab form
       CURRENT_TABLE_KEY = 'bookings';
       if (typeof setMany === 'function' && typeof getVal === 'function') {
-        if (getE('BK_Start') && getVal('BK_Start') === '') {
+        if (getE('BK_Start') === '' || getVal('BK_Date') === '') {
           setMany(['BK_Date', 'BK_Start', 'BK_End'], new Date());
         }
       }
@@ -168,7 +168,7 @@ function selectTab(targetTabId) {
     tabTrigger.show();
   }
   const tabEl = getE(targetTabId);
-  A.Modal.setFooter(false); // Ẩn footer mặc định
+  // A.Modal.setFooter(false); // Ẩn footer mặc định
   switch (targetTabId) {
     case 'tab-theme-content':
       setClass($(targetTabId), 'd-none', false);
@@ -202,7 +202,7 @@ function selectTab(targetTabId) {
   }
   // Thêm delay nhỏ để đảm bảo DOM ready
   setTimeout(() => {
-    const input = tabEl?.querySelector('input:not([disabled])');
+    const input = tabEl?.querySelector('input:not([disabled]):not([readonly]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]):not([readonly])');
     if (input && input.offsetParent !== null) {
       // Kiểm tra input visible
       input.focus();
@@ -235,12 +235,10 @@ function generateGridColsFromObject(collectionName) {
     return FORMAT_KEYWORDS[type].some((key) => str.includes(key));
   };
 
-  const translate = (t) => (typeof translateHeaderName === 'function' ? translateHeaderName(t) : t);
+  const translate = (t) => (A.Lang ? A.Lang.t(t) : t);
 
   // 3. Xử lý chính: Convert object keys to columns
   GRID_COLS = Object.entries(headerObj).map(([fieldName, fieldValue], index) => {
-    // fieldValue = field.displayName từ schema (nguồn chính xác nhất)
-    // fallback: translateHeaderName(fieldName) → raw fieldName
     const vnTitle = fieldValue || translate(fieldName);
     let format = 'text';
 
@@ -284,8 +282,8 @@ function generateGridCols(headerRow) {
 
   // 1. Cấu hình từ khóa nhận diện định dạng (Config Pattern)
   const FORMAT_KEYWORDS = {
-    date: ['ngày', 'hạn', 'date', 'dob', 'checkin', 'checkout', 'deadline', 'start', 'end'],
-    money: ['tiền', 'giá', 'cọc', 'thu', 'chi', 'total', 'amount', 'price', 'deposit', 'revenue', 'cost', 'profit', 'balance'],
+    date: ['ngày', 'hạn', 'date', 'dob', 'check_in', 'check_out', 'deadline', 'start', 'end'],
+    money: ['tiền', 'giá', 'cọc', 'thu', 'chi', 'total', 'amount', 'price', 'deposit', 'revenue', 'cost', 'profit', 'balance', 'paid'],
   };
 
   const matches = (text, type) => {
@@ -293,7 +291,7 @@ function generateGridCols(headerRow) {
     return FORMAT_KEYWORDS[type].some((key) => str.includes(key));
   };
 
-  const translate = (t) => (typeof translateHeaderName === 'function' ? translateHeaderName(t) : t);
+  const translate = (t) => (A.Lang ? A.Lang.t(t) : t);
 
   // 3. Xử lý chính
   GRID_COLS = headerRow.map((rawTitle, index) => {
@@ -315,7 +313,7 @@ function generateGridCols(headerRow) {
     };
   });
 
-  console.log('Auto-generated Grid Cols:', GRID_COLS);
+  L._('Auto-generated Grid Cols:', GRID_COLS);
 }
 
 function renderGrid(dataList, table) {
@@ -846,7 +844,7 @@ function renderTableByKey(key, tblId) {
     SORT_STATE.dir = 'desc';
 
     if (!flatData || flatData.length === 0) {
-      log(`[GRID] Không có dữ liệu cho [${key}]`, 'warning');
+      L._(`[GRID] Không có dữ liệu cho [${key}]`, 'warning');
       if (tbody) {
         const colCount = (GRID_COLS ? GRID_COLS.length : 0) + 1;
         tbody.innerHTML = `<tr><td colspan="${colCount}" class="text-center p-4 text-muted">Không có dữ liệu</td></tr>`;
@@ -1331,7 +1329,7 @@ window.renderDashboard_Op = function () {
 function renderDashTable1_Op() {
   const tbody = document.querySelector('#tbl-dash-new-bk tbody');
   if (!tbody) {
-    log('No tbody found for new bookings table');
+    L._('No tbody found for new bookings table');
     return;
   }
   tbody.innerHTML = '';
@@ -1401,7 +1399,7 @@ function renderDashTable1_Op() {
 function renderDashTable2_Op() {
   const tbody = document.querySelector('#tbl-dash-missing tbody');
   if (!tbody) {
-    log('No tbody found for missing supplier table');
+    L._('No tbody found for missing supplier table');
     return;
   }
   tbody.innerHTML = '';
@@ -1440,7 +1438,7 @@ function renderDashTable2_Op() {
 function renderAggTable_Op(tableId, dataObj, sumId) {
   const tbody = document.querySelector(`#${tableId} tbody`);
   if (!tbody) {
-    log(`No tbody found for table ${tableId}`);
+    L._(`No tbody found for table ${tableId}`);
     return;
   }
   tbody.innerHTML = '';
@@ -1489,14 +1487,14 @@ function renderAggTable_Op(tableId, dataObj, sumId) {
 
 function renderDashboard_Acc() {
   if (!window.AccountantCtrl) {
-    log('Modue kế toán chưa được tải. Vui lòng thử lại sau.', 'warning');
+    L._('Modue kế toán chưa được tải. Vui lòng thử lại sau.', 'warning');
     return;
   }
 }
 
 function renderDashboard_Acc_thenice() {
   if (!window.AccountantCtrl) {
-    log('Modue kế toán chưa được tải. Vui lòng thử lại sau.', 'warning');
+    L._('Modue kế toán chưa được tải. Vui lòng thử lại sau.', 'warning');
     return;
   }
 }

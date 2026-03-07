@@ -31,6 +31,7 @@ export default class ErpHeaderMenu {
     } catch (error) {
       console.error('[9 Trip ERP] Lỗi khởi tạo Header Menu:', error);
     }
+    $('[data-bs-target="#tab-admin-dashboard"]')?.click();
   }
 
   /**
@@ -215,9 +216,7 @@ export default class ErpHeaderMenu {
                                 <li class="dropdown-header fw-bold text-primary">CHUYỂN TRANG</li>
                                 <li><button class="dropdown-item py-2" data-bs-target="#tab-dashboard" onclick="activateTab('tab-dashboard')"><i class="fa-solid fa-chart-line text-warning w-20px"></i> Dashboard</button></li>
                                 <li><button class="dropdown-item py-2" data-bs-target="#tab-form" onclick="activateTab('tab-form')"><i class="fa-solid fa-file-pen text-secondary w-20px"></i> Booking</button></li>
-                                <li><button class="dropdown-item py-2" data-bs-target="#tab-list" onclick="activateTab('tab-list')"><i class="fa-solid fa-list text-secondary w-20px"></i> Danh sách</button></li>
-                                <li class="d-none" data-ontabs="4"><button class="dropdown-item py-2 text-info" data-bs-target="#tab-sub-form" onclick="activateTab('tab-sub-form')"><i class="fa-solid fa-user-tag w-20px"></i> Khách hàng</button></li>
-                                <li class="admin-only"><button class="dropdown-item py-2" data-bs-target="#tab-log" onclick="activateTab('tab-log')"><i class="fa-solid fa-history text-secondary w-20px"></i> Admin Log</button></li>
+                                <li><button class="dropdown-item py-2" data-bs-target="#tab-list" onclick="activateTab('tab-list')"><i class="fa-solid fa-list text-secondary w-20px"></i> Danh sách</button></li>                                
                                 <li class="admin-only"><button class="dropdown-item py-2 text-danger fw-bold" data-bs-target="#tab-admin-dashboard" onclick="activateTab('tab-admin-dashboard')"><i class="fa-solid fa-user-shield w-20px"></i> Admin Dashboard</button></li>
                             </ul>
                         </div>
@@ -249,8 +248,8 @@ export default class ErpHeaderMenu {
 
                 <form class="form-inline m-0 d-none d-md-block">
                     <div class="input-group input-group-sm flex-center gap-0 bg-white rounded overflow-hidden shadow-sm">
-                        <input type="text" id="global-search" class="form-control border-0" placeholder="Tìm kiếm..." oninput="if(typeof handleSearchClick === 'function') handleSearchClick()" style="box-shadow: none; width: 150px;">
-                        <button class="btn btn-light text-primary border-0" type="button" onclick="if(typeof handleSearchClick === 'function') handleSearchClick()">
+                        <input type="text" id="global-search" class="form-control border-0" placeholder="Tìm kiếm..." oninput="if(typeof initGlobalTableSearch === 'function') initGlobalTableSearch()" style="box-shadow: none; width: 150px;">
+                        <button class="btn btn-light text-primary border-0" type="button" onclick="if(typeof initGlobalTableSearch === 'function') initGlobalTableSearch()">
                             <i class="fa-solid fa-search"></i>
                         </button>
                     </div>
@@ -274,14 +273,6 @@ export default class ErpHeaderMenu {
                 </li>
                 <li class="nav-item">
                     <button class="nav-link border-0 bg-transparent text-white-50" data-bs-target="#tab-list" onclick="activateTab('tab-list')">Danh sách</button>
-                </li>
-                <li class="nav-item d-none" data-ontabs="4">
-                    <button class="nav-link text-info border-0 bg-transparent" data-bs-target="#tab-sub-form" onclick="activateTab('tab-sub-form')">
-                        <i class="fa-solid fa-user-tag"></i> Khách hàng
-                    </button>
-                </li>
-                <li class="nav-item admin-only">
-                    <button class="nav-link border-0 bg-transparent text-white-50" data-bs-target="#tab-log" onclick="activateTab('tab-log')">Admin Log</button>
                 </li>
                 <li class="nav-item admin-only">
                     <button class="nav-link text-warning border-0 bg-transparent" data-bs-target="#tab-admin-dashboard" onclick="activateTab('tab-admin-dashboard')">

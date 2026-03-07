@@ -705,10 +705,6 @@ td input.form-control-sm {
   font-size: 0.75rem;
 }
 
-#tab-log {
-  height: 100%;
-}
-
 #log-list {
   height: calc(100% - 2.5rem);
   overflow-y: auto;

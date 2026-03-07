@@ -11,7 +11,7 @@ const UI_RENDERER = {
   init: async function (moduleManager) {
     await Promise.all([this.renderMainLayout(), this.renderTemplate('body', 'tpl_all.html', true, '.app-container')]);
     const role = CURRENT_USER.realrole ? CURRENT_USER.realrole : CURRENT_USER.role;
-    log('UI: User Role:', role);
+    L._('UI: User Role:', role);
     if (!['acc', 'acc_thenice', 'ketoan'].includes(role)) {
       const [headerModule, chromeMenu, footerModule] = await Promise.all([moduleManager.loadModule('ErpHeaderMenu'), moduleManager.loadModule('ChromeMenuController', false), moduleManager.loadModule('ErpFooterMenu')]);
       if (headerModule) new headerModule();
@@ -24,7 +24,7 @@ const UI_RENDERER = {
       A.call('ChromeMenuController', 'init', role);
     }
 
-    log('[UI MODULE]✅ UI Initialization completed.');
+    L._('[UI MODULE]✅ UI Initialization completed.');
   },
   renderMainLayout: async function (source = 'main_layout.html', containerSelector = '#main-app') {
     let finalSourcePath = source;
@@ -57,9 +57,9 @@ const UI_RENDERER = {
       // trước khi các module Sales/Op render dữ liệu vào bên trong.
       container.insertAdjacentHTML('afterbegin', html);
 
-      log('✅ Đã render Main Layout thành công', 'success');
+      L._('✅ Đã render Main Layout thành công', 'success');
     } catch (error) {
-      log('🔥 Lỗi Render Layout: ' + error.message, 'danger');
+      L._('🔥 Lỗi Render Layout: ' + error.message, 'danger');
     } finally {
       showLoading(false);
     }
@@ -207,11 +207,11 @@ const UI_RENDERER = {
   lazyLoad: function (tabId) {
     const tabEl = getE(tabId);
     if (!tabEl) {
-      log(`Không tìm thấy Tab ID: ${tabId}`, 'error');
+      L._(`Không tìm thấy Tab ID: ${tabId}`, 'error');
       return;
     }
     if (tabEl.dataset.isLoaded === 'true' && tabEl.innerHTML.trim() !== '') {
-      log(`Tab ${tabId} đã được load trước đó. Bỏ qua.`, 'info');
+      L._(`Tab ${tabId} đã được load trước đó. Bỏ qua.`, 'info');
       return;
     }
     const tmplId = tabId.replace('tab-', 'tmpl-');
@@ -239,12 +239,8 @@ const UI_RENDERER = {
         const resizer = new TableResizeManager('grid-table');
         resizer.init();
       }
-    } else if (tabId === 'tab-log') {
-      // Khi tab log vừa được render xong -> Lấy dữ liệu từ LS đắp vào
-      if (typeof restoreLogsFromStorage === 'function') {
-        restoreLogsFromStorage();
-      }
     }
+
     tabEl.dataset.isLoaded = 'true';
   },
 
@@ -256,7 +252,7 @@ const UI_RENDERER = {
     let btn = getE(btnId);
 
     if (!btn) {
-      log(`Không tìm thấy nút nào của ${btnId} trong DOM!`, 'error');
+      L._(`Không tìm thấy nút nào của ${btnId} trong DOM!`, 'error');
       return;
     }
 
@@ -291,7 +287,7 @@ const UI_RENDERER = {
     };
 
     btn.addEventListener('click', this.currentSaveHandler);
-    log('Đã gán sự kiện mới cho Btn Save Modal.');
+    L._('Đã gán sự kiện mới cho Btn Save Modal.');
   },
   resetForm: function (e) {
     const form = e.target.closest('form') || $('form', getE('dynamic-modal-body'));

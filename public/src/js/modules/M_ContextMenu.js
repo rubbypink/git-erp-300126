@@ -283,9 +283,12 @@ class ContextMenu {
     window.addEventListener('resize', () => debounce(this.hide.bind(this), 300)(), { signal });
 
     // ── Auto-register built-in menus ──
+
     this._registerBookingContextMenu();
-    this._registerGlobalInputMenu();
+    this._registerAdminContextMenu();
+
     // this.register('#grid-body');
+    this._registerGlobalInputMenu();
   }
 
   /**
@@ -729,7 +732,7 @@ class ContextMenu {
               await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
               typeof logA === 'function' && logA('✅ Đã copy dữ liệu hàng!', 'success');
             } catch {
-              typeof logA === 'function' && logA('❌ Không thể copy.', 'error');
+              typeof logA === 'function' && Opps('❌ Không thể copy.');
             }
           },
         },
@@ -861,15 +864,17 @@ class ContextMenu {
    * @param {MouseEvent} e
    */
   #onContextMenu(e) {
-    // Allow Ctrl+RightClick to show native menu (for debugging)
     if (e.ctrlKey || e.metaKey) return;
 
-    // Find matching registration (first match wins)
+    // 1. XUYÊN SHADOW DOM: Lấy Element thật sự bị click ở tầng sâu nhất
+    const target = (e.composedPath && e.composedPath()[0]) || e.target;
+
     let matchedKey = null;
     let matchedReg = null;
 
     for (const [selector, reg] of this.#registrations) {
-      if (e.target.closest(selector)) {
+      // Dùng target thay vì e.target
+      if (target.closest(selector)) {
         matchedKey = selector;
         matchedReg = reg;
         break;
@@ -883,22 +888,22 @@ class ContextMenu {
 
     const { config, menuEl } = matchedReg;
 
-    // Build context object
-    const row = e.target.closest(config.rowSelector);
-    const form = e.target.closest('form, fieldset');
-    const tbody = e.target.closest('tbody');
+    // Dùng target thay vì e.target
+    const row = target.closest(config.rowSelector);
+    const form = target.closest('form, fieldset');
+    const tbody = target.closest('tbody');
 
-    // Determine the editable element under cursor
-    const focusedEl = _isEditable(e.target) ? e.target : e.target.closest('input, select, textarea, [contenteditable]') || null;
+    const focusedEl = _isEditable(target) ? target : target.closest('input, select, textarea, [contenteditable]') || null;
 
     const ctx = {
       event: e,
-      target: e.target,
+      target: target,
       focusedEl,
       row,
       form,
       rowIndex: row ? row.rowIndex : -1,
-      rowId: row?.querySelector('.d-sid')?.value || '',
+      // 2. CẬP NHẬT: Ưu tiên lấy ID từ data-id (cho Admin Web Component), nếu không có mới tìm input .d-sid
+      rowId: row?.dataset?.id || row?.querySelector('.d-sid')?.value || '',
       tbody,
       selector: matchedKey,
       menuEl,
@@ -1365,7 +1370,7 @@ class ContextMenu {
           shortcut: 'JSON',
           async action(ctx) {
             if (!ctx.row) {
-              typeof logA === 'function' && logA('❌ Vui lòng chọn một dòng để dán.', 'error', 'alert');
+              typeof logA === 'function' && Opps('❌ Vui lòng chọn một dòng để dán.');
               return;
             }
             try {
@@ -1381,7 +1386,7 @@ class ContextMenu {
               }
             } catch (err) {
               console.error('[ContextMenu] Paste error:', err);
-              typeof logA === 'function' && logA('❌ Dữ liệu clipboard không hợp lệ.', 'error', 'alert');
+              typeof logA === 'function' && Opps('❌ Dữ liệu clipboard không hợp lệ.');
             }
           },
         },
@@ -1458,6 +1463,181 @@ class ContextMenu {
                 logA('❓ Booking chưa lưu. Xóa khỏi giao diện?', 'info', () => {
                   window.refreshForm?.();
                 });
+            }
+          },
+        },
+      ],
+    });
+  }
+
+  // =========================================================================
+  // ★ BUILT-IN: Admin Data Table Context Menu
+  // =========================================================================
+
+  /**
+   * Register context menu for the Admin Data Table (#tbl-db-data-admin).
+   * Supports: Copy, Clone, Paste, Delete, Reset Form, Save Field.
+   */
+  _registerAdminContextMenu() {
+    this.register('#tbl-db-data-admin tbody', {
+      id: 'adminContextMenu',
+      rowSelector: 'tr',
+
+      onBeforeOpen(ctx) {
+        if (!ctx.row) return false;
+        const collection = _getCollection(ctx);
+        // Lưu trữ thông tin row hiện tại vào context để các action sử dụng
+        ctx.collection = collection;
+        if (typeof HD.getRowData === 'function') {
+          ctx.rowData = HD.getRowData(collection, ctx.row, ctx.tbody);
+        }
+      },
+
+      items: [
+        {
+          id: 'admin-copy-all',
+          label: 'Copy Toàn bộ bảng',
+          icon: 'fa-copy',
+          iconColor: 'text-primary',
+          async action(ctx) {
+            if (!ctx.tbody) return;
+            // Lấy tất cả các hàng, chuyển mỗi hàng thành chuỗi ngăn cách bởi tab (\t)
+            const rows = Array.from(ctx.tbody.querySelectorAll('tr'));
+            const tsvData = rows
+              .map((row) => {
+                // Lấy các ô input/select trong hàng (bỏ qua các cột không có dữ liệu nhập)
+                const inputs = Array.from(row.querySelectorAll('input:not([type="hidden"]), select, textarea'));
+                return inputs.map((input) => input.value || '').join('\t');
+              })
+              .join('\n');
+
+            try {
+              await navigator.clipboard.writeText(tsvData);
+              typeof logA === 'function' && logA('✅ Đã copy toàn bộ dữ liệu bảng', 'success');
+            } catch (e) {
+              typeof Opps === 'function' && Opps('❌ Không thể copy vào Clipboard');
+            }
+          },
+        },
+        {
+          id: 'admin-clone',
+          label: 'Clone Hàng',
+          icon: 'fa-clone',
+          iconColor: 'text-info',
+          async action(ctx) {
+            if (!ctx.row) return;
+
+            // 1. Copy dữ liệu hàng hiện tại (dạng tab-separated)
+            const inputs = Array.from(ctx.row.querySelectorAll('input:not([type="hidden"]), select, textarea'));
+            const rowTsv = inputs.map((input) => input.value || '').join('\t');
+            await navigator.clipboard.writeText(rowTsv);
+
+            // 2. Kích hoạt nút Add Row (Bạn thay '#btn-add-row' bằng selector thực tế của nút thêm hàng)
+            const addBtn = document.querySelector('.btn-add-row, #add-row, [data-action="add-row"]');
+            if (addBtn) addBtn.click();
+
+            // 3. Đợi DOM render hàng mới (dùng setTimeout)
+            setTimeout(() => {
+              // Lấy hàng cuối cùng vừa được thêm vào
+              const newRow = ctx.tbody.lastElementChild;
+              if (!newRow) return;
+
+              // Tìm ô nhập liệu đầu tiên của hàng mới
+              const firstInput = newRow.querySelector('input:not([type="hidden"]), select, textarea');
+              if (firstInput) {
+                firstInput.focus();
+
+                // Kích hoạt sự kiện paste giả lập (Synthetic Event) để hàm _handlePaste của bạn tự bắt
+                const pasteEvent = new ClipboardEvent('paste', {
+                  bubbles: true,
+                  cancelable: true,
+                  clipboardData: new DataTransfer(),
+                });
+                pasteEvent.clipboardData.setData('text/plain', rowTsv);
+                firstInput.dispatchEvent(pasteEvent);
+
+                typeof logA === 'function' && logA('👯 Đã nhân bản dòng', 'info');
+              }
+            }, 100); // Đợi 100ms để đảm bảo row đã được append vào DOM
+          },
+        },
+        {
+          id: 'admin-paste',
+          label: 'Dán dữ liệu',
+          icon: 'fa-paste',
+          iconColor: 'text-success',
+          async action(ctx) {
+            const el = ctx.focusedEl || ctx.target.closest('input, select, textarea');
+            if (!el) {
+              typeof logA === 'function' && logA('Vui lòng click vào 1 ô trước khi dán', 'warning');
+              return;
+            }
+
+            try {
+              el.focus();
+              const text = await navigator.clipboard.readText();
+
+              // Tạo một sự kiện paste giả lập mang theo dữ liệu từ clipboard
+              const pasteEvent = new ClipboardEvent('paste', {
+                bubbles: true,
+                cancelable: true,
+                clipboardData: new DataTransfer(),
+              });
+              pasteEvent.clipboardData.setData('text/plain', text);
+
+              // Dispatch sự kiện này vào element, hàm `_handlePaste` gắn trên Table/Input sẽ tự động bắt được
+              el.dispatchEvent(pasteEvent);
+            } catch (e) {
+              typeof Opps === 'function' && Opps('❌ Trình duyệt chặn đọc clipboard. Vui lòng ấn Ctrl+V.');
+            }
+          },
+        },
+        '---',
+        {
+          id: 'admin-save-field',
+          label: 'Lưu ô này (Save Field)',
+          icon: 'fa-floppy-disk',
+          iconColor: 'text-warning',
+          visible: (ctx) => !!ctx.focusedEl && !!ctx.rowId,
+          async action(ctx) {
+            const field = ctx.focusedEl.dataset.field;
+            const val = typeof getVal === 'function' ? getVal(ctx.focusedEl) : ctx.focusedEl.value;
+            if (!field || !ctx.rowId) return;
+
+            const updateData = { id: ctx.rowId, [field]: val };
+            const res = await window.A?.DB?.updateSingle(ctx.collection, updateData);
+            if (res?.success) {
+              ctx.focusedEl.classList.remove('is-dirty');
+              typeof logA === 'function' && logA(`✅ Đã lưu trường: ${field}`, 'success');
+            }
+          },
+        },
+        {
+          id: 'admin-reset-row',
+          label: 'Reset dòng',
+          icon: 'fa-arrow-rotate-left',
+          action(ctx) {
+            ctx.row.querySelectorAll('[data-field]').forEach((el) => {
+              if (el.dataset.field === 'id') return;
+              setVal ? setVal(el, '') : (el.value = '');
+              el.classList.remove('is-dirty');
+            });
+            typeof logA === 'function' && logA('🧹 Đã xóa trắng dòng', 'info');
+          },
+        },
+        '---',
+        {
+          id: 'admin-delete',
+          label: 'Xóa vĩnh viễn',
+          icon: 'fa-trash-can',
+          cls: 'text-danger',
+          action(ctx) {
+            if (!ctx.rowId) {
+              ctx.row.remove();
+              return;
+            }
+            if (typeof A.DB.deleteRecord === 'function') {
+              A.DB.deleteRecord(ctx.collection, ctx.rowId);
             }
           },
         },

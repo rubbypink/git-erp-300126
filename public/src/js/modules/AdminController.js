@@ -3,7 +3,6 @@
  * Path: public/src/js/modules/AdminController.js
  * Fix: JSON Display Error using DOM Property injection
  */
-import A from '../app.js';
 import { migrationHelper } from './migration-helper.js';
 import NavBarMenuController from '../common/components/M_NavBarResponsive.js';
 // =============================================================================
@@ -17,13 +16,12 @@ class FirestoreDataTable extends HTMLElement {
     this._data = [];
     this._currentFocus = null;
   }
-
-  setSchema(headers, data = []) {
+  setSchema(headers, data = [], collectionPath = '') {
     this._headers = headers;
     this._data = data.length > 0 ? data : [this._createEmptyRow()];
+    this._collectionPath = collectionPath; // Lưu lại path
     this.render();
   }
-
   _createEmptyRow() {
     const obj = {};
     this._headers.forEach((h) => (obj[h] = ''));
@@ -91,11 +89,11 @@ class FirestoreDataTable extends HTMLElement {
 
     // --- KHU VỰC SỬA ĐỔI QUAN TRỌNG ---
     // 1. Tạo HTML Input KHÔNG CÓ value="..."
-    // Chúng ta dùng data-ridx (row index) và data-key để tham chiếu sau này
+    // Chúng ta dùng data-row (row index) và data-key để tham chiếu sau này
     const bodyHtml = this._data
       .map(
         (row, idx) => `
-            <tr class="data-row">
+            <tr class="data-row" data-id="${row.id || ''}">
                 ${this._headers
                   .map((h) => {
                     // Logic check sub để tô màu (chỉ check type string)
@@ -103,7 +101,7 @@ class FirestoreDataTable extends HTMLElement {
                     const isSub = typeof rawVal === 'string' && rawVal.startsWith('sub:');
 
                     // Tuyệt đối KHÔNG ĐỂ value="${...}" ở đây
-                    return `<td><input type="text" class="inp-${h} ${isSub ? 'inp-sub' : ''}" data-ridx="${idx}" data-key="${h}"></td>`;
+                    return `<td><input type="text" class="inp-${h} ${isSub ? 'inp-sub' : ''}" data-row="${idx}" data-key="${h}" data-field="${h}"></td>`;
                   })
                   .join('')} 
                 <td class="text-center"><button class="btn-del" data-index="${idx}">X</button></td>
@@ -112,12 +110,12 @@ class FirestoreDataTable extends HTMLElement {
       )
       .join('');
 
-    this.shadowRoot.innerHTML = `${style}<div class="table-container" id="paste-zone"><table id="tbl-db-data-admin" class="table table-responsive" data-collection=""><thead><tr>${headerHtml}</tr></thead><tbody>${bodyHtml}</tbody></table></div>
+    this.shadowRoot.innerHTML = `${style}<div class="table-container" id="paste-zone"><table id="tbl-db-data-admin" class="table table-responsive" data-collection="${this._collectionPath || ''}"><thead><tr>${headerHtml}</tr></thead><tbody>${bodyHtml}</tbody></table></div>
             <div class="toolbar"><button class="btn btn-sm btn-primary" id="add-row">+ Thêm</button><small class="text-muted">Click & Ctrl+V để dán</small></div>`;
 
     // 2. Bơm dữ liệu bằng Javascript (An toàn tuyệt đối với mọi ký tự)
-    this.shadowRoot.querySelectorAll('input[data-ridx]').forEach((inp) => {
-      const rIdx = parseInt(inp.getAttribute('data-ridx'));
+    this.shadowRoot.querySelectorAll('input[data-row]').forEach((inp) => {
+      const rIdx = parseInt(inp.getAttribute('data-row'));
       const key = inp.getAttribute('data-key');
 
       if (this._data[rIdx]) {
@@ -128,6 +126,10 @@ class FirestoreDataTable extends HTMLElement {
         } else if (typeof val === 'object') {
           // Tự động stringify Object/Array thành JSON để hiển thị
           val = JSON.stringify(val);
+        } else if (typeof val === 'number' || !isNaN(val) || key.toLowerCase().includes('amount') || key.toLowerCase().includes('total') || key.toLowerCase().includes('balance')) {
+          val = formatMoney(val);
+        } else if (typeof val === 'datetime' || val instanceof Date || key.toLowerCase().includes('updated') || key.toLowerCase().includes('created') || key.toLowerCase().includes('date')) {
+          val = formatDateVN(val);
         }
 
         // Gán trực tiếp vào thuộc tính value của DOM Element
@@ -193,29 +195,46 @@ class MatrixLogic {
 
   async getHeaders(path, fetchedData = []) {
     let headers = [];
-    // 1. Config Global
-    if (typeof A.DB.schema.FIELD_MAP !== 'undefined' && A.DB.schema.FIELD_MAP[path]) {
-      const config = A.DB.schema.FIELD_MAP[path];
-      if (Array.isArray(config)) headers = config;
-      else if (typeof config === 'object') headers = Object.values(config);
+
+    // 1. LẤY CẤU HÌNH TỪ DBSchema.js (Sắp xếp chuẩn theo index)
+    // Sử dụng window.FIELD_MAP (được export từ DBSchema.js)
+    if (typeof window.FIELD_MAP !== 'undefined' && window.FIELD_MAP[path]) {
+      const config = window.FIELD_MAP[path];
+
+      // Vì config là Object dạng { "0": "id", "1": "full_name" }
+      // Object.values() trong Javascript tự động sắp xếp theo key số (index) từ nhỏ đến lớn
+      headers = Object.values(config);
       return headers;
     }
-    // 2. Data Scan
+
+    // 2. FALLBACK: Nếu bảng chưa được khai báo trong DBSchema.js thì tự động quét dữ liệu
     if (fetchedData.length > 0) {
-      let autoHeaders = Object.keys(fetchedData[0]);
-      if (autoHeaders.includes('id')) autoHeaders = ['id', ...autoHeaders.filter((h) => h !== 'id')];
+      let keySet = new Set();
+      fetchedData.forEach((row) => {
+        Object.keys(row).forEach((key) => keySet.add(key));
+      });
+
+      // Sắp xếp Alphabet để nếu có bảng lạ, cột cũng không bị nhảy lung tung
+      let autoHeaders = Array.from(keySet).sort();
+
+      // Luôn ép cột 'id' lên đầu tiên
+      if (autoHeaders.includes('id')) {
+        autoHeaders = ['id', ...autoHeaders.filter((h) => h !== 'id')];
+      }
       return autoHeaders;
     }
-    // 3. User Input
+
+    // 3. User Input (Trường hợp DB hoàn toàn trống và chưa có Schema)
     const customInput = prompt(`Collection [${path}] chưa có cấu hình. Nhập các cột (cách nhau dấu phẩy):`, 'id,name,description');
     if (customInput) return customInput.split(',').map((s) => s.trim());
+
     return ['id', 'name'];
   }
 
   async render(container, path) {
     container.innerHTML = '<div class="text-center mt-5"><div class="spinner-border text-primary"></div><p>Đang tải Matrix...</p></div>';
     try {
-      const snapshot = await this.db.collection(path).limit(50).get();
+      const snapshot = await this.db.collection(path).limit(500).get();
       let data = [];
 
       snapshot.forEach((doc) => {
@@ -232,7 +251,7 @@ class MatrixLogic {
       const headers = await this.getHeaders(path, data);
 
       container.innerHTML = `<table-db-data id="adm-matrix-table"></table-db-data>`;
-      container.querySelector('table-db-data').setSchema(headers, data);
+      container.querySelector('table-db-data').setSchema(headers, data, path);
 
       if (path.includes('hotels')) {
         if (AdminConsole.currentStrategy && AdminConsole.currentStrategy.decodeSubCollections) {
@@ -242,7 +261,7 @@ class MatrixLogic {
       }
 
       // Debug: In ra console để kiểm tra dữ liệu gốc có bị lỗi không
-      // console.log(`✅ Loaded ${data.length} rows from [${path}]`, data);
+      // L._(`✅ Loaded ${data.length} rows from [${path}]`, data);
     } catch (e) {
       console.error(e);
       container.innerHTML = `<div class="alert alert-danger">Lỗi tải dữ liệu: ${e.message}</div>`;
@@ -276,7 +295,7 @@ class MatrixLogic {
       );
       table.setSchema(table._headers, newData);
     } catch (e) {
-      logA('Lỗi: ' + e.message, 'error', 'alert');
+      Opps('Lỗi: ' + e.message);
     } finally {
       if (btnDecode) btnDecode.innerHTML = '<i class="fas fa-network-wired"></i> Decode Sub';
     }
@@ -294,6 +313,10 @@ class MatrixLogic {
         Object.keys(row).forEach((key) => {
           if (String(row[key]).trim().startsWith('sub:')) return;
           let val = row[key];
+          let numberFields = ['amount', 'total', 'balance', 'price', 'cost'];
+          if (numberFields.some((f) => key.toLowerCase().includes(f))) {
+            val = Number(String(val).replace(/[^0-9.-]+/g, '')) || 0;
+          }
           if (typeof val === 'string' && (val.trim().startsWith('{') || val.trim().startsWith('['))) {
             try {
               newRow[key] = JSON.parse(val);
@@ -340,7 +363,7 @@ class MatrixLogic {
       if (countSub > 0) await batchSub.commit();
       logA(`✅ Đã lưu Master và ${countSub} Sub-documents!`, 'warning', 'alert');
     } catch (e) {
-      logA('❌ Lỗi: ' + e.message, 'error', 'alert');
+      Opps('❌ Lỗi: ' + e.message);
     }
   }
 }
@@ -375,7 +398,7 @@ class FormLogic {
     const payload = {};
     const inputs = form.querySelectorAll('.adm-input');
     inputs.forEach((inp) => {
-      let val = inp.value;
+      let val = getVal(inp);
       if (val.trim().startsWith('{') || val.trim().startsWith('['))
         try {
           val = JSON.parse(val);
@@ -671,7 +694,7 @@ class AdminController {
 
       if (confirm(confirmMsg)) {
         if (typeof A === 'undefined' || !A.DB) {
-          return logA('❌ A.DB không khả dụng!', 'error', 'alert');
+          return Opps('❌ A.DB không khả dụng!');
         }
 
         // Nếu 1 hàng: gọi deleteRecord
@@ -686,10 +709,10 @@ class AdminController {
                 }
               })
               .catch((e) => {
-                logA('❌ Lỗi xóa: ' + e.message, 'error', 'alert');
+                Opps('❌ Lỗi xóa: ' + e.message);
               });
           } else {
-            logA('❌ A.DB.deleteRecord không khả dụng!', 'error', 'alert');
+            Opps('❌ A.DB.deleteRecord không khả dụng!');
           }
         } else {
           // Nếu nhiều hàng: gọi batchDelete
@@ -703,10 +726,10 @@ class AdminController {
                 }
               })
               .catch((e) => {
-                logA('❌ Lỗi xóa: ' + e.message, 'error', 'alert');
+                Opps('❌ Lỗi xóa: ' + e.message);
               });
           } else {
-            logA('❌ A.DB.batchDelete không khả dụng!', 'error', 'alert');
+            Opps('❌ A.DB.batchDelete không khả dụng!');
           }
         }
       }
@@ -790,7 +813,7 @@ class AdminController {
     try {
       const result = await migrationHelper.migrateField(path, oldName, newName);
 
-      console.log('✅ Field migrated successfully:', result.data);
+      L._('✅ Field migrated successfully:', result.data);
       showAlert('✅ Đã migrate field thành công!', 'success', 'THÀNH CÔNG');
       return result.data;
     } catch (error) {
@@ -815,9 +838,9 @@ class AdminController {
     }
   }
   async runFieldMigration(collection = 'operator_entries', oldField = 'customer_name', newField = 'customer_full_name', type = 'move') {
-    console.log(`[AdminController] Starting migration...`);
+    L._(`[AdminController] Starting migration...`);
     const result = await this.changeFieldName(collection, oldField, newField);
-    console.log(`[AdminController] Migration complete:`, result);
+    L._(`[AdminController] Migration complete:`, result);
     return result;
   }
 
@@ -988,7 +1011,7 @@ class AdminController {
       if (userData.uid) {
         userData.updated_at = new Date().toISOString();
         await A.DB.saveRecord('users', userData, { merge: true });
-        log(`✅ User ${userData.uid} updated in Firestore`, 'success');
+        L._(`✅ User ${userData.uid} updated in Firestore`, 'success');
         this.renderUsersConfig();
         return;
       }
@@ -1015,7 +1038,7 @@ class AdminController {
       showLoading(true);
       // ✅ FIRESTORE DELETE → Trigger xóa Auth (route qua DBManager để đồng bộ notification)
       await A.DB.deleteRecord('users', uid);
-      log(`✅ User ${uid} deleted from Firestore`, 'success');
+      L._(`✅ User ${uid} deleted from Firestore`, 'success');
       this.loadUsersData();
     } catch (error) {
       Opps('❌ Lỗi xóa user: ' + error.message);
@@ -1131,5 +1154,6 @@ class AdminController {
  * ═════════════════════════════════════════════════════════════════════════
  */
 
-export const AdminConsole = new AdminController();
+const AdminConsole = new AdminController();
+export default AdminConsole;
 // window.AdminConsole = AdminConsole;

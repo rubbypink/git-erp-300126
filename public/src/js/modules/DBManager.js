@@ -62,9 +62,11 @@ class DBManager {
   static #INDEX_CONFIG = [
     { index: 'booking_details_by_booking', source: 'booking_details', groupBy: 'booking_id', sumBy: 'total' },
     { index: 'operator_entries_by_booking', source: 'operator_entries', groupBy: 'booking_id', sumBy: 'total_cost' },
+    { index: 'operator_entries_by_supplier', source: 'operator_entries', groupBy: 'supplier', sumBy: 'total_cost' },
     { index: 'operator_entries_by_month', source: 'operator_entries', groupBy: 'check_in', sumBy: 'total_cost' },
     { index: 'transactions_by_booking', source: 'transactions', groupBy: 'booking_id', sumBy: 'amount' },
     { index: 'transactions_by_fund', source: 'transactions', groupBy: 'fund_source', sumBy: 'amount' },
+    { index: 'transactions_by_month', source: 'transactions', groupBy: 'transaction_date', sumBy: 'amount' },
   ];
 
   /**
@@ -122,7 +124,7 @@ class DBManager {
     await this.#localDB.initDB().catch((e) => console.warn('⚠️ IndexedDB initDB thất bại:', e));
     window.addEventListener('app-ready', () => {
       this.#startNotificationsListener();
-      log('🔔 Notifications listener started');
+      L._('🔔 Notifications listener started');
     });
 
     this._initialized = true;
@@ -178,11 +180,11 @@ class DBManager {
   async loadAllData(forceNew = false) {
     await this.#initPromise; // đảm bảo #bootInit xong
     if (!this.#db) {
-      log('❌ DB chưa init', 'error');
+      L._('❌ DB chưa init', 'error');
       return null;
     }
     if (!firebase.auth().currentUser) {
-      log('❌ Chưa đăng nhập', 'warning');
+      L._('❌ Chưa đăng nhập', 'warning');
       return null;
     }
 
@@ -203,12 +205,12 @@ class DBManager {
 
         // Prune collections không thuộc role hiện tại (nếu role thay đổi)
         if (roleChanged) {
-          log(`🔄 Role thay đổi: [${lastSyncRole}] → [${currentRole}]`);
+          L._(`🔄 Role thay đổi: [${lastSyncRole}] → [${currentRole}]`);
           const allowedColls = new Set(currentRoleColls);
           for (const coll of Object.keys(APP_DATA)) {
             if (coll === 'lists' || coll === 'currentUser' || coll === 'users' || DBManager.#INDEX_CONFIG.some((c) => c.index === coll)) continue;
             if (!allowedColls.has(coll)) {
-              log(`🗑️ Prune [${coll}] (không cần cho role ${currentRole})`);
+              L._(`🗑️ Prune [${coll}] (không cần cho role ${currentRole})`);
               delete APP_DATA[coll];
               DBManager.#INDEX_CONFIG.filter((c) => c.source === coll).forEach(({ index }) => delete APP_DATA[index]);
             }
@@ -218,7 +220,7 @@ class DBManager {
         // Tải bổ sung collections còn thiếu trong IndexedDB
         const missingColls = currentRoleColls.filter((c) => !APP_DATA[c] || Object.keys(APP_DATA[c]).length === 0);
         if (missingColls.length > 0) {
-          log(`📥 IndexedDB thiếu ${missingColls.length} collection(s): ${missingColls.join(', ')} — tải từ Firestore...`);
+          L._(`📥 IndexedDB thiếu ${missingColls.length} collection(s): ${missingColls.join(', ')} — tải từ Firestore...`);
           await this.syncDelta(missingColls, true);
         }
 
@@ -229,7 +231,7 @@ class DBManager {
         this.#applyAllPostSorts(APP_DATA);
         this.#localDB.setMeta('LAST_SYNC_ROLE', currentRole);
 
-        log(`📦 APP_DATA từ IndexedDB (role: ${currentRole})`);
+        L._(`📦 APP_DATA từ IndexedDB (role: ${currentRole})`);
 
         // Smart delta sync: probe bookings → nếu có dữ liệu mới → sync tất cả collections
         // Khi network_saver=true → bỏ qua hoàn toàn (tiết kiệm network tối đa)
@@ -237,7 +239,7 @@ class DBManager {
         if (!networkSaver) {
           this.#smartDeltaSync(currentRoleColls).catch((e) => Opps('⚠️ Smart Delta Sync lỗi:', e));
         } else {
-          log('🌐 Network Saver ON — bỏ qua background sync');
+          L._('🌐 Network Saver ON — bỏ qua background sync');
         }
 
         return APP_DATA;
@@ -248,12 +250,12 @@ class DBManager {
     console.time('loadAllData');
     this.#buildEmptyResult();
 
-    log(`📚 Full load từ Firestore (role=${currentRole}): ${currentRoleColls.join(', ')}`);
+    L._(`📚 Full load từ Firestore (role=${currentRole}): ${currentRoleColls.join(', ')}`);
 
     try {
       await Promise.all([this.loadMeta(APP_DATA), this.syncDelta(currentRoleColls, true)]);
       console.timeEnd('loadAllData');
-      log('📥 APP_DATA sẵn sàng (tải từ Firestore)');
+      L._('📥 APP_DATA sẵn sàng (tải từ Firestore)');
       this.#applyAllPostSorts(APP_DATA);
       await this.#saveAppDataCache(currentRoleColls, forceNew); // await: forceNew cần clear IDB trước khi trả về
       return APP_DATA;
@@ -293,7 +295,7 @@ class DBManager {
             await this.#localDB.clear(coll); // xóa sạch store cũ
             await this.#localDB.putBatch(coll, docList); // ghi mới hoàn toàn
             this.#localDB.markSynced(coll); // đánh dấu TTL
-            log(`🗑️→💾 IDB clear+putBatch [${coll}]: ${docList.length} docs`);
+            L._(`🗑️→💾 IDB clear+putBatch [${coll}]: ${docList.length} docs`);
           } catch (e) {
             console.warn(`⚠️ IndexedDB clear+putBatch [${coll}] thất bại:`, e);
           }
@@ -332,11 +334,11 @@ class DBManager {
     const cutoffMs = Math.max(lastSyncMs, now - windowMs);
     const cutoffDate = new Date(cutoffMs);
 
-    log(`🔔 Notifications listener: query từ ${cutoffDate.toLocaleString()}`);
+    L._(`🔔 Notifications listener: query từ ${cutoffDate.toLocaleString()}`);
     const user = window.CURRENT_USER;
 
     if (!user) {
-      log('⚠️ Notifications listener: không xác định được người dùng', 'warning');
+      L._('⚠️ Notifications listener: không xác định được người dùng', 'warning');
       return;
     }
     const role = window.CURRENT_USER.role;
@@ -354,7 +356,7 @@ class DBManager {
           return batch.commit();
         })
         .then((result) => {
-          if (result !== undefined) log(`🗑️ Đã xóa ${result === undefined ? 0 : 'các'} notifications cũ hơn 3 ngày`, 'info');
+          if (result !== undefined) L._(`🗑️ Đã xóa ${result === undefined ? 0 : 'các'} notifications cũ hơn 3 ngày`, 'info');
         })
         .catch((e) => console.warn('⚠️ Xóa old notifications thất bại:', e));
     }
@@ -429,7 +431,7 @@ class DBManager {
     if (this.#listeners['notifications']) {
       this.#listeners['notifications']();
       delete this.#listeners['notifications'];
-      log('🔕 Notifications listener stopped');
+      L._('🔕 Notifications listener stopped');
     }
   }
 
@@ -478,7 +480,7 @@ class DBManager {
     // ── 2. Áp dụng từng thay đổi ─────────────────────────────────────
     for (const [, change] of deduped) {
       await this.#applyLocalChange(change);
-      log(`🔄 autoSyncData: ${JSON.stringify(change)} áp dụng`);
+      L._(`🔄 autoSyncData: ${JSON.stringify(change)} áp dụng`);
     }
 
     // ── 3. Cập nhật cache + LAST_SYNC ────────────────────────────────
@@ -506,7 +508,7 @@ class DBManager {
       case 'b': // batch
         if (typeof payload === 'string') {
           // payload là batch_id → batch lớn, fetch toàn bộ collection từ server
-          log(`🔄 #applyLocalChange: batch lớn (batch_id=${payload}), reload từ server...`);
+          L._(`🔄 #applyLocalChange: batch lớn (batch_id=${payload}), reload từ server...`);
           await this.loadCollections(coll, { forceNew: true, batchId: payload });
         } else if (Array.isArray(payload)) {
           // payload là array [{id, action, data}] → batch nhỏ, apply inline
@@ -665,7 +667,7 @@ class DBManager {
     const staleColls = this.#localDB.getStalecollections(roleColls);
     if (staleColls.length === 0) return;
 
-    log(`🔄 Background sync: ${staleColls.join(', ')}`);
+    L._(`🔄 Background sync: ${staleColls.join(', ')}`);
 
     // FIX: Thay vì dùng autoSync (chỉ putBatch/merge → docs đã xóa vẫn còn trong IDB)
     // rồi getAllAsObject (full overwrite APP_DATA → khôi phục docs đã xóa),
@@ -693,7 +695,7 @@ class DBManager {
             APP_DATA[coll] = this.sortCollection(coll, APP_DATA[coll]);
           }
 
-          log(`📥 Background sync [${coll}]: +${docs.length} docs`);
+          L._(`📥 Background sync [${coll}]: +${docs.length} docs`);
         }
 
         // Cập nhật TTL kể cả khi không có doc mới (tránh sync liên tục)
@@ -703,7 +705,7 @@ class DBManager {
       }
     }
 
-    log(`✅ Background sync hoàn tất: ${staleColls.join(', ')}`);
+    L._(`✅ Background sync hoàn tất: ${staleColls.join(', ')}`);
   }
 
   /**
@@ -722,7 +724,7 @@ class DBManager {
   async #smartDeltaSync(roleColls) {
     // Smart delta chỉ áp dụng khi role có quyền truy cập bookings
     if (!roleColls.includes('bookings')) {
-      log('🔍 Smart Delta: role không có bookings — fallback backgroundSync');
+      L._('🔍 Smart Delta: role không có bookings — fallback backgroundSync');
       return this.#backgroundSync(roleColls);
     }
 
@@ -731,7 +733,7 @@ class DBManager {
 
     // Chưa bao giờ sync delta → cần sync tất cả collections
     if (!lastSyncDate) {
-      log('🔍 Smart Delta: chưa có LAST_SYNC_DELTA — sync tất cả...');
+      L._('🔍 Smart Delta: chưa có LAST_SYNC_DELTA — sync tất cả...');
       await this.syncDelta(roleColls, false);
       return;
     }
@@ -741,13 +743,13 @@ class DBManager {
       const probeSnap = await this.#db.collection('bookings').where('updated_at', '>', lastSyncDate).limit(1).get();
 
       if (probeSnap.empty) {
-        log('🔍 Smart Delta: bookings không có dữ liệu mới — bỏ qua');
+        L._('🔍 Smart Delta: bookings không có dữ liệu mới — bỏ qua');
         return;
       }
 
       // ── Có dữ liệu mới → sync tất cả collections (bookings + các collection khác) ──
       const otherColls = roleColls.filter((c) => c !== 'bookings');
-      log(`🔍 Smart Delta: phát hiện bookings mới → sync bookings + ${otherColls.length} collection(s) khác`);
+      L._(`🔍 Smart Delta: phát hiện bookings mới → sync bookings + ${otherColls.length} collection(s) khác`);
       await this.syncDelta(roleColls, false);
     } catch (e) {
       console.warn('⚠️ Smart Delta Sync thất bại:', e);
@@ -807,7 +809,7 @@ class DBManager {
     const lastSyncRaw = this.#localDB.getMeta('LAST_SYNC_DELTA');
     const lastSyncDate = deltaSync && lastSyncRaw ? new Date(parseInt(lastSyncRaw)) : null;
 
-    log(`📚 loadCollections (role=${CURRENT_USER?.role ?? '-'}, delta=${deltaSync}, force=${forceNew}): ${collList.join(', ')}`);
+    L._(`📚 loadCollections (role=${CURRENT_USER?.role ?? '-'}, delta=${deltaSync}, force=${forceNew}): ${collList.join(', ')}`);
 
     showLoading(true);
     try {
@@ -849,13 +851,13 @@ class DBManager {
               this.#hydrateCollection(APP_DATA, collName, snap);
               // Client-side post-sort
               APP_DATA[collName] = this.sortCollection(collName, APP_DATA[collName]);
-              log(`✅ [${collName}] full load: ${snap.size} docs`);
+              L._(`✅ [${collName}] full load: ${snap.size} docs`);
             } else {
               // Delta merge — chỉ cập nhật/thêm docs thay đổi
               snap.forEach((doc) => {
                 this._updateAppDataObj(collName, { id: doc.id, ...doc.data() });
               });
-              log(`✅ [${collName}] delta: ${snap.size} docs mới/thay đổi`);
+              L._(`✅ [${collName}] delta: ${snap.size} docs mới/thay đổi`);
             }
             return snap.size;
           } catch (e) {
@@ -872,7 +874,7 @@ class DBManager {
       }
       return total;
     } catch (e) {
-      log('❌ loadCollections thất bại:', e);
+      L._('❌ loadCollections thất bại:', e);
       return 0;
     } finally {
       showLoading(false);
@@ -906,7 +908,7 @@ class DBManager {
       const _indexNames = new Set(DBManager.#INDEX_CONFIG.map((c) => c.index));
       collectionsToSync = collectionsToSync.filter((c) => !_indexNames.has(c));
 
-      log(`🔄 Sync Delta: ${collectionsToSync.length} collection(s) to sync`);
+      L._(`🔄 Sync Delta: ${collectionsToSync.length} collection(s) to sync`);
 
       if (collectionsToSync.length === 0) return 0;
 
@@ -921,7 +923,7 @@ class DBManager {
             // ⚠️ KHÔNG dùng orderBy() — Firestore v8 loại trừ mọi doc thiếu field orderBy
             //    → mất dữ liệu âm thầm. Ordering thực hiện client-side qua sortCollection.
             query = this.#db.collection(colName).limit(limit);
-            log(`[${colName}] Full load (forceFullLoad=${forceFullLoad}): limit=${limit}`);
+            L._(`[${colName}] Full load (forceFullLoad=${forceFullLoad}): limit=${limit}`);
           } else {
             query = this.#db.collection(colName).where('updated_at', '>', lastSyncDate);
           }
@@ -929,7 +931,7 @@ class DBManager {
           const querySnapshot = await query.get();
 
           if (!querySnapshot.empty) {
-            log(`[${colName}] Đang xử lý ${querySnapshot.size} bản ghi.`);
+            L._(`[${colName}] Đang xử lý ${querySnapshot.size} bản ghi.`);
             if (isMissingData || forceFullLoad) {
               // Full reload: reset primary collection + secondary indexes liên quan
               APP_DATA[colName] = {};
@@ -950,7 +952,7 @@ class DBManager {
               });
             }
 
-            log(`[SYNC DELTA][${colName}] Cập nhật APP_DATA với ${querySnapshot.size} bản ghi thay đổi.`);
+            L._(`[SYNC DELTA][${colName}] Cập nhật APP_DATA với ${querySnapshot.size} bản ghi thay đổi.`);
             return querySnapshot.size;
           }
           return 0;
@@ -995,7 +997,7 @@ class DBManager {
       const cachedAppCFgObj = await this.#localDB.getAllAsObject('app_config');
       let parsedUsers = await this.#localDB.getAllAsObject('users');
       let parsedLists = cachedAppCFgObj?.current || null;
-      log(Object.keys(parsedLists));
+      L._(Object.keys(parsedLists));
 
       if (Object.keys(parsedLists) && Object.keys(parsedUsers)) {
         // Kiểm tra kỹ xem cache có mảng dữ liệu của hotels và suppliers chưa
@@ -1019,13 +1021,13 @@ class DBManager {
 
         // Chỉ return nếu TẤT CẢ list đều đầy đủ
         if (missingCollections.length === 0) {
-          log('📦 [loadMeta] Đã load Meta (lists, users, hotels, suppliers) đầy đủ từ cache IndexedDB');
+          L._('📦 [loadMeta] Đã load Meta (lists, users, hotels, suppliers) đầy đủ từ cache IndexedDB');
           return; // Kết thúc hàm an toàn
         } else {
-          log(`⚠️ [loadMeta] Cache hiện tại bị thiếu [${missingCollections.join(', ')}], tiến hành tải phần thiếu từ Firestore...`);
+          L._(`⚠️ [loadMeta] Cache hiện tại bị thiếu [${missingCollections.join(', ')}], tiến hành tải phần thiếu từ Firestore...`);
         }
       } else {
-        log('⚠️ [loadMeta] Cache IndexedDB không tồn tại hoặc rỗng, tiến hành tải toàn bộ từ Firestore...');
+        L._('⚠️ [loadMeta] Cache IndexedDB không tồn tại hoặc rỗng, tiến hành tải toàn bộ từ Firestore...');
         missingCollections.push('app_config', 'users', 'hotels', 'suppliers');
       }
     } catch (e) {
@@ -1037,7 +1039,7 @@ class DBManager {
     // ==========================================
     // BƯỚC 2: TẢI TỪ FIRESTORE (CHỈ NHỮNG PHẦN BỊ THIẾU) VÀ XỬ LÝ DỮ LIỆU
     // ==========================================
-    log(`📥 [loadMeta] Fetch data từ Firestore: ${missingCollections.join(', ')}...`);
+    L._(`📥 [loadMeta] Fetch data từ Firestore: ${missingCollections.join(', ')}...`);
 
     const promises = [];
 
@@ -1053,7 +1055,7 @@ class DBManager {
     if (cfgSnap) {
       if (cfgSnap.exists) {
         const rawCfg = cfgSnap.data();
-        log(`📋 [loadMeta] app_config/current: ${Object.keys(rawCfg).length} keys`);
+        L._(`📋 [loadMeta] app_config/current: ${Object.keys(rawCfg).length} keys`);
         for (const k in rawCfg) {
           try {
             result.lists[k] = typeof rawCfg[k] === 'string' && rawCfg[k].startsWith('[') ? JSON.parse(rawCfg[k]) : rawCfg[k];
@@ -1062,7 +1064,7 @@ class DBManager {
           }
         }
       } else {
-        log('⚠️ [loadMeta] app_config/current không tồn tại — lists sẽ rỗng');
+        L._('⚠️ [loadMeta] app_config/current không tồn tại — lists sẽ rỗng');
       }
     }
 
@@ -1104,7 +1106,7 @@ class DBManager {
       lists.id = 'current'; // Đảm bảo luôn có doc id cho app_config
       this.#localDB.put('app_config', lists);
       this.#saveAppDataCache('users', true); // users lưu riêng, xóa cũ trước khi ghi
-      log(`💾 [loadMeta] Đã lưu cập nhật cache Meta mới (bổ sung: ${missingCollections.join(', ')}) vào IndexedDB thành công`);
+      L._(`💾 [loadMeta] Đã lưu cập nhật cache Meta mới (bổ sung: ${missingCollections.join(', ')}) vào IndexedDB thành công`);
     } catch (e) {
       console.warn('⚠️ [loadMeta] Lỗi khi lưu cache Meta vào IndexedDB:', e);
     }
@@ -1259,92 +1261,163 @@ class DBManager {
    * @param {object|Array} detailRow - booking_detail dạng object hoặc array
    * @param {string} [customerName=''] - Tên khách từ booking header (bookings.customer_full_name)
    * @returns {Promise<{success:boolean, error?:string}>}
-   */
   // ─── Sync Trigger ─────────────────────────────────────────────────────
   /**
    * Đồng bộ 1 booking_detail row sang collection operator_entries.
-   *
-   * Chỉ sync các field có trong booking_details → operator_entries.
-   * Các field operator-only (cost_adult, cost_child, total_cost,
-   * paid_amount, debt_balance, supplier, operator_note) KHÔNG ghi đè
-   * — dùng merge:true để giữ nguyên giá trị đã có.
-   *
-   * @param {object} detailRow - booking_detail bắt buộc dạng Object
-   * @param {string} [customerName=''] - Tên khách từ booking header
-   * @returns {Promise<{success:boolean, error?:string}>}
    */
   async _syncOperatorEntry(detailRow, customerName = '') {
-    // ── 1. GUARD: Bắt buộc là Object chuẩn ────────────────────────────
-    if (!detailRow || typeof detailRow !== 'object' || Array.isArray(detailRow)) {
-      log('[_syncOperatorEntry] ❌ Dữ liệu đầu vào không hợp lệ (Phải là Object)', 'error');
-      detailRow = this.schema.arrayToObject(detailRow);
-      log('[_syncOperatorEntry] 🔄 Đã chuyển đổi Array sang Object:', Object.entries(detailRow));
+    try {
+      // ── 1. GUARD & SELF-HEALING (Tự động phục hồi ID bị mất do nén Array) ──
+      if (!detailRow) {
+        throw new Error('Dữ liệu detailRow bị trống (null/undefined).');
+      }
+
+      let originalArray = null;
+
+      // Nếu đầu vào là Mảng (Do StateProxy nén dữ liệu truyền sang)
+      if (Array.isArray(detailRow)) {
+        originalArray = detailRow; // Lưu lại mảng gốc để dò ID
+        if (typeof this.schema?.arrayToObject !== 'function') {
+          throw new Error('Hệ thống thiếu helper this.schema.arrayToObject để parse Array.');
+        }
+        // Thêm tham số 'booking_details' để map đúng cấu trúc cột
+        detailRow = this.schema.arrayToObject(detailRow, 'booking_details');
+        L._('[_syncOperatorEntry] 🔄 Đã chuyển đổi Array sang Object thành công.', 'info');
+      } else if (typeof detailRow !== 'object') {
+        throw new Error(`Kiểu dữ liệu không hợp lệ: ${typeof detailRow}`);
+      }
+
+      // 🚨 KỸ THUẬT REVERSE LOOKUP (Tìm lại ID đã mất) 🚨
+      // Nếu Object sau khi convert không có ID, ta dò ngược trong APP_DATA để lấy Key
+      if (!detailRow.id && originalArray) {
+        const allDetails = window.APP_DATA?.booking_details || {};
+        for (const [key, matrixRow] of Object.entries(allDetails)) {
+          // So sánh tham chiếu hoặc nội dung để tìm ra chủ nhân của mảng này
+          if (matrixRow === originalArray || JSON.stringify(matrixRow) === JSON.stringify(originalArray)) {
+            detailRow.id = key;
+            L._(`[_syncOperatorEntry] 🔍 Đã cứu thành công ID bị mất: ${key}`, 'info');
+            break;
+          }
+        }
+      }
+
+      // ── 2. EXTRACT FIELDS (Destructuring fallback an toàn) ──────────
+      const { id, booking_id, service_type, hotel_name, service_name, check_in, check_out, nights, quantity, child_qty, surcharge, discount, total, ref_code } = detailRow;
+
+      // ── 3. VALIDATE ID VÀ LẤY TÊN KHÁCH ─────────────────────────────
+      if (!id || String(id).trim() === '' || String(id) === 'undefined') {
+        L._(`[_syncOperatorEntry] ❌ Bỏ qua: ID không hợp lệ`, 'warning');
+        return { success: false, error: 'Invalid ID' };
+      }
+
+      let finalCustName = customerName || '';
+      if (!finalCustName.trim() && booking_id) {
+        finalCustName = window.APP_DATA?.bookings?.[booking_id]?.customer_full_name || '';
+      }
+
+      const safeFormatDate = (dateVal) => {
+        try {
+          return dateVal ? formatDateISO(dateVal) : '';
+        } catch (e) {
+          return dateVal || '';
+        }
+      };
+
+      // ── 4. BUILD syncData (Chỉ đè các field của khối Sales) ──────────
+      const syncData = {
+        id: String(id),
+        booking_id: booking_id || '',
+        customer_full_name: finalCustName,
+        service_type: service_type || '',
+        hotel_name: hotel_name || '',
+        service_name: service_name || '',
+        check_in: safeFormatDate(check_in),
+        check_out: safeFormatDate(check_out),
+        nights: Number(nights) || 0,
+        adults: Number(quantity) || 0,
+        children: Number(child_qty) || 0,
+        surcharge: Number(surcharge) || 0,
+        discount: Number(discount) || 0,
+        total_sale: Number(total) || 0,
+        ref_code: ref_code || '',
+        updated_at: firebase.firestore.FieldValue.serverTimestamp(),
+      };
+
+      // ── 5. GHI FIRESTORE (merge:true) VÀ ĐỒNG BỘ CACHE LOCAL ────────
+      const res = await this.#firestoreCRUD('operator_entries', 'set', syncData.id, syncData, { merge: true });
+
+      if (res.success) {
+        if (typeof this._updateAppDataObj === 'function') {
+          this._updateAppDataObj('operator_entries', syncData);
+        }
+        L._(`[_syncOperatorEntry] ✅ Đã đồng bộ ID: ${syncData.id}`, 'success');
+      } else {
+        throw new Error(res.error || 'Lỗi không xác định từ FirestoreCRUD');
+      }
+
+      return res;
+    } catch (error) {
+      L._(`[_syncOperatorEntry] ❌ Lỗi ngoại lệ: ${error.message}`, 'error');
+      return { success: false, error: error.message };
     }
+  }
 
-    // ── 2. EXTRACT FIELDS (Destructuring cực nhanh và sạch) ───────────
-    const {
-      id,
-      booking_id,
-      service_type,
-      hotel_name,
-      service_name,
-      check_in,
-      check_out,
-      nights,
-      quantity, // booking_details.quantity -> operator.adults
-      child_qty, // booking_details.child_qty -> operator.children
-      surcharge,
-      discount,
-      total, // booking_details.total -> operator.total_sale
-      ref_code,
-    } = detailRow;
+  /**
+   * Đồng bộ toàn bộ booking_details của một hoặc nhiều booking_id sang operator_entries.
+   * Dùng Promise.allSettled để đảm bảo 1 detail lỗi KHÔNG làm chết tiến trình đồng bộ các detail khác.
+   *
+   * @param {string|string[]} bookingIds - ID của booking hoặc mảng các ID booking
+   * @returns {Promise<{success:boolean, totalProcessed: number, totalSuccess: number}>}
+   */
+  async syncOperatorEntriesByBookingId(bookingIds) {
+    try {
+      // 1. Chuẩn hóa đầu vào (Biến đơn thành Mảng) - Quy tắc "Clean Input"
+      const ids = Array.isArray(bookingIds) ? bookingIds : [bookingIds];
+      const validIds = ids.filter((id) => id && String(id).trim() !== '');
 
-    // ── 3. VALIDATE ID VÀ LẤY TÊN KHÁCH ───────────────────────────────
-    if (!id || String(id).trim() === '' || String(id) === 'undefined') {
-      log(`[_syncOperatorEntry] ❌ Bỏ qua: id không hợp lệ (${id})`, 'warning');
-      return { success: false, error: 'Invalid id' };
+      if (validIds.length === 0) {
+        L._('[syncOperatorEntriesByBookingId] ⚠️ Không có booking_id hợp lệ để đồng bộ.', 'warning');
+        return { success: false, totalProcessed: 0, totalSuccess: 0 };
+      }
+
+      L._(`[syncOperatorEntriesByBookingId] 🔄 Đang lọc details cho ${validIds.length} booking...`, 'info');
+
+      // 2. Tra cứu siêu tốc toàn bộ details thuộc booking từ APP_DATA (In-Memory Lookup)
+      const allDetails = window.APP_DATA?.booking_details || {};
+      const detailsToSync = Object.values(allDetails).filter((detail) => detail && detail.booking_id && validIds.includes(detail.booking_id));
+
+      if (detailsToSync.length === 0) {
+        L._(`[syncOperatorEntriesByBookingId] ⚠️ Không tìm thấy booking_details nào khớp.`, 'warning');
+        return { success: true, totalProcessed: 0, totalSuccess: 0 };
+      }
+
+      // 3. Xử lý song song (Parallel execution) để tối đa hiệu năng
+      // Tại sao dùng allSettled? Nếu có 10 detail, 1 cái thiếu ID bị lỗi, 9 cái kia vẫn được Firestore ghi nhận thành công.
+      const syncPromises = detailsToSync.map((detail) => this._syncOperatorEntry(detail));
+      const results = await Promise.allSettled(syncPromises);
+
+      // 4. Thống kê kết quả để báo cáo
+      let successCount = 0;
+      results.forEach((res) => {
+        if (res.status === 'fulfilled' && res.value && res.value.success) {
+          successCount++;
+        }
+      });
+
+      const isAllSuccess = successCount === detailsToSync.length;
+      const logMode = isAllSuccess ? 'success' : 'warning';
+
+      L._(`[syncOperatorEntriesByBookingId] Hoàn tất. Thành công: ${successCount}/${detailsToSync.length}`, logMode);
+
+      return {
+        success: isAllSuccess,
+        totalProcessed: detailsToSync.length,
+        totalSuccess: successCount,
+      };
+    } catch (error) {
+      L._(`[syncOperatorEntriesByBookingId] ❌ Lỗi Fatal: ${error.message}`, 'error');
+      return { success: false, error: error.message, totalProcessed: 0, totalSuccess: 0 };
     }
-
-    let finalCustName = customerName;
-    if (!finalCustName || String(finalCustName).trim() === '') {
-      // Lookup siêu tốc qua Object Cache
-      finalCustName = window.APP_DATA?.bookings?.[booking_id]?.customer_full_name || '';
-    }
-
-    // ── 4. BUILD syncData (Chỉ đè các field của Sale) ─────────────────
-    const syncData = {
-      id: String(id),
-      booking_id: booking_id || '',
-      customer_full_name: finalCustName,
-      service_type: service_type || '',
-      hotel_name: hotel_name || '',
-      service_name: service_name || '',
-      check_in: check_in ? formatDateISO(check_in) : '',
-      check_out: check_out ? formatDateISO(check_out) : '',
-      nights: Number(nights) || 0,
-      adults: Number(quantity) || 0, // Ánh xạ sang adults
-      children: Number(child_qty) || 0, // Ánh xạ sang children
-      surcharge: Number(surcharge) || 0,
-      discount: Number(discount) || 0,
-      total_sale: Number(total) || 0, // Ánh xạ sang total_sale
-      ref_code: ref_code || '',
-      updated_at: firebase.firestore.FieldValue.serverTimestamp(),
-    };
-
-    // ── 5. GHI FIRESTORE (merge:true) VÀ ĐỒNG BỘ CACHE LOCAL ──────────
-    const res = await this.#firestoreCRUD('operator_entries', 'set', syncData.id, syncData, {
-      merge: true,
-    });
-
-    if (res.success) {
-      // Cập nhật ngầm vào Cache để UI render ngay lập tức không cần tải lại
-      this._updateAppDataObj('operator_entries', syncData);
-      log(`[_syncOperatorEntry] ✅ Đồng bộ thành công dòng: ${syncData.id}`, 'success');
-    } else {
-      log(`[_syncOperatorEntry] ❌ Firestore lỗi: ${res.error}`, 'error');
-    }
-
-    return res;
   }
 
   // ─── CHỐT CHẶN CRUD ──────────────────────────────────────────────────
@@ -1390,7 +1463,7 @@ class DBManager {
     // ── Logging / Audit hook ────────────────────────────────────────────
     const actor = window.CURRENT_USER?.name ?? 'system';
     const target = id ? `${collection}/${id}` : collection;
-    log(`[CRUD] ${actor} | ${action.toUpperCase()} | ${target}`);
+    L._(`[CRUD] ${actor} | ${action.toUpperCase()} | ${target}`);
 
     // ── Ghi nhận dữ liệu trước khi thay đổi (cho delete/update) ────────
     const originalData = id ? (APP_DATA?.[collection]?.[id] ?? null) : null;
@@ -1780,7 +1853,7 @@ class DBManager {
     if (typeof dataArray === 'object' && !Array.isArray(dataArray)) {
       dataObj = { ...dataArray }; // Shallow copy để không làm bẩn object gốc trên UI
     } else {
-      log(`Converting array to object for ${collectionName} saving...`);
+      L._(`Converting array to object for ${collectionName} saving...`);
       dataObj = this.#schema.arrayToObject(dataArray, collectionName);
     }
 
@@ -1830,7 +1903,7 @@ class DBManager {
 
       // 5. Hệ thống Notification
       if (collectionName === 'booking_details') {
-        await this._syncOperatorEntry(dataArray);
+        await this._syncOperatorEntry(dataObj);
         if (!isNew) {
           A.NotificationManager.sendToOperator(`Booking Detail ${dataObj.id} cập nhật!`, `Khách: ${dataObj.customer_full_name || 'Unknown'} cập nhật DV ${dataObj.service_name || 'Unknown'}`);
         }
@@ -1860,7 +1933,7 @@ class DBManager {
     const bkRef = this.#db.collection('bookings').doc(String(bkId));
     const bkSnap = await bkRef.get();
     if (bkSnap.exists) customerName = bkSnap.data().customer_full_name || 'null';
-    else log('Booking not found ' + bkId);
+    else L._('Booking not found ' + bkId);
 
     // ── 1. Pre-generate IDs (1 read + 1 write per unique prefix) ─────📦 Saved chunk
     // Gom tất cả rows thiếu ID, sinh hàng loạt thay vì từng cái một.
@@ -1896,7 +1969,7 @@ class DBManager {
           else row.id = ids[i];
         });
       }
-      console.log(`🆔 Pre-generated ${rowsNeedingId.length} IDs for ${collectionName}`);
+      L._(`🆔 Pre-generated ${rowsNeedingId.length} IDs for ${collectionName}`);
     }
 
     // ── 2. Batch save (chunks of 450) ────────────────────────────────
@@ -1924,7 +1997,7 @@ class DBManager {
       try {
         await batch.commit();
         totalSuccess += chunk.length;
-        console.log(`📦 Saved chunk: ${chunk.length} items to ${collectionName}`);
+        L._(`📦 Saved chunk: ${chunk.length} items to ${collectionName}`);
         chunk.forEach((row) => {
           const dataObj = typeof row === 'object' && !Array.isArray(row) ? row : this.#schema.arrayToObject(row, collectionName);
           this._updateAppDataObj(collectionName, dataObj);
@@ -2034,7 +2107,7 @@ class DBManager {
       const res = await this.#firestoreCRUD(collectionName, 'set', id, objData);
       if (!res.success) throw new Error(res.error);
       this._updateAppDataObj(collectionName, objData);
-      console.log(`✅ Updated ${collectionName}/${id}`);
+      L._(`✅ Updated ${collectionName}/${id}`);
       return { success: true, message: 'Updated successfully' };
     } catch (e) {
       console.error('❌ updateDocument Error:', e);
@@ -2044,7 +2117,7 @@ class DBManager {
 
   batchUpdateFieldData = async (collectionName, fieldName, oldValue, newValue, ids = null, forceNew = false) => {
     console.time('⏱ Thời gian cập nhật');
-    console.log(`🚀 Bắt đầu cập nhật ${collectionName}.${fieldName}: "${oldValue}" → "${newValue}"`);
+    L._(`🚀 Bắt đầu cập nhật ${collectionName}.${fieldName}: "${oldValue}" → "${newValue}"`);
 
     try {
       if (!collectionName || !fieldName) throw new Error('❌ Lỗi: collectionName và fieldName không được để trống');
@@ -2052,7 +2125,7 @@ class DBManager {
       if (!this.#db) throw new Error('❌ Firestore DB chưa khởi tạo');
 
       const collSnap = await this.#db.collection(collectionName).get();
-      console.log(`📦 Tìm thấy ${collSnap.size} documents.`);
+      L._(`📦 Tìm thấy ${collSnap.size} documents.`);
 
       const batchItems = [];
       let totalUpdated = 0;
@@ -2076,7 +2149,7 @@ class DBManager {
           };
           batchItems.push({ docId: doc.id, docData: updateObj, op: 'update' });
           totalUpdated++;
-          console.log(`✅ [${totalUpdated}] ${doc.id}: ${fieldName} = "${newValue}"`);
+          L._(`✅ [${totalUpdated}] ${doc.id}: ${fieldName} = "${newValue}"`);
           this._updateAppDataObj(collectionName, { id: doc.id, ...data, ...updateObj });
         } else {
           if (!idsSet) totalSkipped++;
@@ -2096,7 +2169,7 @@ class DBManager {
         skipped: totalSkipped,
         message: idsSet ? `✅ Hoàn tất! Cập nhật ${totalUpdated}/${ids.length} documents trong danh sách` : `✅ Hoàn tất! Cập nhật ${totalUpdated} documents, bỏ qua ${totalSkipped}`,
       };
-      console.log(`🎉 ${result.message}`);
+      L._(`🎉 ${result.message}`);
       return result;
     } catch (error) {
       console.error(`❌ Lỗi: ${error.message}`);
@@ -2113,7 +2186,7 @@ class DBManager {
       console.error('❌ DB chưa init');
       return null;
     }
-    console.log(`🔍 Query on ${collectionName}: ${fieldName} ${operator} ${value}`);
+    L._(`🔍 Query on ${collectionName}: ${fieldName} ${operator} ${value}`);
     try {
       let query = this.#db.collection(collectionName).where(fieldName, operator, value);
       if (fieldOrder) query = query.orderBy(fieldOrder, 'desc');
@@ -2122,7 +2195,7 @@ class DBManager {
       const querySnap = await query.get();
       const results = [];
       querySnap.forEach((doc) => results.push(doc.data()));
-      console.log(`✅ Query returned ${results.length} items from ${collectionName}`);
+      L._(`✅ Query returned ${results.length} items from ${collectionName}`);
       return results;
     } catch (e) {
       console.error(`❌ Error running query on ${collectionName}:`, e);
@@ -2204,7 +2277,7 @@ class DBManager {
         await this._updateCounter(collectionName, lastNo);
       }
 
-      console.log(`🆔 [Batch] ${count} IDs for ${collectionName}: ${ids[0]} → ${ids[ids.length - 1]}`);
+      L._(`🆔 [Batch] ${count} IDs for ${collectionName}: ${ids[0]} → ${ids[ids.length - 1]}`);
       return ids;
     } catch (e) {
       console.error(`❌ Error in generateIdsBatch for ${collectionName}:`, e);
@@ -2274,10 +2347,10 @@ class DBManager {
 
       if (useRandomId) {
         newId = `${prefix}${Math.random().toString(36).slice(2, 8).toUpperCase()}`.trim();
-        console.log(`🆔 TẠO RANDOM ID cho ${collectionName}: ${newId}`);
+        L._(`🆔 TẠO RANDOM ID cho ${collectionName}: ${newId}`);
       } else {
         newId = `${prefix}${newNo}`.trim();
-        console.log(`🆔 TẠO TỰ ĐỘNG ID cho ${collectionName}: ${newId} (Từ số: ${lastNo} -> ${newNo})`);
+        L._(`🆔 TẠO TỰ ĐỘNG ID cho ${collectionName}: ${newId} (Từ số: ${lastNo} -> ${newNo})`);
       }
 
       return { newId, newNo };
@@ -2364,7 +2437,7 @@ class DBManager {
    */
   resetOptions = () => {
     this.stopNotificationsListener();
-    console.log('🔄 DB options đã reset');
+    L._('🔄 DB options đã reset');
   };
 
   async handleDeleteBooking(bookingId) {

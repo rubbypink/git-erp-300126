@@ -98,7 +98,7 @@ class NotificationModule {
     };
 
     this.notifications.unshift(newNotify);
-    console.log(`🔔 Notify Queued: ${newNotify.title}`);
+    L._(`🔔 Notify Queued: ${newNotify.title}`);
     return true;
   }
 
@@ -154,8 +154,8 @@ class NotificationModule {
 
   _log(msg, type = 'info') {
     const prefix = '[NotificationModule] ';
-    if (typeof log === 'function') log(prefix + msg, type);
-    else console.log(prefix + msg);
+    if (typeof log === 'function') L._(prefix + msg, type);
+    else L._(prefix + msg);
   }
 
   /**
@@ -179,7 +179,7 @@ class NotificationModule {
       await A.DB.saveRecord('notifications', { ...newDoc, id: notifId });
       return notifId;
     } catch (e) {
-      log(`❌ Gửi thông báo thất bại: ${e.message}`, 'error');
+      L._(`❌ Gửi thông báo thất bại: ${e.message}`, 'error');
       return null;
     }
   }

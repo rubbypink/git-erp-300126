@@ -13,6 +13,7 @@ import ShortKey from './modules/M_ShortKey.js';
 import ContextMenu from './modules/M_ContextMenu.js';
 import './modules/M_AutoMobileEvents.js'; // Self-initializing: tap→click, double-tap→dblclick, long-press→contextmenu
 import { HotelPriceController } from './modules/M_HotelPrice.js';
+import { SupplierPayment } from './modules/OperatorController.js';
 
 // Expose globally so legacy scripts (logic_operator, api_operator, etc.) can access it
 window.StateProxy = StateProxy;
@@ -44,7 +45,7 @@ class Application {
     tables: {},
     path: {},
     consts: {
-      COLLECTIONS: ['bookings', 'booking_details', 'booking_details_by_booking', 'customers', 'operator_entries', 'operator_entries_by_booking', 'transactions', 'suppliers', 'hotels', 'hotel_price_schedules', 'service_price_schedules', 'fund_accounts', 'transactions_thenice', 'fund_accounts_thenice', 'users', 'app_config', 'notifications'],
+      COLLECTIONS: ['bookings', 'booking_details', 'customers', 'operator_entries', 'transactions', 'suppliers', 'hotels', 'hotel_price_schedules', 'service_price_schedules', 'fund_accounts', 'transactions_thenice', 'fund_accounts_thenice', 'users', 'app_config', 'notifications'],
       date_format: 'dd/mm/yyyy',
       DB_DATE_FMT: 'YYYY-MM-DD',
       CURRENCY: 'VND',
@@ -221,12 +222,12 @@ class Application {
             document.querySelectorAll('.modal-backdrop').forEach((b) => b.remove());
           }
         }
-        if (opts.header) {
-          this.header = opts.header === true; // Cập nhật flag header để DraggableSetup biết handle mới
+        if (opts.header !== undefined) {
+          this.header = opts.header === false ? false : true; // Cập nhật flag header để DraggableSetup biết handle mới
           const headerEl = el.querySelector('.modal-header');
-          if (headerEl) setClass(headerEl, opts.header === true ? 'd-block' : 'd-none');
+          if (headerEl) setClass(headerEl, opts.header === false ? 'd-none' : 'd-block');
         }
-        if (opts.footer) {
+        if (opts.footer !== undefined) {
           this.setFooter(opts.footer);
         }
         if (opts.size) {
@@ -833,7 +834,7 @@ class Application {
 
   setConfig(updates) {
     if (this.#state.user && this.#state.user.role !== 'admin' && !this.#config.saveLoad) {
-      log('Only admin can update config');
+      L._('Only admin can update config');
       return;
     }
 
@@ -902,7 +903,7 @@ class Application {
   async saveAppConfig() {
     try {
       if (this.#state.user && this.#state.user.role !== 'admin') {
-        log('⛔ Chỉ Admin mới có quyền lưu cài đặt', 'error');
+        L._('⛔ Chỉ Admin mới có quyền lưu cài đặt', 'error');
         return;
       }
 
@@ -925,7 +926,7 @@ class Application {
       return true;
     } catch (error) {
       console.error('[App.saveAppConfig] ❌ Lỗi:', error);
-      log('❌ Lỗi lưu cài đặt: ' + error.message, 'error');
+      L._('❌ Lỗi lưu cài đặt: ' + error.message, 'error');
       return false;
     }
   }
@@ -1158,7 +1159,7 @@ class Application {
         showLoading(false);
 
         this.#state.isReady = true;
-        log('✅ App ready', 'success');
+        L._('✅ App ready', 'success');
         window.dispatchEvent(new CustomEvent('app-ready'));
         // Chạy tất cả tác vụ background — KHÔNG block UI
         this.#runPostBoot(user, moduleManager);
@@ -1310,7 +1311,7 @@ class MODULELOADER {
       HotelPriceController: () => import('./modules/M_HotelPrice.js').then((m) => m.HotelPriceController),
       ServicePriceController: () => import('./modules/M_ServicePrice.js').then((m) => m.default),
       PriceManager: () => import('./modules/M_PriceManager.js').then((m) => m.default),
-      AdminConsole: () => import('./modules/AdminController.js').then((m) => m.AdminConsole),
+      AdminConsole: () => import('./modules/AdminController.js').then((m) => m.default),
       ReportModule: () => import('./modules/ReportModule.js').then((m) => m.default),
       ThemeManager: () => import('./modules/ThemeManager.js').then((m) => m.default),
       ShortKey: () => import('./modules/M_ShortKey.js').then((m) => m.default),
@@ -1385,7 +1386,7 @@ class MODULELOADER {
       const moduleImport = await this.registry[moduleKey]();
       this.loaded[moduleKey] = moduleImport;
       this.#appInstance.addModule(moduleKey, moduleImport, initialized);
-      // log(`[ModuleManager] ✅ Loaded module: ${moduleKey}`, 'success');
+      // L._(`[ModuleManager] ✅ Loaded module: ${moduleKey}`, 'success');
       return moduleImport;
     } catch (error) {
       console.error(`[ModuleManager] ❌ Lỗi khi tải ${moduleKey}:`, error);

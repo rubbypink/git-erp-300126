@@ -278,7 +278,7 @@ export default class ErpFooterMenu {
                 pointer-events: none;
             }
             .erp-footer-desktop { 
-                display: flex; gap: 0.5rem; align-items: center; width: 100%; justify-content: flex-end;
+                display: flex; gap: 0.5rem; align-items: center; flex-grow: 1; justify-content: flex-end;
                 pointer-events: none; background-color: ${this.config.bgColor};
             }
             .erp-footer-mobile { 
@@ -409,7 +409,16 @@ export default class ErpFooterMenu {
     }
     container.className = 'erp-footer-wrapper bg-transparent';
     container.innerHTML = `
-            <div id="erp-f-desktop-container" class="erp-footer-desktop"></div>
+              <div class="erp-footer-search d-none d-lg-block me-auto">
+                <div class="input-group input-group-sm flex-center gap-0 bg-white rounded overflow-hidden shadow-sm border" style="border-color: var(--bs-border-color) !important;">
+                    <input type="text" id="booking-search" class="form-control border-0" placeholder="Tìm Booking..." style="box-shadow: none; width: 180px;">
+                    <button class="btn btn-light text-primary border-0" type="button" onclick="if(typeof handleBookingSearch === 'function') handleBookingSearch()">
+                        <i class="fa-solid fa-search"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="erp-f-desktop-container" class="erp-footer-desktop">
+            </div>
             <div class="erp-footer-mobile">
                 <button id="erp-f-mobile-trigger" class="btn btn-secondary d-flex align-items-center gap-2">
                     <i class="fas fa-bars"></i> Thao tác
@@ -643,6 +652,16 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
           await A.ServicePriceController.init('dynamic-modal-full-body');
           modal.show();
         },
+      },
+      {
+        id: 'btn-supplier-payment',
+        label: 'Quản lý Công Nợ NCC',
+        iconClass: 'fa-solid fa-money-bill',
+        btnClass: 'btn-primary op-only',
+        callback: async () => {
+          await SupplierPayment.openFilterDialog();
+        },
+        attributes: { 'data-ontabs': '2' },
       },
       // -- COMMON (Nút dùng chung, không giới hạn quyền) --
       {

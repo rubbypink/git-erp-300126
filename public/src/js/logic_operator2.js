@@ -24,7 +24,7 @@ window.loadBookingToUI = function (bkData, detailsData) {
   }
 
   try {
-    log('Loading Booking...:', bkData.id);
+    L._('Loading Booking...:', bkData.id);
 
     // 1. Tự động lấy Nguồn Khách qua HD.find siêu nhanh
     let custSource = '';
@@ -78,7 +78,7 @@ window.loadBookingToUI = function (bkData, detailsData) {
     const tabTrigger = $('#mainTabs button[data-bs-target="#tab-form"]');
     if (tabTrigger) bootstrap.Tab.getOrCreateInstance(tabTrigger).show();
   } catch (e) {
-    log('ERROR in loadBookingToUI: ' + e.message, 'error');
+    L._('ERROR in loadBookingToUI: ' + e.message, 'error');
   } finally {
     if (window.StateProxy) StateProxy.resumeAutoBinding();
   }
@@ -153,7 +153,7 @@ function findCustByPhone() {
  * Lọc dữ liệu Operator Entries theo nhóm và khoảng thời gian (Batch Edit)
  */
 function handleAggClick(key, filterType) {
-  log(`📂 Mở Batch Edit: [${filterType}] ${key}`);
+  L._(`📂 Mở Batch Edit: [${filterType}] ${key}`);
 
   // Chuyển ngày từ bộ lọc UI sang timestamp để so sánh nhanh
   const dFrom = new Date(getVal('dash-filter-from')).getTime();
@@ -171,7 +171,7 @@ function handleAggClick(key, filterType) {
 
     // 2. Kiểm tra khớp Key (Xử lý fallback logic cũ)
     if (filterType === 'supplier') {
-      const supplier = row.supplier || '(No supplier)';
+      const supplier = row.supplier || '(Chưa có NCC)';
       return String(supplier) === String(key);
     } else if (filterType === 'type') {
       const type = row.service_type || 'Other';
@@ -473,7 +473,7 @@ async function saveForm() {
     logA('Lưu dữ liệu Điều hành thành công!', 'success');
   } catch (e) {
     if (window.StateProxy) StateProxy.rollbackSession();
-    logA('Lỗi lưu dữ liệu: ' + e.message, 'error');
+    Opps('Lỗi lưu dữ liệu: ' + e.message);
   } finally {
     setBtnLoading('btn-save-form', false);
   }
@@ -483,7 +483,7 @@ async function saveForm() {
  * 2. Gửi dữ liệu về Server (Full Row)
  */
 async function saveBatchDetails() {
-  log('run saveBatchDetails');
+  L._('run saveBatchDetails');
   setBtnLoading('btn-save-batch', true);
 
   const data = await HD.getTableData('tbl-booking-form');
@@ -527,79 +527,105 @@ async function syncRow(sourceRow = null) {
     setBtnLoading('btn-sync-row', false);
   }
 }
-/**
- * Tự động đồng bộ tiền đã thanh toán (paid_amount) thành Transaction (Phiếu Chi/Thu)
- * Xử lý bù trừ (Difference) giữa tổng tiền đã chi và giá trị vừa cập nhật.
- * * @param {number} idx - Index của dòng (tr) đang thao tác
- */
 async function syncTransactionForPaidAmount(idx) {
   try {
     const tr = getE(`row-${idx}`);
     if (!tr) return;
 
-    // 1. Lấy mã ID của dịch vụ hiện tại (Operator Entry ID)
+    // 1. Phân tích dữ liệu từ UI
     const detailId = getVal('[data-field="id"]', tr);
     if (!detailId) {
-      logA('⚠️ Cảnh báo: Dịch vụ này chưa được lưu vào hệ thống. Vui lòng Bấm Lưu trước khi nhập số tiền đã thanh toán!', 'warning');
-      // Reset lại UI về 0 để tránh user hiểu lầm là đã thanh toán
+      logA('⚠️ Cảnh báo: Dịch vụ này chưa được lưu. Vui lòng Bấm Lưu trước!', 'warning');
       setVal('[data-field="paid_amount"]', 0, tr);
-      calcRow(idx);
+      if (typeof calcRow === 'function') calcRow(idx);
       return;
     }
 
-    // Lấy số tiền user vừa nhập (đã parse ra số thực)
     const currentPaidAmount = getVal('[data-field="paid_amount"]', tr);
     const currentType = getVal('[data-field="service_type"]', tr);
     const supplier = getVal('[data-field="supplier"]', tr);
 
-    // 2. Trích xuất các giao dịch loại OUT thuộc về detailId này từ local cache
+    // 2. Tính toán chênh lệch
     const allTransactions = window.APP_DATA?.transactions || {};
     const existingOutTxs = Object.values(allTransactions).filter((tx) => tx && tx.booking_id === detailId && tx.type === 'OUT');
-
-    // 3. Tính tổng tiền đã chi trước đó
     const totalExistingPaid = existingOutTxs.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+    const diffAmount = currentPaidAmount * 1000 - totalExistingPaid;
 
-    // 4. Tính toán độ chênh lệch
-    const diffAmount = (currentPaidAmount - totalExistingPaid) * 1000;
+    if (diffAmount === 0) return;
 
-    // Nếu không có chênh lệch -> Không làm gì cả
-    if (diffAmount === 0) {
-      log(`[Row ${idx}] Không có chênh lệch thanh toán (Diff = 0). Bỏ qua.`);
-      return;
-    }
+    // 3. Popup chọn Tài khoản nguồn (Fund Account)
+    const fundAccounts = window.APP_DATA?.fund_accounts || {};
+    const accountOptions = {};
+    Object.values(fundAccounts).forEach((acc) => {
+      accountOptions[acc.id] = `${acc.name} (Số dư: ${formatMoney(acc.balance || 0)})`;
+    });
 
-    // 5. Chuẩn bị Object Transaction mới
-    // Khởi tạo ID mới từ Firestore
+    const { value: selectedFundId } = await Swal.fire({
+      title: 'Chọn tài khoản thanh toán',
+      input: 'select',
+      inputOptions: accountOptions,
+      inputPlaceholder: '--- Chọn nguồn tiền ---',
+      showCancelButton: true,
+      confirmButtonText: 'Xác nhận',
+      inputValidator: (value) => !value && 'Bạn cần chọn một tài khoản!',
+    });
+
+    if (!selectedFundId) return;
+
+    // 4. Thực thi Firestore Transaction (Đảm bảo an toàn Server-side)
     const newTxRef = A.DB.db.collection('transactions').doc();
+    const fundRef = A.DB.db.collection('fund_accounts').doc(selectedFundId);
 
-    const newTransaction = {
-      id: newTxRef.id,
-      booking_id: detailId, // Link trực tiếp tới ID của detail theo yêu cầu
-      transaction_date: new Date().toISOString().split('T')[0], // Ngày giao dịch là ngày hiện tại
-      type: 'OUT',
-      category: currentType || 'Khác',
-      receiver: supplier || 'Không xác định',
-      fund_source: 'cash', // Nguồn quỹ mặc định là Điều hành
-      amount: diffAmount, // Có thể âm nếu điều chỉnh giảm
-      updated_at: new Date().toISOString(),
-      status: 'Completed',
-      description: diffAmount > 0 ? `Thanh toán tự động từ Điều hành: Bổ sung ${formatMoney(diffAmount)}` : `Điều chỉnh tự động từ Điều hành: Giảm trừ ${formatMoney(Math.abs(diffAmount))}`,
-      created_by: window.currentUser?.email || 'System',
-    };
+    const result = await A.DB.db.runTransaction(async (transaction) => {
+      const fundDoc = await transaction.get(fundRef);
+      if (!fundDoc.exists) throw new Error('Tài khoản không tồn tại trên hệ thống!');
 
-    // 6. Thực thi lưu trữ lên Firestore
-    // Đặt trạng thái loading ở nút nào đó nếu cần, ở đây dùng logA báo hiệu
-    await newTxRef.set(newTransaction);
+      const currentBalance = fundDoc.data().balance || 0;
+      const newBalance = currentBalance - diffAmount;
 
-    // 7. Cập nhật ngay vào APP_DATA local để đồng bộ State
-    if (!window.APP_DATA.transactions) {
-      window.APP_DATA.transactions = {};
+      const newTransaction = {
+        id: newTxRef.id,
+        booking_id: detailId,
+        transaction_date: new Date().toISOString().split('T')[0],
+        type: 'OUT',
+        category: currentType || 'Khác',
+        receiver: supplier || 'Không xác định',
+        fund_source: selectedFundId,
+        amount: diffAmount,
+        updated_at: new Date().toISOString(),
+        status: 'Completed',
+        description: diffAmount > 0 ? `Chi tự động từ Điều hành: ${formatMoney(diffAmount)}` : `Điều chỉnh giảm chi: ${formatMoney(Math.abs(diffAmount))}`,
+        created_by: window.currentUser?.email || 'System',
+      };
+
+      transaction.set(newTxRef, newTransaction);
+      transaction.update(fundRef, { balance: newBalance });
+
+      return { newTransaction, newBalance };
+    });
+
+    // 5. Cập nhật Local State & IndexedDB qua hàm hệ thống
+    if (result) {
+      const { newTransaction, newBalance } = result;
+
+      // Cập nhật Giao dịch mới
+      A.DB._updateAppDataObj('transactions', newTransaction);
+
+      // Cập nhật Số dư tài khoản mới
+      const updatedFundAccount = {
+        ...window.APP_DATA.fund_accounts[selectedFundId],
+        balance: newBalance,
+      };
+      A.DB._updateAppDataObj('fund_accounts', updatedFundAccount);
+
+      logA(`✅ Đã cập nhật dòng tiền. Số dư mới: ${formatMoney(newBalance)}`, 'success');
+
+      if (A.NotificationManager) {
+        A.NotificationManager.sendToAdmin('Thanh toán tự động', `Tài khoản ${fundAccounts[selectedFundId].name} vừa thay đổi ${formatMoney(diffAmount)}`);
+      }
     }
-    window.APP_DATA.transactions[newTransaction.id] = newTransaction;
-
-    A.NotificationManager.sendToAdmin('Phiếu Chi Mới!', `✅ Đã tự động tạo phiếu loại OUT với giá trị: ${formatMoney(diffAmount)}`);
   } catch (error) {
-    logA('❌ Lỗi hệ thống khi tạo Transaction: ' + error.message, 'error');
+    Opps('❌ Lỗi xử lý tài chính: ' + error.message);
     console.error('[syncTransactionForPaidAmount] Error:', error);
   }
 }

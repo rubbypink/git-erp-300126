@@ -14,7 +14,7 @@
  * - Safe function wrappers (async/sync)
  * - Safe DOM operations
  * - Safe API calls
- * - Centralized error logging
+ * - Centralized error Ling
  * - Error recovery patterns
  *
  * Load Order: EARLY (after utils.js and before main.js)
@@ -26,7 +26,7 @@
  * =========================================================================
  */
 const ERROR_CONFIG = {
-  ENABLE_LOGGING: true,
+  ENABLE_LING: true,
   LOG_TO_STORAGE: true,
   get MAX_STORED_ERRORS() {
     return window.A?.getConfig?.('max_stored_errors') ?? 100;
@@ -36,113 +36,6 @@ const ERROR_CONFIG = {
   CONTEXTS: {}, // Track error contexts {functionName: count}
 };
 
-/**
- * =========================================================================
- * 2. ERROR LOGGER - Centralized Error Logging
- * =========================================================================
- */
-const ErrorLogger = {
-  stack: [],
-
-  /**
-   * Log error with context and metadata
-   * @param {Error|string} error - Error object or message
-   * @param {string} context - Where error occurred (function/module name)
-   * @param {object} meta - Additional metadata {severity, data}
-   */
-  log: function (error, context = 'UNKNOWN', meta = {}) {
-    if (!ERROR_CONFIG.ENABLE_LOGGING) return;
-
-    const errorEntry = {
-      id: `err_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: new Date().toISOString(),
-      context: context,
-      message: error?.message || String(error),
-      stack: error?.stack || 'No stack trace',
-      severity: meta.severity || 'error',
-      data: meta.data || null,
-      userAgent: navigator.userAgent,
-    };
-
-    // Add to memory stack
-    this.stack.push(errorEntry);
-    if (this.stack.length > ERROR_CONFIG.MAX_STORED_ERRORS) {
-      this.stack.shift();
-    }
-
-    // Count errors by context
-    ERROR_CONFIG.CONTEXTS[context] = (ERROR_CONFIG.CONTEXTS[context] || 0) + 1;
-
-    // Log to storage
-    if (ERROR_CONFIG.LOG_TO_STORAGE) {
-      this._saveToStorage(errorEntry);
-    }
-
-    // Log to console (DEV only)
-    if (typeof log === 'function') {
-      log(`[${context}] ${errorEntry.message}`, errorEntry.severity);
-    } else {
-      console.error(`[${context}] ❌`, errorEntry.message, error);
-    }
-
-    return errorEntry.id;
-  },
-
-  /**
-   * Save error to localStorage for later analysis
-   */
-  _saveToStorage: function (errorEntry) {
-    try {
-      let stored = JSON.parse(localStorage.getItem(ERROR_CONFIG.STORAGE_KEY) || '[]');
-      stored.push(errorEntry);
-      if (stored.length > ERROR_CONFIG.MAX_STORED_ERRORS) {
-        stored = stored.slice(-ERROR_CONFIG.MAX_STORED_ERRORS);
-      }
-      localStorage.setItem(ERROR_CONFIG.STORAGE_KEY, JSON.stringify(stored));
-    } catch (e) {
-      console.warn('⚠️ Cannot save error to localStorage', e);
-    }
-  },
-
-  /**
-   * Get all logged errors from memory
-   */
-  getAll: function () {
-    return [...this.stack];
-  },
-
-  /**
-   * Get errors by context
-   */
-  getByContext: function (context) {
-    return this.stack.filter((e) => e.context === context);
-  },
-
-  /**
-   * Clear error log
-   */
-  clear: function () {
-    this.stack = [];
-    ERROR_CONFIG.CONTEXTS = {};
-    try {
-      localStorage.removeItem(ERROR_CONFIG.STORAGE_KEY);
-    } catch (e) {
-      console.warn('⚠️ Cannot clear localStorage', e);
-    }
-  },
-
-  /**
-   * Export errors as JSON
-   */
-  export: function () {
-    return {
-      exported: new Date().toISOString(),
-      errors: this.stack,
-      summary: ERROR_CONFIG.CONTEXTS,
-    };
-  },
-};
-
 const LOG_CFG = {
   ENABLE: true,
   get MAX_UI_LINES() {
@@ -150,6 +43,172 @@ const LOG_CFG = {
   },
   STORAGE_PREFIX: 'app_logs_',
 };
+
+/**
+ * =============================================================
+ * LOG MANAGER - Bản nâng cấp tối ưu
+ * =============================================================
+ */
+const L = {
+  stack: [],
+
+  // 2. Ghi nhanh thông tin bình thường (L._)
+  _: function (msg, data = null, context = 'INFO') {
+    return this.log(msg, context, { severity: 'info', data: data });
+  },
+
+  // 1. Ghi log hệ thống chính (Core)
+  log: function (error, context = 'SYSTEM', meta = {}) {
+    const type = meta.severity || 'info';
+    const errorEntry = {
+      id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      timestamp: new Date().toISOString(),
+      timeDisplay: new Date().toLocaleTimeString('vi-VN', { hour12: false }),
+      context: context,
+      message: error?.message || String(error),
+      stack: error?.stack || null,
+      type: type,
+      data: meta.data || null,
+      userAgent: navigator.userAgent,
+    };
+
+    this.stack.push(errorEntry);
+    if (this.stack.length > 1000) this.stack.shift();
+
+    // Console cho Dev
+    const colors = { error: '#ff4d4f', warning: '#faad14', success: '#52c41a', info: '#1890ff' };
+    console.log(`%c[${context}] [${type.toUpperCase()}] %c${errorEntry.message}`, `color: ${colors[type]}; font-weight: bold;`, 'color: inherit;', meta.data || '');
+
+    // Lưu vào Storage
+    this._saveToStorage(errorEntry);
+    return errorEntry;
+  },
+
+  _saveToStorage: function (entry) {
+    try {
+      const dateKey = 'app_sys_log_' + new Date().toISOString().split('T')[0];
+      let logs = JSON.parse(localStorage.getItem(dateKey) || '[]');
+      logs.unshift(entry);
+      if (logs.length > 500) logs.length = 500;
+      localStorage.setItem(dateKey, JSON.stringify(logs));
+    } catch (e) {
+      console.warn('LogStorage Full');
+    }
+  },
+
+  /**
+   * HÀM QUAN TRỌNG: Render giao diện log khi cần thiết
+   * @param {string} targetId - ID của thẻ HTML (ví dụ 'log-viewer')
+   */
+  showUI: function (targetId = 'main-content') {
+    const container = document.getElementById(targetId);
+    if (!container) return;
+
+    const dateKey = ERROR_CONFIG.STORAGE_PREFIX + new Date().toISOString().split('T')[0];
+    const logs = JSON.parse(localStorage.getItem(dateKey) || '[]');
+
+    const html = `
+      <div class="card shadow-sm mt-3">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+          <h6 class="mb-0">Hệ thống Log - Ngày ${new Date().toLocaleDateString()}</h6>
+          <button class="btn btn-sm btn-danger" onclick="L.clear()">Xóa tất cả Log</button>
+        </div>
+        <div class="card-body p-0" style="max-height: 500px; overflow-y: auto;">
+          <table class="table table-sm table-hover mb-0" style="font-size: 0.8rem;">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th>Thời gian</th>
+                <th>Loại</th>
+                <th>Context</th>
+                <th>Nội dung</th>
+                <th>Chi tiết</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${logs
+                .map(
+                  (lg) => `
+                <tr class="${lg.type === 'error' ? 'table-danger' : lg.type === 'warning' ? 'table-warning' : ''}">
+                  <td>${lg.timeDisplay}</td>
+                  <td><span class="badge bg-${lg.type === 'error' ? 'danger' : lg.type === 'success' ? 'success' : 'secondary'}">${lg.type}</span></td>
+                  <td class="fw-bold">${lg.context}</td>
+                  <td>${lg.message}</td>
+                  <td>
+                    ${lg.stack ? `<button class="btn btn-pills btn-xs btn-info" onclick="alert('${lg.stack.replace(/'/g, "\\'").replace(/\n/g, '\\n')}')">Stack</button>` : ''}
+                  </td>
+                </tr>
+              `
+                )
+                .join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    container.innerHTML = html;
+  },
+
+  clear: function () {
+    const prefix = ERROR_CONFIG.STORAGE_PREFIX;
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith(prefix)) localStorage.removeItem(key);
+    });
+    location.reload(); // Reload để làm sạch giao diện
+  },
+};
+
+window.L = L; // Đưa L ra global để các phần khác có thể sử dụng
+
+function Opps(arg1, arg2, arg3, arg4) {
+  try {
+    let message = 'Lỗi hệ thống';
+    let errorObj = null;
+    let options = {};
+
+    // 1. Phân tích tham số 1: Có thể là String (message) hoặc Object (Error)
+    if (arg1 instanceof Error) {
+      errorObj = arg1;
+      message = arg1.message;
+    } else if (typeof arg1 === 'object' && arg1 !== null) {
+      message = arg1.message || JSON.stringify(arg1);
+      errorObj = new Error(message);
+    } else {
+      message = String(arg1 || 'Lỗi không xác định');
+    }
+
+    // 2. Phân tích tham số 2: Có thể là Error, String 'error', hoặc Object options
+    if (arg2 instanceof Error) {
+      errorObj = arg2;
+    } else if (typeof arg2 === 'object' && arg2 !== null) {
+      options = arg2;
+    }
+
+    // 3. Phân tích tham số 3 & 4 (Hỗ trợ code cũ từ logA)
+    // Nếu tham số 3 là string (alert/toast) hoặc 4 là context
+    if (typeof arg3 === 'string') options.mode = arg3;
+    if (typeof arg4 === 'string') options.context = arg4;
+    if (typeof arg4 === 'object') Object.assign(options, arg4);
+
+    // 4. Đảm bảo luôn có Error Object để L.log lấy Stack Trace
+    if (!errorObj) errorObj = new Error(message);
+
+    // 5. Ghi vào L (Hộp đen)
+    const context = options.context || 'SYSTEM_OPPS';
+    L.log(errorObj, context, {
+      severity: 'error',
+      data: { originalMessage: message, uiOptions: options },
+    });
+
+    // 6. Hiển thị UI qua logA (Vẫn giữ để tương thích ngược)
+    if (typeof logA === 'function') {
+      return logA(message, 'error', options.mode || 'alert', options);
+    } else {
+      console.error(`[OPPS]: ${message}`, errorObj);
+    }
+  } catch (err) {
+    console.error('Lỗi nghiêm trọng trong chính hàm Opps:', err);
+  }
+}
 
 // =========================================================================
 // ✅ NEW: OBJECT-ARRAY CONVERSION HELPERS
@@ -167,145 +226,88 @@ function extractFirstItem(items) {
 const warn = (prefix, msg, data) => {
   if (LOG_CFG.DEBUG_MODE) {
     console.warn(`%c[${prefix}] ⚠️ ${msg}`, 'color:orange; font-weight:bold;', data || '');
-    log(`%c[${prefix}] ⚠️ ${msg}`, data || '', 'warning');
+    L._(`%c[${prefix}] ⚠️ ${msg}`, data || '', 'warning');
   }
 };
 
-/**
- * MODULE: RowStyler
- * Nhiệm vụ: Trả về CSS Class cho dòng dựa trên dữ liệu
- */
-const RowStyler = {
-  // Config các từ khóa để nhận diện cột (Mapping theo Tiếng Việt đã dịch)
-  KEYWORDS: {
-    STATUS: ['trạng thái', 'thanh toán', 'tình trạng', 'status'],
-    DATE: ['ngày đi', 'check-in', 'ngày đến'],
-  },
+// const HEADER_DICT = [
+//   { k: 'startdate', t: 'Ngày Đi' },
+//   { k: 'enddate', t: 'Ngày Về' },
+//   { k: 'bookingid', t: 'Mã BK' },
+//   { k: 'bookingdate', t: 'Ngày Đặt' },
+//   { k: 'createdat', t: 'Ngày Tạo' },
+//   { k: 'lastupdated', t: 'Ngày Cập Nhật' },
+//   { k: 'paymentdue', t: 'Hạn TT' },
+//   { k: 'paymenttype', t: 'Loại TT' },
+//   { k: 'surcharge', t: 'Phụ Thu' },
+//   { k: 'sur', t: 'Phụ Thu' },
+//   { k: 'discount', t: 'Giảm Giá' },
+//   { k: 'dis', t: 'Giảm Giá' },
+//   { k: 'deposit', t: 'Đặt Cọc' },
+//   { k: 'paidamount', t: 'Đã Trả' },
+//   { k: 'balanceamount', t: 'Còn Lại' },
+//   { k: 'totalspent', t: 'Tổng Chi Tiêu' },
+//   { k: 'totalamount', t: 'Tổng Tiền' },
+//   { k: 'totalsales', t: 'Tổng BK' },
+//   { k: 'totalcost', t: 'Tổng Chi Phí' },
+//   { k: 'total', t: 'Thành Tiền' },
+//   { k: 'childprice', t: 'Giá TE' },
+//   { k: 'price', t: 'Giá Tiền' },
+//   { k: 'rate', t: 'Giá Tiền' },
+//   { k: 'cost', t: 'Đơn Giá' },
+//   { k: 'confirmcode', t: 'Mã Xác Nhận' },
+//   { k: 'customerid', t: 'Mã KH' },
+//   { k: 'customerphone', t: 'SDT Khách' },
+//   { k: 'customername', t: 'Tên Khách' },
+//   { k: 'customer', t: 'Khách Hàng' },
+//   { k: 'servicetype', t: 'Loại DV' },
+//   { k: 'service', t: 'Dịch Vụ' },
+//   { k: 'address', t: 'Địa Chỉ' },
+//   { k: 'staff', t: 'Nhân Viên' },
+//   { k: 'source', t: 'Nguồn' },
+//   { k: 'note', t: 'Ghi Chú' },
+//   { k: 'status', t: 'Trạng Thái' },
+//   { k: 'fullname', t: 'Họ Tên' },
+//   { k: 'dob', t: 'Ngày Sinh' },
+//   { k: 'cccd_date', t: 'Ngày Cấp' },
+//   { k: 'idcard', t: 'Số CCCD' },
+//   { k: 'idcarddate', t: 'Ngày Cấp CCCD' },
+//   { k: 'hotel', t: 'Khách Sạn' },
+//   { k: 'room', t: 'Loại Phòng' },
+//   { k: 'night', t: 'Đêm' },
+//   { k: 'adult', t: 'Người Lớn' },
+//   { k: 'child', t: 'Trẻ Em' },
+//   { k: 'children', t: 'Trẻ Em' },
+//   { k: 'quantity', t: 'SL' },
+//   { k: 'phone', t: 'Số ĐT' },
+//   { k: 'email', t: 'Email' },
+//   // 1. Nhóm Ngày tháng (Cụ thể trước)
+//   { k: 'checkin', t: 'Ngày Đi' },
+//   { k: 'checkout', t: 'Ngày Về' },
+//   { k: 'paymentmethod', t: 'HTTT' },
+//   { k: 'refcode', t: 'Mã Xác Nhận' },
+//   { k: 'supplierid', t: 'Nhà CC' },
+//   { k: 'supplier', t: 'Nhà CC' },
+//   { k: 'debtbalance', t: 'Phải Trả NCC' },
+// ];
 
-  /**
-   * Hàm main quyết định class cho dòng
-   * @param {Array} row - Dữ liệu 1 dòng
-   * @param {Object} indices - Object chứa index các cột quan trọng { statusIdx, dateIdx }
-   */
-  getClass: function (row, indices) {
-    let classes = [];
+// function translateHeaderName(rawName) {
+//   if (!rawName) return '';
+//   let key = String(rawName)
+//     .toLowerCase()
+//     .replace(/[_\-\s]/g, '');
+//   // ✅ Loại bỏ chữ 's' ở cuối nếu có (plural -> singular)
+//   if (key.endsWith('s')) key = key.slice(0, -1);
 
-    // 1. LOGIC THEO TRẠNG THÁI THANH TOÁN
-    if (indices.statusIdx !== -1) {
-      const status = String(row[indices.statusIdx]).toLowerCase();
-      if (status.includes('chưa') || status.includes('nợ') || status.includes('đặt lịch')) {
-        return 'table-danger'; // Ưu tiên cao nhất: Đỏ (Chưa trả tiền)
-      }
-      if (status.includes('cọc')) {
-        classes.push('table-warning');
-      }
-      if (status.includes('hủy')) {
-        classes.push('table-dark');
-      }
-    }
+//   for (const item of HEADER_DICT) {
+//     let dictKey = item.k.replace(/[_\-\s]/g, '');
+//     // ✅ Cũng loại bỏ 's' ở cuối từ dictionary
+//     if (dictKey.endsWith('s')) dictKey = dictKey.slice(0, -1);
 
-    // 2. LOGIC THEO NGÀY (Chỉ chạy nếu chưa bị set màu đỏ)
-    if (indices.dateIdx !== -1 && classes.length === 0) {
-      const dateVal = row[indices.dateIdx];
-      // Giả định dateVal là string chuẩn hoặc Date object. Cần parse nếu là string VN.
-      // Ở đây dùng helper parseDateVN (đã có trong hệ thống của bạn) hoặc new Date()
-      const rowDate = typeof parseDateVN === 'function' ? parseDateVN(dateVal) : new Date(dateVal);
-
-      if (rowDate && !isNaN(rowDate)) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const diffDays = Math.ceil((rowDate - today) / 86400000);
-
-        if (diffDays >= 0 && diffDays <= 3) {
-          return 'table-danger'; // Sắp đi trong 3 ngày: đỏ
-        } else if (diffDays < 0) {
-          return 'table-warning text-muted';
-        } else return 'table-info text-muted';
-      }
-    }
-
-    return classes.join(' ');
-  },
-};
-
-const HEADER_DICT = [
-  { k: 'startdate', t: 'Ngày Đi' },
-  { k: 'enddate', t: 'Ngày Về' },
-  { k: 'bookingid', t: 'Mã BK' },
-  { k: 'bookingdate', t: 'Ngày Đặt' },
-  { k: 'createdat', t: 'Ngày Tạo' },
-  { k: 'lastupdated', t: 'Ngày Cập Nhật' },
-  { k: 'paymentdue', t: 'Hạn TT' },
-  { k: 'paymenttype', t: 'Loại TT' },
-  { k: 'surcharge', t: 'Phụ Thu' },
-  { k: 'sur', t: 'Phụ Thu' },
-  { k: 'discount', t: 'Giảm Giá' },
-  { k: 'dis', t: 'Giảm Giá' },
-  { k: 'deposit', t: 'Đặt Cọc' },
-  { k: 'paidamount', t: 'Đã Trả' },
-  { k: 'balanceamount', t: 'Còn Lại' },
-  { k: 'totalspent', t: 'Tổng Chi Tiêu' },
-  { k: 'totalamount', t: 'Tổng Tiền' },
-  { k: 'totalsales', t: 'Tổng BK' },
-  { k: 'totalcost', t: 'Tổng Chi Phí' },
-  { k: 'total', t: 'Thành Tiền' },
-  { k: 'childprice', t: 'Giá TE' },
-  { k: 'price', t: 'Giá Tiền' },
-  { k: 'rate', t: 'Giá Tiền' },
-  { k: 'cost', t: 'Đơn Giá' },
-  { k: 'confirmcode', t: 'Mã Xác Nhận' },
-  { k: 'customerid', t: 'Mã KH' },
-  { k: 'customerphone', t: 'SDT Khách' },
-  { k: 'customername', t: 'Tên Khách' },
-  { k: 'customer', t: 'Khách Hàng' },
-  { k: 'servicetype', t: 'Loại DV' },
-  { k: 'service', t: 'Dịch Vụ' },
-  { k: 'address', t: 'Địa Chỉ' },
-  { k: 'staff', t: 'Nhân Viên' },
-  { k: 'source', t: 'Nguồn' },
-  { k: 'note', t: 'Ghi Chú' },
-  { k: 'status', t: 'Trạng Thái' },
-  { k: 'fullname', t: 'Họ Tên' },
-  { k: 'dob', t: 'Ngày Sinh' },
-  { k: 'cccd_date', t: 'Ngày Cấp' },
-  { k: 'idcard', t: 'Số CCCD' },
-  { k: 'idcarddate', t: 'Ngày Cấp CCCD' },
-  { k: 'hotel', t: 'Khách Sạn' },
-  { k: 'room', t: 'Loại Phòng' },
-  { k: 'night', t: 'Đêm' },
-  { k: 'adult', t: 'Người Lớn' },
-  { k: 'child', t: 'Trẻ Em' },
-  { k: 'children', t: 'Trẻ Em' },
-  { k: 'quantity', t: 'SL' },
-  { k: 'phone', t: 'Số ĐT' },
-  { k: 'email', t: 'Email' },
-  // 1. Nhóm Ngày tháng (Cụ thể trước)
-  { k: 'checkin', t: 'Ngày Đi' },
-  { k: 'checkout', t: 'Ngày Về' },
-  { k: 'paymentmethod', t: 'HTTT' },
-  { k: 'refcode', t: 'Mã Xác Nhận' },
-  { k: 'supplierid', t: 'Nhà CC' },
-  { k: 'supplier', t: 'Nhà CC' },
-  { k: 'debtbalance', t: 'Phải Trả NCC' },
-];
-
-function translateHeaderName(rawName) {
-  if (!rawName) return '';
-  let key = String(rawName)
-    .toLowerCase()
-    .replace(/[_\-\s]/g, '');
-  // ✅ Loại bỏ chữ 's' ở cuối nếu có (plural -> singular)
-  if (key.endsWith('s')) key = key.slice(0, -1);
-
-  for (const item of HEADER_DICT) {
-    let dictKey = item.k.replace(/[_\-\s]/g, '');
-    // ✅ Cũng loại bỏ 's' ở cuối từ dictionary
-    if (dictKey.endsWith('s')) dictKey = dictKey.slice(0, -1);
-
-    if (key.includes(dictKey)) return item.t;
-  }
-  return rawName.replace(/[_-]/g, ' ').toUpperCase();
-}
+//     if (key.includes(dictKey)) return item.t;
+//   }
+//   return rawName.replace(/[_-]/g, ' ').toUpperCase();
+// }
 
 /* =========================
  * 3. FORMATTING UTILITIES (ĐÃ TỐI ƯU NGÀY THÁNG)
@@ -652,7 +654,7 @@ const fitToViewport = (target, padding = 20) => {
     // Nếu không lệch gì cả thì thoát
     if (deltaX === 0 && deltaY === 0) return;
 
-    console.log(`9 Trip UI: Điều chỉnh vị trí element. X: ${deltaX}, Y: ${deltaY}`);
+    L._(`9 Trip UI: Điều chỉnh vị trí element. X: ${deltaX}, Y: ${deltaY}`);
 
     // --- BƯỚC 3: DI CHUYỂN ELEMENT (APPLY MOVEMENT) ---
 
@@ -754,7 +756,7 @@ function getE(input) {
   if (!input) return null;
   if (input.nodeType === 1) return input;
   if (typeof input === 'string') return document.getElementById(input);
-  log('[DOM] getE: Invalid input type', input);
+  L._('[DOM] getE: Invalid input type', input);
   return null;
 }
 
@@ -1281,9 +1283,9 @@ function debounce(fn, ms = 300) {
 //         handler.call(e.currentTarget, e, e.currentTarget);
 //       }
 //     } catch (handlerErr) {
-//       // Rule số 7: Centralized logging
-//       if (typeof ErrorLogger !== 'undefined') {
-//         ErrorLogger.log(handlerErr, 'onEvent_Handler', { data: { eventNames, target } });
+//       // Rule số 7: Centralized Ling
+//       if (typeof L !== 'undefined') {
+//         L.log(handlerErr, 'onEvent_Handler', { data: { eventNames, target } });
 //       } else {
 //         console.error("onEvent Handler Error:", handlerErr);
 //       }
@@ -1312,7 +1314,7 @@ async function _callServer(funcName, ...args) {
 
   // Debug log
   const dbg = (msg, data) => {
-    if (typeof LOG_CFG !== 'undefined' && LOG_CFG.ENABLE) console.log(msg, data || '');
+    if (typeof LOG_CFG !== 'undefined' && LOG_CFG.ENABLE) L._(msg, data || '');
   };
 
   dbg(`[${reqId}] 🚀 CALL -> ${funcName}`, args);
@@ -1370,7 +1372,7 @@ async function requestAPI(funcName, ...args) {
 
     // 1. Trường hợp Server trả về void (undefined) hoặc null
     if (res === undefined || res === null) {
-      log('Server đã chạy xong ko trả kết quả: ', funcName);
+      L._('Server đã chạy xong ko trả kết quả: ', funcName);
       return null;
     }
     // 2. Chuẩn hóa logic Success/Fail
@@ -1397,7 +1399,7 @@ async function requestAPI(funcName, ...args) {
     } else {
       // Xử lý lỗi (Log & Return null)
       if (res.status !== 200 || res.error) {
-        log(`❌ API Error [${res.status || 'UNKNOWN'}]:`, res.error || res.message, 'error');
+        L._(`❌ API Error [${res.status || 'UNKNOWN'}]:`, res.error || res.message, 'error');
       }
       return null;
     }
@@ -1410,187 +1412,186 @@ async function requestAPI(funcName, ...args) {
   }
 }
 
-/* =========================
- * 7. LOGGING & ALERTS
- * ========================= */
+// /* =========================
+//  * 7. LING & ALERTS
+//  * ========================= */
 
-function log(msg, arg2, arg3) {
-  if (!LOG_CFG.ENABLE) return;
+// function L._(msg, arg2, arg3) {
+//   if (!LOG_CFG.ENABLE) return;
 
-  // 1. Xử lý tham số đầu vào (Logic của bạn)
-  const validTypes = ['info', 'success', 'warning', 'error'];
-  let type = 'info';
-  let dataDisplay = '';
-  let rawData = null; // Biến này để lưu vào Storage cho sạch
+//   // 1. Xử lý tham số đầu vào (Logic của bạn)
+//   const validTypes = ['info', 'success', 'warning', 'error'];
+//   let type = 'info';
+//   let dataDisplay = '';
+//   let rawData = null; // Biến này để lưu vào Storage cho sạch
 
-  if (typeof arg2 === 'string' && validTypes.includes(arg2)) {
-    type = arg2;
-  } else if (arg2 !== undefined) {
-    if (typeof arg2 === 'object') {
-      rawData = arg2; // Lưu object gốc
-      try {
-        // dataDisplay = ` <span class="fw-bold text-secondary">[${JSON.stringify(arg2).slice(0, 50)}...]</span>`;
-        dataDisplay = ` <span class="fw-bold text-secondary">[${JSON.stringify(arg2)}...]</span>`;
-      } catch (e) {
-        dataDisplay = ` [Obj]`;
-      }
-    } else {
-      rawData = arg2;
-      dataDisplay = ` <span class="fw-bold">${arg2}</span>`;
-    }
+//   if (typeof arg2 === 'string' && validTypes.includes(arg2)) {
+//     type = arg2;
+//   } else if (arg2 !== undefined) {
+//     if (typeof arg2 === 'object') {
+//       rawData = arg2; // Lưu object gốc
+//       try {
+//         dataDisplay = ` <span class="fw-bold text-secondary">[${JSON.stringify(arg2)}...]</span>`;
+//       } catch (e) {
+//         dataDisplay = ` [Obj]`;
+//       }
+//     } else {
+//       rawData = arg2;
+//       dataDisplay = ` <span class="fw-bold">${arg2}</span>`;
+//     }
 
-    if (typeof arg3 === 'string' && validTypes.includes(arg3)) type = arg3;
-  }
+//     if (typeof arg3 === 'string' && validTypes.includes(arg3)) type = arg3;
+//   }
 
-  // 2. Ghi Console (Cho Dev)
-  const colorStyle = type === 'error' ? 'red' : type === 'success' ? 'yellow' : 'white';
-  console.log(`%c[${type.toUpperCase()}] ${msg}`, `color:${colorStyle}`, rawData || '');
+//   // 2. Ghi Console (Cho Dev)
+//   const colorStyle = type === 'error' ? 'red' : type === 'success' ? 'blue' : type === 'warning' ? 'orange' : 'white';
+//   L._(`%c[${type.toUpperCase()}] ${msg}`, `color:${colorStyle}`, rawData || '');
 
-  // 3. Chuẩn bị dữ liệu Log Object
-  const timestamp = new Date().toLocaleTimeString('vi-VN', { hour12: false });
-  const logEntry = {
-    time: timestamp,
-    type: type,
-    msg: msg,
-    htmlExtra: dataDisplay, // Lưu đoạn HTML phụ (nếu có)
-  };
+//   // 3. Chuẩn bị dữ liệu Log Object
+//   const timestamp = new Date().toLocaleTimeString('vi-VN', { hour12: false });
+//   const logEntry = {
+//     time: timestamp,
+//     type: type,
+//     msg: msg,
+//     htmlExtra: dataDisplay, // Lưu đoạn HTML phụ (nếu có)
+//   };
 
-  // 4. LƯU VÀO LOCALSTORAGE (Bền vững)
-  saveLogToStorage(logEntry);
+//   // 4. LƯU VÀO LOCALSTORAGE (Bền vững)
+//   saveLogToStorage(logEntry);
 
-  // 5. VẼ LÊN GIAO DIỆN (Nếu Tab Log đang hiển thị)
-  const ul = document.getElementById('log-list');
+//   // 5. VẼ LÊN GIAO DIỆN (Nếu Tab Log đang hiển thị)
+//   const ul = document.getElementById('log-list');
 
-  if (ul) {
-    const li = createLogElement(logEntry);
-    ul.insertBefore(li, ul.firstChild);
+//   if (ul) {
+//     const li = createLogElement(logEntry);
+//     ul.insertBefore(li, ul.firstChild);
 
-    // TỐI ƯU DOM: Nếu quá 100 dòng -> Xóa dòng cũ nhất (dưới cùng)
-    // Giữ DOM nhẹ mà không làm mất nội dung đang xem
-    if (ul.childElementCount > LOG_CFG.MAX_UI_LINES) {
-      ul.removeChild(ul.lastElementChild);
-    }
-  }
-}
+//     // TỐI ƯU DOM: Nếu quá 100 dòng -> Xóa dòng cũ nhất (dưới cùng)
+//     // Giữ DOM nhẹ mà không làm mất nội dung đang xem
+//     if (ul.childElementCount > LOG_CFG.MAX_UI_LINES) {
+//       ul.removeChild(ul.lastElementChild);
+//     }
+//   }
+// }
 
-/**
- * Helper: Tạo thẻ LI từ Log Object (Tách ra để dùng lại khi restore)
- */
-function createLogElement(entry) {
-  const iconMap = { success: '✔', warning: '⚠', error: '✘', info: '•' };
-  const colorMap = {
-    success: 'text-success',
-    warning: 'text-warning',
-    error: 'text-danger fw-bold',
-    info: 'text-dark',
-  };
+// /**
+//  * Helper: Tạo thẻ LI từ Log Object (Tách ra để dùng lại khi restore)
+//  */
+// function createLogElement(entry) {
+//   const iconMap = { success: '✔', warning: '⚠', error: '✘', info: '•' };
+//   const colorMap = {
+//     success: 'text-success',
+//     warning: 'text-warning',
+//     error: 'text-danger fw-bold',
+//     info: 'text-dark',
+//   };
 
-  const li = document.createElement('li');
-  li.className = `list-group-item py-1 small ${colorMap[entry.type] || 'text-dark'}`;
-  li.style.fontSize = '0.8rem';
+//   const li = document.createElement('li');
+//   li.className = `list-group-item py-1 small ${colorMap[entry.type] || 'text-dark'}`;
+//   li.style.fontSize = '0.8rem';
 
-  li.innerHTML = `<span class="text-muted me-1">${entry.time}</span> <strong>${iconMap[entry.type] || '•'}</strong> ${entry.msg}${entry.htmlExtra || ''}`;
-  return li;
-}
+//   li.innerHTML = `<span class="text-muted me-1">${entry.time}</span> <strong>${iconMap[entry.type] || '•'}</strong> ${entry.msg}${entry.htmlExtra || ''}`;
+//   return li;
+// }
 
-/**
- * Helper: Lưu Log vào LocalStorage theo ngày
- */
-function saveLogToStorage(entry) {
-  try {
-    const todayKey = getLogKey();
+// /**
+//  * Helper: Lưu Log vào LocalStorage theo ngày
+//  */
+// function saveLogToStorage(entry) {
+//   try {
+//     const todayKey = getLogKey();
 
-    // Lấy dữ liệu cũ (Dạng chuỗi JSON)
-    const existingData = localStorage.getItem(todayKey);
-    let logs = existingData ? JSON.parse(existingData) : [];
+//     // Lấy dữ liệu cũ (Dạng chuỗi JSON)
+//     const existingData = localStorage.getItem(todayKey);
+//     let logs = existingData ? JSON.parse(existingData) : [];
 
-    // Thêm log mới vào đầu mảng
-    logs.unshift(entry);
+//     // Thêm log mới vào đầu mảng
+//     logs.unshift(entry);
 
-    // OPTIONAL: Giới hạn lưu trữ cục bộ (ví dụ chỉ lưu 500 dòng/ngày để tránh đầy bộ nhớ trình duyệt)
-    if (logs.length > 500) logs.length = 500;
+//     // OPTIONAL: Giới hạn lưu trữ cục bộ (ví dụ chỉ lưu 500 dòng/ngày để tránh đầy bộ nhớ trình duyệt)
+//     if (logs.length > 500) logs.length = 500;
 
-    localStorage.setItem(todayKey, JSON.stringify(logs));
-  } catch (e) {
-    console.warn('Local Storage Full or Error:', e);
-    // Xóa tất cả log trong localStorage khi có lỗi
-    try {
-      const prefix = LOG_CFG.STORAGE_PREFIX;
-      for (let key in localStorage) {
-        if (key.startsWith(prefix)) {
-          localStorage.removeItem(key);
-        }
-      }
-      console.log('✅ Đã xóa tất cả log trong localStorage');
-    } catch (clearErr) {
-      console.error('Lỗi khi xóa localStorage:', clearErr);
-    }
-  }
-}
+//     localStorage.setItem(todayKey, JSON.stringify(logs));
+//   } catch (e) {
+//     console.warn('Local Storage Full or Error:', e);
+//     // Xóa tất cả log trong localStorage khi có lỗi
+//     try {
+//       const prefix = LOG_CFG.STORAGE_PREFIX;
+//       for (let key in localStorage) {
+//         if (key.startsWith(prefix)) {
+//           localStorage.removeItem(key);
+//         }
+//       }
+//       L._('✅ Đã xóa tất cả log trong localStorage');
+//     } catch (clearErr) {
+//       console.error('Lỗi khi xóa localStorage:', clearErr);
+//     }
+//   }
+// }
 
-/**
- * Helper: Tạo Key theo ngày (VD: app_logs_2023-10-25)
- */
-function getLogKey() {
-  const d = new Date();
-  const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  return LOG_CFG.STORAGE_PREFIX + dateStr;
-}
+// /**
+//  * Helper: Tạo Key theo ngày (VD: app_logs_2023-10-25)
+//  */
+// function getLogKey() {
+//   const d = new Date();
+//   const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+//   return LOG_CFG.STORAGE_PREFIX + dateStr;
+// }
 
-/**
- * Helper: Khôi phục Log từ Storage (Gọi khi Tab Log được render)
- * Thay thế cho flushLogBuffer cũ
- */
-function restoreLogsFromStorage() {
-  const ul = getE('log-list');
-  if (!ul) return;
+// /**
+//  * Helper: Khôi phục Log từ Storage (Gọi khi Tab Log được render)
+//  * Thay thế cho flushLogBuffer cũ
+//  */
+// function restoreLogsFromStorage() {
+//   const ul = getE('log-list');
+//   if (!ul) return;
 
-  // Kiểm tra xem đã restore chưa để tránh duplicate (nếu gọi nhiều lần)
-  if (ul.dataset.restored === 'true') return;
+//   // Kiểm tra xem đã restore chưa để tránh duplicate (nếu gọi nhiều lần)
+//   if (ul.dataset.restored === 'true') return;
 
-  const todayKey = getLogKey();
-  const raw = localStorage.getItem(todayKey);
+//   const todayKey = getLogKey();
+//   const raw = localStorage.getItem(todayKey);
 
-  if (raw) {
-    const logs = JSON.parse(raw);
-    // Chỉ lấy tối đa 100 dòng để hiển thị
-    const logsToShow = logs.slice(0, LOG_CFG.MAX_UI_LINES);
+//   if (raw) {
+//     const logs = JSON.parse(raw);
+//     // Chỉ lấy tối đa 100 dòng để hiển thị
+//     const logsToShow = logs.slice(0, LOG_CFG.MAX_UI_LINES);
 
-    // Dùng DocumentFragment để render 1 lần cho nhanh
-    const fragment = document.createDocumentFragment();
+//     // Dùng DocumentFragment để render 1 lần cho nhanh
+//     const fragment = document.createDocumentFragment();
 
-    // logs trong storage đang là [Mới nhất -> Cũ nhất]
-    // Nhưng appendChild sẽ thêm xuống dưới, nên ta cứ loop bình thường
-    logsToShow.forEach((entry) => {
-      const li = createLogElement(entry);
-      fragment.appendChild(li);
-    });
-    const divider = document.createElement('li');
-    divider.className = 'list-group-item text-center fw-bold text-info small';
-    divider.style.fontSize = '1rem';
-    divider.textContent = '-------------------- LOG MỚI ----------------------';
-    fragment.appendChild(divider);
+//     // logs trong storage đang là [Mới nhất -> Cũ nhất]
+//     // Nhưng appendChild sẽ thêm xuống dưới, nên ta cứ loop bình thường
+//     logsToShow.forEach((entry) => {
+//       const li = createLogElement(entry);
+//       fragment.appendChild(li);
+//     });
+//     const divider = document.createElement('li');
+//     divider.className = 'list-group-item text-center fw-bold text-info small';
+//     divider.style.fontSize = '1rem';
+//     divider.textContent = '-------------------- LOG MỚI ----------------------';
+//     fragment.appendChild(divider);
 
-    ul.appendChild(fragment);
-  }
-  ul.dataset.restored = 'true'; // Đánh dấu đã khôi phục
-}
+//     ul.appendChild(fragment);
+//   }
+//   ul.dataset.restored = 'true'; // Đánh dấu đã khôi phục
+// }
 
-function clearLog() {
-  try {
-    const prefix = LOG_CFG.STORAGE_PREFIX;
-    for (let key in localStorage) {
-      if (key.startsWith(prefix)) {
-        localStorage.removeItem(key);
-      }
-    }
-    const ul = getE('log-list');
-    if (ul) ul.innerHTML = '';
-    log('✅ Đã xóa tất cả log trong localStorage', 'info');
-  } catch (e) {
-    console.error('Lỗi khi xóa log:', e);
-  }
-}
+// function clearLog() {
+//   try {
+//     const prefix = LOG_CFG.STORAGE_PREFIX;
+//     for (let key in localStorage) {
+//       if (key.startsWith(prefix)) {
+//         localStorage.removeItem(key);
+//       }
+//     }
+//     const ul = getE('log-list');
+//     if (ul) ul.innerHTML = '';
+//     L._('✅ Đã xóa tất cả log trong localStorage', 'info');
+//   } catch (e) {
+//     console.error('Lỗi khi xóa log:', e);
+//   }
+// }
 
 /**
  * logA – Hàm thông báo / xác nhận hợp nhất (Toast · Alert · Confirm).
@@ -1601,16 +1602,7 @@ function clearLog() {
  *  'alert'          → Modal thông báo, 1 nút "Đóng"
  *  'confirm'        → Modal xác nhận OK / Cancel, trả về Promise<boolean>
  *  Function         → Modal xác nhận; xem bảng dưới:
- *
- * ┌─────────────────────────────────────────────────────────────────────────┐
- * │ CALLBACK STYLE                    │ BUTTONS HIỂN THỊ                   │
- * ├─────────────────────────────────────────────────────────────────────────┤
- * │ logA(msg, type, okFn)             │ [Xác nhận]  [Hủy]                  │
- * │ logA(msg, type, okFn, denyFn)     │ [Xác nhận]  [Từ chối]  [Hủy]       │
- * └─────────────────────────────────────────────────────────────────────────┘
- *  - "Hủy" (Cancel/dismiss) không gọi callback nào
- *  - "Từ chối" (Deny) gọi denyFn
- *
+
  * ★ Quy tắc quan trọng với callback style:
  *   Code NGOÀI lời gọi logA() luôn chạy ngay lập tức, bất kể user chọn gì.
  *
@@ -1637,7 +1629,7 @@ function clearLog() {
  *                                   confirm/callback → Promise<boolean>  (true = isConfirmed)
  */
 function logA(message, type = 'info', modeOrCallback = null, ...rest) {
-  if (typeof log === 'function') log(message, type);
+  if (typeof log === 'function') L._(message, type);
 
   // ── Xác định mode ───────────────────────────────────────────────────────
   const isCallbackMode = typeof modeOrCallback === 'function';
@@ -1863,32 +1855,6 @@ function showAlert(message, type = 'info', title = 'Thông Báo', options = {}) 
   return logA(message, type, 'alert', title ? { title, ...options } : options);
 }
 
-function Opps(message, e, options = {}) {
-  // Trích xuất nội dung lỗi
-  let errorDetail = '';
-  let msg = message ? message : null;
-  if (typeof message !== 'string' || typeof e === 'string') {
-    msg = e ? String(e) : 'Lỗi không xác định';
-    e = message;
-  }
-  if (e) {
-    if (e instanceof Error) {
-      errorDetail = `\n[Name]: ${e.name}\n[Message]: ${e.message}\n[Stack]: ${e.stack}`;
-    } else if (typeof e === 'object') {
-      try {
-        errorDetail = JSON.stringify(e);
-      } catch (err) {
-        errorDetail = String(e);
-      }
-    } else {
-      errorDetail = String(e);
-    }
-  }
-  const timestamp = new Date().toLocaleString('vi-VN');
-  const finalLog = `[${timestamp}] ❌ ERROR: ${msg} ${errorDetail}`;
-  return logA(finalLog, 'error', 'alert', options);
-}
-
 function showConfirm(message, okFn, denyFn, opts = {}) {
   if (okFn) opts.onConfirm = okFn;
   if (denyFn) opts.onDeny = denyFn;
@@ -2037,14 +2003,14 @@ async function loadLibraryAsync(libName) {
     try {
       // Kiểm tra xem lib đã có sẵn chưa (tránh load 2 lần)
       if (libConfig.check()) {
-        log(`✅ Library [${libName}] already loaded`, 'success');
+        L._(`✅ Library [${libName}] already loaded`, 'success');
         return true;
       }
 
       // Normalize URLs thành array (support cả string và array)
       const urlsToLoad = Array.isArray(libConfig.urls) ? libConfig.urls : [libConfig.urls];
 
-      log(`📥 Loading library [${libName}] (${urlsToLoad.length} file${urlsToLoad.length > 1 ? 's' : ''})...`, 'info');
+      L._(`📥 Loading library [${libName}] (${urlsToLoad.length} file${urlsToLoad.length > 1 ? 's' : ''})...`, 'info');
 
       // Load tất cả URLs song song
       const loadPromises = urlsToLoad.map((url) => {
@@ -2054,7 +2020,7 @@ async function loadLibraryAsync(libName) {
           script.async = true;
 
           script.onload = () => {
-            log(`✅ Loaded: ${url.split('/').pop()}`, 'success');
+            L._(`✅ Loaded: ${url.split('/').pop()}`, 'success');
             resolve(true);
           };
 
@@ -2075,7 +2041,7 @@ async function loadLibraryAsync(libName) {
 
       // Kiểm tra lại xem library hoạt động chưa
       if (allSuccess && libConfig.check()) {
-        log(`✅ Library [${libName}] loaded successfully`, 'success');
+        L._(`✅ Library [${libName}] loaded successfully`, 'success');
         return true;
       } else {
         Opps(`❌ Library [${libName}] loaded but check failed`);
@@ -2104,7 +2070,7 @@ async function loadLibraryAsync(libName) {
 function preloadExportLibraries() {
   // Load bất đồng bộ (không chờ)
   Promise.all([loadLibraryAsync('xlsx'), loadLibraryAsync('jspdf'), loadLibraryAsync('autotable')]).then(() => {
-    log('📦 All export libraries pre-loaded', 'success');
+    L._('📦 All export libraries pre-loaded', 'success');
   });
 }
 
@@ -2222,11 +2188,11 @@ function toggleTemplate(targetId) {
     // Trường hợp 1: Element đang "Sống" trên DOM -> Cần đưa vào Template
     const activeElement = getE(targetId);
     if (!activeElement) {
-      log(`⚠️ Element #${targetId} không tồn tại trên DOM. Kiểm tra lại ID hoặc trạng thái hiện tại.`);
+      L._(`⚠️ Element #${targetId} không tồn tại trên DOM. Kiểm tra lại ID hoặc trạng thái hiện tại.`);
       return null;
     }
 
-    if (activeElement) {
+    if (activeElement && activeElement.tagName.toLowerCase() !== 'template') {
       // 1. Tạo thẻ template
       const template = document.createElement('template');
       template.id = tmplId;
@@ -2239,7 +2205,7 @@ function toggleTemplate(targetId) {
       // Lưu ý: appendChild sẽ di chuyển node từ DOM vào Fragment
       template.content.appendChild(activeElement);
 
-      log(`[Utils] Đã ẩn element #${targetId} vào template #${tmplId}`);
+      L._(`[Utils] Đã ẩn element #${targetId} vào template #${tmplId}`);
       return htmlString;
     }
 
@@ -2259,7 +2225,7 @@ function toggleTemplate(targetId) {
       // 3. Xóa thẻ template đi (vì element đã ra ngoài rồi)
       templateElement.remove();
 
-      log(`[Utils] Đã khôi phục element #${targetId} từ template`);
+      L._(`[Utils] Đã khôi phục element #${targetId} từ template`);
       return originalElement;
     }
 
@@ -2302,7 +2268,7 @@ function getHtmlContent(url, options = {}) {
 
     // 3. ✅ CHECK CACHE TRƯỚC
     if (useCache && _htmlCache[finalSourcePath]) {
-      log(`⚡ HTML cached (from: ${finalSourcePath})`, 'info');
+      L._(`⚡ HTML cached (from: ${finalSourcePath})`, 'info');
       resolve(_htmlCache[finalSourcePath]);
       return;
     }
@@ -2325,7 +2291,7 @@ function getHtmlContent(url, options = {}) {
           if (useCache) {
             _htmlCache[finalSourcePath] = html;
           }
-          log(`✅ HTML loaded from: ${finalSourcePath}`, 'success');
+          L._(`✅ HTML loaded from: ${finalSourcePath}`, 'success');
           resolve(html);
         })
         .catch((err) => {
@@ -2333,7 +2299,7 @@ function getHtmlContent(url, options = {}) {
 
           // ✅ RETRY LOGIC
           if (attempt < retry) {
-            log(`⚠️ HTML fetch failed (attempt ${attempt}/${retry}), retrying...`, 'warning');
+            L._(`⚠️ HTML fetch failed (attempt ${attempt}/${retry}), retrying...`, 'warning');
             setTimeout(() => fetchWithTimeout(path, attempt + 1), 500);
           } else {
             Opps(`❌ Failed to load HTML from: ${finalSourcePath} (${err.message})`);
@@ -2352,11 +2318,11 @@ function getHtmlContent(url, options = {}) {
 function clearHtmlCache(urlPattern = null) {
   if (!urlPattern) {
     Object.keys(_htmlCache).forEach((key) => delete _htmlCache[key]);
-    log('🗑️ HTML cache cleared', 'info');
+    L._('🗑️ HTML cache cleared', 'info');
   } else {
     if (_htmlCache[urlPattern]) {
       delete _htmlCache[urlPattern];
-      log(`🗑️ HTML cache cleared for: ${urlPattern}`, 'info');
+      L._(`🗑️ HTML cache cleared for: ${urlPattern}`, 'info');
     }
   }
 }
@@ -2426,13 +2392,13 @@ function loadJSFile(filePath, userRole = null, targetIdorEl = null) {
  */
 async function loadJSForRole(userRole, baseFilePath = './src/js/') {
   if (!userRole) {
-    log('⚠ loadJSForRole: No user role provided', 'warning');
+    L._('⚠ loadJSForRole: No user role provided', 'warning');
     return Promise.resolve();
   }
 
   const fileNames = JS_MANIFEST[userRole] || [];
   if (fileNames.length === 0) {
-    log(`⚠ loadJSForRole: No files found for role [${userRole}]`, 'warning');
+    L._(`⚠ loadJSForRole: No files found for role [${userRole}]`, 'warning');
     return Promise.resolve();
   }
 
@@ -2549,7 +2515,7 @@ const HD = {
     // Truy xuất danh sách field từ Mapping hệ thống
     const fields = window.A.DB.schema.FIELD_MAP && A.DB.schema.FIELD_MAP[collection] ? Object.values(A.DB.schema.FIELD_MAP[collection]) : [];
 
-    log(`🔍 [getFormData] Thu thập dữ liệu từ collection: ${collection} (fields: ${fields.join(', ')})`, 'info');
+    L._(`🔍 [getFormData] Thu thập dữ liệu từ collection: ${collection} (fields: ${fields.join(', ')})`, 'info');
 
     if (fields.length === 0) return results;
 
@@ -2680,7 +2646,7 @@ const HD = {
   async filterUpdatedData(containerId, root = document, isCollection = true) {
     const container = getE(containerId, root);
     if (!container) {
-      log(`⚠️ Container với ID "${containerId}" không tìm thấy`, 'warning');
+      L._(`⚠️ Container với ID "${containerId}" không tìm thấy`, 'warning');
       return {};
     }
 
@@ -2722,7 +2688,7 @@ const HD = {
           if (!fieldName || SYSTEM_FIELDS.has(fieldName)) return;
           allData[fieldName] = getFromEl(el);
         });
-        log('⚡ [filterUpdatedData] No ID found, treating as new record. Returning all data.', allData);
+        L._('⚡ [filterUpdatedData] No ID found, treating as new record. Returning all data.', allData);
         return [allData, Object.keys(allData).length];
       }
     }
@@ -2767,7 +2733,7 @@ const HD = {
       // Có thay đổi thực sự = field không phải id thuần, và giá trị khác data-initial
       if (isChanged && !isExactId) {
         hasRealChanges++;
-        log(`🔍 [filterUpdatedData] Updated ${hasRealChanges} fields detected: ${fieldName}: ${rawCurrent} - ${initialAttr}`);
+        L._(`🔍 [filterUpdatedData] Updated ${hasRealChanges} fields detected: ${fieldName}: ${rawCurrent} - ${initialAttr}`);
       }
     });
 
@@ -2812,7 +2778,7 @@ const HD = {
 
         if (hasData) {
           dataResult.push(rowData);
-          log(Object.entries(rowData));
+          L._(Object.entries(rowData));
         }
       });
 
@@ -3025,7 +2991,7 @@ HD.agg = function (source, field = null) {
 
   // Trường hợp 1: Có chỉ định field cụ thể -> Trả về thẳng giá trị Number
   if (field) {
-    return items.reduce((acc, item) => acc + (Number(item[field]) || 0), 0);
+    return items.reduce((acc, item) => acc + (Number(String(item[field]).replace(/[^0-9]/g, '')) || 0), 0);
   }
 
   // Trường hợp 2: Tính toán tự động tổng thể
@@ -3039,7 +3005,7 @@ HD.agg = function (source, field = null) {
   items.forEach((item) => {
     // Ưu tiên tìm field tiền tệ đầu tiên có dữ liệu
     const sField = sumFields.find((f) => item[f] !== undefined && item[f] !== null && item[f] !== '');
-    if (sField) sum += Number(item[sField]) || 0;
+    if (sField) sum += Number(String(item[sField]).replace(/[^0-9]/g, '')) || 0;
 
     // Ưu tiên tìm field số lượng đầu tiên có dữ liệu
     const qField = qtyFields.find((f) => item[f] !== undefined && item[f] !== null && item[f] !== '');

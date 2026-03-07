@@ -138,7 +138,7 @@ const BookingOverviewController = (function () {
     // Booking
     _bookingData = data.bookings?.[bookingId] || null;
     if (!_bookingData) {
-      log(`Không tìm thấy booking: ${bookingId}`, 'warning');
+      L._(`Không tìm thấy booking: ${bookingId}`, 'warning');
       return;
     }
 
@@ -1038,7 +1038,7 @@ const BookingOverviewController = (function () {
       logA('Lưu dữ liệu Tổng quan Booking thành công!', 'success');
     } catch (e) {
       Opps('BookingOverview._saveBkOverview', e);
-      logA('Lỗi khi lưu dữ liệu: ' + e.message, 'error');
+      Opps('Lỗi khi lưu dữ liệu: ' + e.message);
     } finally {
       showLoading(false);
     }
@@ -1067,7 +1067,7 @@ const BookingOverviewController = (function () {
         if (AccountantCtrl && typeof AccountantCtrl.openTransactionModal === 'function') {
           await AccountantCtrl.openTransactionModal('IN'); // Default to 'IN', or pass type as needed
         } else {
-          log('Không thể mở modal giao dịch: AccountantCtrl không khả dụng.', 'error');
+          L._('Không thể mở modal giao dịch: AccountantCtrl không khả dụng.', 'error');
         }
       })
       .catch((e) => {

@@ -108,7 +108,7 @@ export class ModalFull extends HTMLElement {
       try {
         content = window[dataLoad]();
       } catch (error) {
-        log(`Error executing function "${dataLoad}": ${error.message}`, 'error');
+        L._(`Error executing function "${dataLoad}": ${error.message}`, 'error');
         return;
       }
     } else {

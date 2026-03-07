@@ -25,7 +25,7 @@ const CHART_CDN = 'https://cdn.jsdelivr.net/npm/chart.js';
 // =========================================================================
 
 function init() {
-  console.log('🚀 Report Module Init...');
+  L._('🚀 Report Module Init...');
   if (typeof Chart === 'undefined') {
     const script = document.createElement('script');
     script.src = CHART_CDN;
@@ -119,7 +119,7 @@ async function refreshData() {
     currentData.transactions = txRes; // Store all transactions for sync checks
 
     // --- 4. Routing Logic ---
-    console.log(`Processing Report: ${reportType}`);
+    L._(`Processing Report: ${reportType}`);
     switch (reportType) {
       // SALES
       case 'SALES_GENERAL':
@@ -170,7 +170,7 @@ async function refreshData() {
     }
   } catch (e) {
     console.error('Report Error:', e);
-    logA('Lỗi tải báo cáo: ' + e.message, 'error', 'alert');
+    Opps('Lỗi tải báo cáo: ' + e.message);
   } finally {
     showLoading(false);
   }
@@ -874,7 +874,7 @@ async function fixData() {
     }
   } catch (e) {
     console.error('Fix Error:', e);
-    logA('Lỗi khi sửa dữ liệu: ' + e.message, 'error', 'alert');
+    Opps('Lỗi khi sửa dữ liệu: ' + e.message);
   } finally {
     showLoading(false);
   }
@@ -888,7 +888,7 @@ async function _fixErrorSyncSalesAccounting() {
   const syncErrors = currentData.syncErrorsForFix;
 
   if (!syncErrors || syncErrors.length === 0) {
-    logA('Không có dữ liệu lỗi để sửa. Vui lòng tạo lại báo cáo!', 'error', 'alert');
+    Opps('Không có dữ liệu lỗi để sửa. Vui lòng tạo lại báo cáo!');
     return;
   }
 
@@ -922,7 +922,7 @@ async function _fixErrorSyncSalesAccounting() {
         transactionData.id = A.DB.db.collection('transactions').doc().id;
         await A.DB.saveRecord('transactions', transactionData);
         successCount++;
-        console.log(`✓ Created transaction ${transactionData.id} for booking ${syncErr.id}`);
+        L._(`✓ Created transaction ${transactionData.id} for booking ${syncErr.id}`);
       } else {
         throw new Error('Firestore chưa khởi tạo');
       }
@@ -955,7 +955,7 @@ async function _fixErrorCancelledBooking() {
   const errors = currentData.syncErrorsForFix;
 
   if (!errors || errors.length === 0) {
-    logA('Không có dữ liệu lỗi để sửa. Vui lòng tạo lại báo cáo!', 'error', 'alert');
+    Opps('Không có dữ liệu lỗi để sửa. Vui lòng tạo lại báo cáo!');
     return;
   }
 
@@ -979,7 +979,7 @@ async function _fixErrorCancelledBooking() {
         // Gọi batchUpdateFieldData với tham số ids để chỉ xử lý những booking trong danh sách lỗi
         const result = await A.DB.batchUpdateFieldData('bookings', 'total_amount', oldAmount, 0, bookingIds, false);
         bookingUpdated = result.count;
-        console.log(`✓ Updated ${bookingUpdated} bookings: total_amount → 0`);
+        L._(`✓ Updated ${bookingUpdated} bookings: total_amount → 0`);
       } else {
         throw new Error('hàm batchUpdateFieldData chưa khởi tạo');
       }
@@ -1000,7 +1000,7 @@ async function _fixErrorCancelledBooking() {
         // Gọi batchUpdateFieldData với detail IDs
         const result = await A.DB.batchUpdateFieldData('booking_details', 'total', oldDetailTotal, 0, detailIds, false);
         detailsUpdated = result.count;
-        console.log(`✓ Updated ${detailsUpdated} booking_details: total → 0`);
+        L._(`✓ Updated ${detailsUpdated} booking_details: total → 0`);
       }
     } catch (e) {
       console.error('Error updating booking_details:', e);
@@ -1024,7 +1024,7 @@ async function _fixErrorCancelledBooking() {
     }
   } catch (e) {
     console.error('Fatal error in _fixErrorCancelledBooking:', e);
-    logA('Lỗi nghiêm trọng: ' + e.message, 'error', 'alert');
+    Opps('Lỗi nghiêm trọng: ' + e.message);
   } finally {
     showLoading(false);
   }
@@ -1067,7 +1067,7 @@ async function _fixErrorCancelledBooking() {
 
 //         const db = A.DB.db;
 
-//         console.log(`🔄 Bắt đầu roll back ${collectionName} - ${backupData.length} records`);
+//         L._(`🔄 Bắt đầu roll back ${collectionName} - ${backupData.length} records`);
 
 //         // 3. Duyệt backup array và batch update
 //         let batch = db.batch();
@@ -1106,7 +1106,7 @@ async function _fixErrorCancelledBooking() {
 //                 // Commit batch khi đạt 490 updates
 //                 if (updateCount >= 490) {
 //                     await batch.commit();
-//                     console.log(`✓ Batch committed: ${updateCount} updates`);
+//                     L._(`✓ Batch committed: ${updateCount} updates`);
 //                     batch = db.batch();
 //                     updateCount = 0;
 //                 }
@@ -1121,7 +1121,7 @@ async function _fixErrorCancelledBooking() {
 //         // 4. Final commit
 //         if (updateCount > 0) {
 //             await batch.commit();
-//             console.log(`✓ Final batch: ${updateCount} updates`);
+//             L._(`✓ Final batch: ${updateCount} updates`);
 //         }
 
 //         // 5. Kết quả
@@ -1145,7 +1145,7 @@ async function _fixErrorCancelledBooking() {
 
 //     } catch (e) {
 //         console.error('Fatal error in rollBackCollection:', e);
-//         logA('❌ Lỗi: ' + e.message, "error", "alert");
+//         Opps('❌ Lỗi: ' + e.message);
 //     } finally {
 //         showLoading(false);
 //     }
@@ -1291,7 +1291,7 @@ const ReportModule = {
     if (typeof downloadTableData === 'function') {
       downloadTableData(dataForUtils, type, `Report_${dRange}`, `${rptName} (${dRange})`);
     } else {
-      logA('Lỗi: Không tìm thấy hàm downloadTableData', 'error', 'alert');
+      Opps('Lỗi: Không tìm thấy hàm downloadTableData');
     }
   },
   fixData: fixData,

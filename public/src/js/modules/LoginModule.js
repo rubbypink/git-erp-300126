@@ -39,7 +39,7 @@ const AUTH_MANAGER = {
       if (isMobile) {
         try {
           await firebase.firestore().clearPersistence();
-          console.log('📱 Firestore persistence: ĐÃ TẮT (Mobile)');
+          L._('📱 Firestore persistence: ĐÃ TẮT (Mobile)');
         } catch (err) {
           // Lỗi này xảy ra nếu Firestore đã có operation đang chạy — bỏ qua
           console.warn(`⚠️ clearPersistence thất bại: [${err.code}] ${err.message}`);
@@ -62,7 +62,7 @@ const AUTH_MANAGER = {
       // loadDataFromFirebase() đã được xử lý bởi app.js#runPostBoot — không gọi ở đây
     } catch (e) {
       console.error(e);
-      logA('Lỗi tải profile: ' + e.message, 'error', 'alert');
+      Opps('Lỗi tải profile: ' + e.message);
     } finally {
       // Đóng modal
       showLoading(false);
@@ -373,7 +373,7 @@ const AUTH_MANAGER = {
     try {
       await this.auth.signInWithEmailAndPassword(email, pass);
     } catch (e) {
-      logA('Lỗi đăng nhập: ' + e.message, 'error', 'alert');
+      Opps('Lỗi đăng nhập: ' + e.message);
     } finally {
       showLoading(false);
     }
@@ -391,7 +391,7 @@ const AUTH_MANAGER = {
       await this.auth.signInWithPopup(provider);
     } catch (e) {
       console.error(e);
-      logA('Lỗi đăng nhập: ' + e.message, 'error', 'alert');
+      Opps('Lỗi đăng nhập: ' + e.message);
     } finally {
       showLoading(false);
     }
@@ -487,18 +487,14 @@ const SECURITY_MANAGER = {
 
       if (isHardAdmin || level >= 50) {
         permissionClass = 'is-admin';
-        A.UI.lazyLoad('tab-log');
-        log('🛡️ Security: ADMIN MODE');
+        L._('🛡️ Security: ADMIN MODE');
 
         if (maskedRole) {
           document.body.classList.add(`is-${maskedRole}`);
-          if (typeof selectTab === 'function') selectTab('tab-dashboard');
         } else {
           if (typeof activateTab === 'function') activateTab('tab-admin-dashboard');
         }
       } else {
-        if (typeof selectTab === 'function') selectTab('tab-dashboard');
-
         if (level >= 10) permissionClass = 'is-manager';
         else if (level >= 5) permissionClass = 'is-sup';
         else {
@@ -512,12 +508,12 @@ const SECURITY_MANAGER = {
           };
           permissionClass = roleClassMap[role] || (maskedRole === 'op' ? 'is-op' : 'is-sale');
         }
-        log(`🛡️ Security: STAFF MODE (${role})`);
+        L._(`🛡️ Security: STAFF MODE (${role})`);
       }
 
       if (permissionClass) document.body.classList.add(permissionClass);
 
-      console.log('LOGIN: UI FOR ROLE LOADED');
+      L._('LOGIN: UI FOR ROLE LOADED');
     } catch (error) {
       console.error('❌ Lỗi tại applySecurity:', error);
       if (typeof showToast === 'function') showToast('Lỗi phân quyền hệ thống!', 'danger');
@@ -561,7 +557,7 @@ const SECURITY_MANAGER = {
       container.querySelectorAll('.sales-only').forEach((el) => el.remove());
       container.querySelectorAll('[data-bs-target="#tab-form"]').forEach((el) => el.remove()); // Ẩn tab Dashboard chung
     }
-    console.log('LOGIN: DOM CLEANED BASED ON ROLE');
+    L._('LOGIN: DOM CLEANED BASED ON ROLE');
   },
 };
 
