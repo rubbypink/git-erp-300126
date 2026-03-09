@@ -378,10 +378,10 @@ function updateStatsUI(grandTotal, transportTotal, transportA, landChildTotal) {
   const avgChild = countChild > 0 ? landChildTotal / countChild : 0;
 
   if (document.getElementById('Stats_AvgAdult')) {
-    document.getElementById('Stats_AvgAdult').innerText = formatMoney(Math.round(avgAdult));
+    document.getElementById('Stats_AvgAdult').innerText = formatNumber(Math.round(avgAdult));
   }
   if (document.getElementById('Stats_AvgChild')) {
-    document.getElementById('Stats_AvgChild').innerText = formatMoney(Math.round(avgChild));
+    document.getElementById('Stats_AvgChild').innerText = formatNumber(Math.round(avgChild));
   }
 }
 
@@ -530,6 +530,7 @@ async function syncRow(sourceRow = null) {
 async function syncTransactionForPaidAmount(idx) {
   try {
     const tr = getE(`row-${idx}`);
+    L._('bắt đầu sync');
     if (!tr) return;
 
     // 1. Phân tích dữ liệu từ UI
@@ -546,10 +547,11 @@ async function syncTransactionForPaidAmount(idx) {
     const supplier = getVal('[data-field="supplier"]', tr);
 
     // 2. Tính toán chênh lệch
-    const allTransactions = window.APP_DATA?.transactions || {};
-    const existingOutTxs = Object.values(allTransactions).filter((tx) => tx && tx.booking_id === detailId && tx.type === 'OUT');
-    const totalExistingPaid = existingOutTxs.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+    const allTransactions = HD.filter(APP_DATA?.transactions, detailId, '==', 'booking_id');
+    const existingOutTxs = HD.filter(allTransactions, 'OUT', '==', 'type');
+    const totalExistingPaid = HD.agg(existingOutTxs, 'amount');
     const diffAmount = currentPaidAmount * 1000 - totalExistingPaid;
+    L._(`Gia tri thuc te: ${diffAmount} = ${currentPaidAmount} * 1000 - ${totalExistingPaid}`);
 
     if (diffAmount === 0) return;
 
@@ -557,7 +559,7 @@ async function syncTransactionForPaidAmount(idx) {
     const fundAccounts = window.APP_DATA?.fund_accounts || {};
     const accountOptions = {};
     Object.values(fundAccounts).forEach((acc) => {
-      accountOptions[acc.id] = `${acc.name} (Số dư: ${formatMoney(acc.balance || 0)})`;
+      accountOptions[acc.id] = `${acc.name} (Số dư: ${formatNumber(acc.balance || 0)})`;
     });
 
     const { value: selectedFundId } = await Swal.fire({
@@ -594,12 +596,12 @@ async function syncTransactionForPaidAmount(idx) {
         amount: diffAmount,
         updated_at: new Date().toISOString(),
         status: 'Completed',
-        description: diffAmount > 0 ? `Chi tự động từ Điều hành: ${formatMoney(diffAmount)}` : `Điều chỉnh giảm chi: ${formatMoney(Math.abs(diffAmount))}`,
+        description: diffAmount > 0 ? `Chi tự động từ Điều hành: ${formatNumber(diffAmount)}` : `Điều chỉnh giảm chi: ${formatNumber(Math.abs(diffAmount))}`,
         created_by: window.currentUser?.email || 'System',
       };
 
       transaction.set(newTxRef, newTransaction);
-      transaction.update(fundRef, { balance: newBalance });
+      // transaction.update(fundRef, { balance: newBalance });
 
       return { newTransaction, newBalance };
     });
@@ -618,10 +620,10 @@ async function syncTransactionForPaidAmount(idx) {
       };
       A.DB._updateAppDataObj('fund_accounts', updatedFundAccount);
 
-      logA(`✅ Đã cập nhật dòng tiền. Số dư mới: ${formatMoney(newBalance)}`, 'success');
+      logA(`✅ Đã cập nhật dòng tiền. Số dư mới: ${formatNumber(newBalance)}`, 'success');
 
       if (A.NotificationManager) {
-        A.NotificationManager.sendToAdmin('Thanh toán tự động', `Tài khoản ${fundAccounts[selectedFundId].name} vừa thay đổi ${formatMoney(diffAmount)}`);
+        A.NotificationManager.sendToAdmin('Thanh toán tự động', `Tài khoản ${fundAccounts[selectedFundId].name} vừa thay đổi ${formatNumber(diffAmount)}`);
       }
     }
   } catch (error) {

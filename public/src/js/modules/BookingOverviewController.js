@@ -48,9 +48,9 @@ const BookingOverviewController = (function () {
 
       // 1. Load template vào modal
       _modalRef = await A.UI.renderModal('tpl_booking_overview.html', `Booking - ${bookingId}`, null, null, {
-        header: 'false',
         footer: 'false',
         fullscreen: 'true',
+        size: 'modal-xl',
       });
       if (_modalRef) {
         _modalRef.setFooter(false); // Footer được tích hợp sẵn trong template
@@ -182,7 +182,7 @@ const BookingOverviewController = (function () {
     setText('bkov-start-date', formatDateVN(bk.start_date) || '—');
     setText('bkov-end-date', formatDateVN(bk.end_date) || '—');
     setText('bkov-status', bk.status || '—');
-    setText('bkov-total-amount', formatMoney(bk.total_amount * 1000 || 0));
+    setText('bkov-total-amount', formatNumber(bk.total_amount * 1000 || 0));
   }
 
   /** Populate Tab Chi tiết (booking fields) */
@@ -208,7 +208,7 @@ const BookingOverviewController = (function () {
 
     if (_customerData) {
       // Map customer fields (schema uses no prefix, but HTML has customer_ prefix via FIELD_ALIAS)
-      HD.setFormData(root, _bookingData); // uses customer_* aliased fields from booking
+      HD.setFormData(root, _customerData, true, { prefix: 'customer_' }); // uses customer_* aliased fields from booking
     }
   }
 
@@ -248,9 +248,9 @@ const BookingOverviewController = (function () {
     const balance = total - deposit;
     const pct = total > 0 ? Math.min(100, Math.round((deposit / total) * 100)) : 0;
 
-    setText('bkov-pay-total', formatMoney(total));
-    setText('bkov-pay-deposited', formatMoney(deposit));
-    setText('bkov-pay-remaining', formatMoney(balance));
+    setText('bkov-pay-total', formatNumber(total));
+    setText('bkov-pay-deposited', formatNumber(deposit));
+    setText('bkov-pay-remaining', formatNumber(balance));
     setText('bkov-pay-method', _bookingData.payment_method || '—');
 
     const progressEl = getE('bkov-pay-progress');
@@ -427,7 +427,7 @@ const BookingOverviewController = (function () {
 
   /**
    * Thêm 1 dòng chi tiết dịch vụ vào bảng overview.
-   * Tương tự logic_sales.addDetailRow nhưng tối ưu cho readonly/overview.
+   * Tương tự SalesModule.addDetailRow nhưng tối ưu cho readonly/overview.
    * @private
    */
   function _addDetailRow(data) {
@@ -511,7 +511,7 @@ const BookingOverviewController = (function () {
   }
 
   // =========================================================================
-  // 6. CASCADING DROPDOWN LOGIC (Mirrors logic_sales patterns)
+  // 6. CASCADING DROPDOWN LOGIC (Mirrors SalesModule patterns)
   // =========================================================================
 
   function _onTypeChange(idx, resetChildren = true) {
@@ -580,7 +580,7 @@ const BookingOverviewController = (function () {
   }
 
   // =========================================================================
-  // 7. CALCULATION (Mirrors logic_sales.calcRow / calcGrandTotal)
+  // 7. CALCULATION (Mirrors SalesModule.calcRow / calcGrandTotal)
   // =========================================================================
 
   function _calcDetailRow(idx) {
@@ -613,7 +613,7 @@ const BookingOverviewController = (function () {
 
     const elTotal = tr.querySelector('.d-total');
     if (elTotal) {
-      elTotal.value = formatMoney(total);
+      elTotal.value = formatNumber(total);
       elTotal.dataset.val = total;
     }
 
@@ -629,7 +629,7 @@ const BookingOverviewController = (function () {
       grandTotal += Number(el.dataset.val) || 0;
     });
 
-    setText('bkov-services-total', formatMoney(grandTotal));
+    setText('bkov-services-total', formatNumber(grandTotal));
   }
 
   // =========================================================================
@@ -684,7 +684,7 @@ const BookingOverviewController = (function () {
             <i class="fa-solid ${icon} text-${color} mb-1"></i>
             <div class="small fw-bold">${escapeHtml(type)}</div>
             <div class="small text-muted">${info.count} mục</div>
-            <div class="small fw-bold text-${color} number">${formatMoney(info.total)}</div>
+            <div class="small fw-bold text-${color} number">${formatNumber(info.total)}</div>
           </div>
         </div>`;
     }
@@ -706,7 +706,7 @@ const BookingOverviewController = (function () {
       return (b.transaction_date || '').localeCompare(a.transaction_date || '');
     });
 
-    const typeColors = { Thu: 'success', Chi: 'danger', Chuyển: 'info' };
+    const typeColors = { IN: 'success', OUT: 'danger', PENDING: 'info' };
 
     let html = '';
     sorted.forEach((txn) => {
@@ -716,11 +716,11 @@ const BookingOverviewController = (function () {
           <td class="fw-bold small">${escapeHtml(txn.id || '—')}</td>
           <td class="text-center">${formatDateVN(txn.transaction_date) || '—'}</td>
           <td class="text-center"><span class="badge bg-${color}">${escapeHtml(txn.type || '—')}</span></td>
-          <td class="text-end fw-bold number">${formatMoney(txn.amount || 0)}</td>
+          <td class="text-end fw-bold number">${formatNumber(txn.amount || 0)}</td>
           <td>${escapeHtml(txn.category || '—')}</td>
-          <td>${escapeHtml(txn.fund_source || '—')}</td>
+          <td>${escapeHtml(A.Lang.t(txn.fund_source) || '—')}</td>
           <td class="text-center">
-            <at-status><span>${escapeHtml(txn.status || '—')}</span></at-status>
+            <span class="badge bg-${color}">${escapeHtml(A.Lang.t(txn.status) || '—')}</span>
           </td>
           <td class="small">${escapeHtml(txn.description || '')}</td>
         </tr>`;
@@ -865,7 +865,7 @@ const BookingOverviewController = (function () {
       case 'create-contract':
         if (typeof loadBookingToUI === 'function') {
           loadBookingToUI(_bookingData, _customerData, _detailsData);
-          await createContract();
+          await SalesModule.Logic.createContract();
         }
         break;
     }

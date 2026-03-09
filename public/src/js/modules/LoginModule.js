@@ -439,7 +439,6 @@ const SECURITY_MANAGER = {
           footerTemplate: 'tmpl-acc-footer-bar',
         },
         sale: {
-          js: 'sale',
           template: 'tpl_sales.html',
           container: '.app-container',
           title: '9 Trip Phu Quoc - Sales Center',
@@ -466,7 +465,7 @@ const SECURITY_MANAGER = {
       }
 
       // Load Logic JS
-      if (activeConfig.js) await loadJSForRole(activeConfig.js);
+      if (activeConfig.js) await loadJSForRole(configKey);
       if (activeConfig.jsFile) await loadJSFile(activeConfig.jsFile, role);
 
       // Render Giao diện chính

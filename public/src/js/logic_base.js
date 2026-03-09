@@ -298,10 +298,10 @@ function getAllCellValues(row) {
  */
 function applyGridFilter() {
   try {
-    const colSelect = document.getElementById('filter-col');
-    const valInput = document.getElementById('filter-val');
-    const fromInput = document.getElementById('filter-from');
-    const toInput = document.getElementById('filter-to');
+    const colSelect = getE('filter-col');
+    const valInput = getE('filter-val');
+    const fromInput = getE('filter-from');
+    const toInput = getE('filter-to');
 
     const rawCol = colSelect ? colSelect.value.trim() : '';
     const rawKeyword = valInput ? valInput.value : '';
@@ -441,7 +441,7 @@ function _renderFromPGData(tblId) {
       renderSecondaryIndexFromFlat(CURRENT_TABLE_KEY, window.PG_DATA, tblId);
     }
   } else {
-    const table = tblId ? document.getElementById(tblId) : document.getElementById('tbl-container-tab2');
+    const table = tblId ? getE(tblId) : getE('tbl-container-tab2');
     if (typeof initPagination === 'function') {
       initPagination(window.PG_DATA, table);
     }
@@ -459,10 +459,10 @@ function resetGridData() {
   window.FILTER_ACTIVE = false;
   LAST_FILTER_SIGNATURE = null;
   SORT_STATE.col = -1;
-  SORT_STATE.dir = 'asc';
+  SORT_STATE.dir = 'desc';
 
   // Clear filter input
-  const valInput = document.getElementById('filter-val');
+  const valInput = getE('filter-val');
   if (valInput) valInput.value = '';
 
   _renderFromPGData();
@@ -521,7 +521,7 @@ function parseDateVal(input) {
  *   - Kết quả: các nhóm được sắp xếp đúng thứ tự, items trong nhóm cũng được sắp xếp.
  */
 function applyGridSorter(dir = null) {
-  const selectEl = document.getElementById('filter-col');
+  const selectEl = getE('filter-col');
   if (!selectEl) return;
   const rawCol = String(selectEl.value ?? '').trim();
   if (!rawCol) return;
@@ -662,117 +662,76 @@ function updateSortButtonUI(dir) {
 function handleTableChange(key) {
   if (typeof renderTableByKey === 'function') {
     renderTableByKey(key);
+    clearFilterUI();
   } else {
     L._('Không tìm thấy hàm renderTableByKey', 'error');
   }
 }
 
+function clearFilterUI() {
+  const colSelect = getE('filter-col');
+  const valInput = getE('filter-val');
+  const fromInput = getE('filter-from');
+  const toInput = getE('filter-to');
+  if (colSelect) colSelect.value = '';
+  if (valInput) valInput.value = '';
+  if (fromInput) fromInput.value = '';
+  if (toInput) toInput.value = '';
+
+  setVal('list-preset-range', '-1'); // Clear preset range selection
+  window.FILTER_ACTIVE = false;
+  LAST_FILTER_SIGNATURE = null;
+}
+
 /**
- * HÀM TÍNH TOÁN THỐNG KÊ (Sử dụng Index cố định)
- * @param {Array} dataRows - Dữ liệu các dòng cần tính
+ * HÀM TÍNH TOÁN THỐNG KÊ (Đã tối ưu bằng HD.agg)
+ * @param {Array} dataRows - Dữ liệu các dòng cần tính (Hỗ trợ cả Object Rows và Array Rows)
  */
-calculateSummary = function (dataRows) {
-  // 1. Guard Clause: Reset về 0 nếu không có dữ liệu
+function calculateSummary(dataRows) {
+  // 1. Guard Clause
   if (!dataRows || !Array.isArray(dataRows) || dataRows.length === 0) {
-    L._('calculateSummary lỗi tham số!');
+    if (typeof L !== 'undefined' && L._) L._('calculateSummary lỗi tham số!');
     if (typeof updateStatUI === 'function') updateStatUI(0, 0, 0);
     return;
   }
 
-  // =================================================================
-  // TỰ ĐỘNG TÌM INDEX CỘT DỰA VÀO TÊN (GRID_COLS)
-  // =================================================================
-  let IDX_TOTAL = -1;
-  let IDX_QTY = -1;
-
-  if (typeof GRID_COLS !== 'undefined' && Array.isArray(GRID_COLS)) {
-    // Tìm cột Tiền (Thành Tiền hoặc Tổng Cộng)
-    const colTotal = GRID_COLS.find((c) => {
-      const t = String(c.t).toLowerCase().trim();
-      return t === 'thành tiền' || t === 'tổng cộng' || t === 'tổng booking' || t === 'tổng chi tiêu' || t === 'tổng chi phí';
-    });
-    if (colTotal) IDX_TOTAL = colTotal.i;
-    // Tìm cột Số Lượng (SL hoặc Số Lượng)
-    const colQty = GRID_COLS.find((c) => {
-      const t = String(c.t).toLowerCase().trim();
-      return t === 'sl' || t === 'số lượng' || t === 'ng lớn' || t === 'người lớn';
-    });
-    if (colQty) IDX_QTY = colQty.i;
-  } else {
-    L._('calculateSummary: Chưa định nghĩa GRID_COLS', 'error');
+  if (typeof GRID_COLS === 'undefined' || !Array.isArray(GRID_COLS)) {
+    if (typeof L !== 'undefined' && L._) L._('calculateSummary: Chưa định nghĩa GRID_COLS', 'error');
     return;
   }
 
-  // Log cảnh báo nếu không tìm thấy cột (để Dev biết tại sao Stats = 0)
-  if (IDX_TOTAL === -1) {
-    L._('Calc Summary: Không tìm thấy cột [Thành Tiền/Tổng Cộng]', 'error');
+  // 2. Tự động tìm Cấu hình Cột (Ngắn gọn hơn với hàm helper isMatch)
+  const isMatch = (col, keywords) => keywords.includes(String(col.t).toLowerCase().trim());
+
+  const colTotal = GRID_COLS.find((c) => isMatch(c, ['thành tiền', 'tổng cộng', 'tổng booking', 'tổng chi tiêu', 'tổng chi phí']));
+  const colQty = GRID_COLS.find((c) => isMatch(c, ['sl', 'số lượng', 'ng lớn', 'người lớn']));
+
+  if (!colTotal) {
+    if (typeof L !== 'undefined' && L._) L._('Calc Summary: Không tìm thấy cột [Thành Tiền/Tổng Cộng]', 'error');
     return;
   }
-  if (IDX_QTY === -1) L._('Calc Summary: Không tìm thấy cột [SL/Số Lượng]', 'error');
 
-  // =================================================================
-  // TÍNH TOÁN
-  // =================================================================
-  let sumTotal = 0;
-  let sumQty = 0;
+  // 3. Xác định khóa (Field Key) để mapping cho HD.agg
+  // Nhận diện dòng đầu tiên để biết mảng chứa Object (dữ liệu DB) hay mảng chứa Array (dữ liệu UI Table)
+  const firstRow = dataRows[0];
+  const isObjRow = typeof firstRow === 'object' && !Array.isArray(firstRow);
 
-  // Helper: resolve key for object rows when IDX_* is numeric
-  const resolveObjectKey = (idxOrKey) => {
-    if (idxOrKey === null || idxOrKey === undefined || idxOrKey === -1) return null;
-    if (typeof idxOrKey === 'string') return idxOrKey;
+  // Nếu là Object Row: Lấy thuộc tính key (hoặc k). Nếu là Array Row: Lấy chỉ số index (i).
+  const fieldTotal = isObjRow ? colTotal.key || colTotal.k || colTotal.i : colTotal.i;
+  const fieldQty = colQty ? (isObjRow ? colQty.key || colQty.k || colQty.i : colQty.i) : null;
 
-    // Nếu là number: dùng header để map index -> field name
-    if (typeof idxOrKey === 'number') {
-      const headerKey = typeof CURRENT_TABLE_KEY === 'string' && APP_DATA ? CURRENT_TABLE_KEY : null;
-      const headerRow = GRID_COLS;
-      if (Array.isArray(headerRow) && headerRow[idxOrKey]) return headerRow[idxOrKey];
-    }
-    return idxOrKey;
-  };
+  // 4. TÍNH TOÁN VỚI HD.agg (Thay thế hoàn toàn vòng lặp For)
+  const sumTotal = HD.agg(dataRows, fieldTotal);
+  const sumQty = fieldQty !== null ? HD.agg(dataRows, fieldQty) : 0;
 
-  const parseNumberSafe = (val) => {
-    if (typeof getNum === 'function') return getNum(val);
-    const clean = String(val ?? '0').replace(/[^0-9.-]+/g, '');
-    if (clean === '' || clean === '-') return 0;
-    const num = parseFloat(clean);
-    return isNaN(num) ? 0 : num;
-  };
-
-  // 2. Duyệt mảng để tính tổng (Support both array & object rows)
-  for (let i = 0; i < dataRows.length; i++) {
-    const row = dataRows[i];
-    if (!row) continue;
-
-    const isObjRow = typeof row === 'object' && !Array.isArray(row);
-
-    let rawTotal = 0;
-    let rawQty = 0;
-
-    if (isObjRow) {
-      const keyTotal = resolveObjectKey(IDX_TOTAL);
-      const keyQty = resolveObjectKey(IDX_QTY);
-      rawTotal = keyTotal !== null && keyTotal !== -1 ? row[keyTotal] : 0;
-      rawQty = keyQty !== null && keyQty !== -1 ? row[keyQty] : 0;
-    } else {
-      rawTotal = IDX_TOTAL !== -1 ? row[IDX_TOTAL] : 0;
-      rawQty = IDX_QTY !== -1 ? row[IDX_QTY] : 0;
-    }
-
-    const valTotal = parseNumberSafe(rawTotal);
-    const valQty = parseNumberSafe(rawQty);
-
-    sumTotal += valTotal;
-    sumQty += valQty;
-  }
-
-  // 3. Tính Bình Quân (Tránh chia cho 0)
+  // 5. Tính Bình Quân (An toàn tránh chia cho 0)
   const avg = sumQty !== 0 ? sumTotal / sumQty : 0;
 
-  // 5. Cập nhật giao diện
+  // 6. Cập nhật giao diện
   if (typeof updateStatUI === 'function') {
     updateStatUI(sumTotal, sumQty, avg);
   }
-};
+}
 
 /**
  * Helper cập nhật HTML (Giữ nguyên)
@@ -781,57 +740,12 @@ function updateStatUI(total, qty, avg) {
   const elTotal = getE('stat-total');
   const elQty = getE('stat-qty');
   const elAvg = getE('stat-avg');
-  // formatMoney là hàm tiện ích dùng chung
+  // formatNumber là hàm tiện ích dùng chung
   // Nếu chưa load được file utils thì fallback về toLocaleString
-  const fmt = (n) => (typeof formatMoney === 'function' ? formatMoney(n) : Number(n).toLocaleString());
+  const fmt = (n) => (typeof formatNumber === 'function' ? formatNumber(n) : Number(n).toLocaleString());
   if (elTotal) setVal(elTotal, fmt(total));
   if (elQty) setVal(elQty, Number(qty).toLocaleString());
   if (elAvg) setVal(elAvg, fmt(avg));
-}
-
-/**
- * =========================================================================
- * SETTINGS MODAL - Theme & General Settings
- * Note: All theme-related logic delegated to THEME_MANAGER class
- * =========================================================================
- */
-async function openSettingsModal() {
-  try {
-    // Render modal template
-    await A.UI.renderTemplate('body', 'tmpl-download-library');
-    await A.Modal.render(getE('tmpl-settings-form'), 'Cài Đặt Chung');
-    await A.Modal.show(
-      null,
-      null,
-      saveThemeSettings, // Save callback (calls THEME_MANAGER.saveSettingsFromForm)
-      () => THEME_MANAGER.resetToDefault(true) // Reset callback with confirmation
-    );
-
-    // --- DELEGATE ALL THEME LOGIC TO THEME_MANAGER ---
-    if (!THEME_MANAGER) {
-      Opps('Theme manager not initialized');
-      return;
-    }
-
-    // 1. Fill form with current theme colors
-    THEME_MANAGER.fillSettingsForm();
-
-    // 2. Setup color sync (color picker ↔ text display sync)
-    THEME_MANAGER.setupColorSync();
-
-    // 3. Load keyboard shortcuts (if function exists)
-    if (typeof loadShortcutsToForm === 'function') {
-      loadShortcutsToForm();
-    }
-
-    // 4. Set logo preview
-    if (getE('st-logo-preview')) {
-      const mainLogo = getE('main-logo');
-      getE('st-logo-preview').src = mainLogo ? mainLogo.src : 'https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp';
-    }
-  } catch (e) {
-    Opps('Lỗi mở Cài Đặt:', e);
-  }
 }
 
 // =========================================================================
@@ -856,7 +770,7 @@ async function downloadData(type = 'excel') {
   }
 
   // 2. CHUẨN BỊ TÊN FILE & NGỮ CẢNH
-  const selectEl = document.getElementById('btn-select-datalist');
+  const selectEl = getE('btn-select-datalist');
   let viewType = selectEl ? selectEl.value : 'bookings';
   let viewText = selectEl ? selectEl.options[selectEl.selectedIndex].text : 'Export';
 
@@ -981,10 +895,16 @@ async function downloadData(type = 'excel') {
     Opps('Lỗi khi xuất file: ' + err.message);
   }
 }
-// ==========================================
-// CẬP NHẬT LOGIC TÌM KIẾM & CLICK (YÊU CẦU 2)
-// ==========================================
-
+function applyPresetDateRange(val) {
+  if (!val || val === '-1') {
+    val = 'this_year';
+    setVal('list-preset-range', val);
+  }
+  const { start, end } = getDateRange(val);
+  setVal('filter-from', start);
+  setVal('filter-to', end);
+  applyGridFilterThrottled();
+}
 /**
  * Xử lý click dòng trên Dashboard
  * @param {string} idVal - Giá trị ID (BookingID hoặc SID)
@@ -1033,6 +953,7 @@ function refreshForm() {
   getE('BK_Date').valueAsDate = new Date();
   getE('BK_Start').valueAsDate = new Date();
   getE('BK_End').valueAsDate = new Date();
+  setVal('BK_Staff', CURRENT_USER.name);
   detailRowCount = 0;
 }
 
@@ -1042,7 +963,7 @@ function refreshForm() {
  */
 function reverseDetailsRows() {
   // 1. Lấy phần thân bảng (Sử dụng getE helper nếu có, hoặc getElementById)
-  const tbody = document.getElementById('detail-tbody');
+  const tbody = getE('detail-tbody');
 
   if (!tbody || tbody.rows.length < 2) {
     // Nếu bảng không có hoặc chỉ có 0-1 dòng thì không cần đảo
@@ -1206,7 +1127,7 @@ const SEARCH_THROTTLE_MS = () => window.A?.getConfig?.('search_throttle_ms') ?? 
  * - Gọi onGridRowClick khi chọn item
  * ⏱️ Giới hạn: Chỉ chạy 1 lần mỗi 1 giây (throttle)
  */
-function handleBookingSearch() {
+function handleBookingSearch(bkId) {
   // ⏱️ THROTTLE: Kiểm tra thời gian kể từ lần gọi cuối
   const now = Date.now();
   if (now - _lastSearchClickTime < SEARCH_THROTTLE_MS()) {
@@ -1215,7 +1136,7 @@ function handleBookingSearch() {
   _lastSearchClickTime = now;
 
   const searchInput = getE('booking-search');
-  const kRaw = searchInput?.value;
+  const kRaw = bkId ? bkId : searchInput?.value;
   const k = String(kRaw ?? '').trim();
 
   if (!k) {
@@ -1270,6 +1191,7 @@ function handleBookingSearch() {
     // ✨ TỐI ƯU: Nếu chỉ có 1 kết quả -> Hỏi người dùng có load luôn không
     if (topResults.length === 1) {
       const result = topResults[0];
+      if (bkId) return onGridRowClick(result.id);
       const confirmMsg = `Tìm thấy 1 kết quả:\n\nID: ${result.id}\nTên: ${result.customer_full_name || 'N/A'}\n\nLoad dữ liệu booking này không?`;
 
       logA(confirmMsg, 'info', async () => {
@@ -1309,7 +1231,6 @@ function initGlobalTableSearch(inputId = 'global-search') {
 
   let debounceTimer;
 
-  
   // Chuẩn hóa từ khóa: bỏ khoảng trắng thừa ở 2 đầu và chuyển thành chữ thường
   const searchTerm = e.target.value.trim().toLowerCase();
 
@@ -1351,7 +1272,7 @@ function _populateSearchDatalist(results, inputElement) {
   if (!inputElement) return;
 
   // Tìm hoặc tạo datalist
-  let datalist = document.getElementById('search-bookings-datalist');
+  let datalist = getE('search-bookings-datalist');
   if (!datalist) {
     datalist = document.createElement('datalist');
     datalist.id = 'search-bookings-datalist';
@@ -1484,10 +1405,6 @@ async function loadDataFromFirebase(silent = false) {
     const userRole = role;
     const targetSourceKey = userRole === 'op' ? 'operator_entries' : 'booking_details';
 
-    // [OPTIONAL] Vẫn tạo Alias activeDetails để code mới sau này dùng cho tiện
-    // Dùng ?? {} để tránh Object.values(undefined) khi collection chưa được load cho role này
-    APP_DATA.activeDetails = userRole === 'op' ? Object.values(APP_DATA?.operator_entries ?? {}) : Object.values(APP_DATA?.booking_details ?? {});
-
     L._(`✅ Tải xong sau: ${Date.now() - startTime}ms`, 'success');
 
     retryCount = 0;
@@ -1520,7 +1437,7 @@ async function loadModule_Accountant() {
     }
 
     // BƯỚC 3: TẢI CSS (Tránh trùng lặp)
-    if (!document.getElementById('css-accountant')) {
+    if (!getE('css-accountant')) {
       const link = document.createElement('link');
       link.id = 'css-accountant';
       link.rel = 'stylesheet';
@@ -1544,4 +1461,126 @@ async function loadModule_Accountant() {
     console.error('Lỗi tải module Accountant:', error);
     Opps('Không thể tải module Kế toán. Vui lòng kiểm tra console.');
   }
+}
+
+/**
+ * =========================================================================
+ * SETTINGS MODAL - Theme & General Settings
+ * Note: All theme-related logic delegated to THEME_MANAGER class
+ * =========================================================================
+ */
+async function openSettingsModal() {
+  try {
+    // Render modal template
+    await A.UI.renderTemplate('body', 'tmpl-download-library');
+    await A.Modal.render(getE('tmpl-settings-form'), 'Cài Đặt Chung', { size: 'modal-lg' });
+    await A.Modal.show(
+      null,
+      null,
+      async (e, target) => {
+        await saveBasicSettings(e, target);
+      },
+      () => THEME_MANAGER.resetToDefault(true) // Reset callback with confirmation
+    );
+
+    await initSettingsTab();
+
+    // --- DELEGATE ALL THEME LOGIC TO THEME_MANAGER ---
+    if (!THEME_MANAGER) {
+      Opps('Theme manager not initialized');
+      return;
+    } else {
+      THEME_MANAGER.fillSettingsForm();
+      THEME_MANAGER.setupColorSync();
+      if (getE('st-logo-preview')) {
+        const mainLogo = getE('main-logo');
+        getE('st-logo-preview').src = mainLogo ? mainLogo.src : 'https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp';
+      }
+    }
+    // 3. Load keyboard shortcuts (if function exists)
+    if (typeof loadShortcutsToForm === 'function') {
+      loadShortcutsToForm();
+    }
+  } catch (e) {
+    Opps('Lỗi mở Cài Đặt:', e);
+  }
+}
+
+/**
+ * Khởi tạo Tab Cài Đặt mới
+ */
+async function initSettingsTab() {
+  try {
+    // 1. Fill select collection
+    const colSelect = getE('st-sync-collection');
+    if (colSelect && typeof APP_DATA !== 'undefined') {
+      const collections = Object.keys(APP_DATA).filter((k) => !k.includes('_by_') && !k.includes('lists')); // Loại bỏ các index phụ
+      fillSelect('st-sync-collection', collections, '-- Chọn Collection --');
+    }
+
+    // 2. Khởi tạo Dashboard Table (nếu có dữ liệu cũ trong config)
+    // Giả sử config lưu trong window.A.config.dash_tables
+    const dashConfig = localStorage.getItem('dashTables') ? JSON.parse(localStorage.getItem('dashTables')) : null;
+    if (dashConfig) {
+      for (let i = 1; i <= 4; i++) {
+        const el = getE(`st-dash-table-${i}`); // Hỗ trợ cả 2 ID cũ và mới
+        if (el) {
+          const val = dashConfig[`table${i}`] || '';
+          el.value = val; // Set giá trị đã lưu vào select
+        }
+      }
+      initDashboard(dashConfig); // Vẽ lại dashboard với config đã lưu
+    }
+    // Chạy logic loại trừ lần đầu
+    handleDashTableChange();
+  } catch (e) {
+    console.error('initSettingsTab error:', e);
+  }
+}
+
+/**
+ * Xử lý logic loại trừ option trong Dashboard Table
+ */
+function handleDashTableChange(el) {
+  try {
+    const selects = $$('.st-dash-table');
+    const selectedValues = selects.map((s) => s.value).filter((v) => v !== '');
+
+    selects.forEach((s) => {
+      const currentValue = s.value;
+      Array.from(s.options).forEach((opt) => {
+        if (opt.value === '') return;
+        // Nếu option này đang được chọn ở một select KHÁC thì ẩn nó đi
+        if (selectedValues.includes(opt.value) && opt.value !== currentValue) {
+          opt.disabled = true;
+          opt.style.display = 'none';
+        } else {
+          opt.disabled = false;
+          opt.style.display = 'block';
+        }
+      });
+    });
+  } catch (e) {
+    console.error('handleDashTableChange error:', e);
+  }
+}
+
+async function saveBasicSettings(e, target) {
+  const btn = e?.target || target?.querySelector('.btn-save') || getE('btn-save-modal');
+  if (btn) setBtnLoading(btn, true, 'Đang lưu...');
+  // 1. Lấy giá trị từ form
+  let dash_tables = {};
+  dash_tables.table1 = getVal('st-dash-table-1') ? getVal('st-dash-table-1') : '';
+  dash_tables.table2 = getVal('st-dash-table-2') ? getVal('st-dash-table-2') : '';
+  dash_tables.table3 = getVal('st-dash-table-3') ? getVal('st-dash-table-3') : '';
+  dash_tables.table4 = getVal('st-dash-table-4') ? getVal('st-dash-table-4') : '';
+  L._('Lưu cài đặt Dashboard:', Object.values(dash_tables));
+
+  localStorage.setItem('dashTables', JSON.stringify(dash_tables)); // Lưu vào localStorage (có thể dùng để render lại dashboard ngay lập tức)
+  initDashboard(dash_tables); // Refresh dashboard with new config
+  setTimeout(() => {
+    if (btn) setBtnLoading(btn, false, 'Lưu Cài Đặt');
+    A.Modal.hide();
+    activateTab('tab-dashboard'); // Chuyển về tab Dashboard sau khi lưu
+  }, 500);
 }

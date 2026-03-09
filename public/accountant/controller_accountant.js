@@ -2,6 +2,7 @@
 // IMPORTS (v9 Modular ES6)
 // ===================================================================
 // NOTE: NotificationManager is accessed via window.A.NotificationManager (loaded by main app bundle)
+import SalesModule from '../src/js/modules/M_SalesModule.js';
 import { getNewData, migrateBookingTransactions, auditTransactionsChecking } from './accountant_logic.js';
 
 // ===================================================================
@@ -731,18 +732,18 @@ class AccountantController {
         updated_at: new Date().toISOString(),
       };
 
-      if (!isEdit) {
-        record.created_at = new Date().toISOString();
-        // Check status để cập nhật quỹ
-        if (data.status === 'Completed') {
-          const fundRef = db.collection(this.currentFundCol || 'fund_accounts').doc(data.fund_source);
-          // IN: Balance + amount, OUT: Balance - amount
-          const change = type === 'IN' ? amount : -amount;
-          batch.update(fundRef, {
-            balance: firebase.firestore.FieldValue.increment(change),
-          });
-        }
-      }
+      // if (!isEdit) {
+      //   record.created_at = new Date().toISOString();
+      //   // Check status để cập nhật quỹ
+      //   if (data.status === 'Completed') {
+      //     const fundRef = db.collection(this.currentFundCol || 'fund_accounts').doc(data.fund_source);
+      //     // IN: Balance + amount, OUT: Balance - amount
+      //     const change = type === 'IN' ? amount : -amount;
+      //     batch.update(fundRef, {
+      //       balance: firebase.firestore.FieldValue.increment(change),
+      //     });
+      //   }
+      // }
 
       batch.set(transRef, record, { merge: true });
 
@@ -765,7 +766,9 @@ class AccountantController {
 
       A.Modal.hide();
       logA('✅ Lưu thành công!', 'success');
-      this.refreshData();
+      if (SalesModule) {
+        SalesModule.Database.updateDeposit();
+      } else this.refreshData();
     } catch (e) {
       console.error(e);
       Opps('❌ Lỗi: ' + e.message);
@@ -782,6 +785,7 @@ class AccountantController {
     L._(`Aggregating for Booking: ${bookingId}, Type: ${type}`);
     // Access NotificationManager from the main app bundle (avoids broken relative import in production)
     const NotificationManager = window.A?.NotificationManager;
+    if (amount) amount = parseFloat(amount) / 1000; // Chuyển về đơn vị chính (nghìn đồng) để tính toán
 
     try {
       // Tổng hợp từ APP_DATA — saveRecord đã cập nhật trước đó, không cần query Firestore
@@ -811,7 +815,7 @@ class AccountantController {
           status: balance <= 0 ? 'Thanh Toán' : totalIn > 0 ? 'Đặt Cọc' : 'Đặt Lịch',
         });
 
-        NotificationManager?.sendToSales('THANH TOÁN MỚI CHO BOOKING', `Booking ${bookingId} - ${customerName} đã nhận: ${amount}. Tổng thanh toán: ${formatCurrency(totalIn)} VNĐ. Số dư còn lại: ${formatCurrency(balance)} VNĐ.`);
+        NotificationManager?.sendToSales('THANH TOÁN MỚI CHO BOOKING', `Booking ${bookingId} - ${customerName} đã nhận: ${amount}. Tổng thanh toán: ${formatNumber(totalIn * 1000)} VNĐ. Số dư còn lại: ${formatNumber(balance * 1000)} VNĐ.`);
       } else if (type === 'OUT') {
         totalOut = totalOut / 1000;
         // Đọc operator entry từ APP_DATA
@@ -826,7 +830,7 @@ class AccountantController {
             paid_amount: totalOut,
             debt_balance: debt,
           });
-          NotificationManager?.sendToOperator('CẬP NHẬT THANH TOÁN', `Đã thanh toán ${bookingId} - ${opData.service_name || ''} : ${formatCurrency(totalOut)} VNĐ. Số dư còn lại: ${formatCurrency(debt)} VNĐ.`);
+          NotificationManager?.sendToOperator('CẬP NHẬT THANH TOÁN', `Đã thanh toán ${bookingId} - ${opData.service_name || ''} : ${formatNumber(totalOut * 1000)} VNĐ. Số dư còn lại: ${formatNumber(debt * 1000)} VNĐ.`);
         }
       }
     } catch (e) {

@@ -127,7 +127,7 @@ class FirestoreDataTable extends HTMLElement {
           // Tự động stringify Object/Array thành JSON để hiển thị
           val = JSON.stringify(val);
         } else if (typeof val === 'number' || !isNaN(val) || key.toLowerCase().includes('amount') || key.toLowerCase().includes('total') || key.toLowerCase().includes('balance')) {
-          val = formatMoney(val);
+          val = formatNumber(val);
         } else if (typeof val === 'datetime' || val instanceof Date || key.toLowerCase().includes('updated') || key.toLowerCase().includes('created') || key.toLowerCase().includes('date')) {
           val = formatDateVN(val);
         }
@@ -475,7 +475,7 @@ class AdminController {
     const opts = this.collections.map((c, i) => `<option value="${i}">${c.name}</option>`).join('');
 
     // Gọi Fetch lấy file HTML
-    const response = await fetch('./src/components/tpl_settings.html');
+    const response = await fetch('./src/components/tpl_admin_settings.html');
 
     // Kiểm tra nếu đường dẫn sai (báo lỗi 404)
     if (!response.ok) {

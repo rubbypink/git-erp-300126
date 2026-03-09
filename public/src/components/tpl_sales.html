@@ -20,13 +20,13 @@
           <div
             class="card-header bg-primary bg-gradient bg-opacity-75 text-white py-1 d-flex justify-content-between align-items-center"
             onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto;">
-            <small class="fw-bold">BOOKING CẦN XIN REVIEW</small>
-            <span class="badge text-dark" id="badge-new-bk">0</span>
+            <small class="fw-bold"></small>
+            <span class="badge" id="badge-dash-tbl-1">0</span>
           </div>
           <div class="card-body p-0 border-bottom" style="overflow-y: auto;">
-            <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-new-bk"
+            <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-1"
               data-collection="bookings">
-              <thead class="table-light sticky-top text-center" style="z-index: 10;">
+              <thead class="table-warning sticky-top text-center" style="z-index: 10;">
                 <tr>
                   <th>ID</th>
                   <th>Khách Hàng</th>
@@ -48,12 +48,12 @@
             class="card-header bg-danger bg-gradient bg-opacity-75 text-white py-1 d-flex justify-content-between align-items-center"
             onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto;">
             <small class="fw-bold">Booking Chờ Xác Nhận (Khách sạn)</small>
-            <span class="badge text-dark" id="badge-missing-code">0</span>
+            <span class="badge" id="badge-dash-tbl-2">0</span>
           </div>
           <div class="card-body p-0 border-bottom" style="overflow-y: auto;">
-            <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-missing"
+            <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-2"
               data-collection="booking_details">
-              <thead class="table-light sticky-top" style="z-index: 10;">
+              <thead class="table-warning sticky-top" style="z-index: 10;">
                 <tr>
                   <th>SID</th>
                   <th>Khách Hàng</th>
@@ -75,12 +75,12 @@
             class="card-header bg-primary  bg-gradient bg-opacity-75 text-white fw-bold py-1 d-flex justify-content-between align-items-center"
             onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto;">
             <small class="border-start border-4 border-info ps-2">Booking Sắp Đến (30 Ngày) </small>
-            <span class="badge text-dark" id="badge-arrival-bk">0</span>
+            <span class="badge" id="badge-dash-tbl-3">0</span>
           </div>
           <div class="card-body p-0 border-bottom" style="overflow-y: auto;">
-            <table class="table table-sm table-hover table-bordered small mb-0 text-center" id="tbl-dash-arrival-bk"
+            <table class="table table-sm table-hover table-bordered small mb-0 text-center" id="tbl-dash-3"
               data-collection="bookings">
-              <thead class="table-light sticky-top" style="z-index: 10;">
+              <thead class="table-secondary sticky-top" style="z-index: 10;">
                 <tr class="text-center">
                   <th>ID</th>
                   <th>Khách Hàng</th>
@@ -107,7 +107,7 @@
           </div>
           <div class="card-body p-0 border-bottom" style="overflow-y: auto;">
             <table class="table table-sm table-hover table-striped small mb-0" id="tbl-dash-staff">
-              <thead class="table-light sticky-top" style="z-index: 5;">
+              <thead class="table-secondary sticky-top" style="z-index: 5;">
                 <tr>
                   <th>Nhân Viên (staff)</th>
                   <th class="text-end">Tổng BK</th>
@@ -270,8 +270,11 @@
                 </button>
               </at-status>
             </div>
-            <div class="col-auto"><label class="form-label small">Nhân viên</label><select
-                class="form-select form-select-sm" id="BK_Staff" data-field="staff_id"></select></div>
+            <div class="col-auto"><label class="form-label small">Nhân viên</label>
+              <select class="form-select form-select-sm" id="BK_Staff" data-field="staff_id">
+                <option value="-1">-- Chọn NV --</option>
+              </select>
+            </div>
           </fieldset>
 
           <fieldset class="col-12 col-md-3" data-collection="bookings">
@@ -315,6 +318,9 @@
           <div class="small number">Giá Vé TE: <span id="Stats_TransportChild" class="fw-bold">0</span></div>
         </div>
         <div class="d-flex gap-2">
+          <button type="button" class="btn btn-sm btn-warning" onclick="copyBooking()" title="Load Booking Mẫu">
+            <i class="fa-solid fa-arrow-right-arrow-left fa-rotate-90"></i> Load Booking Mẫu
+          </button>
           <button type="button" class="btn btn-sm btn-outline-secondary" onclick="reverseDetailsRows()"
             title="Đảo ngược thứ tự dòng">
             <i class="fa-solid fa-arrow-right-arrow-left fa-rotate-90"></i> Đảo thứ tự

@@ -2007,6 +2007,22 @@ export const DB_SCHEMA = {
     groupBy: 'booking_id',
     description: 'Secondary index của operator_entries, nhóm theo booking_id. ' + 'APP_DATA.operator_entries_by_booking[bookingId] → OperatorEntry[]',
   },
+  operator_entries_by_supplier: {
+    displayNameEng: 'Operator Entries (by Supplier)',
+    displayName: 'Chi phí Giá Vốn (theo Nhà Cung Cấp)',
+    isSecondaryIndex: true,
+    source: 'operator_entries',
+    groupBy: 'supplier',
+    description: 'Secondary index của operator_entries, nhóm theo supplier. ' + 'APP_DATA.operator_entries_by_supplier[supplier] → OperatorEntry[]',
+  },
+  operator_entries_by_month: {
+    displayNameEng: 'Operator Entries (by Month)',
+    displayName: 'Chi phí Giá Vốn (theo Tháng)',
+    isSecondaryIndex: true,
+    source: 'operator_entries',
+    groupBy: 'check_in',
+    description: 'Secondary index của operator_entries, nhóm theo month. ' + 'APP_DATA.operator_entries_by_month[month] → OperatorEntry[]',
+  },
 
   transactions_by_booking: {
     displayNameEng: 'Transactions (by Booking)',
@@ -2015,6 +2031,15 @@ export const DB_SCHEMA = {
     source: 'transactions',
     groupBy: 'booking_id',
     description: 'Secondary index của transactions, nhóm theo booking_id. ' + 'APP_DATA.transactions_by_booking[bookingId] → Transaction[]',
+  },
+
+  transactions_by_month: {
+    displayNameEng: 'Transactions (by Month)',
+    displayName: 'Giao dịch (theo Tháng)',
+    isSecondaryIndex: true,
+    source: 'transactions',
+    groupBy: 'transaction_date',
+    description: 'Secondary index của transactions, nhóm theo month. ' + 'APP_DATA.transactions_by_month[month] → Transaction[]',
   },
 
   transactions_by_fund: {
@@ -2672,7 +2697,7 @@ function _getHotelLocationOptions() {
 
 /**
  * Get service name options based on service_type and hotel_name
- * Logic (from logic_sales.js updateServiceNameList):
+ * Logic (from SalesModule.js updateServiceNameList):
  *   - If service_type === 'Phòng': Get room types from lists.hotelMatrix[hotel_name].slice(2)
  *   - Otherwise: Get from lists.serviceMatrix where col[0] === service_type, return col[1]
  * @private

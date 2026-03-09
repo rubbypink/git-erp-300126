@@ -203,12 +203,12 @@ export const SupplierPayment = {
       const batch = db.batch();
 
       // 1. Lấy thông tin Quỹ (Để trừ tiền)
-      const fundObj = HD.find(APP_DATA.fund_accounts, fundAccountId, 'id');
-      const fundRef = db.collection('fund_accounts').doc(fundAccountId);
-      batch.update(fundRef, {
-        balance: (fundObj.balance || 0) - this.state.totalDebt * 1000,
-        updated_at: new Date(),
-      });
+      // const fundObj = HD.find(APP_DATA.fund_accounts, fundAccountId, 'id');
+      // const fundRef = db.collection('fund_accounts').doc(fundAccountId);
+      // batch.update(fundRef, {
+      //   balance: (fundObj.balance || 0) - this.state.totalDebt * 1000,
+      //   updated_at: new Date(),
+      // });
 
       // 2. Tạo Transaction (1 phiếu duy nhất)
       const txRef = db.collection('transactions').doc();
@@ -302,13 +302,13 @@ export const SupplierPayment = {
       });
 
       // Nếu có tạo giao dịch mới, phải trừ quỹ tổng
-      if (totalMissingGenerated > 0) {
-        const fundRef = db.collection('fund_accounts').doc(fundAccountId);
-        batch.update(fundRef, {
-          balance: (fundObj.balance || 0) - totalMissingGenerated,
-          updated_at: new Date(),
-        });
-      }
+      // if (totalMissingGenerated > 0) {
+      //   const fundRef = db.collection('fund_accounts').doc(fundAccountId);
+      //   batch.update(fundRef, {
+      //     balance: (fundObj.balance || 0) - totalMissingGenerated,
+      //     updated_at: new Date(),
+      //   });
+      // }
 
       await batch.commit();
       Swal.fire('Thành công', `Đã đồng bộ giao dịch. Phát sinh tự động bù trừ: ${totalMissingGenerated.toLocaleString()} đ`, 'success');

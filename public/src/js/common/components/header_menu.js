@@ -242,6 +242,7 @@ export default class ErpHeaderMenu {
                         <button class="dropdown-item py-2" type="button" onclick="downloadData()"><i class="fa-solid fa-file-excel text-success w-20px"></i> File Excel</button>
                         <button class="dropdown-item py-2" type="button" onclick="downloadData('pdf')"><i class="fa-solid fa-file-pdf text-danger w-20px"></i> File PDF</button>
                         <button id="btn-reload-collection" class="dropdown-item py-2" type="button"><i class="fa-solid fa-sync-alt"></i> Cập Nhật Dữ Liệu</button>
+                        <button id="btn-sync-delta-collection" class="dropdown-item py-2" type="button"><i class="fa-solid fa-sync-alt"></i> Cập Nhật Delta(Data mới)</button>
                     </div>
                     
                 </div>
@@ -475,6 +476,7 @@ export default class ErpHeaderMenu {
                     </div>
                     <div class="border-top bg-light p-2 d-flex justify-content-between">
                         <button class="btn btn-sm btn-link text-decoration-none text-muted" id="markAllReadBtn"><i class="fa-solid fa-check-double"></i> Đã đọc</button>
+                        <button class="btn btn-sm btn-link text-decoration-none text-muted" id="reloadNotifs">Tải thêm</button>
                         <button class="btn btn-sm btn-link text-decoration-none text-danger" id="clearAllBtn">Xóa tất cả</button>
                     </div>
                 </div>

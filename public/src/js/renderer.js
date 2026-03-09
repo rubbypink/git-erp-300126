@@ -65,7 +65,7 @@ const setupMainFormUI = function (lists) {
   }
 
   // --- RENDER HEADER CHO TABLE TBL-BOOKING-FORM ---
-  const tblBookingForm = document.getElementById('tbl-booking-form');
+  const tblBookingForm = getE('tbl-booking-form');
   if (tblBookingForm) {
     const thead = tblBookingForm.querySelector('thead');
     if (thead) {
@@ -142,10 +142,20 @@ function toggleContextUI(targetTabIdOrIndex) {
       if (typeof setMany === 'function' && typeof getVal === 'function') {
         if (getE('BK_Start') === '' || getVal('BK_Date') === '') {
           setMany(['BK_Date', 'BK_Start', 'BK_End'], new Date());
+          setVal('BK_Staff', CURRENT_USER.name);
         }
       }
     } else if (activeTabIndex === TAB_INDEX_BY_ID['tab-list']) {
       A.Event?.trigger('btn-select-datalist', 'change'); // Cập nhật lại datalist mỗi khi vào tab list
+      setTimeout(() => {
+        const rangeEl = getE('list-preset-range');
+        let val = getVal(rangeEl);
+        if (!val || val === '-1') {
+          val = 'this_year';
+          setVal(rangeEl, val);
+          applyPresetDateRange(val);
+        }
+      }, 200); // Delay nhỏ để đảm bảo DOM đã cập nhật
     } else if (activeTabIndex === TAB_INDEX_BY_ID['tab-dashboard']) {
       // Khi tab log vừa được render xong -> Lấy dữ liệu từ LS đắp vào
       A.Event?.trigger('btn-dash-update', 'click');
@@ -186,8 +196,8 @@ function selectTab(targetTabId) {
       A.AdminConsole.modal.setFooter(true); // Hiện footer để show nút lưu/xóa
       A.AdminConsole.modal.setSaveHandler(A.AdminConsole?.saveUser, 'Lưu User');
       A.AdminConsole.modal.setResetHandler(() => {
-        document.getElementById('users-form').reset();
-        document.getElementById('form-created-at').valueAsDate = new Date();
+        getE('users-form').reset();
+        getE('form-created-at').valueAsDate = new Date();
       }, 'Nhập Lại');
       A.AdminConsole.loadUsersData();
       break;
@@ -267,7 +277,7 @@ function renderHeaderHtml(collectionName) {
   // Render header row
   if (GRID_COLS && GRID_COLS.length > 0) {
     let headerHTML = '<th style="width:50px" class="text-center">#</th>';
-    headerHTML += GRID_COLS.map((col) => `<th class="${col.hidden ? 'd-none ' : 'text-center'}" data-field="${col.key}" style="white-space: nowrap;">${col.t}</th>`).join('');
+    headerHTML += GRID_COLS.map((col) => `<th class="${col.hidden ? 'd-none ' : 'text-center'}" data-field="${col.key}">${col.t}</th>`).join('');
     return headerHTML;
   } else {
     return '<th>Không có cấu hình cột</th>';
@@ -319,7 +329,7 @@ function generateGridCols(headerRow) {
 function renderGrid(dataList, table) {
   let nohide = false;
   if (!table) {
-    table = document.getElementById('tbl-container-tab2');
+    table = getE('tbl-container-tab2');
   }
   if (!table) return;
   if (table.id === 'tbl-container-tab2') nohide = true;
@@ -335,7 +345,7 @@ function renderGrid(dataList, table) {
     header.innerHTML = '<th>Không có cấu hình cột</th>';
   } else {
     let headerHTML = '<th style="width:50px" class="text-center">#</th>';
-    headerHTML += GRID_COLS.map((c) => `<th class="${nohide ? '' : c.hidden ? 'd-none' : 'text-center'}" data-field="${c.key}" style="white-space: nowrap;">${c.t}</th>`).join('');
+    headerHTML += GRID_COLS.map((c) => `<th class="${nohide ? '' : c.hidden ? 'd-none' : 'text-center'}" data-field="${c.key}">${c.t}</th>`).join('');
     header.innerHTML = headerHTML;
   }
 
@@ -370,11 +380,11 @@ function renderGrid(dataList, table) {
 
       if (val === undefined || val === null) val = '';
 
-      if (col.fmt === 'money' && typeof formatMoney === 'function') val = formatMoney(val);
+      if (col.fmt === 'money' && typeof formatNumber === 'function') val = formatNumber(val);
       if (col.fmt === 'date' && typeof formatDateVN === 'function') val = formatDateVN(val);
 
       const hiddenClass = nohide ? '' : col.hidden ? ' d-none' : '';
-      return `<td class="${col.align}${hiddenClass}" style="white-space: nowrap;">${val}</td>`;
+      return `<td class="${col.align}${hiddenClass}">${val}</td>`;
     }).join('');
 
     tr.innerHTML = html;
@@ -391,20 +401,10 @@ function renderGrid(dataList, table) {
       if (CURRENT_TABLE_KEY === 'booking_details' || CURRENT_TABLE_KEY === 'operator_entries') rowId = row[1]; // Details lấy cột 1 (BK_ID)
     }
     tr.id = rowId;
-
-    // tr.onclick = (e) => {
-    // 	const isCtrl = e.ctrlKey || e.metaKey;
-    // 	if(!isCtrl) return; // Phải có Ctrl mới mở chi tiết
-    // 	if(typeof onGridRowClick === 'function') onGridRowClick(rowId);
-    // };
-
+    tr.dataset.item = rowId;
     tr.onmouseover = function () {
       this.classList.add('table-active');
     };
-    tr.onmouseout = function () {
-      this.classList.remove('table-active');
-    };
-
     docFrag.appendChild(tr);
   });
 
@@ -426,7 +426,7 @@ function initPagination(sourceData, table) {
 }
 
 function renderCurrentPage(table) {
-  if (!table) table = document.getElementById('tbl-container-tab2');
+  if (!table) table = getE('tbl-container-tab2');
   const total = PG_STATE.data.length;
   const pagination = table.querySelector('#pagination');
   const gridCount = table.querySelector('#grid-count');
@@ -611,7 +611,7 @@ function renderSecondaryIndexTable(key, tblId) {
  * @param {string} [tblId]   - Container element ID (default: 'tbl-container-tab2')
  */
 function renderSecondaryIndexFromFlat(key, flatData, tblId) {
-  const table = tblId ? document.getElementById(tblId) : document.getElementById('tbl-container-tab2');
+  const table = tblId ? getE(tblId) : getE('tbl-container-tab2');
   if (!table) return;
 
   const tblEl = table.querySelector('table');
@@ -643,7 +643,7 @@ function renderSecondaryIndexFromFlat(key, flatData, tblId) {
     // Render thead
     if (thead) {
       let headerHTML = '<th style="width:50px" class="text-center">#</th>';
-      headerHTML += GRID_COLS.map((col) => `<th class="${col.hidden ? 'd-none ' : ''}text-center" data-field="${col.key}" style="white-space: nowrap;">${col.t}</th>`).join('');
+      headerHTML += GRID_COLS.map((col) => `<th class="${col.hidden ? 'd-none ' : ''}text-center" data-field="${col.key}">${col.t}</th>`).join('');
       thead.innerHTML = headerHTML;
     }
 
@@ -694,15 +694,16 @@ function renderSecondaryIndexFromFlat(key, flatData, tblId) {
         html += GRID_COLS.map((col) => {
           let val = row[col.key];
           if (val === undefined || val === null) val = '';
-          if (col.fmt === 'money' && typeof formatMoney === 'function') val = formatMoney(val);
+          if (col.fmt === 'money' && typeof formatNumber === 'function') val = formatNumber(val);
           if (col.fmt === 'date' && typeof formatDateVN === 'function') val = formatDateVN(val);
           const hiddenClass = col.hidden ? ' d-none' : '';
-          return `<td class="${col.align}${hiddenClass}" style="white-space: nowrap;">${val}</td>`;
+          return `<td class="${col.align}${hiddenClass}">${val}</td>`;
         }).join('');
 
         tr.innerHTML = html;
         tr.style.cursor = 'pointer';
         tr.id = row.id || `${key}-${globalIdx}`;
+        tr.dataset.item = row.id || `${key}-${globalIdx}`;
         tr.onmouseover = function () {
           this.classList.add('table-active');
         };
@@ -732,81 +733,6 @@ function renderSecondaryIndexFromFlat(key, flatData, tblId) {
 }
 
 /**
- * Filter DOM rows trong secondary index table (không phá cấu trúc grouped).
- * @deprecated Dùng applyGridFilter → renderSecondaryIndexFromFlat thay thế.
- * Giữ lại để tương thích ngược.
- * @param {string} key       - Secondary index key (CURRENT_TABLE_KEY)
- * @param {string} keyword   - Search keyword (lowercase đã chuẩn)
- * @param {string} colKey    - Field key để lọc (rỗng = toàn bảng)
- */
-function filterSecondaryIndexDOM(key, keyword, colKey) {
-  const table = document.getElementById('tbl-container-tab2');
-  const tbody = table?.querySelector('tbody');
-  if (!tbody) return;
-
-  const schemaDef = A.DB?.schema?.[key];
-  const groupedData = APP_DATA[key];
-
-  // Không có keyword → reset, show tất cả
-  if (!keyword) {
-    tbody.querySelectorAll('tr').forEach((r) => r.classList.remove('d-none', 'filter-hidden'));
-    window.ACTIVE_FILTER_DATA = null;
-    return;
-  }
-
-  // Đếm rows visible per group => ẩn group header nếu 0
-  const groupVisible = {}; // groupId → count
-  const dataRows = tbody.querySelectorAll('tr[data-group]');
-  const flatFiltered = [];
-
-  dataRows.forEach((tr) => {
-    const groupId = tr.dataset.group;
-    if (!groupVisible[groupId]) groupVisible[groupId] = 0;
-
-    // Lấy doc từ APP_DATA theo row id
-    const docId = tr.id;
-    const sourceKey = schemaDef?.source;
-    const doc = docId && sourceKey ? APP_DATA[sourceKey]?.[docId] : null;
-
-    let match = false;
-    if (doc) {
-      if (!colKey) {
-        // Full-text search
-        match = Object.values(doc).some((v) =>
-          String(v ?? '')
-            .toLowerCase()
-            .includes(keyword)
-        );
-      } else {
-        match = String(doc[colKey] ?? '')
-          .toLowerCase()
-          .includes(keyword);
-      }
-    } else {
-      // Fallback: search text content of row
-      match = tr.textContent.toLowerCase().includes(keyword);
-    }
-
-    if (match) {
-      tr.classList.remove('d-none', 'filter-hidden');
-      groupVisible[groupId]++;
-      if (doc) flatFiltered.push(doc);
-    } else {
-      tr.classList.add('filter-hidden', 'd-none');
-    }
-  });
-
-  // Ẩn/hiện group header
-  tbody.querySelectorAll('tr[data-group-id]').forEach((hdr) => {
-    const id = hdr.dataset.groupId;
-    hdr.classList.toggle('d-none', groupVisible[id] === 0);
-  });
-
-  // Lưu flat result để sort vẫn dùng được
-  window.ACTIVE_FILTER_DATA = flatFiltered;
-}
-
-/**
  * Main dispatch: render any collection or secondary-index table.
  *
  * Responsibilities:
@@ -826,7 +752,7 @@ function renderTableByKey(key, tblId) {
   const schemaDef = A.DB.schema[key];
   const isSecondary = schemaDef?.isSecondaryIndex === true;
 
-  let table = tblId ? document.getElementById(tblId) : document.getElementById('tbl-container-tab2');
+  let table = tblId ? getE(tblId) : getE('tbl-container-tab2');
   if (!table) return;
 
   const tblEl = table.querySelector('table');
@@ -895,7 +821,7 @@ function getAppDataFlat(key) {
 window.getAppDataFlat = getAppDataFlat;
 
 function initFilterUI() {
-  const select = document.getElementById('filter-col');
+  const select = getE('filter-col');
   if (!select) return;
 
   select.innerHTML = '';
@@ -906,6 +832,11 @@ function initFilterUI() {
       opt.value = col.i;
       opt.textContent = col.t;
       select.appendChild(opt);
+      if (col.i === 'booking_id') {
+        setVal('filter-col', col.i);
+        select.selectedIndex = select.options.length - 1;
+        select.dispatchEvent(new Event('change'));
+      }
     });
     if (GRID_COLS.length > 1) select.selectedIndex = 0;
   } else {
@@ -1008,6 +939,7 @@ function initBtnSelectDataList(data) {
     selectElem.disabled = false;
     if (data['bookings']) {
       selectElem.value = 'bookings';
+      debounce(applyGridSorter, 250)(['desc']);
     }
   }
 }
@@ -1016,165 +948,403 @@ function initBtnSelectDataList(data) {
 // 8. DASHBOARD RENDERER (Logic vẽ biểu đồ)
 // =========================================================================
 
-function initDashboard() {
+function initDashboard(config) {
   if (CURRENT_USER?.role === 'acc' || CURRENT_USER?.role === 'acc_thenice') return;
   const today = new Date();
   setVal('dash-filter-from', new Date(today.getFullYear(), today.getMonth(), 1));
   setVal('dash-filter-to', new Date(today.getFullYear(), today.getMonth() + 1, 0));
 
   setupMonthSelector(); // Cần hàm setupMonthSelector (giữ lại từ code cũ)
-
+  if (!config) config = localStorage.getItem('dashTables') ? JSON.parse(localStorage.getItem('dashTables')) : null;
   // Gán sự kiện Update Dashboard
-  const dashBtn = document.getElementById('btn-dash-update');
-  if (dashBtn) dashBtn.onclick = () => runFnByRole('renderDashboard');
+  const dashBtn = getE('btn-dash-update');
+  if (dashBtn) dashBtn.onclick = () => runFnByRole('renderDashboard', config);
 }
 
-function renderDashboard() {
+function renderDashboard(config) {
   if (!APP_DATA || !APP_DATA.bookings) return;
 
-  // Render các bảng con
-  renderDashTable1();
-  renderDashTable2();
-  renderDashTable3();
-  renderAggregates(); // Gom logic bảng 3,4 vào đây
+  try {
+    // Render các bảng con dựa theo config
+    // Nếu config.table1/2/3 có giá trị đặc biệt (BK_...) thì gọi hàm render tương ứng
+    // Nếu không có hoặc là giá trị cũ thì dùng mặc định
+
+    const renderByOption = (option, tableId) => {
+      switch (option) {
+        case 'BK_MOI':
+          renderDashTable_New(tableId, option);
+          break;
+        case 'BK_XIN_REVIEW':
+          renderDashTable_Review(tableId, option);
+          break;
+        case 'BK_SAP_DEN':
+          renderDashTable_Arrival(tableId, option);
+          break;
+        case 'BK_DANG_O':
+          renderDashTable_Staying(tableId, option);
+          break;
+        case 'BK_CHO_CODE':
+          renderDashTable_MissingCode(tableId, option);
+          break;
+        case 'BK_CHO_THANH_TOAN':
+          renderDashTable_PendingPayment(tableId, option);
+          break;
+        default:
+        // Mặc định theo logic cũ nếu không khớp option mới
+        // if (tableId === 'tbl-dash-1') renderDashTable1();
+        // else if (tableId === 'tbl-dash-2') renderDashTable2();
+        // else if (tableId === 'tbl-dash-3') renderDashTable3();
+      }
+    };
+
+    renderByOption(config?.table1 ?? 'BK_SAP_DEN', 'tbl-dash-1');
+    renderByOption(config?.table2 ?? 'BK_CHO_CODE', 'tbl-dash-2');
+    renderByOption(config?.table3 ?? 'BK_MOI', 'tbl-dash-3');
+
+    renderAggregates(); // Gom logic bảng 3,4 vào đây
+  } catch (err) {
+    Opps('renderDashboard Error:', err);
+  }
 }
 
-function renderDashTable1() {
-  if (!APP_DATA || !APP_DATA.bookings) return;
-  const tbody = document.querySelector('#tbl-dash-new-bk tbody');
-  if (!tbody) return;
+/**
+ * Trả về tiêu đề và ID badge tương ứng với tên bảng dashboard
+ */
+function updateDashHeaderStats(tableName, tableId, count = 0, total = 0) {
+  let badgeDays = window.A?.getConfig?.('dash_badge_days') || 30;
+  const dFrom = new Date(getVal('dash-filter-from'));
+  const dTo = new Date(getVal('dash-filter-to'));
+  let today = new Date();
+  const dFromCalc = Math.floor((today - dFrom) / (1000 * 60 * 60 * 24));
+  const isEarlier = dFromCalc >= 1;
+  const dToCalc = Math.floor((dTo - today) / (1000 * 60 * 60 * 24));
+  const isFuther = dToCalc >= 1;
+  const configs = {
+    BK_MOI: { title: `Booking Mới (${isEarlier ? dFromCalc : badgeDays} Ngày)`, badgeClass: 'planning' },
+    BK_XIN_REVIEW: { title: `Booking Xin Review (${isEarlier ? dFromCalc : badgeDays} Ngày)`, badgeClass: 'completed' },
+    BK_SAP_DEN: { title: `Booking Sắp Đến (${isFuther ? dToCalc : badgeDays} Ngày)`, badgeClass: 'confirmed' },
+    BK_DANG_O: { title: 'Booking Đang Ở', badgeClass: 'in-progress' },
+    BK_CHO_CODE: { title: `Booking Chờ Code Phòng (${dToCalc > Number(badgeDays) * 5 ? dToCalc : Number(badgeDays) * 5 || 365} Ngày)`, badgeClass: 'pending' },
+    BK_CHO_THANH_TOAN: { title: `Booking Cần Thanh Toán (${dToCalc > Number(badgeDays) * 5 ? dToCalc : Number(badgeDays) * 5 || 90} Ngày)`, badgeClass: 'pending' },
+  };
+  getE(tableId).setAttribute('data-tabname', tableName);
+  let tableNo = tableId ? tableId.split('-').pop() : null;
+  const badgeId = `badge-dash-tbl-${tableNo || 1}`;
+  let text;
+  if (total && total > 0) text = `Tổng Cộng: ${formatNumber(total)} / Số Lượng: ${count}`;
+  else text = `${count} BK`;
+  setClass(badgeId, configs[tableName]?.badgeClass || 'secondary', true);
+  setVal(badgeId, text);
+
+  const card = document.querySelector(`#${tableId}`).closest('.card');
+  if (card) {
+    const titleEl = card.querySelector('.card-header small');
+    if (titleEl) titleEl.textContent = configs[tableName]?.title || 'Danh sách';
+  }
+}
+
+/**
+ * RENDER HELPER: Tạo tiêu đề cho bảng Dashboard
+ */
+function _renderDashThead(tableId, columns = []) {
+  const thead = document.querySelector(`#${tableId} thead`);
+  if (!thead) return;
+
+  let html = '<tr>';
+  columns.forEach((col) => {
+    const label = col.label || col.key.toUpperCase();
+    const className = col.class || 'text-center';
+    html += `<th class="${className}">${label}</th>`;
+  });
+  html += '</tr>';
+  thead.innerHTML = html;
+}
+
+/**
+ * RENDER HELPER: Tạo dòng cho bảng Dashboard
+ */
+function _createDashRow(row, columns = []) {
+  const tr = document.createElement('tr');
+  tr.style.cursor = 'pointer';
+  tr.id = row.id;
+
+  let html = '';
+  columns.forEach((col) => {
+    let val = row[col.key] || '';
+    let className = col.class || 'text-center';
+
+    if (col.format === 'date') val = formatDateVN(val);
+    if (col.format === 'money') val = formatNumber(val);
+    if (col.format === 'status') val = `<at-status status="${val}"></at-status>`;
+
+    if (col.key === 'balance') {
+      const bal = getNum(row.total_amount) - getNum(row.deposit_amount);
+      val = formatNumber(bal);
+      if (bal > 0) className += ' text-danger fw-bold';
+      else className += ' text-success';
+    }
+
+    html += `<td class="${className}">${val}</td>`;
+  });
+
+  tr.innerHTML = html;
+  return tr;
+}
+
+/**
+ * OPTION: Booking Mới (BK_MOI)
+ */
+function renderDashTable_New(tableId, option) {
+  const tbody = document.querySelector(`#${tableId} tbody`);
+  if (!tbody) return 0;
   tbody.innerHTML = '';
-
-  const bookings = Object.values(APP_DATA.bookings);
-  const badgeDays = window.A?.getConfig?.('new_booking_badge_days') ?? 14;
-  const limitDate = new Date();
-  limitDate.setDate(limitDate.getDate() - badgeDays);
+  const dFrom = new Date(getVal('dash-filter-from'));
+  const dTo = new Date(getVal('dash-filter-to'));
+  let today = new Date();
+  let limitDate = new Date();
+  today.setHours(0, 0, 0, 0);
+  const badgeDays = window.A?.getConfig?.('dash_badge_days') ?? 30;
+  if (dFrom && dTo && dFrom < today) {
+    today = dTo > today ? today : dTo;
+    limitDate = dFrom;
+  } else {
+    limitDate.setDate(today.getDate() - badgeDays);
+  }
   let count = 0;
+  let totalAmount = 0;
+
+  const cols = [
+    { key: 'id', label: 'ID', class: 'text-center' },
+    { key: 'customer_full_name', label: 'Khách Hàng', class: 'fw-bold text-primary text-center' },
+    { key: 'created_at', label: 'Ngày Tạo', format: 'date' },
+    { key: 'total_amount', label: 'Tổng Tiền', format: 'money', class: 'text-center text-success' },
+    { key: 'deposit_amount', label: 'Đặt Cọc', format: 'money' },
+    { key: 'status', label: 'Trạng Thái', format: 'status' },
+    { key: 'staff_id', label: 'NV', class: 'text-center' },
+  ];
+
+  _renderDashThead(tableId, cols);
+
+  const bookings = Object.values(APP_DATA.bookings)
+    .filter((b) => {
+      const dDate = new Date(b.created_at || b.start_date);
+      return dDate >= limitDate && dDate <= today;
+    })
+    .sort((a, b) => new Date(b.created_at || b.start_date) - new Date(a.created_at || a.start_date));
 
   bookings.forEach((row) => {
-    // Cột 1 là CreatedAt (COL_INDEX.M_CREATED)
-    const dStr = row.end_date || row.created_at || row.start_date; // Ưu tiên END, nếu không có thì CREATED, nếu không có nữa thì START
-    const dDate = new Date(dStr);
-    const balClass = row.deposit_amount > 0 ? 'text-danger fw-bold' : 'text-success';
-    if (dDate >= limitDate && dDate <= new Date()) {
-      count++;
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-				<td class="text-center">${row.id}</td>
-				<td class="fw-bold text-primary text-center">${row.customer_full_name}</td>
-				<td class="text-center">${formatDateVN(row.end_date || row.created_at || row.start_date)}</td>
-				<td class="text-center text-success">${formatMoney(row.total_amount)}</td>
-				<td class="text-center ${balClass}">${formatMoney(row.deposit_amount)}</td>
-				<td class="small text-center"><at-status status="${row.status}"></at-status></td>
-				<td class="small text-center">${row.staff_id}</td>
-			`;
-      tr.style.cursor = 'pointer';
-      tr.id = row.id; // Gán ID cho tr để dễ lấy khi click
-      tbody.appendChild(tr);
-    }
+    count++;
+    totalAmount += Number(row.total_amount);
+    tbody.appendChild(_createDashRow(row, cols));
   });
-  setVal('badge-new-bk', count);
+  updateDashHeaderStats(option, tableId, count, totalAmount); // Cập nhật header với count
 }
 
-function renderDashTable2() {
-  if (!APP_DATA || !APP_DATA.booking_details) return;
-  // Logic vẽ Missing Code
-  const tbody = document.querySelector('#tbl-dash-missing tbody');
-  if (!tbody) return;
+/**
+ * OPTION: Booking Xin Review (BK_XIN_REVIEW)
+ * Logic: Booking đã kết thúc (end_date < today) trong vòng 7 ngày qua và status là 'Xong BK'
+ */
+function renderDashTable_Review(tableId, option) {
+  const tbody = document.querySelector(`#${tableId} tbody`);
+  if (!tbody) return 0;
   tbody.innerHTML = '';
 
-  // Tạo map tên khách
+  const dFrom = new Date(getVal('dash-filter-from'));
+  const dTo = new Date(getVal('dash-filter-to'));
+  let today = new Date();
+  let limitDate = new Date();
+  const badgeDays = window.A?.getConfig?.('dash_badge_days') ?? 30;
+  if (dFrom && dTo) {
+    limitDate = dFrom < limitDate ? dFrom : limitDate.setDate(limitDate.getDate() - badgeDays);
+    today = dTo > today ? dTo : today;
+  } else {
+    limitDate.setDate(today.getDate() - badgeDays);
+  }
+
+  const list = Object.values(APP_DATA.bookings)
+    .filter((r) => {
+      const dEnd = new Date(r.end_date);
+      return r.status === 'Xong BK' && dEnd < today && dEnd >= limitDate;
+    })
+    .sort((a, b) => new Date(a.end_date) - new Date(b.end_date));
+
+  const cols = [
+    { key: 'id', label: 'ID' },
+    { key: 'customer_full_name', label: 'Khách Hàng', class: 'fw-bold text-primary' },
+    { key: 'end_date', label: 'Ngày Về', format: 'date' },
+    { key: 'staff_id', label: 'NV', class: 'text-center' },
+    { key: 'status', label: 'Trạng Thái', format: 'status' },
+  ];
+
+  _renderDashThead(tableId, cols);
+
+  list.forEach((row) => tbody.appendChild(_createDashRow(row, cols)));
+  updateDashHeaderStats(option, tableId, list.length); // Cập nhật header với count
+}
+
+/**
+ * OPTION: Booking Sắp Đến (BK_SAP_DEN)
+ */
+function renderDashTable_Arrival(tableId, option) {
+  const tbody = document.querySelector(`#${tableId} tbody`);
+  if (!tbody) return 0;
+  tbody.innerHTML = '';
+  const dFrom = new Date(getVal('dash-filter-from'));
+  const dTo = new Date(getVal('dash-filter-to'));
+  let today = new Date();
+  let limitDate = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (dFrom && dTo) {
+    today = dFrom < today ? today : dFrom;
+    limitDate = dTo > limitDate ? dTo : limitDate;
+  } else {
+    const badgeDays = window.A?.getConfig?.('dash_badge_days') ?? 14;
+    limitDate.setDate(today.getDate() + badgeDays);
+  }
+  let count = 0;
+  let totalAmount = 0;
+  const cols = [
+    { key: 'id', label: 'ID' },
+    { key: 'customer_full_name', label: 'Khách Hàng', class: 'fw-bold text-primary' },
+    { key: 'start_date', label: 'Ngày Đi', format: 'date' },
+    { key: 'total_amount', label: 'Tổng Tiền', format: 'money' },
+    { key: 'balance', label: 'Còn Lại' },
+    { key: 'status', label: 'Trạng Thái', format: 'status' },
+    { key: 'staff_id', label: 'NV', class: 'text-center' },
+  ];
+
+  _renderDashThead(tableId, cols);
+
+  const list = Object.values(APP_DATA.bookings)
+    .filter((r) => {
+      const dStart = new Date(r.start_date);
+      return r.status !== 'Hủy' && dStart >= today && dStart <= limitDate;
+    })
+    .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+
+  list.forEach((row) => {
+    count++;
+    totalAmount += Number(row.total_amount);
+    tbody.appendChild(_createDashRow(row, cols));
+  });
+
+  updateDashHeaderStats(option, tableId, count, totalAmount); // Cập nhật header với count
+}
+
+/**
+ * OPTION: Booking Đang Ở (BK_DANG_O)
+ */
+function renderDashTable_Staying(tableId, option) {
+  const tbody = document.querySelector(`#${tableId} tbody`);
+  if (!tbody) return 0;
+  tbody.innerHTML = '';
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const list = Object.values(APP_DATA.bookings)
+    .filter((r) => {
+      const dIn = new Date(r.start_date);
+      const dOut = new Date(r.end_date);
+      return dIn <= today && dOut >= today && r.status !== 'Hủy';
+    })
+    .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+
+  const cols = [
+    { key: 'id', label: 'ID' },
+    { key: 'customer_full_name', label: 'Khách Hàng', class: 'fw-bold text-primary' },
+    { key: 'start_date', label: 'Ngày Đi', format: 'date' },
+    { key: 'end_date', label: 'Ngày Về', format: 'date' },
+    { key: 'staff_id', label: 'NV', class: 'text-center' },
+    { key: 'status', label: 'Trạng Thái', format: 'status' },
+  ];
+
+  _renderDashThead(tableId, cols);
+
+  list.forEach((row) => tbody.appendChild(_createDashRow(row, cols)));
+  updateDashHeaderStats(option, tableId, list.length); // Cập nhật header với count
+}
+
+/**
+ * OPTION: Booking Chờ Code (BK_CHO_CODE)
+ */
+function renderDashTable_MissingCode(tableId, option) {
+  const tbody = document.querySelector(`#${tableId} tbody`);
+  if (!tbody) return 0;
+  tbody.innerHTML = '';
+
   const bookingsMap = {};
   Object.values(APP_DATA.bookings).forEach((r) => {
     if (r.id) bookingsMap[r.id] = r.customer_full_name;
   });
-
-  const today = new Date();
+  const dFrom = new Date(getVal('dash-filter-from'));
+  const dTo = new Date(getVal('dash-filter-to'));
+  let today = new Date();
+  let limitDate = new Date();
   today.setHours(0, 0, 0, 0);
-  const raw = Object.values(APP_DATA.booking_details);
+  if (dFrom && dTo && dFrom > today && dTo > today) {
+    today = dFrom;
+    limitDate = dTo;
+  } else {
+    const badgeDays = window.A?.getConfig?.('dash_badge_days') ?? 365;
+    limitDate.setDate(today.getDate() + Number(badgeDays));
+  }
 
-  const list = raw
+  const list = Object.values(APP_DATA.booking_details)
     .filter((r) => {
       const type = r.service_type;
       const code = r.ref_code;
       const dIn = new Date(r.check_in);
-      return (!type || type.trim() === 'Phòng') && !code && dIn >= today;
+      return (!type || type.trim() === 'Phòng') && !code && dIn >= today && dIn <= limitDate;
     })
     .sort((a, b) => new Date(a.check_in) - new Date(b.check_in));
 
-  list.forEach((r) => {
-    const custName = bookingsMap[r.booking_id] || '---';
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-			<td>${r.id}</td>
-			<td class="fw-bold text-primary text-truncate" style="max-width:120px" title="${custName}">${custName}</td>
-			<td>${r.hotel_name}</td>
-			<td>${r.service_name}</td>
-			<td class="text-center">${formatDateVN(r.check_in)}</td>
-		`;
-    tr.style.cursor = 'pointer';
-    tr.id = r.id || r[COL_INDEX.D_SID]; // Gán ID cho tr để dễ lấy khi click
-    // tr.onclick = (e) => {
-    // 	const isCtrl = e.ctrlKey || e.metaKey;
-    // 	if(!isCtrl) return;
-    // 	handleDashClick(tr.id, true);
-    // }
-    // Longpress support on mobile (similar to dblclick)
-    // setupLongPress(tr, (e) => {
-    // 	e.preventDefault?.();
-    // 	handleDashClick(tr.id, true);
-    // });
+  const cols = [
+    { key: 'id', label: 'ID' },
+    { key: 'customer_name', label: 'Khách Hàng', class: 'fw-bold text-primary text-truncate' },
+    { key: 'hotel_name', label: 'Khách Sạn' },
+    { key: 'service_name', label: 'Dịch Vụ' },
+    { key: 'check_in', label: 'Ngày Đi', format: 'date' },
+  ];
 
-    tbody.appendChild(tr);
+  _renderDashThead(tableId, cols);
+
+  list.forEach((r) => {
+    const rowData = {
+      ...r,
+      customer_name: bookingsMap[r.booking_id] || '---',
+    };
+    tbody.appendChild(_createDashRow(rowData, cols));
   });
-  setVal('badge-missing-code', list.length);
+  updateDashHeaderStats(option, tableId, list.length); // Cập nhật header với count
 }
 
-function renderDashTable3() {
-  if (!APP_DATA || !APP_DATA.bookings) return;
-  // Booking sắp đến
-  const tbody = document.querySelector('#tbl-dash-arrival-bk tbody');
-  if (!tbody) return;
+/**
+ * OPTION: Booking Chờ Thanh Toán (BK_CHO_THANH_TOAN)
+ */
+function renderDashTable_PendingPayment(tableId, option) {
+  const tbody = document.querySelector(`#${tableId} tbody`);
+  if (!tbody) return 0;
   tbody.innerHTML = '';
 
-  const bookings = Object.values(APP_DATA.bookings);
-  const today = new Date();
-  const lookaheadDays = window.A?.getConfig?.('arrival_lookahead_days') ?? 30;
-  const limit = new Date();
-  limit.setDate(limit.getDate() + lookaheadDays);
-  let count = 0;
-
-  bookings.forEach((row) => {
-    const dStart = new Date(row.start_date);
-    const balClass = row.deposit_amount > 0 ? 'text-danger fw-bold' : 'text-success';
-    if (dStart >= today && dStart <= limit) {
-      count++;
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-				<td class="text-center">${row.id}</td>
-				<td class="fw-bold text-primary text-center">${row.customer_full_name}</td>
-				<td class="text-center">${formatDateVN(row.start_date)}</td>
-				<td class="text-center">${formatMoney(row.total_amount)}</td>
-				<td class="text-center">${formatMoney(row.deposit_amount)}</td>
-				<td class="text-center fw-bold ${balClass}">${formatMoney(row.balance)}</td>
-				<td class="small text-center">${row.staff_id}</td>
-			`;
-      tr.style.cursor = 'pointer';
-      tr.id = row.id || row[COL_INDEX.M_ID]; // Gán ID cho tr để dễ lấy khi click
-      // tr.onclick = (e) => {
-      // 	const isCtrl = e.ctrlKey || e.metaKey;
-      // 	if(!isCtrl) return;
-      // 	handleDashClick(tr.id, false);
-      // }
-      // // Longpress support on mobile (similar to dblclick)
-      // setupLongPress(tr, (e) => {
-      // 	e.preventDefault?.();
-      // 	handleDashClick(tr.id, false);
-      // });
-      tbody.appendChild(tr);
-    }
+  const list = Object.values(APP_DATA.bookings).filter((r) => {
+    const bal = Number(r.total_amount) - Number(r.deposit_amount);
+    return bal > 0 && r.status !== 'Hủy';
   });
-  setVal('badge-arrival-bk', count);
+
+  const cols = [
+    { key: 'id', label: 'ID' },
+    { key: 'customer_full_name', label: 'Khách Hàng', class: 'fw-bold text-primary' },
+    { key: 'total_amount', label: 'Tổng Tiền', format: 'money' },
+    { key: 'balance', label: 'Còn Lại' },
+    { key: 'payment_due_date', label: 'Hạn TT', format: 'date' },
+    { key: 'staff_id', label: 'NV', class: 'text-center' },
+  ];
+
+  _renderDashThead(tableId, cols);
+
+  list.forEach((row) => tbody.appendChild(_createDashRow(row, cols)));
+  updateDashHeaderStats(option, tableId, list.length); // Cập nhật header với count
 }
 
 function renderAggregates() {
@@ -1220,9 +1390,9 @@ function renderAggTable(tblId, dataObj, sumId) {
     const balClass = bal > 0 ? 'text-danger fw-bold' : 'text-success';
     tr.innerHTML = `
 			<td>${k}</td>
-			<td class="text-end text-muted">${formatMoney(item.total)}</td>
-			<td class="text-end text-muted">${formatMoney(item.paid)}</td>
-			<td class="text-end ${balClass}">${formatMoney(item.bal)}</td>
+			<td class="text-end text-muted">${formatNumber(item.total)}</td>
+			<td class="text-end text-muted">${formatNumber(item.paid)}</td>
+			<td class="text-end ${balClass}">${formatNumber(item.bal)}</td>
 		`;
     // Gán sự kiện click lọc theo nhân viên (Batch Edit)
     tr.style.cursor = 'pointer';
@@ -1239,28 +1409,39 @@ function renderAggTable(tblId, dataObj, sumId) {
     });
     tbody.appendChild(tr);
   });
-  if (document.getElementById(sumId)) setVal(sumId, formatMoney(totalBal));
+  if (getE(sumId)) setVal(sumId, formatNumber(totalBal));
 }
 
 // =========================================================================
 // 9. HELPER UI (Month Selector)
 // =========================================================================
 function setupMonthSelector(id = 'dash-month-select') {
-  const sel = document.getElementById(id);
+  const sel = getE(id);
   if (!sel) return;
   let html = '<option value="-1">-- Tùy chỉnh --</option>';
-  for (let i = 1; i <= 12; i++) html += `<option value="${i - 1}">Tháng ${i}</option>`;
+  for (let i = 1; i <= 12; i++) {
+    html += `<option value="Tháng-${i - 1}">Tháng ${i}</option>`;
+  }
+  html += `<option value="Quý 1">Quý 1</option><option value="Quý 2">Quý 2</option><option value="Quý 3">Quý 3</option><option value="Quý 4">Quý 4</option>`;
+  html += `<option value="Năm Nay">Năm nay</option><option value="Năm Trước">Năm trước</option><option value="Năm Tới">Năm tới</option>`;
+  html += `<option value="All">Tất Cả</option><option value="-1">Tùy chọn</option>`;
+
   sel.innerHTML = html;
-  sel.value = new Date().getMonth();
+  sel.value = 'Năm Nay';
 
   sel.addEventListener('change', function () {
-    if (this.value == -1) return;
-    const y = new Date().getFullYear();
-    const m = parseInt(this.value);
-    setVal('dash-filter-from', new Date(y, m, 1));
-    setVal('dash-filter-to', new Date(y, m + 1, 0));
+    const val = this.value;
+    const { start, end } = getDateRange(val);
+    if (start && end) {
+      setVal('dash-filter-from', start);
+      setVal('dash-filter-to', end);
+    } else {
+      setVal('dash-filter-from', '');
+      setVal('dash-filter-to', '');
+    }
     runFnByRole('renderDashboard');
   });
+  A.Event?.trigger(sel, 'change');
 }
 
 /**
@@ -1327,7 +1508,8 @@ window.renderDashboard_Op = function () {
  * Render Bảng 1: Booking Mới
  */
 function renderDashTable1_Op() {
-  const tbody = document.querySelector('#tbl-dash-new-bk tbody');
+  const tableId = 'tbl-dash-1';
+  const tbody = document.querySelector(`#${tableId} tbody`);
   if (!tbody) {
     L._('No tbody found for new bookings table');
     return;
@@ -1344,6 +1526,18 @@ function renderDashTable1_Op() {
 
   let count = 0;
   let totalDeposit = 0;
+
+  const cols = [
+    { key: 'id', label: 'ID', class: 'fw-bold text-primary' },
+    { key: 'customer_full_name', label: 'Khách Hàng' },
+    { key: 'start_date', label: 'Ngày Đi', format: 'date', class: 'text-center' },
+    { key: 'status', label: 'Trạng Thái', class: 'small' },
+    { key: 'total_amount', label: 'Tổng Tiền', format: 'money', class: 'text-end' },
+    { key: 'deposit_amount', label: 'Đặt Cọc', format: 'money', class: 'text-end' },
+    { key: 'balance', label: 'Còn Lại', class: 'text-end' },
+  ];
+
+  _renderDashThead(tableId, cols);
 
   bookings.forEach((row) => {
     // Kiểm tra điều kiện lọc theo ngày
@@ -1369,35 +1563,19 @@ function renderDashTable1_Op() {
     if (passDateFilter && depositAmt > 0 && depositAmt < totalAmt) {
       count++;
       totalDeposit += depositAmt;
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-				<td class="fw-bold text-primary">${row.id}</td>
-				<td>${row.customer_full_name}</td>
-				<td class="text-center">${formatDateVN(row.start_date)}</td>
-				<td class="small">${row.status}</td>
-				<td class="text-end">${formatMoney(totalAmt)}</td>
-				<td class="text-end">${formatMoney(depositAmt)}</td>
-				<td class="text-end">${formatMoney(totalAmt - depositAmt)}</td>
-			`;
-      tr.style.cursor = 'pointer';
-      tr.id = row.id; // Gán ID cho tr để dễ lấy khi click
-      // tr.onclick = (e) => {
-      // 	const isCtrl = e.ctrlKey || e.metaKey;
-      // 	if(!isCtrl) return;
-      // 	handleDashClick(row.id, false);
-      // };
-      tbody.appendChild(tr);
+      tbody.appendChild(_createDashRow(row, cols));
     }
   });
 
-  setVal('badge-new-bk', `Tổng: ${formatMoney(totalDeposit)} | Số BK: ${count}`);
+  setVal('badge-dash-tbl-1', `Tổng: ${formatNumber(totalDeposit)} | Số BK: ${count}`);
 }
 
 /**
  * Render Bảng 2: Missing Supplier
  */
 function renderDashTable2_Op() {
-  const tbody = document.querySelector('#tbl-dash-missing tbody');
+  const tableId = 'tbl-dash-2';
+  const tbody = document.querySelector(`#${tableId} tbody`);
   if (!tbody) {
     L._('No tbody found for missing supplier table');
     return;
@@ -1411,25 +1589,32 @@ function renderDashTable2_Op() {
   let count = 0;
   let total = 0;
 
+  const cols = [
+    { key: 'id', label: 'ID' },
+    { key: 'customer_full_name', label: 'Khách Hàng' },
+    { key: 'service_type', label: 'Loại DV' },
+    { key: 'service_name', label: 'Tên DV' },
+    { key: 'check_in', label: 'Ngày Đi', format: 'date', class: 'text-center' },
+    { key: 'adults', label: 'SL', class: 'text-center' },
+    { key: 'total_cost_display', label: 'Tổng Chi Phí', class: 'text-end' },
+  ];
+
+  _renderDashThead(tableId, cols);
+
   details.forEach((row) => {
     // Điều kiện: Supplier rỗng hoặc null
     count++;
-    total += getNum(row.total_cost);
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-			<td>${row.id}</td>
-			<td>${row.customer_full_name}</td>
-			<td>${row.service_type}</td>
-			<td>${row.service_name}</td>
-			<td class="text-center">${formatDateVN(row.check_in)}</td>
-			<td>${row.adults}</td>
-			<td>${formatMoney(row.total_cost || row.total_sale || 0)}</td>
-		`;
-    tr.style.cursor = 'pointer';
-    tr.id = row.id; // Gán ID cho tr để dễ lấy khi click
-    tbody.appendChild(tr);
+    const cost = getNum(row.total_cost || row.total_sale || 0);
+    total += cost;
+
+    const rowData = {
+      ...row,
+      total_cost_display: formatNumber(cost),
+    };
+
+    tbody.appendChild(_createDashRow(rowData, cols));
   });
-  setVal('badge-missing-supplier', `Tổng Phải Trả: ${formatMoney(total)} | Số Lượt: ${count}`);
+  setVal('badge-missing-supplier', `Tổng Phải Trả: ${formatNumber(total)} | Số Lượt: ${count}`);
 }
 
 /**
@@ -1457,9 +1642,9 @@ function renderAggTable_Op(tableId, dataObj, sumId) {
 
     tr.innerHTML = `
 			<td>${key} <span class="text-muted small">(${item.list.length})</span></td>
-			<td class="text-end text-muted">${formatMoney(item.cost)}</td>
-			<td class="text-end text-muted">${formatMoney(item.paid)}</td>
-			<td class="text-end ${balClass}">${formatMoney(item.bal)}</td>
+			<td class="text-end text-muted">${formatNumber(item.cost)}</td>
+			<td class="text-end text-muted">${formatNumber(item.paid)}</td>
+			<td class="text-end ${balClass}">${formatNumber(item.bal)}</td>
 		`;
 
     // Khi click vào dòng tổng hợp -> Gọi handleAggClick
@@ -1482,7 +1667,7 @@ function renderAggTable_Op(tableId, dataObj, sumId) {
     tbody.appendChild(tr);
   });
 
-  if (getE(sumId)) setVal(sumId, formatMoney(totalBal));
+  if (getE(sumId)) setVal(sumId, formatNumber(totalBal));
 }
 
 function renderDashboard_Acc() {

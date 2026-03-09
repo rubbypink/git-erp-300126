@@ -485,38 +485,68 @@ export default class ErpFooterMenu {
 
   addButton(btnConfig) {
     try {
-      const { id, label, iconClass = '', btnClass = 'btn-primary', callback, attributes = {} } = btnConfig;
+      const { id, label, iconClass = '', btnClass = 'btn-primary', callback, type, subBtns = [], attributes = {} } = btnConfig;
       const safeLabel = label || '';
-      if (!id || typeof callback !== 'function') throw new Error(`Thiếu id/callback cho nút: ${safeLabel || id}`);
+      if (!id || (typeof callback !== 'function' && !type)) throw new Error(`Thiếu id/callback cho nút: ${safeLabel || id}`);
 
       this.buttons.push(btnConfig);
-
-      // Desktop
       const desktopContainer = document.getElementById('erp-f-desktop-container');
-      const desktopBtn = document.createElement('button');
-      desktopBtn.id = `${id}`;
-      desktopBtn.className = `btn ${btnClass} d-flex align-items-center gap-1`;
-      desktopBtn.innerHTML = iconClass ? `<i class="${iconClass}"></i> ${safeLabel}` : safeLabel;
-      Object.keys(attributes).forEach((key) => desktopBtn.setAttribute(key, attributes[key]));
-      desktopBtn.addEventListener('click', callback);
-      desktopContainer.appendChild(desktopBtn);
-
+      if (type && type === 'btn-group') {
+        const groupDiv = document.createElement('div');
+        groupDiv.className = `btn-group dropup bg-dark shadow-sm`;
+        const ulId = `${id}-dropup`;
+        const htmlString = `
+            <button type="button" class="btn btn-primary d-flex align-items-center gap-1 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="${iconClass}"></i>  ${safeLabel}
+            </button>
+            <ul class="dropdown-menu gap-2 p-1" id ="${ulId}" style="border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden;">
+            </ul>
+        `;
+        groupDiv.innerHTML = htmlString;
+        desktopContainer.appendChild(groupDiv);
+        const dropdupMenu = getE(ulId);
+        subBtns.forEach((subBtn) => {
+          const liEl = document.createElement('li');
+          const subBtnEl = document.createElement('button');
+          liEl.appendChild(subBtnEl);
+          subBtnEl.id = `${id}-${subBtn.id}`;
+          subBtnEl.type = 'button';
+          subBtnEl.className = `btn btn-sm ${subBtn.btnClass || 'btn-secondary'} dropdown-item`;
+          subBtnEl.innerHTML = subBtn.iconClass ? `<i class="${subBtn.iconClass}"></i> ${subBtn.label || ''}` : subBtn.label || '';
+          Object.keys(subBtn.attributes || {}).forEach((key) => subBtnEl.setAttribute(key, subBtn.attributes[key]));
+          subBtnEl.addEventListener('click', subBtn.callback);
+          dropdupMenu.appendChild(liEl);
+        });
+      } else {
+        // Desktop
+        const desktopBtn = document.createElement('button');
+        desktopBtn.id = `${id}`;
+        desktopBtn.className = `btn ${btnClass} d-flex align-items-center gap-1`;
+        desktopBtn.innerHTML = iconClass ? `<i class="${iconClass}"></i> ${safeLabel}` : safeLabel;
+        Object.keys(attributes).forEach((key) => desktopBtn.setAttribute(key, attributes[key]));
+        desktopBtn.addEventListener('click', callback);
+        desktopContainer.appendChild(desktopBtn);
+      }
       // Mobile Regular Mode
       const mobileDropup = document.getElementById('erp-f-mobile-dropup');
-      const mobileBtn = document.createElement('button');
-      mobileBtn.id = `mb-${id}`;
-      const roleClasses = btnClass
-        .split(' ')
-        .filter((c) => c.includes('only') || c === 'd-none')
-        .join(' ');
-      mobileBtn.className = `d-flex align-items-center gap-2 text-dark ${roleClasses}`;
-      mobileBtn.innerHTML = iconClass ? `<i class="${iconClass}"></i> <span>${safeLabel || 'Admin Action'}</span>` : `<span>${safeLabel || 'Admin Action'}</span>`;
-      Object.keys(attributes).forEach((key) => mobileBtn.setAttribute(key, attributes[key]));
-      mobileBtn.addEventListener('click', (e) => {
-        this._toggleMobileMenu();
-        callback(e);
-      });
-      mobileDropup.appendChild(mobileBtn);
+      if (type && type === 'btn-group') {
+        subBtns.forEach((subBtn) => {
+          const mobileBtn = document.createElement('button');
+          mobileBtn.id = `mb-${id}-${subBtn.id}`;
+          const roleClasses = subBtn.btnClass
+            .split(' ')
+            .filter((c) => c.includes('only') || c === 'd-none')
+            .join(' ');
+          mobileBtn.className = `d-flex align-items-center gap-2 text-dark ${roleClasses}`;
+          mobileBtn.innerHTML = subBtn.iconClass ? `<i class="${subBtn.iconClass}"></i> <span>${subBtn.label || 'Admin Action'}</span>` : `<span>${subBtn.label || 'Admin Action'}</span>`;
+          Object.keys(subBtn.attributes || {}).forEach((key) => mobileBtn.setAttribute(key, subBtn.attributes[key]));
+          mobileBtn.addEventListener('click', (e) => {
+            this._toggleMobileMenu();
+            subBtn.callback(e);
+          });
+          mobileDropup.appendChild(mobileBtn);
+        });
+      }
     } catch (error) {
       console.error('[9 Trip ERP] Lỗi thêm nút:', error);
     }
@@ -548,17 +578,17 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
     // 2. Định nghĩa toàn bộ Data Configuration (Mảng chứa mọi nút của hệ thống)
     const allButtonsConfig = [
       // -- ADMIN --
-      {
-        id: 'btn-admin-tools',
-        label: '',
-        iconClass: 'fas fa-tools',
-        btnClass: 'btn-secondary admin-only',
-        callback: () => {
-          A.AdminConsole.openAdminSettings();
-        },
-        // callback: () => { A.UI.renderForm(null, 'form-admin'); },
-        attributes: { title: 'Công cụ Admin' },
-      },
+      // {
+      //   id: 'btn-admin-tools',
+      //   label: '',
+      //   iconClass: 'fas fa-tools',
+      //   btnClass: 'btn-secondary admin-only',
+      //   callback: () => {
+      //     A.AdminConsole.openAdminSettings();
+      //   },
+      //   // callback: () => { A.UI.renderForm(null, 'form-admin'); },
+      //   attributes: { title: 'Công cụ Admin' },
+      // },
       // -- SALES --
       {
         id: 'btn-new-bk',
@@ -567,6 +597,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
         btnClass: 'btn-primary sales-only',
         callback: () => {
           if (typeof activateTab === 'function') activateTab('tab-form');
+          refreshForm();
         },
         attributes: { 'data-bs-target': '#tab-form', 'data-ontabs': '1 3 4' },
       },
@@ -585,7 +616,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
         iconClass: 'fa-solid fa-print',
         btnClass: 'btn-warning line-clamp-2 sales-only',
         callback: () => {
-          if (typeof createContract === 'function') createContract();
+          if (typeof SalesModule.Logic.createContract === 'function') SalesModule.Logic.createContract();
         },
         attributes: { 'data-ontabs': '2 4' },
       },
@@ -675,15 +706,32 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
         attributes: { 'data-ontabs': '' },
       },
       {
-        id: 'btn-save-form',
-        label: 'Lưu Booking',
+        id: 'btn-save-group',
+        label: 'Lưu',
+        type: 'btn-group',
         iconClass: 'fa-solid fa-save',
-        btnClass: 'btn-success',
-        callback: () => {
-          const bkId = getVal('BK_ID');
-          if (typeof saveForm === 'function') bkId ? saveForm(true) : saveForm(false);
-        },
         attributes: { 'data-ontabs': '2' },
+        subBtns: [
+          {
+            id: 'new',
+            label: 'Tạo Mới/Lưu All',
+            btnClass: 'btn-light',
+            callback: () => {
+              if (typeof saveForm === 'function') saveForm(false);
+            },
+            attributes: { 'data-ontabs': '2' },
+          },
+          {
+            id: 'update',
+            label: 'Cập Nhật',
+            btnClass: 'btn-light',
+            callback: () => {
+              const bkId = getVal('BK_ID');
+              if (typeof saveForm === 'function') bkId ? saveForm(true) : saveForm(false);
+            },
+            attributes: { 'data-ontabs': '2' },
+          },
+        ],
       },
       {
         id: 'btn-reset-form',

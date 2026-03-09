@@ -19,6 +19,7 @@ const { validateGoogleLoginOnSignIn } = require('./api/auth-blocking.api');
 const { deleteBooking } = require('./api/bookings.api');
 const { archiveOldData } = require('./api/archive.api');
 const { dailyReminders } = require('./api/cron.api');
+const { syncTransactionOnWrite } = require('./api/transaction-sync.api');
 
 // ─── Export Functions ───
 module.exports = {
@@ -33,4 +34,5 @@ module.exports = {
   deleteBooking,
   archiveOldData,
   dailyReminders,
+  syncTransactionOnWrite,
 };

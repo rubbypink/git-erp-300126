@@ -14,6 +14,7 @@ import ContextMenu from './modules/M_ContextMenu.js';
 import './modules/M_AutoMobileEvents.js'; // Self-initializing: tap→click, double-tap→dblclick, long-press→contextmenu
 import { HotelPriceController } from './modules/M_HotelPrice.js';
 import { SupplierPayment } from './modules/OperatorController.js';
+import SalesModule from './modules/M_SalesModule.js';
 
 // Expose globally so legacy scripts (logic_operator, api_operator, etc.) can access it
 window.StateProxy = StateProxy;
@@ -48,8 +49,8 @@ class Application {
       COLLECTIONS: ['bookings', 'booking_details', 'customers', 'operator_entries', 'transactions', 'suppliers', 'hotels', 'hotel_price_schedules', 'service_price_schedules', 'fund_accounts', 'transactions_thenice', 'fund_accounts_thenice', 'users', 'app_config', 'notifications'],
       date_format: 'dd/mm/yyyy',
       DB_DATE_FMT: 'YYYY-MM-DD',
-      CURRENCY: 'VND',
     },
+    intl: { locale: 'vi-VN', dateOptions: { day: '2-digit', month: '2-digit', year: 'numeric' }, currencyOptions: { style: 'currency', currency: 'VND', minimumFractionDigits: 0, maximumFractionDigits: 1 }, numberOptions: { minimumFractionDigits: 0, maximumFractionDigits: 1 } },
     disabledModules: ['Router'],
   };
 
@@ -225,7 +226,7 @@ class Application {
         if (opts.header !== undefined) {
           this.header = opts.header === false ? false : true; // Cập nhật flag header để DraggableSetup biết handle mới
           const headerEl = el.querySelector('.modal-header');
-          if (headerEl) setClass(headerEl, opts.header === false ? 'd-none' : 'd-block');
+          if (headerEl && this.header !== true) setClass(headerEl, 'd-none', true);
         }
         if (opts.footer !== undefined) {
           this.setFooter(opts.footer);
@@ -1218,7 +1219,7 @@ class Application {
 
     // e+. StateProxy: lifecycle hooks are installed lazily on first beginEdit() call.
     // No patchDBManager needed — v3 uses Lazy Collection Proxy on APP_DATA[coll].
-    // See logic_operator.js / logic_sales.js for beginEdit() call sites.
+    // See logic_operator.js / SalesModule.js for beginEdit() call sites.
     // hookSetters() patches setToEl / setNum so proxy binding is deferred until an
     // element actually receives a non-empty value (lazy — no eager bindContainer scan).
     try {
@@ -1355,13 +1356,14 @@ class MODULELOADER {
           },
         };
       },
+      SalesModule: () => import('./modules/M_SalesModule.js').then((m) => m.default),
     };
 
     this.roleMap = {
       admin: ['AdminConsole', 'HotelPriceController', 'ServicePriceController'],
       op: ['HotelPriceController', 'ServicePriceController'],
       acc: [],
-      sale: [],
+      sale: ['SalesModule'],
       acc_thenice: [],
     };
     this.forAllModules = ['ReportModule', 'CalculatorWidget', 'ThemeManager', 'Lang', 'NotificationManager', 'PriceManager', 'ShortKey', 'BookingOverview', 'Router'];

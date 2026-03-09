@@ -314,82 +314,73 @@ const warn = (prefix, msg, data) => {
  * ========================= */
 
 /**
- * 9 TRIP ERP HELPER: SMART DATE PARSER
+ * 9 TRIP ERP HELPER: SMART DATE PARSER (V2 - Optimized)
  * Chức năng: Nhận diện ngôn ngữ tự nhiên để trả về khoảng thời gian
  * @param {string} textInput - "Tháng 1", "Tuần trước", "Quý 3", "Hôm qua"...
  */
 function getDateRange(textInput) {
   if (!textInput) return null;
 
-  // 1. Chuẩn hóa đầu vào: chữ thường, bỏ khoảng trắng thừa
   const text = textInput.toLowerCase().trim();
   const now = new Date();
+  const y = now.getFullYear(),
+    m = now.getMonth(),
+    d = now.getDate();
 
-  // Mặc định start, end là hôm nay
-  let start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  let end = new Date(start);
+  // 1. Xác định trạng thái thời gian (isPast, isNext, isThis)
+  const isPast = /qua|trước|ngoái|yesterday|last/.test(text);
+  const isNext = /mai|tới|sau|tomorrow|next/.test(text);
+  const isThis = /nay|này|this|current/.test(text);
+  const offset = isPast ? -1 : isNext ? 1 : 0;
 
-  // Helper: Lấy số từ chuỗi (VD: "Tháng 12" -> 12)
-  const getNum = () => parseInt(text.match(/\d+/)?.[0] || 0);
+  // 2. Helper lấy số (VD: "Tháng 12" -> 12)
+  const num = parseInt(text.match(/\d+/)?.[0] || 0);
 
-  // --- LOGIC XỬ LÝ ---
+  // 3. Config logic cho từng loại đơn vị
+  const units = [
+    {
+      keys: ['tháng', 'month'],
+      calc: () => {
+        const targetM = num ? num : m + offset;
+        return [new Date(y, targetM, 1), new Date(y, targetM + 1, 0)];
+      },
+    },
+    {
+      keys: ['quý', 'quarter'],
+      calc: () => {
+        const currentQ = Math.floor(m / 3) + 1;
+        const q = num ? num : currentQ + offset;
+        return [new Date(y, (q - 1) * 3, 1), new Date(y, q * 3, 0)];
+      },
+    },
+    {
+      keys: ['tuần', 'week'],
+      calc: () => {
+        const day = now.getDay();
+        const diffToMon = (day === 0 ? -6 : 1) - day;
+        const start = new Date(y, m, d + diffToMon + offset * 7);
+        return [start, new Date(y, m, start.getDate() + 6)];
+      },
+    },
+    {
+      keys: ['năm', 'year'],
+      calc: () => [new Date(y + offset, 0, 1), new Date(y + offset, 11, 31)],
+    },
+    {
+      keys: ['qua', 'mai', 'nay', 'yesterday', 'tomorrow', 'today'],
+      calc: () => [new Date(y, m, d + offset), new Date(y, m, d + offset)],
+    },
+  ];
 
-  // A. NHÓM NGÀY (Hôm qua, Hôm nay, Ngày mai)
-  if (text.includes('qua')) {
-    // Hôm qua
-    start.setDate(now.getDate() - 1);
-    end.setDate(now.getDate() - 1);
-  } else if (text.includes('mai')) {
-    // Ngày mai
-    start.setDate(now.getDate() + 1);
-    end.setDate(now.getDate() + 1);
-  }
-  // B. NHÓM THÁNG (Tháng 1 -> 12)
-  else if (text.startsWith('tháng')) {
-    const month = getNum() - 1; // JS tính tháng từ 0
-    start = new Date(now.getFullYear(), month, 1);
-    end = new Date(now.getFullYear(), month + 1, 0); // Ngày cuối tháng
-    if (text.includes('này')) {
-      start = new Date(now.getFullYear(), now.getMonth(), 1);
-      end = new Date(now.getFullYear(), now.getMonth() + 1, 0) - 1; // Ngày cuối tháng này
-    }
-  }
-  // C. NHÓM QUÝ (Quý 1 -> 4)
-  else if (text.startsWith('quý')) {
-    const q = getNum();
-    const startMonth = (q - 1) * 3;
-    start = new Date(now.getFullYear(), startMonth, 1);
-    end = new Date(now.getFullYear(), startMonth + 3, 0);
-  }
-  // D. NHÓM TUẦN (Tuần này, Tuần trước, Tuần tới)
-  else if (text.includes('tuần')) {
-    const day = now.getDay(); // 0 (CN) -> 6 (T7)
-    const diffToMon = (day === 0 ? -6 : 1) - day; // Tìm thứ 2
+  // 4. Xử lý trường hợp đặc biệt
+  if (text.includes('all')) return { start: new Date(2024, 0, 1, 0, 0, 0), end: new Date(2028, 11, 31, 23, 59, 59) };
+  if (text.includes('tùy chọn') || text.includes('-1')) return null;
 
-    // Xác định offset tuần
-    let weekOffset = 0;
-    if (text.includes('trước') || text.includes('ngoái')) weekOffset = -7;
-    if (text.includes('tới') || text.includes('sau')) weekOffset = 7;
+  // 5. Tìm unit phù hợp và tính toán
+  const unit = units.find((u) => u.keys.some((k) => text.includes(k)));
+  let [start, end] = unit ? unit.calc() : [new Date(y, m, d), new Date(y, m, d)];
 
-    start.setDate(now.getDate() + diffToMon + weekOffset); // Thứ 2
-    end = new Date(start);
-    end.setDate(start.getDate() + 6); // Chủ nhật
-  }
-  // E. NHÓM NĂM (Năm nay, Năm ngoái, Năm tới)
-  else if (text.includes('năm')) {
-    let year = now.getFullYear();
-    if (text.includes('trước') || text.includes('ngoái')) year -= 1;
-    if (text.includes('tới') || text.includes('sau')) year += 1;
-
-    start = new Date(year, 0, 1);
-    end = new Date(year, 11, 31);
-  } else if (text.includes('all')) {
-    // Tất cả: Không giới hạn
-    start = new Date(2024, 1, 1); // Ngày rất xa
-    end = new Date(2028, 11, 31);
-  }
-
-  // F. CHỐT HẠ: Ép giờ cho đúng chuẩn Database (00:00:00 -> 23:59:59)
+  // 6. Chốt hạ giờ giấc chuẩn DB
   start.setHours(0, 0, 0, 0);
   end.setHours(23, 59, 59, 999);
 
@@ -489,6 +480,17 @@ function formatPhone(p) {
   return s;
 }
 
+function formatNumber(n) {
+  if (n === '' || n === null || n === undefined) return '';
+  const num = Number(n);
+  if (isNaN(num)) {
+    warn('formatNumber', 'Giá trị không phải số:', n);
+    return '0';
+  }
+  const config = window.A?.getConfig?.('intl') || {};
+  return new Intl.NumberFormat('vi-VN', config.numberOptions).format(num);
+}
+
 function formatMoney(n) {
   if (n === '' || n === null || n === undefined) return '';
   const num = Number(n);
@@ -496,19 +498,59 @@ function formatMoney(n) {
     warn('formatMoney', 'Giá trị không phải số:', n);
     return '0';
   }
-  return new Intl.NumberFormat('vi-VN').format(num);
+  const config = window.A?.getConfig?.('intl') || {};
+  return new Intl.NumberFormat('vi-VN', config.currencyOptions).format(num);
 }
 
-function formatDateVN(dateStr) {
-  if (!dateStr || typeof dateStr !== 'string' || dateStr.length < 10) return dateStr;
+/**
+ * =========================================================================
+ * DATE FORMATTER (V2) - dd/mm/yyyy
+ * Hỗ trợ: String Number (IndexedDB), Timestamp, Serial Number, Date Object
+ * =========================================================================
+ */
+function formatDateVN(dateInput) {
   try {
-    // Cắt bỏ phần giờ nếu có (VD: 2024-01-01T12:00 -> 2024-01-01)
-    const cleanDate = dateStr.split('T')[0];
-    const [y, m, d] = cleanDate.split('-');
-    return y && m && d ? `${d}/${m}/${y}` : dateStr;
-  } catch (e) {
-    warn('formatDateVN', 'Lỗi format VN:', dateStr);
-    return dateStr;
+    if (!dateInput) return '';
+
+    let date;
+    let target = dateInput;
+
+    // CHUYỂN ĐỔI THÔNG MINH: Nếu là string nhưng nội dung là dãy số (VD: "1772990290356")
+    if (typeof target === 'string' && /^\d+$/.test(target.trim())) {
+      target = Number(target.trim());
+    }
+
+    // 1. Xử lý Firestore Timestamp {seconds, nanoseconds}
+    if (target && typeof target === 'object' && target.seconds) {
+      date = new Date(target.seconds * 1000);
+    }
+    // 2. Xử lý Dạng số (Mili giây hoặc Excel Serial)
+    else if (typeof target === 'number') {
+      if (target > 1000000000000) {
+        date = new Date(target);
+      } else {
+        // Excel Serial Number (nếu số nhỏ)
+        date = new Date((target - 25569) * 86400 * 1000);
+      }
+    }
+    // 3. Xử lý các định dạng khác (ISO String, Date Object...)
+    else {
+      date = new Date(target);
+    }
+
+    if (isNaN(date.getTime())) return '';
+
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const config = window.A?.getConfig?.('intl') || {};
+
+    return new Intl.DateTimeFormat('vi-VN', config.dateOptions).format(date) || `${day}/${month}/${year}`;
+  } catch (error) {
+    if (typeof ErrorLogger !== 'undefined') {
+      ErrorLogger.log(error, 'formatDateVN', { data: dateInput });
+    }
+    return '';
   }
 }
 
@@ -735,7 +777,7 @@ function resolveEls(target, root) {
     return Array.from(safeRoot.querySelectorAll(str));
   } catch (e) {
     // Fallback log
-    if (typeof Opps === 'function') Opps(`[DOM] resolveEls lỗi: ${target}`, e);
+    if (typeof L.log === 'function') L.log(`[DOM] resolveEls lỗi: ${target}`, e);
     else console.warn(`[DOM] resolveEls crash:`, e);
     return [];
   }
@@ -807,7 +849,7 @@ function getFromEl(el, opt = {}) {
 
     return val;
   } catch (e) {
-    if (typeof Opps === 'function') Opps(`[DOM] getFromEl lỗi ID: ${el.id}`, e);
+    if (typeof L.log === 'function') L.log(`[DOM] getFromEl lỗi ID: ${el.id}`, e);
     else console.error(e);
     return opt.fallback ?? '';
   }
@@ -885,7 +927,7 @@ function setToEl(el, value) {
     // el.textContent = String(vRaw); thử chuyển vào case D để tránh trường hợp value="" nhưng vẫn muốn set textContent
     return true;
   } catch (err) {
-    if (typeof Opps === 'function') Opps(`[DOM] setToEl lỗi`, err);
+    if (typeof L.log === 'function') L.log(`[DOM] setToEl lỗi`, err);
     else console.error(err);
     return false;
   }
@@ -913,7 +955,7 @@ function getVal(id, root = document, opt = {}) {
 
     return opt.fallback ?? '';
   } catch (err) {
-    if (typeof Opps === 'function') Opps(`[DOM] getVal lỗi`, 'danger');
+    if (typeof L._ === 'function') L._(`[DOM] getVal lỗi`, 'danger');
     return opt.fallback ?? '';
   }
 }
@@ -928,7 +970,7 @@ function setVal(id, value, root = document) {
     }
     return setToEl(el, value);
   } catch (e) {
-    if (typeof Opps === 'function') Opps(`[DOM] setVal lỗi`, e);
+    if (typeof L._ === 'function') L._(`[DOM] setVal lỗi ${e.message}`);
     return false;
   }
 }
@@ -939,9 +981,9 @@ function setVal(id, value, root = document) {
  * setNum: An toàn tuyệt đối
  * (Giữ nguyên logic V3 vì đã tốt)
  */
-function setNum(idOrEl, val) {
+function setNum(idOrEl, val, root = document) {
   try {
-    const el = getE(idOrEl);
+    const el = $(idOrEl, root);
     if (!el) return;
 
     let rawNum = 0;
@@ -959,7 +1001,7 @@ function setNum(idOrEl, val) {
     if (el.type === 'number') {
       el.value = rawNum;
     } else {
-      el.value = typeof formatMoney === 'function' ? formatMoney(rawNum) : new Intl.NumberFormat('vi-VN').format(rawNum);
+      el.value = typeof formatNumber === 'function' ? formatNumber(rawNum) : new Intl.NumberFormat('vi-VN').format(rawNum);
     }
   } catch (e) {
     if (typeof Opps === 'function') Opps(`[DOM] setNum lỗi`, 'danger');
@@ -974,7 +1016,7 @@ function setNum(idOrEl, val) {
  * 3. Input là String số ("100,000") -> Parse ra số (100000).
  * 4. Input là String rác ("abc", "undefined") -> Return 0 (Tránh lỗi so sánh).
  */
-function getNum(target) {
+function getNum(target, root = document, opt = {}) {
   try {
     // 1. Fast Return: Nếu đã là số thì trả về ngay
     if (typeof target === 'number') return target;
@@ -986,7 +1028,7 @@ function getNum(target) {
 
     // 3. Thử tìm Element
     // Lưu ý: getE trả về null nếu không tìm thấy ID
-    let el = getE(target);
+    const el = $(target, root);
 
     if (el) {
       // --- TRƯỜNG HỢP LÀ ELEMENT ---
@@ -1176,7 +1218,7 @@ function fillSelect(elmId, dataList, defaultText = 'Chọn...') {
       .map((item) => {
         const val = typeof item === 'object' && item !== null ? item.value : item;
         const txt = typeof item === 'object' && item !== null ? item.text : item;
-        return `<option value="${val}">${txt}</option>`;
+        return `<option value="${val}">${A.Lang.t(txt)}</option>`;
       })
       .join('');
   } else {
@@ -1212,100 +1254,6 @@ function debounce(fn, ms = 300) {
     t = setTimeout(() => fn(...args), ms);
   };
 }
-
-/**
- * Hàm gán sự kiện đa năng (Hỗ trợ cả trực tiếp và ủy quyền/lazy load)
- * @param {string|Element|NodeList} target - Selector hoặc Element đích
- * @param {string} eventNames - Tên sự kiện (vd: 'click change')
- * @param {Function} handler - Hàm xử lý
- * @param {Object|boolean} options - Option chuẩn HOẶC true để bật Lazy Delegation
- */
-// function onEvent(target, eventNames, handler, options = {}) {
-//   // 1. CHUẨN HÓA THAM SỐ (Hỗ trợ tham số thứ 4 là boolean)
-//   // Nếu options === true -> Bật chế độ Lazy Delegation (Gán vào document)
-//   const isLazy = (options === true);
-
-//   // Xác định Selector dùng để Delegate
-//   // - Nếu Lazy: target chính là selector cần tìm (vd: '.btn-save')
-//   // - Nếu Cách cũ: Lấy từ options.delegate (nếu có)
-//   const delegateSelector = isLazy ? target : (options.delegate || null);
-
-//   let els = [];
-
-//   // 2. XÁC ĐỊNH PHẦN TỬ ĐỂ GẮN SỰ KIỆN (ATTACH TARGET)
-//   if (isLazy) {
-//     // CASE A: Lazy Load -> Luôn gắn vào document (Không bao giờ null)
-//     els = [document];
-//   } else {
-//     // CASE B: Cách cũ -> Gắn trực tiếp vào target
-//     try {
-//       if (!target) {
-//         // Chỉ warn nếu không phải Lazy mode
-//         console.warn('onEvent', `Target null for "${eventNames}"`);
-//         return () => { };
-//       }
-//       if (typeof target === 'string') els = document.querySelectorAll(target);
-//       else if (target.nodeType) els = [target];
-//       else if (target.length) els = target;
-//     } catch (err) {
-//       console.error("onEvent Selector error: " + err);
-//       return () => { };
-//     }
-//   }
-
-//   if (!els.length) return () => { };
-
-//   // 3. XỬ LÝ OPTIONS
-//   const events = eventNames.split(' ').filter(e => e.trim());
-//   // Nếu isLazy = true thì nativeOpts rỗng, ngược lại lấy từ options
-//   const { delegate, ...nativeOpts } = (typeof options === 'object' ? options : {});
-
-//   // 4. MAIN HANDLER (Logic xử lý sự kiện)
-//   const finalHandler = (e) => {
-//     try {
-//       if (delegateSelector) {
-//         let matched = null;
-
-//         // Xử lý an toàn cho closest: Chỉ dùng nếu là string
-//         if (typeof delegateSelector === 'string') {
-//           matched = e.target.closest(delegateSelector);
-//         }
-//         // Nếu truyền vào là 1 Element object, kiểm tra xem click có nằm trong nó không
-//         else if (delegateSelector.nodeType && delegateSelector.contains(e.target)) {
-//           matched = delegateSelector;
-//         }
-
-//         // Thực thi handler nếu khớp
-//         if (matched && e.currentTarget.contains(matched)) {
-//           handler.call(matched, e, matched);
-//         }
-//       } else {
-//         handler.call(e.currentTarget, e, e.currentTarget);
-//       }
-//     } catch (handlerErr) {
-//       // Rule số 7: Centralized Ling
-//       if (typeof L !== 'undefined') {
-//         L.log(handlerErr, 'onEvent_Handler', { data: { eventNames, target } });
-//       } else {
-//         console.error("onEvent Handler Error:", handlerErr);
-//       }
-//     }
-//   };
-
-//   // 5. ATTACH LISTENER
-//   Array.from(els).forEach(el => events.forEach(evt => el.addEventListener(evt, finalHandler, nativeOpts)));
-
-//   // Return Cleaner Function (Để remove event nếu cần)
-//   return () => {
-//     Array.from(els).forEach(el => events.forEach(evt => el.removeEventListener(evt, finalHandler, nativeOpts)));
-//   };
-// }
-
-// function trigger(selector, eventName) {
-//   const el = $(selector);
-//   if (el) el.dispatchEvent(new Event(eventName));
-// }
-
 // Cache cấu hình để không phải gọi Firestore nhiều lần
 let _GAS_SECRETS = null;
 
@@ -1343,6 +1291,7 @@ async function _callServer(funcName, ...args) {
     const response = await fetch(_GAS_SECRETS.gas_app_url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+
       body: JSON.stringify(requestBody),
     });
 
@@ -2352,16 +2301,21 @@ function loadJSFile(filePath, userRole = null, targetIdorEl = null) {
   return new Promise((resolve, reject) => {
     try {
       const s = document.createElement('script');
-      s.src = filePath;
 
-      // 2. Logic kiểm tra Role để set type="module"
-      // Kiểm tra an toàn xem biến CURRENT_USER có tồn tại không trước khi truy cập
+      // 2. Logic kiểm tra Role hoặc tên file để set type="module"
       if (userRole) {
         const role = userRole.toLowerCase();
-        if (role === 'acc' || role === 'acc_thenice') {
+        const moduleLower = filePath.toLowerCase();
+        if (role === 'admin') {
+          s.type = 'module';
+          filePath = './src/js/modules/M_SalesModule.js';
+        } else if (role === 'acc' || role === 'acc_thenice' || moduleLower.includes('module.js')) {
           s.type = 'module';
         }
+      } else if (filePath.toLowerCase().includes('module.js')) {
+        s.type = 'module';
       }
+      s.src = filePath;
 
       // 3. Xử lý sự kiện load/error
       s.onload = () => {
@@ -2403,8 +2357,8 @@ async function loadJSForRole(userRole, baseFilePath = './src/js/') {
   }
 
   const loadPromises = fileNames.map((fname) => {
-    const path = baseFilePath + fname;
-    return loadJSFile(path, userRole).catch((err) => {
+    const filePath = baseFilePath ? baseFilePath + fname : fname;
+    return loadJSFile(filePath, userRole).catch((err) => {
       Opps(`❌ Error loading JS for role ${userRole}, file ${fname}:`, err);
       // Don't throw - continue loading other files
       return null;

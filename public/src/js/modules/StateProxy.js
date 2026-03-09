@@ -547,7 +547,7 @@ const StateProxy = (() => {
       // NOT by the proxy set trap. This prevents per-keystroke undo spam.
       _markDirty(coll, id, changed);
       _recordPending(coll, id, oldDoc, { ...oldDoc, ...dataObj });
-      // NOTE: Computed fields (nights, total, etc.) are handled by calcRow() in logic_sales/logic_operator.
+      // NOTE: Computed fields (nights, total, etc.) are handled by calcRow() in SalesModule/logic_operator.
       // DOM sync for normal edits is also handled by those modules. StateProxy only syncs DOM on undo/reset.
     }
   }

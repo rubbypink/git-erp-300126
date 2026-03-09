@@ -132,6 +132,20 @@ legend {
   color: var(--secondary-color); /* Màu chính */
 }
 
+/* 1. Xóa mũi tên mặc định của trình duyệt */
+select {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+/* 2. Xóa mũi tên của Bootstrap 5 (nếu đang dùng class form-select) */
+select.form-select {
+  background-image: none !important;
+  /* Reset lại padding bên phải cho cân đối vì đã bỏ icon (mặc định của BS5 là khoảng 2.25rem) */
+  padding-right: 0.75rem !important;
+}
+
 /* ─── GRID UTILITY ─── */
 .g-r-100 {
   grid-column: 1 / -1;
@@ -581,7 +595,7 @@ td input.form-control-sm {
   color: #495057;
 }
 .badge.pending {
-  background: #fff3cd;
+  background: #000000;
   color: #856404;
 }
 .badge.in-progress {
@@ -589,12 +603,12 @@ td input.form-control-sm {
   color: #055160;
 }
 .badge.confirmed {
-  background: #d1e7dd;
-  color: #0f5132;
+  background: #04f88a;
+  color: rgb(3, 3, 3);
 }
 .badge.completed {
-  background: #d1e7dd;
-  color: #198754;
+  background: #faced4;
+  color: #0300cf;
 }
 .badge.canceled {
   background: #f8d7da;
@@ -630,6 +644,8 @@ td input.form-control-sm {
   width: 100%;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 #tab-dashboard .card-body {
@@ -684,35 +700,36 @@ td input.form-control-sm {
 
 /* --- 5. TAB FORM (NHẬP LIỆU) --- */
 #tab-form {
-  overflow: auto;
+  overflow: hidden;
   -webkit-overflow-scrolling: touch;
   height: 100%;
   padding-bottom: 0.625rem;
+}
+#detail-tbody {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* --- 6. CÁC THÀNH PHẦN KHÁC (TABLE, BUTTON...) --- */
 /* Table Sticky Header */
 .table-data th {
   position: sticky;
+  vertical-align: middle;
   top: 0;
   z-index: 10;
   box-shadow: 0 0.125rem 0.125rem -0.0625rem rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  text-wrap: wrap;
+  line-clamp: 2;
 }
 
 .table-data td {
   vertical-align: middle;
   padding: 0.125rem;
   font-size: 0.75rem;
-}
-
-#log-list {
-  height: calc(100% - 2.5rem);
-  overflow-y: auto;
-  background-color: #1e1e1e;
-  color: #d4d4d4;
-  font-family: 'Courier New', Courier, monospace;
-  padding: 0.625rem;
-  border: 0.03125rem solid #4e3c3c;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
 
 .flex-center {

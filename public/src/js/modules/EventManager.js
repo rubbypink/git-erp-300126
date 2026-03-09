@@ -346,8 +346,8 @@ class EventManager {
             resetGridData();
           }
         } else {
-          if (typeof applyGridFilter === 'function') {
-            applyGridFilter();
+          if (typeof applyGridFilterThrottled === 'function') {
+            applyGridFilterThrottled();
           }
         }
       },
@@ -372,8 +372,8 @@ class EventManager {
       '#filter-val',
       'change',
       () => {
-        if (typeof applyGridFilter === 'function') {
-          applyGridFilter();
+        if (typeof applyGridFilterThrottled === 'function') {
+          applyGridFilterThrottled();
         }
       },
       true
@@ -384,8 +384,8 @@ class EventManager {
       '#btn-data-sort',
       'click',
       () => {
-        if (typeof applyGridSorter === 'function') {
-          applyGridSorter();
+        if (typeof applyGridFilterThrottled === 'function') {
+          applyGridFilterThrottled();
         }
       },
       true
@@ -395,7 +395,18 @@ class EventManager {
       'click',
       () => {
         if (typeof A.DB.syncDelta === 'function') {
-          A.DB.syncDelta(getVal('btn-select-datalist') || null, { forceFullLoad: true });
+          A.DB.syncDelta(getVal('btn-select-datalist') || null, true);
+        }
+      },
+      true
+    );
+    this.on(
+      '#btn-sync-delta-collection',
+      'click',
+      () => {
+        if (typeof A.DB.syncDelta === 'function') {
+          L._('Start Delta Sync');
+          A.DB.syncDelta();
         }
       },
       true
@@ -411,7 +422,9 @@ class EventManager {
         // để chọn Object.values(APP_DATA.booking_details) hay Object.values(APP_DATA.bookings)
         await renderTableByKey(selectedKey);
         if ($('#tbl-container-tab2')) $('#tbl-container-tab2').dataset.collection = selectedKey; // Cập nhật dataset để filter hoạt động đúng
-        applyGridSorter('desc'); // Tự động áp dụng sorter sau khi chọn collection mới
+        if (typeof applyGridFilterThrottled === 'function') {
+          applyGridFilterThrottled();
+        }
       },
       true
     );
@@ -460,8 +473,8 @@ class EventManager {
       '#BK_Start',
       'change',
       (e, target) => {
-        if (typeof autoSetOrCalcDate === 'function') {
-          autoSetOrCalcDate(target.value, 'BK_PayDue');
+        if (typeof SalesModule.Logic.autoSetOrCalcDate === 'function') {
+          SalesModule.Logic.autoSetOrCalcDate(target.value, 'BK_PayDue');
         }
 
         const startDate = new Date(target.value);
@@ -477,8 +490,8 @@ class EventManager {
       '#tab-form-btn-save-cust',
       'click',
       async (e) => {
-        if (typeof saveCustomer === 'function') {
-          await saveCustomer();
+        if (typeof SalesModule.Database.saveCustomer === 'function') {
+          await SalesModule.Database.saveCustomer();
         }
       },
       true
@@ -556,159 +569,6 @@ class EventManager {
       true
     );
   }
-
-  /**
-   * =========================================================================
-   * SECTION 7: BOOKING FORM CONTEXT MENU EVENTS (Right Click)
-   * @deprecated Migrated to M_ContextMenu.js — Use A.ContextMenu.register() instead.
-   * Kept for backward compatibility. No longer called from init().
-   * =========================================================================
-   */
-  _setupBkFormCtm() {
-    console.warn('[EventManager] _setupBkFormCtm is deprecated. Use A.ContextMenu instead.');
-    const menu = document.getElementById('bookingContextMenu');
-
-    if (!menu) {
-      console.warn('[EventManager] Context menu elements not found');
-      return;
-    }
-
-    // Right click event
-    this.on(
-      '#detail-tbody',
-      'contextmenu',
-      (e) => {
-        const isCtrl = e.ctrlKey || e.metaKey;
-        if (isCtrl) return; // Skip if Ctrl
-
-        const row = e.target.closest('tr');
-        if (!row) return;
-
-        e.preventDefault();
-        const tbody = document.getElementById('detail-tbody');
-
-        // Save context
-        window.CURRENT_CTX_ROW = row;
-        const details = window.CURRENT_USER?.role === 'op' ? 'operator_entries' : 'booking_details';
-        const collection = window.CURRENT_TABLE_KEY === 'bookings' || window.CURRENT_TABLE_KEY === 'detail-tbody' ? details : window.CURRENT_TABLE_KEY;
-
-        const sidInput = row.querySelector('.d-sid');
-        window.CURRENT_CTX_ID = sidInput ? sidInput.value : '';
-
-        // Get row data
-        if (typeof HD.getRowData === 'function') {
-          window.CURRENT_ROW_DATA = HD.getRowData(collection, window.CURRENT_CTX_ROW, tbody);
-        }
-
-        // Position menu
-        menu.style.top = `${e.clientY}px`;
-        menu.style.left = `${e.clientX}px`;
-        menu.style.display = 'block';
-      },
-      true
-    );
-
-    document.addEventListener('click', (e) => {
-      if (!menu || menu.contains(e.target)) return;
-      menu.style.display = 'none';
-    });
-
-    // Setup context menu buttons
-    this._setupBkFormCtmBtn(menu);
-  }
-
-  _setupBkFormCtmBtn(menu) {
-    const btnCopyData = menu.querySelector('#ctx-copyData');
-    const btnPasteData = menu.querySelector('#ctx-paste');
-    const btnCopy = menu.querySelector('#ctx-copy');
-    const btnDelete = menu.querySelector('#ctx-delete');
-    const btnDeleteBooking = menu.querySelector('#ctx-delete-bk');
-    const btnSaveOne = menu.querySelector('#ctx-save-one');
-
-    if (btnCopyData) {
-      btnCopyData.onclick = async (e) => {
-        e.preventDefault();
-        if (!window.CURRENT_ROW_DATA) return;
-
-        try {
-          const jsonString = JSON.stringify(window.CURRENT_ROW_DATA);
-          await navigator.clipboard.writeText(jsonString);
-          menu.style.display = 'none';
-          logA('✅ Copied data to clipboard!', 'success');
-        } catch (err) {
-          Opps('❌ Copy failed: ' + err.message);
-        }
-      };
-    }
-
-    if (btnPasteData) {
-      btnPasteData.onclick = async (e) => {
-        e.preventDefault();
-        await this._pasteFromClipboard();
-      };
-    }
-
-    if (btnCopy) {
-      btnCopy.onclick = (e) => {
-        e.preventDefault();
-        if (typeof copyRow === 'function' && window.CURRENT_CTX_ROW) {
-          copyRow(window.CURRENT_CTX_ROW);
-        }
-      };
-    }
-
-    if (btnDelete) {
-      btnDelete.onclick = (e) => {
-        e.preventDefault();
-        if (window.CURRENT_CTX_ID) {
-          const collection = window.CURRENT_USER?.role === 'op' ? 'operator_entries' : 'booking_details';
-          if (typeof deleteItem === 'function') {
-            deleteItem(window.CURRENT_CTX_ID, collection);
-            // if(window.CURRENT_CTX_ROW){
-            //     window.CURRENT_CTX_ROW.remove();
-            // }
-          }
-        } else {
-          logA('❓ Dòng chưa lưu. Xóa khỏi giao diện?', 'info', () => {
-            if (window.CURRENT_CTX_ROW) {
-              window.CURRENT_CTX_ROW.remove();
-            }
-          });
-        }
-      };
-    }
-
-    if (btnDeleteBooking) {
-      btnDeleteBooking.onclick = (e) => {
-        e.preventDefault();
-        const bkId = getVal('BK_ID');
-        if (bkId) {
-          if (typeof deleteItem === 'function') {
-            deleteItem(bkId, 'bookings');
-            window.refreshForm();
-          }
-        } else {
-          logA('❓ Booking chưa lưu. Xóa khỏi giao diện?', 'info', () => {
-            window.refreshForm();
-          });
-        }
-      };
-    }
-
-    if (btnSaveOne) {
-      btnSaveOne.onclick = async (e) => {
-        e.preventDefault();
-        if (window.CURRENT_CTX_ROW && window.CURRENT_ROW_DATA && window.A.DB) {
-          const collection = window.CURRENT_USER?.role === 'op' ? 'operator_entries' : 'booking_details';
-          const res = await window.A.DB.saveRecord(collection, window.CURRENT_ROW_DATA);
-          if (res?.success) {
-            logA('✅ Lưu thành công!', 'success');
-          }
-        }
-      };
-    }
-  }
-
   async _pasteFromClipboard() {
     if (!window.CURRENT_CTX_ROW) {
       logA('❌ Lỗi: Vui lòng chọn một dòng để dán.', 'error', 'alert');
@@ -865,7 +725,6 @@ class EventManager {
 
   async setupGlobalEvents() {
     window.addEventListener('beforeunload', () => {
-      L._('[EventManager] Trang sắp được tải lại, hủy tất cả subscription...');
       A.DB.stopNotificationsListener();
       L._('[EventManager] ✅ Đã hủy tất cả subscription');
     });

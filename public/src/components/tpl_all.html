@@ -11,7 +11,12 @@
     <div class="card-header nav-container px-3 border-bottom">
       <ul class="nav nav-tabs" id="settingTabs" role="tablist">
         <li class="nav-item" role="presentation">
-          <button class="nav-link active fw-bold small" id="tab-theme-btn" onclick="selectTab('tab-theme-content')"
+          <button class="nav-link active fw-bold small" id="tab-settings-btn"
+            onclick="selectTab('tab-settings-content')" data-bs-target="#tab-settings-content" type="button"
+            role="tab"><i class="fa-solid fa-cog me-2 text-success"></i>Cài Đặt</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link fw-bold small" id="tab-theme-btn" onclick="selectTab('tab-theme-content')"
             data-bs-target="#tab-theme-content" type="button" role="tab"><i
               class="fa-solid fa-palette me-2 text-primary"></i>Giao Diện & Màu Sắc</button>
         </li>
@@ -24,7 +29,106 @@
     </div>
 
     <div class="tab-content p-1 scrollable-area" style="overflow-y: auto">
-      <div class="tab-pane fade show active" id="tab-theme-content" role="tabpanel">
+      <!-- Tab Cài Đặt (Mặc định) -->
+      <div class="tab-pane fade show active" id="tab-settings-content" role="tabpanel">
+        <div class="p-3">
+          <fieldset class="border p-3 mb-3 rounded">
+            <legend class="float-none w-auto px-2 small fw-bold text-primary">Cập Nhật Dữ Liệu</legend>
+            <div class="row g-3 align-items-center mb-3">
+              <div class="col-auto">
+                <label class="form-label small fw-bold mb-0">Cập nhật Lists:</label>
+              </div>
+              <div class="col-auto">
+                <button class="btn btn-sm btn-primary" onclick="A.DB.loadMeta(APP_DATA, true)"><i
+                    class="fa-solid fa-sync me-1"></i>Run...</button>
+              </div>
+            </div>
+            <div class="row g-3 align-items-center">
+              <div class="col-auto">
+                <label class="form-label small fw-bold mb-0">Đồng bộ Collection:</label>
+              </div>
+              <div class="col-auto">
+                <select id="st-sync-collection" class="form-select form-select-sm" style="min-width: 150px">
+                  <!-- Sẽ được fill bằng JS -->
+                </select>
+              </div>
+              <div class="col-auto">
+                <button class="btn btn-sm btn-success" onclick="
+                    const col = getVal('st-sync-collection');
+                    if (col) A.DB.syncDelta(col, true);
+                    else logA('Vui lòng chọn collection', 'warning');
+                  ">
+                  <i class="fa-solid fa-cloud-download me-1"></i>Run...
+                </button>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="border p-3 rounded">
+            <legend class="float-none w-auto px-2 small fw-bold text-primary">Dashboard Table</legend>
+            <div class="row g-3">
+              <div class="col-md-6 col-lg-3">
+                <label class="form-label small fw-bold">Bảng 1</label>
+                <select class="form-select form-select-sm st-dash-table" id="st-dash-table-1"
+                  onchange="handleDashTableChange(this)">
+                  <option value="">-- Chọn loại --</option>
+                  <option value="BK_MOI">Booking Mới</option>
+                  <option value="BK_XIN_REVIEW">Booking Xin Review</option>
+                  <option value="BK_SAP_DEN">Booking Sắp Đến</option>
+                  <option value="BK_DANG_O">Booking Đang Ở</option>
+                  <option value="BK_CHO_CODE">Booking Chờ Code</option>
+                  <option value="BK_CHO_THANH_TOAN">Book Chờ Thanh Toán</option>
+                  <option value="BK_STATS_NV">Thống Kê BK Theo NV</option>
+                </select>
+              </div>
+              <div class="col-md-6 col-lg-3">
+                <label class="form-label small fw-bold">Bảng 2</label>
+                <select class="form-select form-select-sm st-dash-table" id="st-dash-table-2"
+                  onchange="handleDashTableChange(this)">
+                  <option value="">-- Chọn loại --</option>
+                  <option value="BK_MOI">Booking Mới</option>
+                  <option value="BK_XIN_REVIEW">Booking Xin Review</option>
+                  <option value="BK_SAP_DEN">Booking Sắp Đến</option>
+                  <option value="BK_DANG_O">Booking Đang Ở</option>
+                  <option value="BK_CHO_CODE">Booking Chờ Code</option>
+                  <option value="BK_CHO_THANH_TOAN">Book Chờ Thanh Toán</option>
+                  <option value="BK_STATS_NV">Thống Kê BK Theo NV</option>
+                </select>
+              </div>
+              <div class="col-md-6 col-lg-3">
+                <label class="form-label small fw-bold">Bảng 3</label>
+                <select class="form-select form-select-sm st-dash-table" id="st-dash-table-3"
+                  onchange="handleDashTableChange(this)">
+                  <option value="">-- Chọn loại --</option>
+                  <option value="BK_MOI">Booking Mới</option>
+                  <option value="BK_XIN_REVIEW">Booking Xin Review</option>
+                  <option value="BK_SAP_DEN">Booking Sắp Đến</option>
+                  <option value="BK_DANG_O">Booking Đang Ở</option>
+                  <option value="BK_CHO_CODE">Booking Chờ Code</option>
+                  <option value="BK_CHO_THANH_TOAN">Book Chờ Thanh Toán</option>
+                  <option value="BK_STATS_NV">Thống Kê BK Theo NV</option>
+                </select>
+              </div>
+              <div class="col-md-6 col-lg-3">
+                <label class="form-label small fw-bold">Bảng 4</label>
+                <select class="form-select form-select-sm st-dash-table" id="st-dash-table-4"
+                  onchange="handleDashTableChange(this)">
+                  <option value="">-- Chọn loại --</option>
+                  <option value="BK_MOI">Booking Mới</option>
+                  <option value="BK_XIN_REVIEW">Booking Xin Review</option>
+                  <option value="BK_SAP_DEN">Booking Sắp Đến</option>
+                  <option value="BK_DANG_O">Booking Đang Ở</option>
+                  <option value="BK_CHO_CODE">Booking Chờ Code</option>
+                  <option value="BK_CHO_THANH_TOAN">Book Chờ Thanh Toán</option>
+                  <option value="BK_STATS_NV">Thống Kê BK Theo NV</option>
+                </select>
+              </div>
+            </div>
+          </fieldset>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="tab-theme-content" role="tabpanel">
         <div class="d-flex justify-content-between align-items-center mb-3">
           <h6 class="d-inline-flex fw-bold text-primary mb-1 border-bottom pb-2">1. Giao Diện & Phông Chữ</h6>
           <button id="theme-toggle" class="btn btn-light btn-sm" onclick="toggleTheme()">
@@ -361,6 +465,23 @@
           <span class="small text-muted">Giai đoạn:</span>
           <input type="date" id="filter-from" class="form-control form-control-sm" style="width: 130px" />
           <input type="date" id="filter-to" class="form-control form-control-sm" style="width: 130px" />
+          <select id="list-preset-range" class="form-select form-select-sm" style="width: 150px"
+            onchange="applyPresetDateRange(this.value)">
+            <option value="-1">-- Chọn giai đoạn --</option>
+            <option value="today">Hôm nay</option>
+            <option value="yesterday">Hôm qua</option>
+            <option value="this_week">Tuần này</option>
+            <option value="last_week">Tuần trước</option>
+            <option value="this_month">Tháng này</option>
+            <option value="last_month">Tháng trước</option>
+            <option value="quý 1">Quý 1</option>
+            <option value="quý 2">Quý 2</option>
+            <option value="quý 3">Quý 3</option>
+            <option value="quý 4">Quý 4</option>
+            <option value="this_year">Năm nay</option>
+            <option value="last_year">Năm trước</option>
+            <option value="all">Tất cả</option>
+          </select>
         </div>
 
         <!-- NHÓM 1: Lọc cột + Giá trị + Nút Lọc / Sắp xếp -->

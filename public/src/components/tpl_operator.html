@@ -21,10 +21,10 @@
           <div class="card-header bg-primary text-white py-1 d-flex justify-content-between align-items-center"
             onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto">
             <small class="fw-bold">BOOKING MỚI</small>
-            <span class="badge text-primary" id="badge-new-bk">0</span>
+            <span class="badge text-primary" id="badge-dash-tbl-1">0</span>
           </div>
           <div class="card-body p-0 border-bottom" style="height: 38vh; overflow-y: auto">
-            <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-new-bk"
+            <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-1"
               data-collection="bookings">
               <thead class="table-light table-bordered sticky-top" style="z-index: 10">
                 <tr>
@@ -51,7 +51,7 @@
             <span class="badge text-danger" id="badge-missing-supplier">0</span>
           </div>
           <div class="card-body p-0 border-bottom" style="height: 38vh; overflow-y: auto">
-            <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-missing"
+            <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-2"
               data-collection="operator_entries">
               <thead class="table-light sticky-top" style="z-index: 10">
                 <tr>
@@ -129,7 +129,39 @@
   <form id="main-form">
     <div class="card shadow-sm mb-1" id="booking-card"
       style="max-width: 100%; width: fit-content; justify-self: center">
-      <div class="card-header bg-primary text-white py-0"><small class="fw-bold">THÔNG TIN BOOKING</small></div>
+      <div class="card-header bg-primary text-white py-0"><small class="fw-bold">THÔNG TIN BOOKING</small>
+        <div class="btn-group btn-group-sm ms-auto my-1 mx-2" role="group">
+          <button type="button" class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown"
+            aria-expanded="false">
+            <i class="fa-solid fa-tools"></i> Tác vụ OP
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-sm shadow-sm">
+            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="sync()"
+                title="Xem trước & Gửi Xác Nhận Đặt Dịch Vụ (Email/PDF)">
+                <i class="fa-solid fa-envelope me-2"></i> Gửi Email Xác Nhận
+              </a></li>
+            <li>
+              <hr class="dropdown-divider my-1">
+            </li>
+            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="updateDeposit()"
+                title="Cập nhật tổng tiền đặt cọc từ giao dịch">
+                <i class="fa-solid fa-coins me-2"></i> Cập nhật Deposit
+              </a></li>
+            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="updateBkStatus()"
+                title="Cập nhật trạng thái booking">
+                <i class="fa-solid fa-refresh me-2"></i> Cập nhật Trạng thái
+              </a></li>
+            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="calcGrandTotal()"
+                title="Tính lại tổng tiền booking">
+                <i class="fa-solid fa-calculator me-2"></i> Tính lại Tổng
+              </a></li>
+            <li><a class="dropdown-item small" href="javascript:void(0)"
+                onclick="A.BookingOverview.open(getVal('BK_ID'))" title="Xem tổng quan booking">
+                <i class="fa-solid fa-eye me-2"></i> Booking Overview
+              </a></li>
+          </ul>
+        </div>
+      </div>
       <div class="card-body my-0">
         <div class="row g-1 py-0">
           <div class="col-md-1">

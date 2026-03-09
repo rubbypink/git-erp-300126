@@ -150,7 +150,7 @@ export default class PriceManager {
     const details_price_text = nightlyPrices
       .map((night) => {
         const periodName = this._getPeriodName(night.periodId, periodsList);
-        const priceStr = night.price !== null ? formatMoney(night.price) : 'N/A';
+        const priceStr = night.price !== null ? formatNumber(night.price) : 'N/A';
         return `Ngày ${night.date}: - Giá: ${priceStr} - Mùa: ${periodName}`;
       })
       .join('\n');
