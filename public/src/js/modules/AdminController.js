@@ -4,7 +4,7 @@
  * Fix: JSON Display Error using DOM Property injection
  */
 import { migrationHelper } from './migration-helper.js';
-import NavBarMenuController from '../common/components/M_NavBarResponsive.js';
+import NavBarMenuController from '/src/js/common/components/M_NavBarResponsive.js';
 // =============================================================================
 // PHẦN 1: WEB COMPONENT (UPDATED RENDER LOGIC)
 // =============================================================================
@@ -450,10 +450,11 @@ class AdminController {
     this.migration = migrationHelper;
     this._initialized = false;
   }
+  static autoInit = false;
 
   async init() {
-    if (this._initialized) {
-      console.warn('[AdminController] Đã khởi tạo rồi, bỏ qua...');
+    if (this._initialized || !A.isReady()) {
+      console.warn('[AdminController] Đã khởi tạo / App chưa sẵn sàng');
       return;
     }
     this._initialized = true;
@@ -475,7 +476,7 @@ class AdminController {
     const opts = this.collections.map((c, i) => `<option value="${i}">${c.name}</option>`).join('');
 
     // Gọi Fetch lấy file HTML
-    const response = await fetch('./src/components/tpl_admin_settings.html');
+    const response = await fetch('/src/components/tpl_admin_settings.html');
 
     // Kiểm tra nếu đường dẫn sai (báo lỗi 404)
     if (!response.ok) {
@@ -848,18 +849,18 @@ class AdminController {
     // 1. Định nghĩa Data dựa theo HTML cũ của bạn
     const settingsTabConfig = [
       {
-        id: 'tab-theme-btn',
+        id: 'tab-adm-config-btn',
         targetId: '#tab-adm-app-config',
-        title: 'Quản Lý Database',
+        title: 'Cấu Hình Hệ Thống',
         iconHtml: '<i class="fa-solid fa-palette me-2 text-primary"></i>',
         customClass: 'fw-bold small', // Các class thêm cho thẻ button
         onClickAttr: "selectTab('tab-adm-app-config')", // Hàm onclick cũ
         isDefault: true, // Tab kích hoạt đầu tiên
       },
       {
-        id: 'tab-shortcut-btn',
+        id: 'tab-adm-firestore-btn',
         targetId: '#tab-adm-database-control',
-        title: 'Back End Settings',
+        title: 'Quản Lý Database',
         iconHtml: '<i class="fa-solid fa-keyboard me-2 text-danger"></i>',
         customClass: 'fw-bold small',
         onClickAttr: "selectTab('tab-adm-database-control')",

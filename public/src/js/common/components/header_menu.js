@@ -4,9 +4,12 @@
  * Cơ chế: Tự động dàn layout Desktop/Mobile và ẩn/hiện element theo Role.
  */
 export default class ErpHeaderMenu {
+  static autoInit = false;
+  static _injectedStyles = false;
   constructor(containerId = 'nav-container') {
     this.containerId = containerId;
-    this.currentRole = CURRENT_USER.realrole ? CURRENT_USER.realrole : CURRENT_USER.role || 'guest';
+    this.user = A.getState('user');
+    this.currentRole = this.user ? this.user.role : CURRENT_USER.role || 'guest';
     this.config = { height: '60px', zIndex: '1040', bgColor: '#0d6efd' };
     this._initialized = false;
 
@@ -25,7 +28,7 @@ export default class ErpHeaderMenu {
     this._initialized = true;
     try {
       if (!this.currentRole || this.currentRole === 'guest') {
-        this.currentRole = CURRENT_USER.realrole ? CURRENT_USER.realrole : CURRENT_USER.role || 'sale';
+        this.currentRole = A.getState('user') ? A.getState('user').role : CURRENT_USER.role || 'sale';
         this._applyRoleFilters(); // Chỉ chạy CSS filter sau khi đã có Role
       }
     } catch (error) {
@@ -38,11 +41,9 @@ export default class ErpHeaderMenu {
    * (Private) Bơm CSS độc lập để xử lý Responsive chuẩn xác
    */
   _injectStyles() {
-    if (document.getElementById('erp-header-styles')) return;
+    if (ErpHeaderMenu._injectedStyles) return;
 
-    const style = document.createElement('style');
-    style.id = 'erp-header-styles';
-    style.innerHTML = `
+    const css = `
             /* [FIX] Nâng toàn bộ container gốc lên tầng trên cùng */
             #${this.containerId} {
                 position: relative; /* Hoặc 'sticky' với top: 0 nếu bạn muốn header trượt theo màn hình */
@@ -173,7 +174,9 @@ export default class ErpHeaderMenu {
                 }
             }
         `;
-    document.head.appendChild(style);
+
+    addDynamicCSS(css);
+    ErpHeaderMenu._injectedStyles = true;
   }
 
   _renderLayout() {
@@ -476,7 +479,10 @@ export default class ErpHeaderMenu {
                     </div>
                     <div class="border-top bg-light p-2 d-flex justify-content-between">
                         <button class="btn btn-sm btn-link text-decoration-none text-muted" id="markAllReadBtn"><i class="fa-solid fa-check-double"></i> Đã đọc</button>
-                        <button class="btn btn-sm btn-link text-decoration-none text-muted" id="reloadNotifs">Tải thêm</button>
+                        <div>
+                            <button class="btn btn-sm btn-link text-decoration-none text-muted" id="reloadNotifs">Tải lại</button>
+                            <button class="btn btn-sm btn-link text-decoration-none text-muted" id="loadMoreNotifs">Thêm</button>
+                        </div>
                         <button class="btn btn-sm btn-link text-decoration-none text-danger" id="clearAllBtn">Xóa tất cả</button>
                     </div>
                 </div>

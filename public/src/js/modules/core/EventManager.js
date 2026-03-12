@@ -6,13 +6,11 @@
  * Purpose: Gắn tất cả event listeners cho ứng dụng
  * Dependencies: utils.js (getVal, setVal, log, this.on)
  */
-
-import A from '../app.js';
-
 class EventManager {
   constructor() {
     this._initialized = false;
     this.modules = {};
+    /** @type {Map<string, { target: any, eventNames: string, options: any, cleaners: Set<Function>, count: number }>} */
     this._listenerRegistry = new Map();
   }
 
@@ -23,7 +21,6 @@ class EventManager {
     }
 
     try {
-      L._('[EventManager] 🚀 Khởi tạo sự kiện...');
       // 1. Gắn events từ các module con
       this._setupServerActionEvents();
       this._setupGridFilterEvents();
@@ -92,17 +89,6 @@ class EventManager {
    * @param {Object|boolean} [options={}] - Options chuẩn HOẶC true để bật Lazy Delegation
    * @param {boolean} [allowMultiple=false] - true = cho phép gán nhiều handler cùng key (bỏ qua auto-cleanup)
    * @returns {Function} cleaner - Hàm để remove listener thủ công nếu cần
-   *
-   * @example
-   * // Lazy delegation (auto-cleanup nếu gọi lại)
-   * this.on('.btn-save', 'click', handler, true);
-   *
-   * // Direct với options
-   * this.on('#input', 'input change', handler, { capture: true });
-   *
-   * // Cho phép nhiều handler cùng target (bỏ qua auto-cleanup)
-   * this.on('.btn', 'click', handlerA, true, true);
-   * this.on('.btn', 'click', handlerB, true, true);
    */
   on(target, eventNames, handler, options = {}, allowMultiple = false) {
     // ── 1. CHUẨN HÓA THAM SỐ ──────────────────────────────────────────────
@@ -149,42 +135,43 @@ class EventManager {
     }
 
     // ── 3. AUTO-CLEANUP: Xóa listener cũ nếu cùng signature ───────────────
-    // Đặt SAU khi xác nhận els hợp lệ → tránh cleanup oan khi target không tồn tại
     const sigKey = this._makeKey(target, eventNames, options);
 
     if (!allowMultiple && this._listenerRegistry.has(sigKey)) {
-      const oldCleaners = this._listenerRegistry.get(sigKey);
-      oldCleaners.forEach((fn) => fn());
+      const entry = this._listenerRegistry.get(sigKey);
+      entry.cleaners.forEach((fn) => fn());
       this._listenerRegistry.delete(sigKey);
       if (window._EM_DEBUG) {
         L._(`[EventManager] ♻️ Auto-cleanup: "${sigKey}"`, 'warning');
       }
     }
 
-    // ── 4. XỬ LÝ NATIVE OPTIONS (loại bỏ key 'delegate' hoàn toàn) ────────
-    // options = true (boolean) → typeof !== 'object' → nativeOpts = {}
-    // options = { capture: true, delegate: '.btn' } → loại bỏ 'delegate', giữ 'capture'
+    // ── 4. XỬ LÝ NATIVE OPTIONS ──────────────────────────────────────────
     const { delegate, ...nativeOpts } = typeof options === 'object' && options !== null ? options : {};
 
-    // ── 5. MAIN HANDLER với try/catch (tránh uncaught exception) ──────────
+    // ── 5. MAIN HANDLER với tracking activation count ─────────────────────
     const finalHandler = (e) => {
       try {
+        let matched = null;
         if (delegateSelector) {
-          let matched = null;
-
-          // e.target?.closest(): optional chaining bảo vệ SVG, shadow DOM
           if (typeof delegateSelector === 'string') {
             matched = e.target?.closest(delegateSelector);
           } else if (delegateSelector.nodeType && delegateSelector.contains(e.target)) {
-            // delegateSelector là DOM Element trực tiếp
             matched = delegateSelector;
           }
 
-          // Chỉ fire nếu matched nằm trong currentTarget
           if (matched && e.currentTarget.contains(matched)) {
+            // Increment count for this specific registration
+            const entry = this._listenerRegistry.get(sigKey);
+            if (entry) entry.count++;
+
             handler.call(matched, e, matched);
           }
         } else {
+          // Increment count
+          const entry = this._listenerRegistry.get(sigKey);
+          if (entry) entry.count++;
+
           handler.call(e.currentTarget, e, e.currentTarget);
         }
       } catch (handlerErr) {
@@ -206,32 +193,29 @@ class EventManager {
       els.forEach((el) => {
         events.forEach((evt) => el.removeEventListener(evt, finalHandler, nativeOpts));
       });
-      // Tự xóa khỏi registry sau khi clean → tránh giữ reference thừa
-      const set = this._listenerRegistry.get(sigKey);
-      if (set) {
-        set.delete(cleaner);
-        if (set.size === 0) this._listenerRegistry.delete(sigKey);
+      const entry = this._listenerRegistry.get(sigKey);
+      if (entry) {
+        entry.cleaners.delete(cleaner);
+        if (entry.cleaners.size === 0) this._listenerRegistry.delete(sigKey);
       }
     };
 
     if (!this._listenerRegistry.has(sigKey)) {
-      this._listenerRegistry.set(sigKey, new Set());
+      this._listenerRegistry.set(sigKey, {
+        target,
+        eventNames,
+        options,
+        cleaners: new Set(),
+        count: 0,
+      });
     }
-    this._listenerRegistry.get(sigKey).add(cleaner);
+    this._listenerRegistry.get(sigKey).cleaners.add(cleaner);
 
     return cleaner;
   }
 
   /**
    * Xóa listener theo signature key (target + eventNames).
-   * Thường không cần gọi thủ công vì on() đã tự cleanup.
-   *
-   * @param {string|Element|NodeList} target - Cùng target đã truyền vào on()
-   * @param {string} eventNames - Cùng eventNames đã truyền vào on()
-   * @param {Object|boolean} [options={}] - Cùng options đã truyền vào on()
-   *
-   * @example
-   * this.off('#btn-save', 'click', true);
    */
   off(target, eventNames, options = {}) {
     const sigKey = this._makeKey(target, eventNames, options);
@@ -241,10 +225,60 @@ class EventManager {
       return;
     }
 
-    const cleaners = this._listenerRegistry.get(sigKey);
-    cleaners.forEach((fn) => fn());
+    const entry = this._listenerRegistry.get(sigKey);
+    entry.cleaners.forEach((fn) => fn());
     this._listenerRegistry.delete(sigKey);
     L._(`[EventManager] 🗑️ Removed: "${sigKey}"`, 'info');
+  }
+
+  /**
+   * Lấy danh sách các sự kiện đang ảnh hưởng đến một element.
+   * Bao gồm cả sự kiện gắn trực tiếp và sự kiện delegation.
+   *
+   * @param {HTMLElement} el
+   * @returns {Array<{ event: string, selector: string, count: number, type: string }>}
+   */
+  getListenersForElement(el) {
+    if (!el || !el.nodeType) return [];
+    const results = [];
+
+    for (const [sigKey, entry] of this._listenerRegistry.entries()) {
+      const { target, eventNames, options, count } = entry;
+      const isLazy = options === true;
+      const delegateSelector = isLazy ? target : options?.delegate || null;
+
+      // 1. Kiểm tra Direct Listener
+      if (!delegateSelector) {
+        let isMatch = false;
+        if (target === el) isMatch = true;
+        else if (typeof target === 'string' && el.matches(target)) isMatch = true;
+        else if (target && (target.length !== undefined || Array.isArray(target))) {
+          // Xử lý NodeList hoặc Array
+          isMatch = Array.from(target).includes(el);
+        }
+
+        if (isMatch) {
+          results.push({
+            event: eventNames,
+            selector: typeof target === 'string' ? target : target.id ? `#${target.id}` : `<${target.tagName?.toLowerCase()}>`,
+            count: count,
+            type: 'Direct',
+          });
+        }
+      }
+      // 2. Kiểm tra Delegated Listener
+      else {
+        if (typeof delegateSelector === 'string' && el.matches(delegateSelector)) {
+          results.push({
+            event: eventNames,
+            selector: delegateSelector,
+            count: count,
+            type: 'Delegated',
+          });
+        }
+      }
+    }
+    return results;
   }
 
   /**
@@ -252,9 +286,9 @@ class EventManager {
    */
   destroy() {
     let total = 0;
-    this._listenerRegistry.forEach((cleaners) => {
-      cleaners.forEach((fn) => fn());
-      total += cleaners.size;
+    this._listenerRegistry.forEach((entry) => {
+      entry.cleaners.forEach((fn) => fn());
+      total += entry.cleaners.size;
     });
     this._listenerRegistry.clear();
     this._initialized = false;
@@ -273,7 +307,6 @@ class EventManager {
    * =========================================================================
    */
   _setupServerActionEvents() {
-    // Sử dụng event delegation cho tất cả nút .btn-server-action
     this.on(
       '.btn-server-action',
       'click',
@@ -281,7 +314,7 @@ class EventManager {
         this._handleServerAction(e, target);
       },
       true
-    ); // true = event delegation
+    );
   }
 
   async _handleServerAction(e, target) {
@@ -297,7 +330,6 @@ class EventManager {
       return;
     }
 
-    // Parse arguments
     let args = null;
     if (argsRaw) {
       try {
@@ -308,7 +340,6 @@ class EventManager {
       }
     }
 
-    // Define action
     const runAction = async () => {
       try {
         if (args) {
@@ -321,7 +352,6 @@ class EventManager {
       }
     };
 
-    // Execute with or without confirmation
     if (confirmMsg) {
       logA(confirmMsg, confirmType, runAction);
     } else {
@@ -335,13 +365,11 @@ class EventManager {
    * =========================================================================
    */
   _setupGridFilterEvents() {
-    // Nút Lọc — click lần 1: áp dụng filter; click lần 2: reset về dữ liệu gốc
     this.on(
       '#btn-data-filter',
       'click',
       () => {
         if (window.FILTER_ACTIVE) {
-          // Second click → toggle off: reset PG_DATA and clear UI
           if (typeof resetGridData === 'function') {
             resetGridData();
           }
@@ -354,7 +382,6 @@ class EventManager {
       true
     );
 
-    // Input Filter — dùng throttle để giới hạn số lần chạy khi gõ liên tục
     this.on(
       '#filter-val',
       'input',
@@ -366,8 +393,6 @@ class EventManager {
       true
     );
 
-    // Vẫn bắt thêm 'change' để đảm bảo chạy khi giá trị thay đổi
-    // (ví dụ: chọn từ datalist, paste, blur)
     this.on(
       '#filter-val',
       'change',
@@ -379,13 +404,12 @@ class EventManager {
       true
     );
 
-    // Nút Sắp xếp
     this.on(
       '#btn-data-sort',
       'click',
       () => {
-        if (typeof applyGridFilterThrottled === 'function') {
-          applyGridFilterThrottled();
+        if (typeof applyGridSorter === 'function') {
+          applyGridSorter();
         }
       },
       true
@@ -418,10 +442,8 @@ class EventManager {
         const el = e.target;
         const selectedKey = el.value;
         CURRENT_TABLE_KEY = selectedKey;
-        // renderTableByKey là hàm cũ của bạn, nó sẽ tự switch case
-        // để chọn Object.values(APP_DATA.booking_details) hay Object.values(APP_DATA.bookings)
         await renderTableByKey(selectedKey);
-        if ($('#tbl-container-tab2')) $('#tbl-container-tab2').dataset.collection = selectedKey; // Cập nhật dataset để filter hoạt động đúng
+        if ($('#tbl-container-tab2')) $('#tbl-container-tab2').dataset.collection = selectedKey;
         if (typeof applyGridFilterThrottled === 'function') {
           applyGridFilterThrottled();
         }
@@ -468,15 +490,11 @@ class EventManager {
    * =========================================================================
    */
   _setupFormEvents() {
-    // Khi thay đổi ngày bắt đầu
     this.on(
       '#BK_Start',
       'change',
       (e, target) => {
-        if (typeof SalesModule.Logic.autoSetOrCalcDate === 'function') {
-          SalesModule.Logic.autoSetOrCalcDate(target.value, 'BK_PayDue');
-        }
-
+        if (typeof runFnByRole === 'function') runFnByRole('autoSetOrCalcDate', 'Logic', target.value, 'BK_PayDue');
         const startDate = new Date(target.value);
         const endDate = new Date(getVal('BK_End'));
         if (startDate && endDate && endDate < startDate) {
@@ -490,8 +508,8 @@ class EventManager {
       '#tab-form-btn-save-cust',
       'click',
       async (e) => {
-        if (typeof SalesModule.Database.saveCustomer === 'function') {
-          await SalesModule.Database.saveCustomer();
+        if (typeof SalesModule.DB.saveCustomer === 'function') {
+          await SalesModule.DB.saveCustomer();
         }
       },
       true
@@ -517,46 +535,36 @@ class EventManager {
 
   /**
    * =========================================================================
-   * SECTION 6: NUMBER INPUT EVENTS (With Debounce)
+   * SECTION 6: NUMBER INPUT EVENTS (With Debounce) --- DEPRECATED
    * =========================================================================
    */
   _setupNumberInputEvents() {
-    // Chỉ áp dụng cho input có type="number" hoặc class .number / .number-only
     const numberInputSelector = 'input[type="number"]:not([disabled]), input.number:not([disabled]), input.number-only:not([disabled])';
 
-    // Input event với debounce
     this.on(
       numberInputSelector,
       'input',
       (e, target) => {
-        // Clear old timer
         if (target._debounceTimer) {
           clearTimeout(target._debounceTimer);
         }
-
-        // Set new timer (configurable delay, default 1s)
-        const debounceMs = window.A?.getConfig?.('number_input_debounce_ms') ?? 1000;
+        const debounceMs = window.A?.getConfig?.('number_input_debounce_ms') ?? 850;
         target._debounceTimer = setTimeout(() => {
-          // Clean data: only keep numbers and minus sign
-          setNum(target, target.value.replace(/[^0-9.-]/g, ''));
-
-          // Trigger calculation
+          setNum(target, target.value);
           const tr = target.closest('tr');
-          if (tr && typeof calcRow === 'function') {
+          if (tr && typeof runFnByRole === 'function') {
             if (!window.CURRENT_CTX_ROW) {
               window.CURRENT_CTX_ROW = tr;
             }
-            const rowId = tr.id.replace('row-', '') || tr.dataset.row;
-            calcRow(rowId);
+            const rowId = tr.dataset.row || tr.id.replace('row-', '');
+            runFnByRole('calcRow', 'Logic', rowId);
           }
-
           delete target._debounceTimer;
         }, debounceMs);
       },
       true
     );
 
-    // Click event trên number inputs
     this.on(
       'input.number, input.number-only',
       'click',
@@ -625,7 +633,6 @@ class EventManager {
 
         if (inputIndex === -1) return;
 
-        // A. Go down (Enter or Ctrl+Down)
         if (isEnter || (isCtrl && isDown)) {
           e.preventDefault();
           let nextTr = currentTr.nextElementSibling;
@@ -633,22 +640,18 @@ class EventManager {
           if (!nextTr) {
             if (typeof copyRow === 'function') {
               copyRow();
-            } else if (typeof addDetailRow === 'function') {
-              addDetailRow();
+            } else if (typeof runFnByRole === 'function') {
+              runFnByRole('addDetailRow', 'UI');
             }
             nextTr = document.querySelector('#detail-tbody')?.lastElementChild;
           }
 
           this._focusCell(nextTr, inputIndex);
-        }
-        // B. Go up (Ctrl+Up)
-        else if (isCtrl && isUp) {
+        } else if (isCtrl && isUp) {
           e.preventDefault();
           const prevTr = currentTr.previousElementSibling;
           if (prevTr) this._focusCell(prevTr, inputIndex);
-        }
-        // C. Go left (Ctrl+Left)
-        else if (isCtrl && isLeft) {
+        } else if (isCtrl && isLeft) {
           e.preventDefault();
           if (inputIndex > 0) {
             const targetInput = allInputs[inputIndex - 1];
@@ -657,9 +660,7 @@ class EventManager {
               targetInput.select?.();
             }
           }
-        }
-        // D. Go right (Ctrl+Right)
-        else if (isCtrl && isRight) {
+        } else if (isCtrl && isRight) {
           e.preventDefault();
           if (inputIndex < allInputs.length - 1) {
             const targetInput = allInputs[inputIndex + 1];
@@ -668,9 +669,7 @@ class EventManager {
               targetInput.select?.();
             }
           }
-        }
-        // E. Copy from above (Ctrl+D)
-        else if (isCtrl && isD) {
+        } else if (isCtrl && isD) {
           e.preventDefault();
           const prevTr = currentTr.previousElementSibling;
           if (prevTr) {
@@ -688,7 +687,6 @@ class EventManager {
       true
     );
 
-    // Auto-select on focus
     this.on(
       '#main-form',
       'focus',
@@ -729,7 +727,6 @@ class EventManager {
       L._('[EventManager] ✅ Đã hủy tất cả subscription');
     });
 
-    // Handler chung cho cả dblclick và longpress
     const handleRowClick = (e) => {
       if (!e || !e.target || typeof e.target.closest !== 'function' || getE('detail-tbody')?.contains(e.target)) return;
 
@@ -741,7 +738,7 @@ class EventManager {
       const tr = e.target.closest('tr');
       if (!tr) return;
       const collection = table.dataset.collection;
-      const trId = tr.id;
+      const trId = tr.id || tr.dataset.item;
 
       if (!collection || !trId) return;
 
@@ -752,13 +749,12 @@ class EventManager {
       }
     };
 
-    // Xử lý dblclick
     this.on(
       'tr',
       'dblclick',
       (e) => {
         e.preventDefault();
-        if (getE('detail-tbody') && getE('#detail-tbody')?.contains(e.target)) return;
+        if (getE('#detail-tbody')?.contains(e.target) || getE('#bkov-detail-tbody')?.contains(e.target) || getE('#bkov-txn-tbody')?.contains(e.target)) return;
         handleRowClick(e);
       },
       true
@@ -769,11 +765,11 @@ class EventManager {
       (e) => {
         const isCtrl = e.ctrlKey || e.metaKey;
         if (!isCtrl) return;
+        if (getE('#detail-tbody')?.contains(e.target) || getE('#bkov-detail-tbody')?.contains(e.target) || getE('#bkov-txn-tbody')?.contains(e.target)) return;
         handleRowClick(e);
       },
       true
     );
   }
 }
-// Export cho ES6 import
 export default EventManager;

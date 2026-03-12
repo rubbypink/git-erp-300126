@@ -20,6 +20,7 @@ const { deleteBooking } = require('./api/bookings.api');
 const { archiveOldData } = require('./api/archive.api');
 const { dailyReminders } = require('./api/cron.api');
 const { syncTransactionOnWrite } = require('./api/transaction-sync.api');
+const { commitFundAccount } = require('./api/accountant.api');
 
 // ─── Export Functions ───
 module.exports = {
@@ -35,4 +36,5 @@ module.exports = {
   archiveOldData,
   dailyReminders,
   syncTransactionOnWrite,
+  commitFundAccount,
 };

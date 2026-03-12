@@ -19,7 +19,7 @@
  * =========================================================================
  */
 
-import localDB from './DBLocalStorage.js';
+import localDB from '/src/js/modules/db/DBLocalStorage.js';
 
 // =========================================================================
 // 1. CONSTANTS
@@ -33,6 +33,8 @@ const DEFAULT_SHORTCUTS = Object.freeze({
   openSingleForm: 'Ctrl+Alt+F',
   openCalculator: 'Ctrl+Alt+C',
   openAdminConsole: 'Ctrl+Alt+A',
+  undo: 'Ctrl+Z',
+  redo: 'Ctrl+Y',
 });
 
 // =========================================================================
@@ -90,6 +92,8 @@ class ShortcutManager {
    */
   async init() {
     try {
+      if (this._initialized) return;
+      this._initialized = true;
       await localDB.initDB(); // Đảm bảo DB sẵn sàng (deduplicate nếu đã init)
 
       const savedShortcuts = await this._loadFromDB();
@@ -102,6 +106,8 @@ class ShortcutManager {
       this.registerCommand('openAdminConsole', this.openAdminConsole);
       this.registerCommand('openSingleForm', this.openSingleForm);
       this.registerCommand('modalAdmin', this.modalAdmin);
+      this.registerCommand('undo', this.undo);
+      this.registerCommand('redo', this.redo);
 
       document.addEventListener('keydown', this.handleGlobalShortcuts);
       this.renderSettingsForm(); // Render UI ngay sau khi load config
@@ -622,6 +628,48 @@ class ShortcutManager {
     // CSS trick: cho phép click xuyên qua modal wrapper
     document.querySelector('#dynamic-modal').style.pointerEvents = 'none';
     document.querySelector('#dynamic-modal .modal-dialog').style.pointerEvents = 'auto';
+  }
+
+  undo() {
+    const activeEl = document.activeElement;
+    const isInput = activeEl && ['INPUT', 'SELECT', 'TEXTAREA'].includes(activeEl.tagName);
+
+    if (isInput) {
+      // Tìm nút undo trong context menu (id là ctx-undo hoặc data-ctx-id là ctx-undo)
+      const undoBtn = document.getElementById('ctx-undo') || document.querySelector('[data-ctx-id="ctx-undo"]');
+      if (undoBtn) {
+        undoBtn.click();
+        return;
+      }
+    }
+
+    // Mặc định gọi StateProxy.undo không tham số
+    if (window.A?.StateProxy?.undo) {
+      window.A.StateProxy.undo();
+    } else if (typeof window.undo === 'function') {
+      window.undo();
+    }
+  }
+
+  redo() {
+    const activeEl = document.activeElement;
+    const isInput = activeEl && ['INPUT', 'SELECT', 'TEXTAREA'].includes(activeEl.tagName);
+
+    if (isInput) {
+      // Tìm nút undo trong context menu (id là ctx-undo hoặc data-ctx-id là ctx-undo)
+      const redoBtn = document.getElementById('ctx-redo') || document.querySelector('[data-ctx-id="ctx-redo"]');
+      if (redoBtn) {
+        redoBtn.click();
+        return;
+      }
+    }
+
+    // Mặc định gọi StateProxy.undo không tham số
+    if (window.A?.StateProxy?.redo) {
+      window.A.StateProxy.redo();
+    } else if (typeof window.redo === 'function') {
+      window.redo();
+    }
   }
 }
 

@@ -1,4 +1,4 @@
-import '../common/components/custom_tag.js';
+import '/src/js/common/components/custom_tag.js';
 
 // ============================================================
 // 1. UTILS: MATRIX TRANSFORMER (Cập nhật xử lý Config & Status)
@@ -444,11 +444,16 @@ export class HotelPriceController {
     hotels: null,
     priceSchedules: {}, // Map {docId: data}
   };
+  static autoInit = false;
 
   constructor(containerId) {
     this._initialized = false;
     this.container = document.getElementById(containerId);
-    if (!this.container) throw new Error(`Không tìm thấy container: #${containerId}`);
+    if (!this.container) {
+      const modalEl = document.createElement('at-modal-full');
+      document.body.appendChild(modalEl);
+      this.container = document.getElementById(containerId);
+    }
 
     this.masterData = { periods: [], packages: [], priceTypes: [] };
 
@@ -479,7 +484,7 @@ export class HotelPriceController {
    */
   static init(containerId, isForce = false) {
     let instance;
-    if (this._initialized) {
+    if (this._initialized && !isForce) {
       console.warn('[EventManager] Đã khởi tạo rồi, bỏ qua...');
       return;
     }

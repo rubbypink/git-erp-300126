@@ -77,7 +77,7 @@ const L = {
 
     // Console cho Dev
     const colors = { error: '#ff4d4f', warning: '#faad14', success: '#52c41a', info: '#1890ff' };
-    console.log(`%c[${context}] [${type.toUpperCase()}] %c${errorEntry.message}`, `color: ${colors[type]}; font-weight: bold;`, 'color: inherit;', meta.data || '');
+    console.log(`%c[${context}] %c${errorEntry.message}`, `color: ${colors[type]}; font-weight: bold;`, 'color: inherit;', meta.data || '');
 
     // Lưu vào Storage
     this._saveToStorage(errorEntry);
@@ -476,19 +476,20 @@ function parseInputDate(s, inputType = '') {
 // Ép SĐT về dạng Text có ' ở đầu
 function formatPhone(p) {
   let s = String(p).trim();
-  if (s && !s.startsWith("'")) return "'" + s;
+  if (s && s.startsWith("'")) return s.replace(/'/g, '');
   return s;
 }
 
 function formatNumber(n) {
   if (n === '' || n === null || n === undefined) return '';
+  n = String(n).replace(/[^0-9.-]/g, '');
   const num = Number(n);
   if (isNaN(num)) {
     warn('formatNumber', 'Giá trị không phải số:', n);
     return '0';
   }
   const config = window.A?.getConfig?.('intl') || {};
-  return new Intl.NumberFormat('vi-VN', config.numberOptions).format(num);
+  return new Intl.NumberFormat(config.locale, config.numberOptions).format(num);
 }
 
 function formatMoney(n) {
@@ -499,7 +500,7 @@ function formatMoney(n) {
     return '0';
   }
   const config = window.A?.getConfig?.('intl') || {};
-  return new Intl.NumberFormat('vi-VN', config.currencyOptions).format(num);
+  return new Intl.NumberFormat(config.locale, config.currencyOptions).format(num);
 }
 
 /**
@@ -825,13 +826,14 @@ function getFromEl(el, opt = {}) {
     // --- CASE 3: NUMBER (Ưu tiên dataset.val) ---
     else if (classList.contains('number') || classList.contains('number-only') || el.type === 'number') {
       // Lấy từ dataset (nguồn gốc) hoặc value (hiển thị)
-      const rawVal = el.dataset.val !== undefined && el.dataset.val !== '' ? el.dataset.val : el.value;
-      // Chỉ lấy số (0-9) để đảm bảo logic cũ không bị sai lệch
-      val = String(rawVal || '').replace(/[^0-9]/g, '');
-      return val === '' ? 0 : Number(val);
+      // const rawVal = el.dataset.val !== undefined && el.dataset.val !== '' ? el.dataset.val : el.value;
+      // // Chỉ lấy số (0-9) để đảm bảo logic cũ không bị sai lệch
+      // val = String(rawVal || '').replace(/[^0-9.-]/g, '');
+      // return val === '' ? 0 : Number(val);
+      return getNum(el);
     }
     // --- CASE 4: PHONE NUMBER (New: Chỉ lấy số sạch) ---
-    else if (classList.contains('phone_number') || el.type === 'tel') {
+    else if (classList.contains('phone_number') || el.type === 'tel' || el.dataset.field === 'phone' || el.dataset.field === 'customer_phone') {
       let rawVal = el.value || '';
       // Loại bỏ dấu chấm, phẩy, gạch ngang, chỉ giữ số để lưu DB
       val = typeof rawVal === 'string' ? rawVal.replace(/[^0-9]/g, '') : '';
@@ -886,12 +888,28 @@ function setToEl(el, value) {
 
     // --- CASE A: NUMBER (Trigger setNum) ---
     if (classList.contains('number') || classList.contains('number-only') || el.type === 'number') {
-      setNum(el, vRaw);
+      let rawNum = 0;
+      if (vRaw !== '' && vRaw !== null && vRaw !== undefined) {
+        rawNum = String(vRaw).replace(/[^0-9]/g, '');
+        rawNum = Number(rawNum);
+        if (isNaN(rawNum)) rawNum = 0;
+      }
+      if (el.dataset && !el.dataset.initial) el.dataset.initial = String(rawNum);
+
+      // SSOT: Lưu số gốc
+      el.dataset.val = rawNum;
+
+      // UI: Hiển thị đẹp
+      if (el.type === 'number') {
+        el.value = rawNum;
+      } else {
+        el.value = typeof formatNumber === 'function' ? formatNumber(rawNum) : new Intl.NumberFormat('vi-VN').format(rawNum);
+      }
       return true;
     }
 
     // --- CASE B: PHONE NUMBER (Format hiển thị) ---
-    if (classList.contains('phone_number') || el.type === 'tel') {
+    if (classList.contains('phone_number') || el.type === 'tel' || el.dataset.field === 'phone' || el.dataset.field === 'customer_phone') {
       const cleanVal = String(vRaw).replace(/[^0-9]/g, '');
       el.dataset.val = cleanVal; // Lưu số sạch
       // Hiển thị số đẹp
@@ -964,8 +982,7 @@ function setVal(id, value, root = document) {
     const el = $(id, root);
     if (!el) {
       // Không tìm thấy element để set -> Log warning nhẹ
-      if (typeof Opps === 'function') Opps(`[DOM] setVal: Không tìm thấy ID "${id}"`, 'warning');
-      else console.warn(`[DOM] setVal missing: ${id}`);
+      L._(`[DOM] setVal: Không tìm thấy ID "${id}"`, 'warning');
       return false;
     }
     return setToEl(el, value);
@@ -1001,7 +1018,7 @@ function setNum(idOrEl, val, root = document) {
     if (el.type === 'number') {
       el.value = rawNum;
     } else {
-      el.value = typeof formatNumber === 'function' ? formatNumber(rawNum) : new Intl.NumberFormat('vi-VN').format(rawNum);
+      el.value = formatNumber(rawNum);
     }
   } catch (e) {
     if (typeof Opps === 'function') Opps(`[DOM] setNum lỗi`, 'danger');
@@ -1016,54 +1033,88 @@ function setNum(idOrEl, val, root = document) {
  * 3. Input là String số ("100,000") -> Parse ra số (100000).
  * 4. Input là String rác ("abc", "undefined") -> Return 0 (Tránh lỗi so sánh).
  */
-function getNum(target, root = document, opt = {}) {
+function getNum(target, root = document) {
   try {
-    // 1. Fast Return: Nếu đã là số thì trả về ngay
     if (typeof target === 'number') return target;
+    var el = null;
+    if (target.nodeType === 1) el = target;
+    else el = $(target, root);
+    let rawVal = el ? el.dataset.val || el.value || el.textContent : String(target);
 
-    // 2. Null/Undefined check
-    if (target === null || target === undefined) return 0;
+    if (!rawVal) return 0;
 
-    let rawVal = '';
+    // Logic parse thông minh:
+    let cleanStr = String(rawVal).trim();
 
-    // 3. Thử tìm Element
-    // Lưu ý: getE trả về null nếu không tìm thấy ID
-    const el = $(target, root);
+    // 1. Kiểm tra trường hợp đặc biệt: nếu sau dấu , hoặc . chỉ có đúng 1 chữ số thì đó là dấu thập phân
+    // Ví dụ: "1.200,5" -> 1200.5, nhưng "1.5" -> 1.5
+    const lastDotIdx = cleanStr.lastIndexOf('.');
+    const lastCommaIdx = cleanStr.lastIndexOf(',');
 
-    if (el) {
-      // --- TRƯỜNG HỢP LÀ ELEMENT ---
-      // Ưu tiên 1: Dataset (SSOT)
-      if (el.dataset.val !== undefined && el.dataset.val !== '' && el.dataset.val !== 'NaN') {
-        const val = el.dataset.val !== undefined && el.dataset.val !== '' ? el.dataset.val : el.value;
-        // Chỉ lấy số (0-9) để đảm bảo logic cũ không bị sai lệch
-        rawVal = String(val || '').replace(/[^0-9]/g, '');
-        return rawVal === '' ? 0 : Number(rawVal);
+    // Yêu cầu mới: Nếu có dấu , hoặc . và sau nó là 1 chữ số duy nhất HOẶC trong giá trị có cả , và .
+    // Thì đó là dấu phân cách hàng nghìn -> xử lý làm tròn giá trị để hết phần thập phân sau đó loại bỏ cả 2 kí tự khỏi giá trị
+
+    const hasBoth = lastCommaIdx !== -1 && lastDotIdx !== -1;
+    const lastCharIsDigit = /\d$/.test(cleanStr);
+
+    // Tối ưu: Nếu sau dấu phân cách có 1 hoặc 2 chữ số thì đó là dấu thập phân (vì hàng nghìn phải có 3 số)
+    const distToLastComma = cleanStr.length - lastCommaIdx - 1;
+    const distToLastDot = cleanStr.length - lastDotIdx - 1;
+
+    const isCommaDecimal = lastCommaIdx !== -1 && (distToLastComma === 1 || distToLastComma === 2) && lastCharIsDigit;
+    const isDotDecimal = lastDotIdx !== -1 && (distToLastDot === 1 || distToLastDot === 2) && lastCharIsDigit;
+
+    if (hasBoth || isCommaDecimal || isDotDecimal) {
+      // Nếu là dấu thập phân (chỉ có 1 số sau dấu) hoặc có cả 2 loại dấu
+      // Bước 1: Chuẩn hóa về dạng số có dấu chấm thập phân để parseFloat
+      let tempStr = cleanStr;
+      if (hasBoth) {
+        // Có cả 2: Giả định dấu cuối cùng là thập phân nếu nó cách cuối 1-2 ký tự,
+        // nhưng theo yêu cầu "có cả , và . thì đó là dấu phân cách hàng nghìn" -> làm tròn.
+        // Tuy nhiên, để làm tròn chính xác, ta cần biết cái nào là thập phân.
+        // Theo logic ERP: 1.200,5 hoặc 1,200.5
+        if (lastCommaIdx > lastDotIdx) {
+          tempStr = tempStr.replace(/\./g, '').replace(',', '.');
+        } else {
+          tempStr = tempStr.replace(/,/g, '');
+        }
+      } else if (isCommaDecimal) {
+        tempStr = tempStr.replace(/\./g, '').replace(',', '.');
+      } else if (isDotDecimal) {
+        // Nếu chỉ có dấu chấm và sau đó là 1 số, parseFloat mặc định hiểu là thập phân
+        // Nhưng nếu có nhiều dấu chấm thì là hàng nghìn.
+        if (tempStr.split('.').length > 2) {
+          const parts = tempStr.split('.');
+          const lastPart = parts.pop();
+          tempStr = parts.join('') + '.' + lastPart;
+        }
       }
-      // Ưu tiên 2: Value hiển thị
-      rawVal = 'value' in el ? el.value : el.textContent;
-    } else {
-      // --- TRƯỜNG HỢP KHÔNG PHẢI ELEMENT ---
-      // Đây là chỗ bạn cần tối ưu: Coi tham số truyền vào chính là giá trị thô
-      rawVal = String(target);
+
+      let num = parseFloat(tempStr);
+      if (!isNaN(num)) {
+        // Làm tròn để hết phần thập phân
+        num = Math.round(num);
+        // Loại bỏ cả 2 kí tự khỏi giá trị (trả về số nguyên sạch)
+        return num;
+      }
     }
 
-    // 4. Clean & Parse (Trái tim của hàm xử lý)
-    // Chỉ giữ lại: Số (0-9)
-    // Loại bỏ: Dấu phẩy, chữ cái, khoảng trắng...
-    const cleanStr = rawVal.replace(/[^0-9]/g, '');
+    // 2. Logic cũ cho các trường hợp khác
+    if (cleanStr.includes(',') && cleanStr.includes('.')) {
+      cleanStr = cleanStr.replace(/\./g, '').replace(',', '.');
+    } else if (cleanStr.includes(',')) {
+      cleanStr = cleanStr.replace(',', '.');
+    } else if (cleanStr.split('.').length > 2) {
+      cleanStr = cleanStr.replace(/\./g, '');
+    }
 
-    // Nếu chuỗi rỗng sau khi clean (VD: input là "abc") -> 0
-    if (cleanStr === '' || cleanStr === '-') return 0;
-
-    const num = parseInt(cleanStr, 10);
-
-    // Kiểm tra NaN (Not a Number) lần cuối
+    const num = parseFloat(cleanStr);
     return isNaN(num) ? 0 : num;
   } catch (e) {
-    if (typeof Opps === 'function') Opps(`[DOM] getNum crash`, 'danger');
-    return 0; // Luôn return 0 khi lỗi hệ thống
+    return 0;
   }
 }
+
 // --- BATCH OPERATORS ---
 
 function getVals(target, optOrRoot = {}) {
@@ -1807,7 +1858,7 @@ function showAlert(message, type = 'info', title = 'Thông Báo', options = {}) 
 function showConfirm(message, okFn, denyFn, opts = {}) {
   if (okFn) opts.onConfirm = okFn;
   if (denyFn) opts.onDeny = denyFn;
-  return logA(message, 'question', 'confirm', opts);
+  return logA(message, 'warning', 'confirm', opts);
 }
 
 var _notifTimer = null;
@@ -1834,35 +1885,55 @@ function toggleFullScreen() {
  * @return {any} - Trả về kết quả của hàm được gọi (nếu có)
  */
 function runFnByRole(baseFuncName, ...args) {
-  // 1. Kiểm tra an toàn: Biến CURRENT_USER có tồn tại không?
-  let targetFuncName;
-  if (typeof CURRENT_USER === 'undefined' || !CURRENT_USER.role) {
-    Opps('❌ [runFnByRole] Không tìm thấy thông tin Role (CURRENT_USER chưa init).');
-    targetFuncName = baseFuncName;
-  } else {
-    // 2. Xử lý tên Role để ghép chuỗi
-    // Input: "SALE" -> Output: "Sale"
-    // Input: "OP" -> Output: "Op"
-    const rawRole = CURRENT_USER.role;
-    const roleSuffix = rawRole.charAt(0).toUpperCase() + rawRole.slice(1).toLowerCase();
-    targetFuncName = `${baseFuncName}_${roleSuffix}`;
-  }
+  try {
+    if (typeof CURRENT_USER === 'undefined' || !CURRENT_USER.role) {
+      console.warn('❌ [runFnByRole] CURRENT_USER chưa init.');
+      if (typeof window[baseFuncName] === 'function') return window[baseFuncName](...args);
+      return;
+    }
 
-  // 4. Tìm và chạy hàm
-  // Trong JS trình duyệt, hàm toàn cục nằm trong object 'window'
-  if (typeof window[targetFuncName] === 'function') {
-    try {
-      // Gọi hàm và truyền nguyên vẹn các tham số vào
-      return window[targetFuncName](...args);
-    } catch (err) {
-      Opps(`❌ [AutoRun] Hàm ${targetFuncName} bị lỗi khi chạy:`, err);
+    const rawRole = CURRENT_USER.role;
+    const moduleObj = ['UI', 'Logic', 'DB', 'Confirmation'];
+    let moduleKey = null;
+    let finalArgs = [...args];
+
+    // Tự động nhận diện moduleKey nếu tham số đầu tiên nằm trong danh sách
+    if (typeof args[0] === 'string' && moduleObj.includes(args[0])) {
+      moduleKey = args[0];
+      finalArgs.shift(); // Loại bỏ moduleKey khỏi danh sách tham số truyền vào hàm đích
     }
-  } else {
-    // (Option) Nếu muốn chạy hàm mặc định khi không có hàm riêng
-    // Ví dụ: Không có init_Sale thì chạy init()
-    if (typeof window[baseFuncName] === 'function') {
-      return window[baseFuncName](...args);
+
+    const prefixMap = {
+      sale: 'SalesModule',
+      admin: 'SalesModule',
+      op: 'Op',
+      acc: 'AccountantController',
+      acc_thenice: 'AccountantController',
+    };
+
+    const prefix = prefixMap[rawRole] || null;
+    let targetFn = null;
+
+    if (prefix && moduleKey) {
+      // Truy cập hàm lồng nhau: window[prefix][moduleKey][baseFuncName]
+      targetFn = window[prefix]?.[moduleKey]?.[baseFuncName];
+    } else {
+      // Ghép tên hàm phẳng: baseFuncName_Role
+      const roleSuffix = rawRole.charAt(0).toUpperCase() + rawRole.slice(1).toLowerCase();
+      const targetFuncName = `${baseFuncName}_${roleSuffix}`;
+      targetFn = window[targetFuncName];
     }
+
+    // Thực thi
+    if (typeof targetFn === 'function') {
+      return targetFn(...finalArgs);
+    } else if (typeof window[baseFuncName] === 'function') {
+      return window[baseFuncName](...finalArgs);
+    } else {
+      console.warn(`⚠️ [runFnByRole] Không tìm thấy hàm mục tiêu: ${prefix ? prefix + '.' + (moduleKey ? moduleKey + '.' : '') : ''}${baseFuncName}`);
+    }
+  } catch (err) {
+    console.error(`❌ [runFnByRole] Lỗi khi thực thi ${baseFuncName}:`, err);
   }
 }
 
@@ -2212,7 +2283,7 @@ function getHtmlContent(url, options = {}) {
 
     // 2. Nếu là file HTML ngắn gọn (vd: 'tpl_all.html'), tự động thêm path
     if (url.endsWith('.html') && !url.includes('/')) {
-      finalSourcePath = './src/components/' + url;
+      finalSourcePath = '/src/components/' + url;
     }
 
     // 3. ✅ CHECK CACHE TRƯỚC
@@ -2276,6 +2347,16 @@ function clearHtmlCache(urlPattern = null) {
   }
 }
 
+function addDynamicCSS(cssCode, styleId = 'app-dynamic-styles') {
+  let styleTag = getE(styleId);
+  if (!styleTag) {
+    styleTag = document.createElement('style');
+    styleTag.id = styleId;
+    document.head.appendChild(styleTag);
+  }
+  styleTag.textContent += '\n' + cssCode;
+}
+
 /**
  * Tải file JS động vào DOM.
  * Tự động phát hiện Role Accountant để tải dạng Module (ES6).
@@ -2283,12 +2364,19 @@ function clearHtmlCache(urlPattern = null) {
  * @param {string|HTMLElement} targetIdorEl - Vị trí append (mặc định là body)
  * @returns {Promise}
  */
+/**
+ * Tải file JavaScript động và chèn vào DOM
+ * @param {string} filePath - Đường dẫn file JS (Tương đối hoặc Tuyệt đối)
+ * @param {string|null} userRole - Vai trò người dùng (admin, acc,...)
+ * @param {string|HTMLElement|null} targetIdorEl - Nơi chèn thẻ script
+ * @returns {Promise<HTMLScriptElement>}
+ */
 function loadJSFile(filePath, userRole = null, targetIdorEl = null) {
   // 1. Xử lý target element
   if (!targetIdorEl) {
     targetIdorEl = document.body;
   } else if (typeof targetIdorEl === 'string') {
-    const el = getE(targetIdorEl); // Đảm bảo hàm getE có sẵn
+    const el = getE(targetIdorEl); // Đảm bảo hàm helper getE từ utils.js
     if (el) {
       targetIdorEl = el;
     } else {
@@ -2302,20 +2390,28 @@ function loadJSFile(filePath, userRole = null, targetIdorEl = null) {
     try {
       const s = document.createElement('script');
 
-      // 2. Logic kiểm tra Role hoặc tên file để set type="module"
-      if (userRole) {
-        const role = userRole.toLowerCase();
-        const moduleLower = filePath.toLowerCase();
-        if (role === 'admin') {
-          s.type = 'module';
-          filePath = './src/js/modules/M_SalesModule.js';
-        } else if (role === 'acc' || role === 'acc_thenice' || moduleLower.includes('module.js')) {
-          s.type = 'module';
-        }
-      } else if (filePath.toLowerCase().includes('module.js')) {
+      // Xử lý giá trị fallback cho admin nếu vô tình truyền filePath rỗng để bảo toàn chức năng cũ
+      const role = userRole ? userRole.toLowerCase() : '';
+      if (role === 'admin' && !filePath) {
+        filePath = '/src/js/modules/M_SalesModule.js';
+      }
+
+      const moduleLower = filePath ? filePath.toLowerCase() : '';
+
+      // 2. Logic xác định type="module"
+      const isModule = role === 'admin' || role === 'acc' || role === 'acc_thenice' || moduleLower.includes('module.js');
+
+      if (isModule) {
         s.type = 'module';
       }
+
+      // Xử lý CORS cho địa chỉ tuyệt đối (Cross-Origin)
+      if (filePath && (filePath.startsWith('http://') || filePath.startsWith('https://'))) {
+        s.crossOrigin = 'anonymous'; // Yêu cầu bắt buộc để load module từ domain khác
+      }
+
       s.src = filePath;
+      s.async = true;
 
       // 3. Xử lý sự kiện load/error
       s.onload = () => {
@@ -2324,19 +2420,19 @@ function loadJSFile(filePath, userRole = null, targetIdorEl = null) {
 
       s.onerror = (e) => {
         const errorMsg = `❌ Failed to load JS file: ${filePath}`;
-        if (typeof Opps === 'function') Opps(errorMsg);
-        reject(new Error(errorMsg));
+        if (typeof L.log === 'function') L.log(errorMsg);
       };
 
       // 4. Append vào DOM
       targetIdorEl.appendChild(s);
     } catch (err) {
-      // Catch các lỗi đồng bộ khi tạo element
+      // Catch các lỗi đồng bộ khi khởi tạo
       if (typeof Opps === 'function') Opps(`❌ Error inside loadJSFile: ${err.message}`);
       reject(err);
     }
   });
 }
+
 /**
  * ✅ FIX: Make loadJSForRole asynchronous to prevent scope/timing issues
  * Now waits for all JS files to load before continuing
@@ -2344,7 +2440,7 @@ function loadJSFile(filePath, userRole = null, targetIdorEl = null) {
  * @param {string} baseFilePath - Base path for loading files
  * @returns {Promise} Resolves when all files are loaded
  */
-async function loadJSForRole(userRole, baseFilePath = './src/js/') {
+async function loadJSForRole(userRole, baseFilePath = '') {
   if (!userRole) {
     L._('⚠ loadJSForRole: No user role provided', 'warning');
     return Promise.resolve();

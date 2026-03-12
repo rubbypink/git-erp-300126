@@ -1,8 +1,8 @@
 // ===================================================================
 // IMPORTS (v9 Modular ES6)
 // ===================================================================
-// NOTE: NotificationManager is accessed via window.A.NotificationManager (loaded by main app bundle)
-import SalesModule from '../src/js/modules/M_SalesModule.js';
+// NOTE: NotificationManager is accessed via window.NotificationManager (loaded by main app bundle)
+import SalesModule from '/src/js/modules/M_SalesModule.js';
 import { getNewData, migrateBookingTransactions, auditTransactionsChecking } from './accountant_logic.js';
 
 // ===================================================================
@@ -76,7 +76,7 @@ class AccountantController {
         role: 'acc_thenice',
       },
     };
-
+    this.autoInit = false;
     this.funds = [];
     this.transactions = [];
     this.els = {}; // Cache DOM
@@ -93,6 +93,8 @@ class AccountantController {
   // --- INIT & FLOW CONTROL ---
 
   async init() {
+    if (this._initialized) return;
+    this._initialized = true;
     L._('Accountant Module: Initializing...');
 
     // Fix #3: Đợi DOM load xong mới cache và bind event
@@ -115,7 +117,7 @@ class AccountantController {
       if (!this._retryCount) this._retryCount = 0;
       this._retryCount++;
       if (this._retryCount < 20) {
-        setTimeout(300);
+        setTimeout(() => this._waitForDom(), 300);
       } else {
         console.error('Accountant: DOM Elements not found after retries. Check HTML ID.');
       }
@@ -246,7 +248,7 @@ class AccountantController {
 
       html += `
                 <div class="d-flex justify-content-between align-items-center mb-2 p-2 border-bottom border-light">
-                    <div class="d-flex align-items-center small">
+                    <div class="d-flex fund-account align-items-center small" data-item="${fund.id}">
                         ${icon} <span class="text-dark fw-bold">${name}</span>
                         ${fund.account_no ? `<span class="text-muted ms-1" style="font-size:0.75rem">(${fund.account_no})</span>` : ''}
                     </div>
@@ -256,6 +258,64 @@ class AccountantController {
 
     this.els.fundListContainer.innerHTML = html || '<div class="text-muted small text-center">Chưa có quỹ</div>';
     if (this.els.totalFund) this.els.totalFund.innerText = formatCurrency(totalBalance);
+
+    // Thêm nút chốt số dư cho từng quỹ
+    this.addCommitButtons();
+  }
+
+  addCommitButtons() {
+    const containers = this.els.fundListContainer.querySelectorAll('.fund-account');
+    containers.forEach((container, index) => {
+      const fund = this.funds[index];
+      if (!fund) return;
+
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-xs btn-outline-warning ms-2 py-0 px-1';
+      btn.style.fontSize = '0.65rem';
+      btn.innerHTML = '<i class="fas fa-check-double"></i> Chốt';
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const fundId = e.target.closest('.fund-account').dataset.item || fund.id;
+        this.handleCommitFund(fundId);
+      };
+      container.appendChild(btn);
+    });
+  }
+
+  /**
+   * Gọi Cloud Function commitFundAccount
+   */
+  async handleCommitFund(accountId) {
+    if (!confirm(`Bạn có chắc chắn muốn chốt số dư cho tài khoản ${accountId}?`)) return;
+
+    try {
+      logA('Đang xử lý chốt số dư...', 'info', 'toast');
+
+      // Gọi Cloud Function (v8 syntax)
+      const commitFunc = firebase.app().functions('asia-southeast1').httpsCallable('commitFundAccount');
+      const result = await commitFunc({ accountId });
+
+      if (result.data && result.data.success && result.data.newBalance) {
+        const newBalance = result.data.newBalance;
+        logA(`✅ Chốt thành công! Số dư mới: ${formatCurrency(newBalance)}`, 'success');
+
+        // 1. Cập nhật APP_DATA
+        if (A.DB) {
+          await A.DB.syncLocal(this.currentFundCol, accountId, 'u', {
+            amount: newBalance,
+            commit_date: new Date().toISOString(),
+          });
+        }
+
+        // 3. Refresh UI
+        await this.refreshData();
+      } else {
+        throw new Error(result.data?.message || 'Lỗi không xác định từ server');
+      }
+    } catch (error) {
+      console.error('Commit Fund Error:', error);
+      Opps('Lỗi chốt số dư: ' + error.message);
+    }
   }
 
   applyFiltersAndRender() {
@@ -483,8 +543,12 @@ class AccountantController {
    * HTML gọi: openEditModal('IN', 'PT-001') -> Nên hàm phải nhận 2 tham số
    */
   openEditModal(type, id) {
-    // 1. Tìm giao dịch dựa trên ID (tham số thứ 2)
-    const transaction = this.transactions.find((t) => t.id === id);
+    let transaction = null;
+    if (this.transactions.length > 0) {
+      transaction = this.transactions.find((t) => t.id === id);
+    } else {
+      transaction = HD.find(APP_DATA.transactions, id, 'id');
+    }
 
     if (!transaction) {
       console.error('❌ Debug: Không tìm thấy giao dịch.', {
@@ -495,18 +559,21 @@ class AccountantController {
     }
 
     // 2. Gọi hàm mở modal (truyền đúng type và id)
-    this.openTransactionModal(transaction.type, id);
+    this.openTransactionModal(transaction);
   }
 
   // --- TRANSACTION MODAL & SAVE LOGIC (CORE FIX #1) ---
 
-  async openTransactionModal(type, id = null) {
-    // Tìm transaction nếu là edit
-    const existingData = id ? this.transactions.find((t) => t.id === id) : null;
+  async openTransactionModal(type) {
+    let existingData = null;
+    if (typeof type === 'object') {
+      existingData = type;
+      type = existingData.type;
+    }
     const isEdit = !!existingData;
     const mode = existingData ? existingData.type : type; // Nếu edit thì lấy type cũ
 
-    const title = isEdit ? `Sửa Giao Dịch (${id})` : mode === 'IN' ? 'Lập Phiếu Thu' : 'Lập Phiếu Chi';
+    const title = isEdit ? `Sửa Giao Dịch (${existingData.id})` : mode === 'IN' ? 'Lập Phiếu Thu' : 'Lập Phiếu Chi';
     const colorClass = mode === 'IN' ? 'text-success' : 'text-danger';
     const currentUser = window.A && CURRENT_USER ? CURRENT_USER.name || 'Hệ thống' : 'Hệ thống';
     if (!this.funds || this.funds.length === 0) this.funds = (await this.getData('fund_accounts')) || [];
@@ -656,6 +723,16 @@ class AccountantController {
     }
 
     A.Modal.setSaveHandler(() => this.handleSaveTransaction(mode, isEdit, id), 'Lưu Giao Dịch');
+    A.Modal.setResetHandler(() => this.deleteTransaction(existingData?.id), 'Xóa Giao Dịch');
+  }
+
+  async deleteTransaction(id) {
+    if (!id) id = await prompt('Vui lòng nhập ID giao dịch để xóa...');
+    if (!id) return;
+    showConfirm('Xóa Giao Dịch... (Manager)', async () => {
+      if (CURRENT_USER.level < 50) return;
+      await A.DB.deleteRecord('transactions', id);
+    });
   }
 
   /**
@@ -767,7 +844,7 @@ class AccountantController {
       A.Modal.hide();
       logA('✅ Lưu thành công!', 'success');
       if (SalesModule) {
-        SalesModule.Database.updateDeposit();
+        SalesModule.DB.updateDeposit();
       } else this.refreshData();
     } catch (e) {
       console.error(e);
@@ -789,15 +866,20 @@ class AccountantController {
 
     try {
       // Tổng hợp từ APP_DATA — saveRecord đã cập nhật trước đó, không cần query Firestore
-      const allTransData = window.APP_DATA?.[this.currentTransCol] || {};
+      const allTransData = window.APP_DATA?.[`${this.currentTransCol}_by_booking`] || {};
+      const transBk = HD.filterUpdatedData(allTransData[bookingId], 'Completed', 'status');
+      if (!transBk) return;
       let totalIn = 0,
         totalOut = 0;
-      Object.values(allTransData).forEach((t) => {
-        if (t.booking_id !== bookingId || t.status !== 'Completed') return;
-        const amt = parseFloat(t.amount || 0);
-        if (t.type === 'IN') totalIn += amt;
-        else if (t.type === 'OUT') totalOut += amt;
-      });
+      // Object.values(allTransData).forEach((t) => {
+      //   if (t.booking_id !== bookingId || t.status !== 'Completed') return;
+      //   const amt = parseFloat(t.amount || 0);
+      //   if (t.type === 'IN') totalIn += amt;
+      //   else if (t.type === 'OUT') totalOut += amt;
+      // });
+      totalIn = HD.agg(HD.filter(transBk, 'IN', 'type'), 'amount');
+      totalOut = HD.agg(HD.filter(transBk, 'OUT', 'type'), 'amount');
+      L._(`[ACC CONTROLLER] Booking ${bookingId} totalIn: ${totalIn}, totalOut: ${totalOut}`);
 
       if (type === 'IN') {
         totalIn = totalIn / 1000;

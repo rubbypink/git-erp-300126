@@ -5,7 +5,7 @@
  * =========================================================================
  */
 
-import DB_MANAGER from './DBManager.js';
+import DB_MANAGER from '/src/js/modules/db/DBManager.js';
 
 class SalesModule {
   // ─── 1. CONFIGURATION ──────────────────────────────────────────────
@@ -15,6 +15,7 @@ class SalesModule {
     pdfCompactModeClass: 'pdf-compact-mode',
     storageKeyLogs: '9trip_sales_logs',
   };
+  static autoInit = false;
 
   // ─── 2. STATE ──────────────────────────────────────────────────────
   static State = {
@@ -81,10 +82,10 @@ class SalesModule {
           if (tabTrigger) bootstrap.Tab.getOrCreateInstance(tabTrigger).show();
           if (typeof toggleContextUI === 'function') toggleContextUI('tab-form');
         } catch (e) {
-          Opps('SalesModule.UI.loadBookingToUI: LỖI khi chuyển tab', e.message);
+          L.log('SalesModule.UI.loadBookingToUI: LỖI khi chuyển tab', e);
         }
       } catch (e) {
-        Opps('SalesModule.UI.loadBookingToUI Error:', e);
+        L.log('SalesModule.UI.loadBookingToUI Error:', e);
       } finally {
         if (window.StateProxy) StateProxy.resumeAutoBinding();
         if (typeof showLoading === 'function') showLoading(false);
@@ -139,7 +140,7 @@ class SalesModule {
         const tbody = getE('detail-tbody');
         if (tbody) tbody.appendChild(tr);
 
-        SalesModule.UI.updateLocationList(idx);
+        SalesModule.UI.updateHotelSelect(idx);
 
         if (data) {
           const detailId = data.id || '';
@@ -171,7 +172,7 @@ class SalesModule {
           tr.querySelector('[data-field="service_type"]').dispatchEvent(new Event('change'));
         }
       } catch (e) {
-        Opps('SalesModule.UI.addDetailRow Error:', e);
+        L.log('SalesModule.UI.addDetailRow Error:', e);
       }
     },
 
@@ -181,11 +182,11 @@ class SalesModule {
         if (row) row.remove();
         SalesModule.Logic.calcGrandTotal();
       } catch (e) {
-        Opps('SalesModule.UI.removeRow Error:', e);
+        L.log('SalesModule.UI.removeRow Error:', e);
       }
     },
 
-    updateLocationList: (idx) => {
+    updateHotelSelect: (idx) => {
       try {
         const lists = window.APP_DATA?.lists || {};
         const hotels = (lists.hotelMatrix || []).map((r) => r[0]);
@@ -198,11 +199,11 @@ class SalesModule {
         elLoc.innerHTML = '<option value="">-</option>' + allLocs.map((x) => `<option value="${x}">${x}</option>`).join('');
         elLoc.value = currentVal;
       } catch (e) {
-        Opps('SalesModule.UI.updateLocationList Error:', e);
+        L.log('SalesModule.UI.updateHotelSelect Error:', e);
       }
     },
 
-    updateServiceNameList: (idx) => {
+    updateServiceSelect: (idx) => {
       try {
         const tr = getE(`row-${idx}`);
         if (!tr) return;
@@ -224,14 +225,14 @@ class SalesModule {
         elName.innerHTML = '<option value="">-</option>' + options.map((x) => `<option value="${x}">${x}</option>`).join('');
         if (options.includes(currentVal)) setVal('[data-field="service_name"]', currentVal, tr);
       } catch (e) {
-        Opps('SalesModule.UI.updateServiceNameList Error:', e);
+        L.log('SalesModule.UI.updateServiceSelect Error:', e);
       }
     },
 
     fillFormFromSearch: (res) => {
       if (typeof showLoading === 'function') showLoading(false);
       if (!res) {
-        Opps('SalesModule.UI.fillFormFromSearch: Không tìm thấy dữ liệu phù hợp!');
+        L.log('SalesModule.UI.fillFormFromSearch: Không tìm thấy dữ liệu phù hợp!');
         return;
       }
       try {
@@ -240,7 +241,67 @@ class SalesModule {
         const customerData = res.customer;
         SalesModule.UI.loadBookingToUI(bkData, customerData, detailsData);
       } catch (e) {
-        Opps('SalesModule.UI.fillFormFromSearch Error:', e);
+        L.log('SalesModule.UI.fillFormFromSearch Error:', e);
+      }
+    },
+    checkAndLoadTemplate: async () => {
+      try {
+        const tempName = getVal('BK_TourName');
+        if (!tempName) return;
+        const template = await requestAPI('getBookingTemplateAPI', tempName);
+        if (template?.found) {
+          const ok = await logA(`Hệ thống tìm thấy Template mẫu cho tour "${tempName}". Bạn có muốn tải vào không?`, 'question', 'confirm');
+          if (ok) {
+            const start = getVal('BK_Start');
+            const end = getVal('BK_End');
+            const adult = getVal('BK_Adult');
+            if (!start || !end || !adult) {
+              logA('Vui lòng điền đầy đủ: Ngày Đi, Ngày Về và Số người lớn!', 'warning');
+              return;
+            }
+            SalesModule.Logic.processAndFillTemplate(template.booking_details, template.anchorDate, start, adult);
+          }
+        }
+      } catch (e) {
+        L.log('SalesModule.checkAndLoadTemplate Error:', e);
+      }
+    },
+    saveCurrentTemplate: async () => {
+      try {
+        const tempName = getVal('BK_TourName');
+        const newDate = getVal('BK_Start');
+        if (!tempName || !newDate) return logA('Vui lòng nhập Tên Tour và Ngày Đi!', 'warning');
+
+        const details = [];
+        document.querySelectorAll('#detail-tbody tr').forEach((tr) => {
+          const gV = (f) => getVal(`[data-field="${f}"]`, tr);
+          details.push({
+            service_type: gV('service_type'),
+            hotel_name: gV('hotel_name'),
+            service_name: gV('service_name'),
+            check_in: gV('check_in'),
+            check_out: gV('check_out'),
+            nights: gV('nights'),
+            quantity: gV('quantity'),
+            unit_price: gV('unit_price'),
+            child_qty: gV('child_qty'),
+            child_price: gV('child_price'),
+            surcharge: gV('surcharge'),
+            discount: gV('discount'),
+            total: tr.querySelector('[data-field="total"]')?.dataset.val || 0,
+            ref_code: gV('ref_code'),
+            note: gV('note'),
+          });
+        });
+
+        if (details.length === 0) return logA('Bảng chi tiết đang trống!', 'warning');
+        if (typeof showLoading === 'function') showLoading(true, 'Đang lưu Template...');
+        const res = await requestAPI('saveBookingTemplateAPI', tempName, details, newDate);
+        if (res && typeof logA === 'function') logA(res?.message || 'Đã lưu Template thành công.', 'success');
+      } catch (e) {
+        L.log('SalesModule.saveCurrentTemplate Error:', e);
+      } finally {
+        if (typeof showLoading === 'function') showLoading(false);
       }
     },
   };
@@ -254,13 +315,13 @@ class SalesModule {
         if (!tr) return;
         else if (resetChildren) {
           setVal('[data-field="hotel_name"]', '', tr);
-          SalesModule.UI.updateServiceNameList(idx);
+          SalesModule.UI.updateServiceSelect(idx);
           SalesModule.Logic.autoFillRowData(idx);
         } else {
-          SalesModule.UI.updateServiceNameList(idx);
+          SalesModule.UI.updateServiceSelect(idx);
         }
       } catch (e) {
-        Opps('SalesModule.Logic.onTypeChange Error:', e);
+        L.log('SalesModule.Logic.onTypeChange Error:', e);
       }
     },
 
@@ -321,7 +382,7 @@ class SalesModule {
         if (newOut) setVal('[data-field="check_out"]', newOut, tr);
         SalesModule.Logic.calcRow(idx);
       } catch (e) {
-        Opps('SalesModule.Logic.autoFillRowData Error:', e);
+        L.log('SalesModule.Logic.autoFillRowData Error:', e);
       }
     },
 
@@ -331,11 +392,11 @@ class SalesModule {
         if (!tr) return;
         const type = tr.querySelector('[data-field="service_type"]')?.value;
         if (type === 'Phòng') {
-          SalesModule.UI.updateServiceNameList(idx);
+          SalesModule.UI.updateServiceSelect(idx);
           if (resetName) setVal('[data-field="service_name"]', '', tr);
         }
       } catch (e) {
-        Opps('SalesModule.Logic.onLocationChange Error:', e);
+        L.log('SalesModule.Logic.onLocationChange Error:', e);
       }
     },
 
@@ -377,7 +438,7 @@ class SalesModule {
         sN('total', total);
         SalesModule.Logic.calcGrandTotal();
       } catch (e) {
-        Opps('SalesModule.Logic.calcRow Error:', e);
+        L.log('SalesModule.Logic.calcRow Error:', e);
       }
     },
 
@@ -441,7 +502,7 @@ class SalesModule {
         setNum('BK_Balance', balance);
         SalesModule.Logic.updateBkStatus();
       } catch (e) {
-        Opps('SalesModule.Logic.calcGrandTotal Error:', e);
+        L.log('SalesModule.Logic.calcGrandTotal Error:', e);
       }
     },
 
@@ -465,7 +526,7 @@ class SalesModule {
         setVal('BK_Status', stt);
         return stt;
       } catch (e) {
-        Opps('SalesModule.Logic.updateBkStatus Error:', e);
+        L.log('SalesModule.Logic.updateBkStatus Error:', e);
         return '';
       }
     },
@@ -486,7 +547,7 @@ class SalesModule {
           }
         }
       } catch (e) {
-        Opps('SalesModule.Logic.autoSetOrCalcDate Error:', e);
+        L.log('SalesModule.Logic.autoSetOrCalcDate Error:', e);
       }
     },
 
@@ -514,12 +575,13 @@ class SalesModule {
 
         const phoneEl = custFieldset.querySelector('[data-field="customer_phone"]');
         const nameEl = custFieldset.querySelector('[data-field="customer_full_name"]');
-        const phoneInput = getVal(phoneEl).replace(/\D/g, '');
+        let phoneInput = getVal(phoneEl);
+        phoneInput = phoneInput.replace(/\D/g, '');
         const nameInput = getVal(nameEl).trim() || '';
 
         if (!customerData && phoneInput.length < 3 && nameInput.length < 3) return;
 
-        const customers = window.APP_DATA ? Object.values(window.APP_DATA.customers ?? {}) : [];
+        const customers = APP_DATA ? APP_DATA.customers : {};
         let found = customerData;
 
         if (!found) {
@@ -549,10 +611,10 @@ class SalesModule {
             const el = custFieldset.querySelector(`[data-field="${fieldName}"]`);
             if (el && custData[key]) setVal(el, custData[key]);
           });
-          if (!getVal('[data-field="customer_total_spend"]')) SalesModule.Database.loadCustSpend(custData.id);
+          if (!getVal('[data-field="customer_total_spend"]')) SalesModule.DB.loadCustSpend(custData.id);
         }
       } catch (e) {
-        Opps('SalesModule.Logic.findCustByPhone Error:', e);
+        L.log('SalesModule.Logic.findCustByPhone Error:', e);
       }
     },
 
@@ -609,7 +671,7 @@ class SalesModule {
         });
         if (typeof logA === 'function') logA('Đã tải Template và cập nhật ngày tháng thành công!', 'success');
       } catch (e) {
-        Opps('SalesModule.Logic.processAndFillTemplate Error:', e);
+        L.log('SalesModule.Logic.processAndFillTemplate Error:', e);
       }
     },
 
@@ -705,22 +767,22 @@ class SalesModule {
 
         if (typeof logA === 'function') logA(`Đã copy thành công ${detailsArr.length} dịch vụ từ Booking ${bkId}`, 'success');
       } catch (e) {
-        Opps('SalesModule.Logic.copyBooking Error:', e);
+        L.log('SalesModule.Logic.copyBooking Error:', e);
       }
     },
 
     createContract: async () => {
       try {
         // 1. Kiểm tra dữ liệu cơ bản
-        if (typeof SalesModule.Database.getBkFormData !== 'function') return;
+        if (typeof SalesModule.DB.getBkFormData !== 'function') return;
 
-        const { bookings, customer, booking_details } = await SalesModule.Database.getBkFormData();
+        const { bookings, customer, booking_details } = await SalesModule.DB.getBkFormData();
 
         // 2. Lấy dữ liệu mở rộng từ Tab Customer
         let extendedCust = null;
 
-        if (typeof SalesModule.Database.getCustomerData === 'function') {
-          extendedCust = await SalesModule.Database.getCustomerData();
+        if (typeof SalesModule.DB.getCustomerData === 'function') {
+          extendedCust = await SalesModule.DB.getCustomerData();
         }
 
         // Guard: nếu không lấy được dữ liệu khách hàng, không thể tạo hợp đồng
@@ -770,11 +832,11 @@ class SalesModule {
           setVal('BK_Note', mess); // Gán URL vào BK_Note
           showAlert(htmlContent, 'success', 'Tạo Thành Công');
         } else {
-          Opps('Lỗi: ' + (res?.message || 'Không thể tạo hợp đồng. Vui lòng thử lại.'));
+          L.log('Lỗi: ' + (res?.message || 'Không thể tạo hợp đồng. Vui lòng thử lại.'));
         }
         setBtnLoading('btn-create-contract', false);
       } catch (e) {
-        Opps('Catch Lỗi: ' + e.message, e);
+        L.log('Catch Lỗi: ' + e.message, e);
       } finally {
         setBtnLoading('btn-create-contract', false);
       }
@@ -790,14 +852,14 @@ class SalesModule {
           logA(res.message || 'Done', 'success');
           closeSubModal(); // Đóng modal sau khi xóa
         } else {
-          Opps('Lỗi: ' + (res?.message || 'Không thể xóa file. Vui lòng thử lại.'));
+          L.log('Lỗi: ' + (res?.message || 'Không thể xóa file. Vui lòng thử lại.'));
         }
       });
     },
   };
 
   // ─── 5. DATABASE ACTIONS ───────────────────────────────────────────
-  static Database = {
+  static DB = {
     getBkFormData: async (update = false) => {
       try {
         const bookings = {
@@ -884,7 +946,7 @@ class SalesModule {
         }
 
         if (!hasBookingChanges && !hasCustomerChanges && changedDetails.length === 0) {
-          L._('SalesModule.Database.getBkFormData: Không có dữ liệu thay đổi', 'warning');
+          L._('SalesModule.DB.getBkFormData: Không có dữ liệu thay đổi', 'warning');
           return null;
         }
 
@@ -894,17 +956,17 @@ class SalesModule {
           booking_details: changedDetails,
         };
       } catch (e) {
-        Opps('SalesModule.Database.getBkFormData Error:', e);
+        L.log('SalesModule.DB.getBkFormData Error:', e);
         return null;
       }
     },
 
     saveForm: async (update = false) => {
       try {
-        if (typeof setBtnLoading === 'function') setBtnLoading('btn-save-form', true, 'Saving...');
-        const formData = await SalesModule.Database.getBkFormData(update);
+        if (typeof setBtnLoading === 'function') setBtnLoading('btn-save-group', true, 'Saving...');
+        const formData = await SalesModule.DB.getBkFormData(update);
         if (!formData) {
-          if (typeof setBtnLoading === 'function') setBtnLoading('btn-save-form', false);
+          if (typeof setBtnLoading === 'function') setBtnLoading('btn-save-group', false);
           return;
         }
 
@@ -917,8 +979,8 @@ class SalesModule {
           if (!bookings.customer_full_name) missing.push('customer_name');
           if (!bookings.customer_phone) missing.push('customer_phone');
           if (missing.length > 0) {
-            Opps(`Thiếu thông tin khách hàng: ${missing.join(', ')}`);
-            if (typeof setBtnLoading === 'function') setBtnLoading('btn-save-form', false);
+            L.log(`Thiếu thông tin khách hàng: ${missing.join(', ')}`);
+            if (typeof setBtnLoading === 'function') setBtnLoading('btn-save-group', false);
             return;
           }
         }
@@ -928,7 +990,7 @@ class SalesModule {
           saveResult = await DB_MANAGER.saveRecord('bookings', bookings);
           if (saveResult?.success && bookings.status !== 'Hủy') {
             if (!bookingId && window.A?.NotificationManager) {
-              window.A.NotificationManager.sendToAll('NEW BOOKING', `Booking mới: ${saveResult.id} - ${bookings.staff_id}`);
+              window.NotificationManager.sendToAll('NEW BOOKING', `Booking mới: ${saveResult.id} - ${bookings.staff_id}`);
               setVal('BK_ID', saveResult.id);
             }
 
@@ -941,8 +1003,8 @@ class SalesModule {
               await DB_MANAGER.batchSave('booking_details', details);
             }
 
-            await SalesModule.Database.saveCustomer();
-            if (window.StateProxy) StateProxy.commitSession();
+            await SalesModule.DB.saveCustomer();
+            if (window.StateProxy) await StateProxy.commitSession();
 
             const btnDashUpdate = getE('btn-dash-update');
             if (btnDashUpdate && window.A?.Event) window.A.Event.trigger(btnDashUpdate, 'click');
@@ -953,9 +1015,9 @@ class SalesModule {
         }
       } catch (e) {
         if (window.StateProxy) StateProxy.rollbackSession();
-        Opps('SalesModule.Database.saveForm Error:', e);
+        L.log('SalesModule.DB.saveForm Error:', e);
       } finally {
-        if (typeof setBtnLoading === 'function') setBtnLoading('btn-save-form', false);
+        if (typeof setBtnLoading === 'function') setBtnLoading('btn-save-group', false);
       }
     },
 
@@ -971,12 +1033,12 @@ class SalesModule {
         const elNote = $('BK_Note');
         if (elNote) elNote.value = `[Hủy lúc ${new Date().toLocaleTimeString()}] ` + elNote.value;
 
-        await SalesModule.Database.saveForm(false);
+        await SalesModule.DB.saveForm(false);
         if (window.A?.NotificationManager) {
-          window.A.NotificationManager.sendToOperator('HỦY BOOKING', `Booking Đã Hủy: ${bkId} - ${window.CURRENT_USER?.name}`);
+          window.NotificationManager.sendToOperator('HỦY BOOKING', `Booking Đã Hủy: ${bkId} - ${window.CURRENT_USER?.name}`);
         }
       } catch (e) {
-        Opps('SalesModule.Database.cancelBooking Error:', e);
+        L.log('SalesModule.DB.cancelBooking Error:', e);
       } finally {
         if (typeof showLoading === 'function') showLoading(false);
       }
@@ -984,7 +1046,7 @@ class SalesModule {
 
     saveCustomer: async () => {
       try {
-        const data = await SalesModule.Database.getCustomerData(true);
+        const data = await SalesModule.DB.getCustomerData(true);
         if (!data) return;
 
         if (!data.id && data.phone && window.APP_DATA?.customers) {
@@ -1002,7 +1064,7 @@ class SalesModule {
           if (!oldId || oldId != res.id) setVal('[data-field="customer_id"]', res.id);
         }
       } catch (e) {
-        Opps('SalesModule.Database.saveCustomer Error:', e);
+        L.log('SalesModule.DB.saveCustomer Error:', e);
       } finally {
         if (typeof showLoading === 'function') showLoading(false);
       }
@@ -1036,7 +1098,7 @@ class SalesModule {
         }
         return data;
       } catch (e) {
-        Opps('SalesModule.Database.getCustomerData Error:', e);
+        L.log('SalesModule.DB.getCustomerData Error:', e);
         return null;
       }
     },
@@ -1050,7 +1112,7 @@ class SalesModule {
         setVal('[data-field="customer_total_spend"]', sum);
         return sum;
       } catch (e) {
-        Opps('SalesModule.Database.loadCustSpend Error:', e);
+        L.log('SalesModule.DB.loadCustSpend Error:', e);
         return 0;
       }
     },
@@ -1070,7 +1132,7 @@ class SalesModule {
         SalesModule.Logic.calcGrandTotal();
         return total;
       } catch (e) {
-        Opps('SalesModule.Database.updateDeposit Error:', e);
+        L.log('SalesModule.DB.updateDeposit Error:', e);
         return 0;
       }
     },
@@ -1096,7 +1158,7 @@ class SalesModule {
           if (typeof activateTab === 'function') activateTab('tab-form');
         }
       } catch (e) {
-        Opps('SalesModule.Database.saveBatchDetails Error:', e);
+        L.log('SalesModule.DB.saveBatchDetails Error:', e);
       }
     },
   };
@@ -1176,10 +1238,10 @@ class SalesModule {
             window.A.Modal.show();
           }
         } else {
-          Opps(`Không tìm thấy Booking ID: ${bookingId}`);
+          L.log(`Không tìm thấy Booking ID: ${bookingId}`);
         }
       } catch (e) {
-        Opps('SalesModule.Confirmation.openModal Error:', e);
+        L.log('SalesModule.Confirmation.openModal Error:', e);
       }
     },
 
@@ -1209,7 +1271,7 @@ class SalesModule {
         SalesModule.Confirmation.applySettings();
         if (window.A?.UI) window.A.UI.renderTemplate('body', 'tmpl-download-pdf');
       } catch (e) {
-        Opps('SalesModule.Confirmation.renderUI Error:', e);
+        L.log('SalesModule.Confirmation.renderUI Error:', e);
       }
     },
 
@@ -1276,7 +1338,7 @@ class SalesModule {
           tbodyTour.insertAdjacentHTML('beforeend', `<tr><td><span class="fw-bold">&nbsp;</span></td><td class="text-center"></td><td class="text-end col-price"></td><td class="text-end fw-bold col-price"></td></tr>`);
         }
       } catch (e) {
-        Opps('SalesModule.Confirmation.renderTable Error:', e);
+        L.log('SalesModule.Confirmation.renderTable Error:', e);
       }
     },
 
@@ -1319,7 +1381,7 @@ class SalesModule {
           el.style.display = SalesModule.State.showPrice ? '' : 'none';
         });
       } catch (e) {
-        Opps('SalesModule.Confirmation.applySettings Error:', e);
+        L.log('SalesModule.Confirmation.applySettings Error:', e);
       }
     },
 
@@ -1334,7 +1396,7 @@ class SalesModule {
         await html2pdf().set(opt).from(element).save();
         element.classList.remove(SalesModule.Config.pdfCompactModeClass);
       } catch (e) {
-        Opps('SalesModule.Confirmation.exportPDF Error:', e);
+        L.log('SalesModule.Confirmation.exportPDF Error:', e);
       }
     },
 
@@ -1343,14 +1405,14 @@ class SalesModule {
         const email = getVal('conf-cust-email');
         if (!email || email.length < 5) return logA('Booking này chưa có Email khách hàng.', 'warning');
         const subject = `[9 TRIP] XÁC NHẬN ĐẶT DỊCH VỤ - CODE ${getVal('conf-id')}`;
-        const data = await SalesModule.Database.getBkFormData();
+        const data = await SalesModule.DB.getBkFormData();
         data.type = SalesModule.State.mode;
         data.showPrice = SalesModule.State.showPrice;
         data.stats = { avgA: getNum('Stats_AvgAdult'), avgC: getNum('Stats_AvgChild'), transA: getNum('Stats_TransportAdult'), transC: getNum('Stats_TransportChild') };
         const res = await requestAPI('sendConfirmationEmailAPI', email, subject, data);
         if (res && typeof logA === 'function') logA('Đã gửi email!', 'success');
       } catch (e) {
-        Opps('SalesModule.Confirmation.sendEmail Error:', e);
+        L.log('SalesModule.Confirmation.sendEmail Error:', e);
       }
     },
   };
@@ -1358,112 +1420,5 @@ class SalesModule {
 
 // ─── EXPOSE TO GLOBAL FOR HTML COMPATIBILITY ────────────────────────
 window.SalesModule = SalesModule;
-window.loadBookingToUI = SalesModule.UI.loadBookingToUI;
-window.addDetailRow = SalesModule.UI.addDetailRow;
-window.removeRow = SalesModule.UI.removeRow;
-window.fillFormFromSearch = SalesModule.UI.fillFormFromSearch;
-window.onTypeChange = SalesModule.Logic.onTypeChange;
-window.onLocationChange = SalesModule.Logic.onLocationChange;
-window.calcRow = SalesModule.Logic.calcRow;
-window.calcGrandTotal = SalesModule.Logic.calcGrandTotal;
-window.updateBkStatus = SalesModule.Logic.updateBkStatus;
-window.findCustByPhone = SalesModule.Logic.findCustByPhone;
-window.copyBooking = SalesModule.Logic.copyBooking;
-window.checkAndLoadTemplate = async () => {
-  try {
-    const tempName = getVal('BK_TourName');
-    if (!tempName) return;
-    const template = await requestAPI('getBookingTemplateAPI', tempName);
-    if (template?.found) {
-      const ok = await logA(`Hệ thống tìm thấy Template mẫu cho tour "${tempName}". Bạn có muốn tải vào không?`, 'question', 'confirm');
-      if (ok) {
-        const start = getVal('BK_Start');
-        const end = getVal('BK_End');
-        const adult = getVal('BK_Adult');
-        if (!start || !end || !adult) {
-          logA('Vui lòng điền đầy đủ: Ngày Đi, Ngày Về và Số người lớn!', 'warning');
-          return;
-        }
-        SalesModule.Logic.processAndFillTemplate(template.booking_details, template.anchorDate, start, adult);
-      }
-    }
-  } catch (e) {
-    Opps('SalesModule.checkAndLoadTemplate Error:', e);
-  }
-};
-window.saveCurrentTemplate = async () => {
-  try {
-    const tempName = getVal('BK_TourName');
-    const newDate = getVal('BK_Start');
-    if (!tempName || !newDate) return logA('Vui lòng nhập Tên Tour và Ngày Đi!', 'warning');
-
-    const details = [];
-    document.querySelectorAll('#detail-tbody tr').forEach((tr) => {
-      const gV = (f) => getVal(`[data-field="${f}"]`, tr);
-      details.push({
-        service_type: gV('service_type'),
-        hotel_name: gV('hotel_name'),
-        service_name: gV('service_name'),
-        check_in: gV('check_in'),
-        check_out: gV('check_out'),
-        nights: gV('nights'),
-        quantity: gV('quantity'),
-        unit_price: gV('unit_price'),
-        child_qty: gV('child_qty'),
-        child_price: gV('child_price'),
-        surcharge: gV('surcharge'),
-        discount: gV('discount'),
-        total: tr.querySelector('[data-field="total"]')?.dataset.val || 0,
-        ref_code: gV('ref_code'),
-        note: gV('note'),
-      });
-    });
-
-    if (details.length === 0) return logA('Bảng chi tiết đang trống!', 'warning');
-    if (typeof showLoading === 'function') showLoading(true, 'Đang lưu Template...');
-    const res = await requestAPI('saveBookingTemplateAPI', tempName, details, newDate);
-    if (res && typeof logA === 'function') logA(res?.message || 'Đã lưu Template thành công.', 'success');
-  } catch (e) {
-    Opps('SalesModule.saveCurrentTemplate Error:', e);
-  } finally {
-    if (typeof showLoading === 'function') showLoading(false);
-  }
-};
-window.copyRow = (sourceRow) => {
-  try {
-    const tbody = getE('detail-tbody');
-    const rows = tbody.querySelectorAll('tr');
-    if (rows.length === 0) return SalesModule.UI.addDetailRow();
-    const lastRow = sourceRow || rows[rows.length - 1];
-    const gV = (f) => getVal(`[data-field="${f}"]`, lastRow);
-    const rowData = {
-      id: '',
-      service_type: gV('service_type'),
-      hotel_name: gV('hotel_name'),
-      service_name: gV('service_name'),
-      check_in: gV('check_in'),
-      check_out: gV('check_out'),
-      quantity: gV('quantity'),
-      unit_price: gV('unit_price'),
-      child_qty: gV('child_qty'),
-      child_price: gV('child_price'),
-      surcharge: gV('surcharge'),
-      discount: gV('discount'),
-      ref_code: gV('ref_code'),
-      note: gV('note'),
-    };
-    SalesModule.UI.addDetailRow(rowData);
-  } catch (e) {
-    Opps('SalesModule.copyRow Error:', e);
-  }
-};
-window.updateDeposit = SalesModule.Database.updateDeposit;
-window.saveForm = SalesModule.Database.saveForm;
-window.cancelBooking = SalesModule.Database.cancelBooking;
-window.saveCustomer = SalesModule.Database.saveCustomer;
-window.handleSaveCustomer = SalesModule.Database.saveCustomer;
-window.saveBatchDetails = SalesModule.Database.saveBatchDetails;
-window.createConfirmation = SalesModule.Confirmation.openModal;
-window.ConfirmationModule = SalesModule.Confirmation; // For sub-calls in modal
 
 export default SalesModule;

@@ -1,5 +1,5 @@
-import { defineConfig } from 'vite'
-import { viteStaticCopy } from 'vite-plugin-static-copy'
+import { defineConfig } from 'vite';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
   // Root là public/ - nơi chứa index.html
@@ -17,11 +17,10 @@ export default defineConfig({
         entryFileNames: 'assets/js/[name]-[hash].js',
         chunkFileNames: 'assets/js/[name]-[hash].js',
         assetFileNames: (assetInfo) => {
-          const name = assetInfo.name || ''
-          if (/\.css$/.test(name)) return 'assets/css/[name]-[hash][extname]'
-          if (/\.(png|jpg|jpeg|gif|svg|ico|webp)$/.test(name))
-            return 'assets/images/[name]-[hash][extname]'
-          return 'assets/[name]-[hash][extname]'
+          const name = assetInfo.name || '';
+          if (/\.css$/.test(name)) return 'assets/css/[name]-[hash][extname]';
+          if (/\.(png|jpg|jpeg|gif|svg|ico|webp)$/.test(name)) return 'assets/images/[name]-[hash][extname]';
+          return 'assets/[name]-[hash][extname]';
         },
       },
     },
@@ -33,22 +32,17 @@ export default defineConfig({
   plugins: [
     viteStaticCopy({
       targets: [
-        // HTML Templates - load động bởi renderer.js
         { src: 'src/components', dest: 'src' },
 
-        // Chỉ copy các file .js trực tiếp, KHÔNG copy thư mục con modules/
-        { src: 'src/js/*.js', dest: 'src/js' },
+        // SỬA Ở ĐÂY: Copy toàn bộ thư mục js (Bao gồm cả modules)
+        // Vì hệ thống đang dùng load script động, bắt buộc phải copy nguyên trạng
+        { src: 'src/js', dest: 'src' },
 
-        // Common components (nếu vẫn là classic scripts)
-        { src: 'src/js/common', dest: 'src/js' },
-
-        // CSS files - copy (main.css linked từ HTML sẽ được Vite process)
         { src: 'src/css', dest: 'src' },
 
-        // Accountant module (CSS + JS riêng)
+        // SỬA Ở ĐÂY: Chỉ định rõ dest là '.' để giữ nguyên cấu trúc thư mục accountant/
         { src: 'accountant', dest: '.' },
 
-        // Images
         { src: 'src/images', dest: 'src' },
       ],
     }),
@@ -67,4 +61,4 @@ export default defineConfig({
       '@components': '/src/components',
     },
   },
-})
+});

@@ -9,7 +9,7 @@
  * 3. OR await NotificationModule.getInstance().waitForInitialization()
  */
 
-import NotificationPanelRenderer from '../common/components/NotificationPanel.js';
+import NotificationPanelRenderer from '/src/js/common/components/NotificationPanel.js';
 
 /**
  * 9TRIP NOTIFICATION MANAGER - VERSION 1.0
@@ -21,11 +21,15 @@ class NotificationModule {
   static #instance = null;
   markAllBtn = '#markAllReadBtn';
   clearAllBtn = '#clearAllBtn';
+  reloadBtn = '#reloadNotifs';
+  loadMoreBtn = '#loadMoreNotifs';
   _initialized = false;
 
   // ─── Instance Fields ───
   #unreadCount = 0;
   #firstRenderDone = false;
+  #displayLimit = 15; // Số lượng item hiển thị ban đầu và mỗi lần load thêm
+  #lastDoc = null; // Lưu document cuối cùng để phân trang Firestore
 
   constructor() {
     // ★ Pre-load cache NGAY TẠI ĐÂY để tránh race condition:
@@ -35,37 +39,41 @@ class NotificationModule {
     this.notifications = cached.items;
     this.listener = null;
     this.db = null;
-    // ★ KHÔNG gọi init() ở đây vì CURRENT_USER chưa sẵn sàng khi module load.
-    // Gọi NotificationManager.init() thủ công sau khi auth thành công.
+    // 2. Lắng nghe tiếng gọi "app-ready" từ hệ thống
+    window.addEventListener('app-ready', () => {
+      L._('🔔 Event App Ready received');
+      this.init();
+    });
   }
   async render() {
-    NotificationPanelRenderer.render(this.notifications, this.#unreadCount);
+    // Chỉ render số lượng item theo giới hạn hiện tại
+    const itemsToRender = this.notifications.slice(0, this.#displayLimit);
+    NotificationPanelRenderer.render(itemsToRender, this.#unreadCount);
   }
   /**
    * Bước 1: Khởi tạo lắng nghe Realtime
    */
   init() {
-    if (!CURRENT_USER || this._initialized) return;
-    if (!this.db) this.db = A.DB?.db || window.firebase.firestore();
+    // KHÔNG check CURRENT_USER nữa. Load thẳng từ cache LocalStorage lên UI.
+    if (this._initialized) return;
 
     try {
-      // ★ Cache đã được pre-load trong constructor → chỉ cần sort + render.
       this._initialized = true;
 
-      // ★ Sau snapshot ĐẦU TIÊN: sort lại, tính unread, render toàn bộ
+      // ★ Render cache ngay lập tức không cần chờ DB hay Auth
       if (!this.#firstRenderDone) {
         this.#firstRenderDone = true;
-        const toDate = (v) => (v?.seconds ? new Date(v.seconds * 1000) : new Date(v || 0));
-        this.notifications.sort((a, b) => {
-          if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
-          return toDate(b.created_at) - toDate(a.created_at);
-        });
-        this.#unreadCount = this.notifications.filter((n) => !n.isRead).length;
-        this.render();
+
+        // Nếu cache trống, thử load từ Firestore
+        if (this.notifications.length === 0) {
+          this.reloadFromServer();
+        } else {
+          this.#sortNotifications();
+          this.#unreadCount = this.notifications.filter((n) => !n.isRead).length;
+          this.render();
+        }
       }
 
-      // Cập nhật mốc thời gian đồng bộ cuối cùng
-      localStorage.setItem(NotificationModule.#LAST_SYNC_KEY, Date.now().toString());
       this._setupEventListeners();
     } catch (e) {
       console.error('❌ Notification Init Failed:', e);
@@ -77,6 +85,49 @@ class NotificationModule {
       NotificationModule.#instance = new NotificationModule();
     }
     return NotificationModule.#instance;
+  }
+
+  /**
+   * Hứng dữ liệu trực tiếp từ DBManager
+   * @param {Array} newDocs - Danh sách notification thật (không chứa data-change)
+   */
+  receiveFromServer(newDocs) {
+    if (!newDocs || newDocs.length === 0) return;
+
+    let isChanged = false;
+
+    newDocs.forEach((doc) => {
+      // BỘ LỌC CHỐNG TRÙNG LẶP (Dedup)
+      const exists = this.notifications.some((n) => n.id === doc.id);
+      if (!exists) {
+        // Mặc định thông báo mới từ server là chưa đọc
+        this.notifications.unshift({ ...doc, isRead: false, receivedAt: Date.now() });
+        isChanged = true;
+      }
+    });
+
+    // Chỉ Render 1 lần duy nhất sau khi đã thêm hết lô thông báo
+    if (isChanged) {
+      this._saveToStorage(); // Cập nhật LocalStorage
+
+      // Sắp xếp lại: Chưa đọc lên trên, mới nhất lên trên
+      this.#sortNotifications();
+
+      this.#unreadCount = this.notifications.filter((n) => !n.isRead).length;
+
+      // Gọi UI cập nhật
+      if (this._initialized) {
+        this.render();
+      }
+    }
+  }
+
+  #sortNotifications() {
+    const toDate = (v) => (v?.seconds ? new Date(v.seconds * 1000) : new Date(v || 0));
+    this.notifications.sort((a, b) => {
+      if (a.isRead !== b.isRead) return a.isRead ? 1 : -1;
+      return toDate(b.created_at) - toDate(a.created_at);
+    });
   }
 
   /**
@@ -128,28 +179,46 @@ class NotificationModule {
       });
     }
 
-    window.addEventListener('new-notifications-arrived', (e) => {
-      const newNotifs = e.detail || [];
-      this._log(`📢 ${newNotifs.length} new notification(s) arrived via event`);
-
-      // ★ FIX Bug 1: Xử lý toàn bộ batch trước, sau đó mới render MỘT LẦN.
-      // Tránh việc appendItem() từng item riêng lẻ gây mất thông báo khi có race condition.
-      let addedCount = 0;
-      newNotifs.forEach((notif) => {
-        if (this.#handleIncoming(notif)) addedCount++;
+    const reloadBtn = document.querySelector(this.reloadBtn);
+    if (reloadBtn) {
+      reloadBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.reloadFromServer();
       });
+    }
 
-      if (addedCount > 0) {
-        this._saveToStorage();
-        this._log(`✅ ${addedCount} new notification(s) added — re-rendering full list`);
-      }
+    const loadMoreBtn = document.querySelector(this.loadMoreBtn);
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.loadMore();
+      });
+    }
 
-      // ★ Luôn render lại toàn bộ để đảm bảo UI đồng bộ với this.notifications
-      if (this.#firstRenderDone) {
-        this.#unreadCount = this.notifications.filter((n) => !n.isRead).length;
-        this.render();
-      }
-    });
+    // window.addEventListener('new-notifications-arrived', (e) => {
+    //   const newNotifs = e.detail || [];
+    //   this._log(`📢 ${newNotifs.length} new notification(s) arrived via event`);
+
+    //   // ★ FIX Bug 1: Xử lý toàn bộ batch trước, sau đó mới render MỘT LẦN.
+    //   // Tránh việc appendItem() từng item riêng lẻ gây mất thông báo khi có race condition.
+    //   let addedCount = 0;
+    //   newNotifs.forEach((notif) => {
+    //     if (this.#handleIncoming(notif)) addedCount++;
+    //   });
+
+    //   if (addedCount > 0) {
+    //     this._saveToStorage();
+    //     this._log(`✅ ${addedCount} new notification(s) added — re-rendering full list`);
+    //   }
+
+    //   // ★ Luôn render lại toàn bộ để đảm bảo UI đồng bộ với this.notifications
+    //   if (this.#firstRenderDone) {
+    //     this.#unreadCount = this.notifications.filter((n) => !n.isRead).length;
+    //     this.render();
+    //   }
+    // });
   }
 
   _log(msg, type = 'info') {
@@ -161,25 +230,34 @@ class NotificationModule {
   /**
    * Bước 3: Hàm tạo thông báo mới (Dành cho Admin/Hệ thống)
    */
-  async _send(title, message, group, role, options = {}) {
+  async _send(title, message, group, options = {}) {
     try {
+      // Lazy-load DB: Chỉ tìm DB khi có lệnh gửi thông báo
+      if (!this.db) this.db = window.A?.DB?.db || window.firebase?.firestore();
+
+      // Nếu user chưa đăng nhập hoặc DB chưa có thì bỏ qua (An toàn tuyệt đối)
+      if (!this.db || !window.CURRENT_USER) {
+        console.warn('⚠️ Hệ thống chưa sẵn sàng để gửi thông báo.');
+        return null;
+      }
+
       const newDoc = {
         title: title,
         message: message,
-        type: options.type || 'info', // info, success, warning, danger
+        type: options.type || 'info',
         role: options.role || CURRENT_USER.role,
         group: group || CURRENT_USER.group?.[0] || 'All',
-        data: options.data || {}, // Payload đi kèm (booking_id, v.v..)
+        data: options.data || {},
         created_by: CURRENT_USER.name || 'System',
-        created_at: firebase.firestore.FieldValue.serverTimestamp(),
+        created_at: window.firebase.firestore.FieldValue.serverTimestamp(),
       };
 
-      // ✅ Tạo ID trước rồi dùng saveRecord để đồng bộ qua DBManager
       const notifId = this.db.collection('notifications').doc().id;
+      // Gọi qua A.DB.saveRecord để đảm bảo qua Chốt chặn Gatekeeper
       await A.DB.saveRecord('notifications', { ...newDoc, id: notifId });
       return notifId;
     } catch (e) {
-      L._(`❌ Gửi thông báo thất bại: ${e.message}`, 'error');
+      console.error('❌ Gửi thông báo thất bại:', e);
       return null;
     }
   }
@@ -196,13 +274,92 @@ class NotificationModule {
   async sendToAdmin(title, message) {
     return await this._send(title, message, 'Admin', 'admin');
   }
-  sendToAll = async (title, message) => {
+  async sendToAll(title, message) {
     return await this._send(title, message, 'All');
-  };
+  }
+
+  /**
+   * Tải lại 15 item mới nhất từ Firestore
+   */
+  async reloadFromServer() {
+    try {
+      this._log('🔄 Reloading notifications from server...');
+      if (!this.db) this.db = window.A?.DB?.db || window.firebase?.firestore();
+      if (!this.db) return;
+
+      const query = this.db.collection('notifications').orderBy('created_at', 'desc').limit(15);
+
+      const snap = await query.get();
+      if (snap.empty) {
+        this.notifications = [];
+      } else {
+        this.#lastDoc = snap.docs[snap.docs.length - 1];
+        const newItems = [];
+        snap.forEach((doc) => {
+          newItems.push({ id: doc.id, ...doc.data(), isRead: doc.data().isRead ?? false });
+        });
+        this.notifications = newItems;
+      }
+
+      this.#displayLimit = 15;
+      this._saveToStorage();
+      this.#sortNotifications();
+      this.#unreadCount = this.notifications.filter((n) => !n.isRead).length;
+      this.render();
+    } catch (e) {
+      console.error('❌ Reload notifications failed:', e);
+    }
+  }
+
+  /**
+   * Load thêm 15 item tiếp theo
+   */
+  async loadMore() {
+    try {
+      // Nếu trong mảng notifications hiện tại vẫn còn item chưa hiển thị (do displayLimit < notifications.length)
+      if (this.#displayLimit < this.notifications.length) {
+        this.#displayLimit += 15;
+        this.render();
+        return;
+      }
+
+      // Nếu đã hiển thị hết mảng hiện tại, load thêm từ Firestore
+      this._log('📥 Loading more notifications from server...');
+      if (!this.db) this.db = window.A?.DB?.db || window.firebase?.firestore();
+      if (!this.db || !this.#lastDoc) return;
+
+      const query = this.db.collection('notifications').orderBy('created_at', 'desc').startAfter(this.#lastDoc).limit(15);
+
+      const snap = await query.get();
+      if (snap.empty) {
+        this._log('ℹ️ No more notifications on server.');
+        return;
+      }
+
+      this.#lastDoc = snap.docs[snap.docs.length - 1];
+      const moreItems = [];
+      snap.forEach((doc) => {
+        const data = { id: doc.id, ...doc.data(), isRead: doc.data().isRead ?? false };
+        if (!this.notifications.some((n) => n.id === data.id) && data.type !== 'data-change') {
+          moreItems.push(data);
+        }
+      });
+
+      this.notifications = [...this.notifications, ...moreItems];
+      this.#displayLimit += 15;
+      this._saveToStorage();
+      this.#sortNotifications();
+      this.#unreadCount = this.notifications.filter((n) => !n.isRead).length;
+      this.render();
+    } catch (e) {
+      console.error('❌ Load more notifications failed:', e);
+    }
+  }
+
   /**
    * Bước 4: Quản lý trạng thái Đã đọc
    */
-  markAsRead(id) {
+  async markAsRead(id) {
     const index = this.notifications.findIndex((n) => n.id === id);
 
     if (index !== -1 && !this.notifications[index].isRead) {
@@ -213,7 +370,6 @@ class NotificationModule {
 
       // ★ FIX Bug 2: Cập nhật trực tiếp DOM item đó (xoá unread class + blue dot)
       // thay vì chỉ cập nhật badge mà bỏ qua visual của item.
-      NotificationPanelRenderer.markItemAsRead(id);
       NotificationPanelRenderer.updateBadges(this.#unreadCount);
     }
   }
@@ -288,6 +444,7 @@ class NotificationModule {
 }
 
 const NotificationManager = new NotificationModule();
+
 export default NotificationManager;
 
 window.sendToAll = NotificationManager.sendToAll;

@@ -102,7 +102,7 @@ class IndexedDBHelper {
 
     // Fallback store list nếu schema chưa sẵn sàng
     if (requiredStores.length === 0) {
-      requiredStores = ['bookings', 'booking_details', 'operator_entries', 'customers', 'transactions', 'transactions_thenice', 'fund_accounts', 'fund_accounts_thenice', 'hotels', 'suppliers', 'hotel_price_schedules', 'service_price_schedules', 'users', 'app_config', 'notifications'];
+      requiredStores = ['bookings', 'booking_details', 'operator_entries', 'customers', 'transactions', 'transactions_thenice', 'fund_accounts', 'fund_accounts_thenice', 'hotels', 'suppliers', 'hotel_price_schedules', 'service_price_schedules', 'users', 'app_config', 'notifications', 'notification_dedup'];
     }
 
     // _sync_meta luôn được thêm vào — store nội bộ cho mọi metadata sync
@@ -110,6 +110,7 @@ class IndexedDBHelper {
     // notifications luôn được thêm vào — không có trong DB_SCHEMA nhưng được dùng bởi NotificationModule
     if (!requiredStores.includes('notifications')) requiredStores.push('notifications');
     if (!requiredStores.includes('app_config')) requiredStores.push('app_config');
+    if (!requiredStores.includes('notification_dedup')) requiredStores.push('notification_dedup');
 
     return new Promise((resolve, reject) => {
       const checkRequest = indexedDB.open(this.dbName);

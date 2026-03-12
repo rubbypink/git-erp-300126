@@ -645,7 +645,7 @@ td input.form-control-sm {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 
 #tab-dashboard .card-body {
@@ -1066,6 +1066,16 @@ body:not(.is-acc):not(.is-admin) .acc-only {
     padding: 0.15rem !important;
   }
 
+  #tab-dashboard {
+    height: 100%;
+    width: 100%;
+    flex-direction: column;
+    justify-content: center;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch !important;
+    align-items: center;
+  }
   #tab-dashboard .card.active .card-body {
     max-height: 38vh;
     height: unset;

@@ -1,407 +1,321 @@
-﻿/**
- * Batch extract multiple rows from container
- *
- * @param {string} collectionName - Collection name
- * @param {string|Element} rootIdOrEl - Container ID or Element
- * @param {boolean} skipEmpty - Skip rows with empty ID field (default: true)
- * @returns {Array<Object>} - Array of row objects
- *
- * @example
- * const allRows = getAllRowDataByField('operator_entries', 'detail-tbody', true);
+﻿var GRID_COLS = [];
+var LAST_FILTER_SIGNATURE = null;
+
+// =========================================================================
+// TRẠNG THÁI QUẢN LÝ DỮ LIỆU TẬP TRUNG (GRID_STATE)
+// =========================================================================
+var GRID_STATE = {
+  currentTable: '',
+  sourceData: [],
+  filteredData: [],
+  displayData: [],
+
+  filter: {
+    keyword: '',
+    column: '',
+    dateFrom: '',
+    dateTo: '',
+  },
+
+  sort: {
+    column: '',
+    dir: 'desc',
+  },
+
+  pagination: {
+    currentPage: 1,
+    limit: window.A?.getConfig?.('table_page_size') ?? 50,
+    totalPages: 0,
+  },
+};
+
+// Legacy compatibility
+var PG_STATE = GRID_STATE.pagination;
+var SORT_STATE = GRID_STATE.sort;
+var PG_DATA = [];
+var FILTER_ACTIVE = false;
+
+/**
+ * Pipeline trung tâm: Filter -> Sort -> Render
  */
+function refreshGridPipeline(resetPage = false) {
+  try {
+    const { currentTable, sourceData, filter, sort } = GRID_STATE;
+    if (!currentTable || !sourceData) return;
+
+    // 1. FILTERING
+    let filtered = [...sourceData];
+    const searchKey = filter.keyword.trim().toLowerCase();
+    const isCheckDate = filter.dateFrom && filter.dateTo;
+
+    if (searchKey || isCheckDate) {
+      const resolveCC = (raw) => GRID_COLS?.find((c) => String(c?.i) === String(raw) || String(c?.key) === String(raw)) || null;
+      let DATE_FIELD_KEY = TABLE_DATE_CONFIG[currentTable] ?? null;
+      if (isCheckDate && (DATE_FIELD_KEY === null || typeof DATE_FIELD_KEY === 'number')) {
+        const dateCol = (GRID_COLS || []).find((c) => c?.fmt === 'date' && !c.hidden) || (GRID_COLS || []).find((c) => c?.fmt === 'date');
+        if (dateCol) DATE_FIELD_KEY = dateCol.key || dateCol.i || DATE_FIELD_KEY;
+      }
+
+      let dStart, dEnd;
+      if (isCheckDate) {
+        dStart = new Date(filter.dateFrom);
+        dStart.setHours(0, 0, 0, 0);
+        dEnd = new Date(filter.dateTo);
+        dEnd.setHours(23, 59, 59, 999);
+      }
+
+      filtered = sourceData.filter((row) => {
+        let matchKeyword = true;
+        if (searchKey) {
+          if (!filter.column || filter.column === '') {
+            matchKeyword = getAllCellValues(row).includes(searchKey);
+          } else {
+            const cc = resolveCC(filter.column);
+            const field = cc?.key || cc?.i || filter.column;
+            matchKeyword = String(row?.[field] ?? '')
+              .toLowerCase()
+              .includes(searchKey);
+          }
+        }
+        let matchDate = true;
+        if (isCheckDate && DATE_FIELD_KEY !== null) {
+          const cellDateRaw = row?.[DATE_FIELD_KEY];
+          if (cellDateRaw) {
+            const rowDate = new Date(cellDateRaw);
+            matchDate = !isNaN(rowDate) && rowDate >= dStart && rowDate <= dEnd;
+          } else matchDate = false;
+        }
+        return matchKeyword && matchDate;
+      });
+    }
+    GRID_STATE.filteredData = filtered;
+    window.FILTER_ACTIVE = searchKey || isCheckDate;
+
+    // 2. SORTING
+    let sorted = [...filtered];
+    const modifier = sort.dir === 'asc' ? 1 : -1;
+    const DATE_PRIORITY = ['start_date', 'check_in', 'transaction_date', 'created_at', 'updated_at'];
+
+    const _compare = (va, vb, fmt) => {
+      if (fmt === 'date') return parseDateVal(va) - parseDateVal(vb);
+      if (fmt === 'money' || fmt === 'number') {
+        const toNum = (v) => (typeof getNum === 'function' ? getNum(v) : Number(String(v).replace(/[^0-9.-]+/g, '')) || 0);
+        return toNum(va) - toNum(vb);
+      }
+      return String(va ?? '')
+        .toLowerCase()
+        .localeCompare(String(vb ?? '').toLowerCase(), 'vi');
+    };
+
+    const _stableSort = (a, b, fieldName, format) => {
+      let cmp = _compare(a?.[fieldName] ?? '', b?.[fieldName] ?? '', format) * modifier;
+      if (cmp !== 0) return cmp;
+      for (const f of DATE_PRIORITY) {
+        if (f === fieldName) continue;
+        const valA = a?.[f],
+          valB = b?.[f];
+        if (valA || valB) {
+          const dateCmp = (parseDateVal(valA) - parseDateVal(valB)) * modifier;
+          if (dateCmp !== 0) return dateCmp;
+        }
+      }
+      return String(a?.id || '').localeCompare(String(b?.id || ''), 'en') * modifier;
+    };
+
+    if (sort.column) {
+      const resolveColConfig = (raw) => GRID_COLS?.find((c) => String(c?.i) === raw || String(c?.key) === raw) || null;
+      const colConfig = resolveColConfig(sort.column);
+      const fieldName = colConfig?.key || colConfig?.i || sort.column;
+      const format = colConfig?.fmt ?? 'text';
+
+      const isSecondary = A.DB?.schema?.[currentTable]?.isSecondaryIndex === true;
+      if (isSecondary) {
+        const groupByField = A.DB.schema[currentTable]?.groupBy ?? 'id';
+        sorted.sort((a, b) => {
+          const ga = String(a?.[groupByField] ?? '');
+          const gb = String(b?.[groupByField] ?? '');
+          const groupCmp = ga.localeCompare(gb, 'vi') * modifier;
+          if (groupCmp !== 0) return groupCmp;
+          return _stableSort(a, b, fieldName, format);
+        });
+      } else {
+        sorted.sort((a, b) => _stableSort(a, b, fieldName, format));
+      }
+    }
+
+    GRID_STATE.displayData = sorted;
+    window.PG_DATA = sorted;
+
+    // 3. PAGINATION & RENDER
+    if (resetPage) GRID_STATE.pagination.currentPage = 1;
+    GRID_STATE.pagination.totalPages = Math.ceil(sorted.length / GRID_STATE.pagination.limit);
+
+    _renderFromPGData();
+    if (typeof calculateSummary === 'function') debounce(calculateSummary, 100)(sorted);
+
+    L._(`[Pipeline] Table: ${currentTable} | Filtered: ${filtered.length} | Sorted: ${sorted.length}`, 'success');
+  } catch (err) {
+    console.error('❌ Error in refreshGridPipeline:', err);
+  }
+}
+
 function getAllRowDataByField(collectionName, rootIdOrEl, skipEmpty = true) {
   try {
-    // 1. Resolve container
-    let container;
-    if (typeof rootIdOrEl === 'string') {
-      container = $(rootIdOrEl);
-    } else if (rootIdOrEl instanceof Element) {
-      container = rootIdOrEl;
-    } else {
-      console.error('❌ Invalid rootIdOrEl parameter');
-      return [];
-    }
-
-    if (!container) {
-      console.error(`❌ Container not found`);
-      return [];
-    }
-
-    // 2. Get all TR rows
+    let container = typeof rootIdOrEl === 'string' ? $(rootIdOrEl) : rootIdOrEl instanceof Element ? rootIdOrEl : null;
+    if (!container) return [];
     const trElements = container.querySelectorAll('tr');
-
-    if (trElements.length === 0) {
-      console.warn(`⚠️ No rows found in container`);
-      return [];
-    }
-
-    // 3. Extract data from each row
-    const allRowsData = [];
-    const fieldNames = A.DB.schema.getFieldNames(collectionName);
-
-    trElements.forEach((trElement, idx) => {
+    if (trElements.length === 0) return [];
+    const allRowsData = [],
+      fieldNames = A.DB.schema.getFieldNames(collectionName);
+    trElements.forEach((trElement) => {
       const rowData = {};
-
       fieldNames.forEach((fieldName) => {
         const field = trElement.querySelector(`[data-field="${fieldName}"]`);
         if (field) rowData[fieldName] = getVal(field) || '';
       });
-
-      // Skip empty rows if requested
-      if (skipEmpty && !rowData.id) {
-        return; // Continue to next iteration
-      }
-
+      if (skipEmpty && !rowData.id) return;
       allRowsData.push(rowData);
     });
-
-    L._(`✅ Extracted ${allRowsData.length} rows from [${collectionName}]`);
     return allRowsData;
   } catch (e) {
-    console.error(`❌ Error in getAllRowDataByField:`, e);
     return [];
   }
 }
 
-/**
- * Set row data to form fields using data-field attributes
- *
- * @param {string} collectionName - Collection name
- * @param {Object} rowData - Object with field names and values
- * @param {string|Element} rootIdOrEl - Container ID or Element containing the TR
- * @param {string} rowId - Row ID to identify which TR to update (optional, uses first TR if not provided)
- * @returns {boolean} - True if successful, false otherwise
- *
- * @example
- * const data = { id: '123', service_type: 'Phòng', check_in: '2024-01-15' };
- * setRowDataByField('operator_entries', data, 'detail-tbody', 1);
- */
 function setRowDataByField(collectionName, rowData, rootIdOrEl, rowId = null) {
   try {
-    // 1. Resolve container
-    let container;
-    if (typeof rootIdOrEl === 'string') {
-      container = $(rootIdOrEl);
-    } else if (rootIdOrEl instanceof Element) {
-      container = rootIdOrEl;
-    } else {
-      console.error('❌ Invalid rootIdOrEl parameter');
-      container = document.body;
-    }
-
-    // 2. Find the TR element
-    let trElement;
-
-    if (rowId !== null) {
-      trElement = container.querySelector(`tr#row-${rowId}`);
-      if (!trElement) {
-        trElement = container.querySelector(`tr[data-row-id="${rowId}"]`);
-      }
-    } else {
-      // Use first TR if rowId not provided
-      trElement = container.querySelector('tr');
-    }
-
-    if (!trElement) {
-      console.warn(`⚠️ Row not found`);
-      return false;
-    }
-
-    // 3. Set values for each field
+    let container = typeof rootIdOrEl === 'string' ? $(rootIdOrEl) : rootIdOrEl instanceof Element ? rootIdOrEl : document.body;
+    let trElement = rowId !== null ? container.querySelector(`tr#row-${rowId}`) || container.querySelector(`tr[data-row-id="${rowId}"]`) : container.querySelector('tr');
+    if (!trElement) return false;
     Object.entries(rowData).forEach(([fieldName, value]) => {
       const field = trElement.querySelector(`[data-field="${fieldName}"]`);
       if (field) setVal(field, value);
     });
-
-    L._(`✅ Set row data for [${collectionName}]`);
     return true;
   } catch (e) {
-    console.error(`❌ Error in setRowDataByField:`, e);
     return false;
   }
 }
-/**
- * Xử lý khi click vào dòng Booking
- * Chiến thuật: Local (RAM) -> Firebase (Fetch) -> Server (GAS)
- */
+
 async function onGridRowClick(bkId) {
   if (!bkId) return;
-  L._('🖱 Đang tìm Booking ID: ' + bkId);
   showLoading(true);
 
-  // --- BƯỚC 1: TÌM TRONG LOCAL (APP_DATA) ---
-  const localResult = findBookingInLocal(bkId);
-
-  if (localResult) {
-    L._('✅ Tìm thấy trong APP_DATA (Local Cache)');
-    handleSearchResult(localResult);
-    return; // Dừng ngay, không gọi Server
-  }
-
-  // --- BƯỚC 2: TÌM TRÊN FIREBASE (Nếu Local không thấy) ---
-  // (Trường hợp dữ liệu vừa được người khác thêm mà mình chưa F5)
-  L._('⚠️ Không thấy trong Local, thử tải lại từ Firebase...', 'warning');
-
   try {
-    // Gọi hàm load lại dữ liệu (hàm bạn đã viết ở bài trước)
-    // Lưu ý: Hàm này cần trả về Promise để dùng await
-    await loadDataFromFirebase();
-
-    // Tìm lại lần nữa sau khi đã refresh data
-    const retryResult = findBookingInLocal(bkId);
-
-    if (retryResult) {
-      L._('✅ Tìm thấy sau khi đồng bộ Firebase');
-      handleSearchResult(retryResult);
+    const localResult = findBookingInLocal(bkId);
+    if (localResult) {
+      runFnByRole('fillFormFromSearch', 'UI', localResult);
       return;
     }
+    await A.DB.syncDelta();
+    const retryResult = findBookingInLocal(bkId);
+    if (retryResult) {
+      runFnByRole('fillFormFromSearch', 'UI', retryResult);
+    } else {
+      L._('onGridRowClick: Data still not found after Firebase load', bkId, 'warning');
+    }
   } catch (e) {
-    L._('Lỗi kết nối Firebase:', e, 'error');
-  }
-}
-
-/**
- * Hàm hiển thị kết quả lên Form (Dùng chung cho cả Local và Server)
- */
-function handleSearchResult(data) {
-  // Kiểm tra Dynamic Dispatch
-  if (typeof fillFormFromSearch === 'function') {
-    fillFormFromSearch(data);
-  } else {
+    Opps('onGridRowClick Error:', e);
+  } finally {
     showLoading(false);
-    Opps('Lỗi: Chưa có hàm fillFormFromSearch để hiển thị dữ liệu.');
   }
 }
 
-/**
- * Hàm Logic tìm kiếm trong biến APP_DATA
- * Trả về cấu trúc object Y HỆT như hàm searchBookingAPI của Server trả về
- * ✅ Support both array and object formats
- */
+window.copyRow = (sourceRow) => {
+  try {
+    const tbody = getE('detail-tbody'),
+      rows = tbody.querySelectorAll('tr');
+    if (rows.length === 0) return runFnByRole(addDetailRow, 'UI');
+    const lastRow = sourceRow || rows[rows.length - 1],
+      gV = (f) => getVal(`[data-field="${f}"]`, lastRow);
+    const rowData = {
+      id: '',
+      service_type: gV('service_type'),
+      hotel_name: gV('hotel_name'),
+      service_name: gV('service_name'),
+      check_in: gV('check_in'),
+      check_out: gV('check_out'),
+      quantity: gV('quantity'),
+      unit_price: gV('unit_price'),
+      child_qty: gV('child_qty'),
+      child_price: gV('child_price'),
+      surcharge: gV('surcharge'),
+      discount: gV('discount'),
+      ref_code: gV('ref_code'),
+      note: gV('note'),
+    };
+    runFnByRole(addDetailRow, 'UI', rowData);
+  } catch (e) {}
+};
+
 function findBookingInLocal(bkId) {
   try {
-    // 1. Guard Clause: Kiểm tra dữ liệu nguồn
-    if (!APP_DATA || !bkId) {
-      logA('ID booking không hợp lệ hoặc APP_DATA chưa sẵn sàng', 'warning');
-      return null;
-    }
-    let role = CURRENT_USER.role;
-    let detailsSource = role === 'op' ? 'operator_entries' : 'booking_details';
-    let detailsSourceData = detailsSource + '_by_booking';
-
-    // ✅ Guard: đảm bảo các sub-collection đã được load
-    const bookingsMap = APP_DATA.bookings || {};
-    const detailsMap = APP_DATA[detailsSource] || {};
-    const detailsByBkMap = APP_DATA[detailsSourceData] || {};
-
-    // ✅ Prefer object format if available
-    let bookingData = bookingsMap[bkId];
-    let detailsData = detailsByBkMap[bkId] ? Object.values(detailsByBkMap[bkId]) : [];
-
-    // ✅ Nếu không tìm thấy booking, coi bkId là ID của bảng detailsSource/detailsSourceObj
-    // -> tìm detail row theo id -> lấy booking_id -> tìm lại booking
+    if (!APP_DATA || !bkId) return null;
+    let role = CURRENT_USER.role,
+      detailsSource = role === 'op' ? 'operator_entries' : 'booking_details',
+      detailsSourceData = detailsSource + '_by_booking';
+    const bookingsMap = APP_DATA.bookings || {},
+      detailsMap = APP_DATA[detailsSource] || {},
+      detailsByBkMap = APP_DATA[detailsSourceData] || {};
+    let bookingData = bookingsMap[bkId],
+      detailsData = detailsByBkMap[bkId] ? Object.values(detailsByBkMap[bkId]) : [];
     if (!bookingData) {
       const detailHit = detailsMap[bkId];
       const bkIdFromDetail = detailHit ? detailHit.booking_id || detailHit[1] : null;
       bookingData = bkIdFromDetail ? bookingsMap[bkIdFromDetail] : null;
       detailsData = bkIdFromDetail && detailsByBkMap[bkIdFromDetail] ? Object.values(detailsByBkMap[bkIdFromDetail]) : [];
-      L._('⚠️ Không tìm thấy booking trực tiếp, thử tìm qua details với id: ' + bkIdFromDetail);
     }
-
     if (!bookingData) return null;
-
-    // Xử lý số điện thoại
-    let phoneRaw;
-    if (typeof bookingData === 'object' && !Array.isArray(bookingData)) {
-      phoneRaw = bookingData.customer_phone;
-    } else {
-      phoneRaw = bookingData[3];
-    }
+    let phoneRaw = typeof bookingData === 'object' && !Array.isArray(bookingData) ? bookingData.customer_phone : bookingData[3];
     const phone = phoneRaw ? String(phoneRaw).replace(/^'/, '').trim() : '';
-
     let custRow = null;
-
-    // 4. Tìm thông tin Customer
     if (phone !== '' && window.APP_DATA) {
-      const customersData = Object.values(APP_DATA.customers ?? {});
-
-      custRow = customersData.find((r) => {
-        if (!r) return false;
-
-        let custPhone;
-        if (typeof r === 'object' && !Array.isArray(r)) {
-          custPhone = r.phone;
-        } else {
-          custPhone = r[6];
-        }
-
-        if (!custPhone) return false;
-        return String(custPhone).includes(phone);
-      });
-
-      if (!custRow) {
-        L._('Local search: Không tìm thấy khách theo SĐT');
-      }
+      const customersData = APP_DATA.customers || {};
+      custRow = HD.find(customersData, phone, 'phone');
     }
-
-    // 5. Đóng gói kết quả
-    return {
-      success: true,
-      bookings: bookingData,
-      [detailsSource]: detailsData,
-      customer: custRow,
-      source: 'local',
-    };
+    return { success: true, bookings: bookingData, [detailsSource]: detailsData, customer: custRow, source: 'local' };
   } catch (e) {
-    L._('Lỗi tìm kiếm trong Local: ' + e.message, 'error');
+    L.log('findBookingInLocal Error:', e);
     return null;
   } finally {
     showLoading(false);
   }
 }
 
-/**
- * Helper: Lấy tất cả giá trị từ một hàng (dùng cho full-table search)
- * @param {Object|Array} row - Dòng dữ liệu
- * @returns {string} - Chuỗi chứa tất cả giá trị, cách nhau bởi khoảng trắng
- */
 function getAllCellValues(row) {
-  if (typeof row === 'object' && !Array.isArray(row)) {
-    // Object format: lấy tất cả values
+  if (typeof row === 'object' && !Array.isArray(row))
     return Object.values(row)
       .map((v) => String(v ?? ''))
       .join(' ')
       .toLowerCase();
-  } else if (Array.isArray(row)) {
-    // Array format: lấy tất cả values
+  else if (Array.isArray(row))
     return row
       .map((v) => String(v ?? ''))
       .join(' ')
       .toLowerCase();
-  }
   return String(row ?? '').toLowerCase();
 }
 
-/**
- * Áp dụng bộ lọc cho bảng hiện tại.
- *
- * Luồng xử lý:
- *   1. Đọc giá trị từ filter-val, filter-col, filter-from, filter-to.
- *   2. Mỗi tiêu chí chỉ bỏ qua khi field ĐÓ rỗng (không phải tất cả):
- *      - filter-val rỗng  → bỏ qua lọc keyword.
- *      - filter-from / filter-to thiếu một trong hai → bỏ qua lọc ngày.
- *      - Nếu CẢ BA đều rỗng → gọi resetGridData() (về dữ liệu gốc).
- *   3. Đọc dữ liệu nguồn FRESH từ APP_DATA (KHÔNG dùng PG_DATA) → luôn lọc
- *      trên toàn bộ tập gốc, không bị ảnh hưởng bởi sort trước đó.
- *   4. Lưu kết quả vào PG_DATA, đặt FILTER_ACTIVE = true.
- *   5. Dispatch render qua _renderFromPGData().
- */
 function applyGridFilter() {
   try {
-    const colSelect = getE('filter-col');
-    const valInput = getE('filter-val');
-    const fromInput = getE('filter-from');
-    const toInput = getE('filter-to');
-
-    const rawCol = colSelect ? colSelect.value.trim() : '';
-    const rawKeyword = valInput ? valInput.value : '';
-    const rawFrom = fromInput ? fromInput.value.trim() : '';
-    const rawTo = toInput ? toInput.value.trim() : '';
-
-    // Tất cả đều rỗng → reset về dữ liệu gốc
+    const colSelect = getE('filter-col'),
+      valInput = getE('filter-val'),
+      fromInput = getE('filter-from'),
+      toInput = getE('filter-to');
+    const rawCol = colSelect ? colSelect.value.trim() : '',
+      rawKeyword = valInput ? valInput.value : '',
+      rawFrom = fromInput ? fromInput.value.trim() : '',
+      rawTo = toInput ? toInput.value.trim() : '';
+    GRID_STATE.filter = { keyword: rawKeyword, column: rawCol, dateFrom: rawFrom, dateTo: rawTo };
     if (!rawKeyword && !rawFrom && !rawTo) {
       resetGridData();
       return;
     }
-
-    // Read FRESH flat data from APP_DATA (NEVER from PG_DATA)
-    const sourceData = typeof getAppDataFlat === 'function' ? getAppDataFlat(CURRENT_TABLE_KEY) : Object.values(APP_DATA[CURRENT_TABLE_KEY] ?? {});
-
-    if (!sourceData.length) {
-      L._('Không có dữ liệu để lọc', 'warning');
-      return;
-    }
-
-    const searchKey = rawKeyword.trim().toLowerCase();
-    const resolveCC = (raw) => GRID_COLS?.find((c) => String(c?.i) === String(raw) || String(c?.key) === String(raw)) || null;
-    const colConfig = resolveCC(rawCol);
-    const colFieldKey = colConfig?.key || rawCol || '';
-
-    // --- DATE CONFIG ---
-    const definedDateCol = TABLE_DATE_CONFIG[CURRENT_TABLE_KEY];
-    let DATE_FIELD_KEY = definedDateCol ?? null;
-    if (DATE_FIELD_KEY === null || typeof DATE_FIELD_KEY === 'number') {
-      const dateCol = (GRID_COLS || []).find((c) => c?.fmt === 'date' && !c.hidden) || (GRID_COLS || []).find((c) => c?.fmt === 'date');
-      if (dateCol) DATE_FIELD_KEY = dateCol.key || dateCol.i || DATE_FIELD_KEY;
-    }
-
-    let dStart = null,
-      dEnd = null,
-      isCheckDate = false;
-    if (DATE_FIELD_KEY !== null && rawFrom && rawTo) {
-      isCheckDate = true;
-      dStart = new Date(rawFrom);
-      dStart.setHours(0, 0, 0, 0);
-      dEnd = new Date(rawTo);
-      dEnd.setHours(23, 59, 59, 999);
-    }
-
-    // --- FILTER CORE ---
-    const filtered = sourceData.filter((row) => {
-      let matchKeyword = true;
-      if (searchKey) {
-        if (!rawCol || rawCol === '') {
-          matchKeyword = getAllCellValues(row).includes(searchKey);
-        } else {
-          const cc = resolveCC(rawCol);
-          const field = cc?.key || cc?.i || rawCol;
-          matchKeyword = String(row?.[field] ?? '')
-            .toLowerCase()
-            .includes(searchKey);
-        }
-      }
-
-      let matchDate = true;
-      if (isCheckDate) {
-        const cellDateRaw = row?.[DATE_FIELD_KEY];
-        if (cellDateRaw) {
-          const rowDate = new Date(cellDateRaw);
-          matchDate = !isNaN(rowDate) && rowDate >= dStart && rowDate <= dEnd;
-        } else {
-          matchDate = false;
-        }
-      }
-
-      return matchKeyword && matchDate;
-    });
-
-    L._(`Đã lọc [${CURRENT_TABLE_KEY}]: ${filtered.length} kết quả`, 'success');
-
-    // Update PG_DATA with filtered result → sorter and renderer will use this
-    window.PG_DATA = filtered;
-    window.FILTER_ACTIVE = true;
-    LAST_FILTER_SIGNATURE = JSON.stringify({
-      t: CURRENT_TABLE_KEY,
-      c: rawCol,
-      k: rawKeyword,
-      f: rawFrom,
-      to: rawTo,
-    });
-
-    _renderFromPGData();
-    if (typeof calculateSummary === 'function') calculateSummary(filtered);
-  } catch (err) {
-    L._('Lỗi applyGridFilter: ' + err.message, 'error');
-  }
+    LAST_FILTER_SIGNATURE = JSON.stringify({ t: GRID_STATE.currentTable, c: rawCol, k: rawKeyword, f: rawFrom, to: rawTo });
+    refreshGridPipeline(true);
+  } catch (err) {}
 }
 
-/**
- * =========================================================================
- * THROTTLE WRAPPER - Giới hạn chạy filter 1 lần/giây
- * =========================================================================
- */
-
-// Throttle state — overridable via Admin Settings
 window.FILTER_THROTTLE_STATE = window.FILTER_THROTTLE_STATE || {
   lastTime: 0,
   get THROTTLE_MS() {
@@ -409,116 +323,52 @@ window.FILTER_THROTTLE_STATE = window.FILTER_THROTTLE_STATE || {
   },
 };
 
-/**
- * Wrapper với Throttle - gọi từ event listener filter-val input
- * Giới hạn applyGridFilter chạy tối đa 1 lần mỗi giây
- */
 function applyGridFilterThrottled() {
   const now = Date.now();
   const state = window.FILTER_THROTTLE_STATE;
-
   if (now - state.lastTime >= state.THROTTLE_MS) {
     state.lastTime = now;
     applyGridFilter();
   }
 }
 
-// =========================================================================
-// HELPERS: RENDER DISPATCH & GRID RESET
-// =========================================================================
-
-/**
- * Internal dispatcher: render from PG_DATA to the correct table type.
- * Secondary index → renderSecondaryIndexFromFlat (grouped).
- * Normal collection → initPagination (flat paginated).
- *
- * @param {string} [tblId] - Optional container element ID (default: 'tbl-container-tab2')
- */
 function _renderFromPGData(tblId) {
-  const isSecondary = A.DB?.schema?.[CURRENT_TABLE_KEY]?.isSecondaryIndex === true;
+  const isSecondary = A.DB?.schema?.[GRID_STATE.currentTable]?.isSecondaryIndex === true;
   if (isSecondary) {
-    if (typeof renderSecondaryIndexFromFlat === 'function') {
-      renderSecondaryIndexFromFlat(CURRENT_TABLE_KEY, window.PG_DATA, tblId);
-    }
+    if (typeof renderSecondaryIndexFromFlat === 'function') renderSecondaryIndexFromFlat(GRID_STATE.currentTable, window.PG_DATA, tblId);
   } else {
     const table = tblId ? getE(tblId) : getE('tbl-container-tab2');
-    if (typeof initPagination === 'function') {
-      initPagination(window.PG_DATA, table);
-    }
+    if (typeof initPagination === 'function') initPagination(window.PG_DATA, table);
   }
 }
 
-/**
- * Reset PG_DATA to the full APP_DATA snapshot and re-render the table.
- * Called when: filter input is cleared, or filter button is clicked a second time.
- */
 function resetGridData() {
-  const freshData = typeof getAppDataFlat === 'function' ? getAppDataFlat(CURRENT_TABLE_KEY) : Object.values(APP_DATA[CURRENT_TABLE_KEY] ?? {});
-
-  window.PG_DATA = freshData;
+  GRID_STATE.filter = { keyword: '', column: '', dateFrom: '', dateTo: '' };
+  GRID_STATE.sort = { column: '', dir: 'desc' };
   window.FILTER_ACTIVE = false;
   LAST_FILTER_SIGNATURE = null;
-  SORT_STATE.col = -1;
-  SORT_STATE.dir = 'desc';
-
-  // Clear filter input
   const valInput = getE('filter-val');
   if (valInput) valInput.value = '';
-
-  _renderFromPGData();
-  if (typeof calculateSummary === 'function') calculateSummary(freshData);
-  L._('Đã reset bộ lọc về dữ liệu gốc', 'info');
+  refreshGridPipeline(true);
 }
 
-/**
- * Chuyển đổi ngày tháng sang số (timestamp) để so sánh
- * Hỗ trợ: "dd/mm/yyyy", "yyyy-mm-dd", hoặc Date object
- */
 function parseDateVal(input) {
-  if (!input) return 0; // Rỗng thì cho về 0
-
-  // 1. Nếu đã là Date object
+  if (!input) return 0;
   if (input instanceof Date) return input.getTime();
-
   const str = String(input).trim();
-
-  // 2. Nếu là format dd/mm/yyyy (Việt Nam)
   if (str.includes('/')) {
     const parts = str.split('/');
-    if (parts.length === 3) {
-      // new Date(Năm, Tháng - 1, Ngày)
-      return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
-    }
+    if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
   }
-
-  // 3. Nếu là format yyyy-mm-dd (ISO/Database)
   if (str.includes('-')) {
     const parts = str.split('-');
-    if (parts.length === 3) {
-      return new Date(parts[0], parts[1] - 1, parts[2]).getTime();
-    }
+    if (parts.length === 3) return new Date(parts[0], parts[1] - 1, parts[2]).getTime();
   }
-  // 4. Fallback (thử parse mặc định)
   return new Date(str).getTime() || 0;
 }
+
 /**
- * Sắp xếp bảng theo cột được chọn trong filter-col.
- *
- * Luồng xử lý:
- *   1. Đọc ONLY từ PG_DATA (không đụng APP_DATA).
- *   2. Xác định chiều sort:
- *      - Cùng cột với lần trước → toggle asc/desc đơn giản.
- *      - Cột mới → đối chiếu với dữ liệu thực tế trong PG_DATA:
- *          Nếu đang được sắp theo asc  → áp dụng desc.
- *          Nếu đang được sắp theo desc → áp dụng asc.
- *          Chưa sorted / ngẫu nhiên    → mặc định desc.
- *   3. Sort PG_DATA, ghi lại PG_DATA.
- *   4. Dispatch render qua _renderFromPGData().
- *
- * Secondary index tables:
- *   - Sort PRIMARY theo field groupBy (vd: booking_id) → quyết định thứ tự nhóm.
- *   - Sort SECONDARY theo cột đang chọn → thứ tự trong cùng nhóm.
- *   - Kết quả: các nhóm được sắp xếp đúng thứ tự, items trong nhóm cũng được sắp xếp.
+ * Sắp xếp bảng
  */
 function applyGridSorter(dir = null) {
   const selectEl = getE('filter-col');
@@ -526,752 +376,319 @@ function applyGridSorter(dir = null) {
   const rawCol = String(selectEl.value ?? '').trim();
   if (!rawCol) return;
 
-  const resolveColConfig = (raw) => GRID_COLS?.find((c) => String(c?.i) === raw || String(c?.key) === raw) || null;
-  const colConfig = resolveColConfig(rawCol);
-  const fieldName = colConfig?.key || colConfig?.i || rawCol;
-  const format = colConfig?.fmt ?? 'text';
-
-  // Work ONLY on PG_DATA — no fallback to APP_DATA
-  const source = (window.PG_DATA || []).filter((r) => r?.id != null);
-
-  if (!source.length) {
-    L._('Không sort được: PG_DATA trống', 'warning');
-    return;
-  }
-
-  // ── Xác định chiều sort ───────────────────────────────────────────────
-  let nextDir;
-
-  if (SORT_STATE.col === rawCol) {
-    // Cùng cột: toggle đơn giản
-    nextDir = SORT_STATE.dir === 'asc' ? 'desc' : 'asc';
+  // Cập nhật trạng thái sort
+  if (GRID_STATE.sort.column === rawCol) {
+    GRID_STATE.sort.dir = dir ? dir : GRID_STATE.sort.dir === 'asc' ? 'desc' : 'asc';
   } else {
-    // Cột mới: đối chiếu với dữ liệu thực tế để không bị nhảy ngược chiều
-    const toNum = (v) => (typeof getNum === 'function' ? getNum(v) : Number(String(v).replace(/[^0-9.-]+/g, '')) || 0);
-
-    // Lấy mẫu tối đa 8 phần tử ở giữa mảng để giảm bias đầu/cuối
-    const sampleSize = Math.min(8, source.length);
-    const step = Math.max(1, Math.floor(source.length / sampleSize));
-    const sample = [];
-    for (let i = 0; i < source.length && sample.length < sampleSize; i += step) {
-      sample.push(source[i]);
-    }
-
-    // So sánh cặp liên tiếp → đếm cặp tăng dần vs giảm dần
-    let cntAsc = 0,
-      cntDesc = 0;
-    for (let i = 0; i < sample.length - 1; i++) {
-      let va = sample[i]?.[fieldName] ?? '';
-      let vb = sample[i + 1]?.[fieldName] ?? '';
-      let cmp;
-      if (format === 'date') {
-        cmp = parseDateVal(va) - parseDateVal(vb);
-      } else if (format === 'money' || format === 'number') {
-        cmp = toNum(va) - toNum(vb);
-      } else {
-        cmp = String(va).toLowerCase().localeCompare(String(vb).toLowerCase(), 'vi');
-      }
-      if (cmp < 0) cntAsc++;
-      else if (cmp > 0) cntDesc++;
-    }
-
-    // Phát hiện chiều hiện tại → áp dụng chiều ngược lại
-    // Nếu không rõ ràng (ngẫu nhiên) → mặc định desc
-    if (cntAsc > cntDesc) {
-      nextDir = 'desc'; // đang asc → toggle sang desc
-    } else if (cntDesc > cntAsc) {
-      nextDir = 'asc'; // đang desc → toggle sang asc
-    } else {
-      nextDir = 'desc'; // ngẫu nhiên → mặc định desc (mới nhất/lớn nhất trước)
-    }
-
-    SORT_STATE.col = rawCol;
+    GRID_STATE.sort.column = rawCol;
+    GRID_STATE.sort.dir = dir ? dir : 'desc';
   }
 
-  SORT_STATE.dir = dir ? dir : nextDir;
-  const modifier = SORT_STATE.dir === 'asc' ? 1 : -1;
-
-  // ── Helper so sánh 2 giá trị theo format ─────────────────────────────
-  const _compare = (va, vb, fmt) => {
-    if (fmt === 'date') {
-      return parseDateVal(va) - parseDateVal(vb);
-    } else if (fmt === 'money' || fmt === 'number') {
-      const toNum = (v) => (typeof getNum === 'function' ? getNum(v) : Number(String(v).replace(/[^0-9.-]+/g, '')) || 0);
-      return toNum(va) - toNum(vb);
-    }
-    return String(va ?? '')
-      .toLowerCase()
-      .localeCompare(String(vb ?? '').toLowerCase(), 'vi');
-  };
-
-  // ── Secondary index: sort GROUPS by groupBy, items within group by selected column
-  const isSecondary = A.DB?.schema?.[CURRENT_TABLE_KEY]?.isSecondaryIndex === true;
-
-  if (isSecondary) {
-    const groupByField = A.DB.schema[CURRENT_TABLE_KEY]?.groupBy ?? 'id';
-
-    source.sort((a, b) => {
-      // Primary sort: groupBy field → quyết định thứ tự nhóm
-      const ga = String(a?.[groupByField] ?? '');
-      const gb = String(b?.[groupByField] ?? '');
-      const groupCmp = ga.localeCompare(gb, 'vi') * modifier;
-      if (groupCmp !== 0) return groupCmp;
-
-      // Secondary sort: cột đang chọn → thứ tự trong cùng nhóm
-      return _compare(a?.[fieldName] ?? '', b?.[fieldName] ?? '', format) * modifier;
-    });
-  } else {
-    source.sort((a, b) => {
-      return _compare(a?.[fieldName] ?? '', b?.[fieldName] ?? '', format) * modifier;
-    });
-  }
-
-  // Write sorted result back to PG_DATA
-  window.PG_DATA = source;
-
-  // Dispatch render
-  _renderFromPGData();
-  updateSortButtonUI(SORT_STATE.dir);
+  refreshGridPipeline(false);
+  updateSortButtonUI(GRID_STATE.sort.dir);
 }
 
-/**
- * Hàm phụ: Đổi icon/text của nút Sort cho sinh động
- */
 function updateSortButtonUI(dir) {
   const btn = getE('btn-data-sort');
   if (!btn) return;
-
   if (dir === 'asc') {
-    // Mũi tên lên (Tăng dần - A->Z)
     btn.innerHTML = '<i class="bi bi-sort-alpha-down"></i> Tăng dần';
-    btn.classList.remove('btn-secondary');
-    btn.classList.add('btn-primary'); // Highlight nút
+    btn.classList.replace('btn-secondary', 'btn-primary');
   } else {
-    // Mũi tên xuống (Giảm dần - Z->A)
     btn.innerHTML = '<i class="bi bi-sort-alpha-down-alt"></i> Giảm dần';
-    btn.classList.remove('btn-primary'); // Highlight màu khác nếu muốn
-    btn.classList.add('btn-secondary');
+    btn.classList.replace('btn-primary', 'btn-secondary');
   }
 }
-/**
- * Xử lý khi người dùng chọn bảng từ select box.
- * Uỷ toàn bộ xử lý (PG_DATA, GRID_COLS, render) cho renderTableByKey.
- *
- * @param {string} key - Collection key hoặc secondary index key
- */
+
 function handleTableChange(key) {
   if (typeof renderTableByKey === 'function') {
     renderTableByKey(key);
     clearFilterUI();
-  } else {
-    L._('Không tìm thấy hàm renderTableByKey', 'error');
   }
 }
 
 function clearFilterUI() {
-  const colSelect = getE('filter-col');
-  const valInput = getE('filter-val');
-  const fromInput = getE('filter-from');
-  const toInput = getE('filter-to');
-  if (colSelect) colSelect.value = '';
-  if (valInput) valInput.value = '';
-  if (fromInput) fromInput.value = '';
-  if (toInput) toInput.value = '';
-
-  setVal('list-preset-range', '-1'); // Clear preset range selection
+  ['filter-col', 'filter-val', 'filter-from', 'filter-to'].forEach((id) => {
+    const el = getE(id);
+    if (el) el.value = '';
+  });
+  setVal('list-preset-range', '-1');
   window.FILTER_ACTIVE = false;
   LAST_FILTER_SIGNATURE = null;
 }
 
-/**
- * HÀM TÍNH TOÁN THỐNG KÊ (Đã tối ưu bằng HD.agg)
- * @param {Array} dataRows - Dữ liệu các dòng cần tính (Hỗ trợ cả Object Rows và Array Rows)
- */
 function calculateSummary(dataRows) {
-  // 1. Guard Clause
   if (!dataRows || !Array.isArray(dataRows) || dataRows.length === 0) {
-    if (typeof L !== 'undefined' && L._) L._('calculateSummary lỗi tham số!');
-    if (typeof updateStatUI === 'function') updateStatUI(0, 0, 0);
-    return;
+    if (window.PG_DATA && window.PG_DATA.length > 0) {
+      dataRows = window.PG_DATA;
+    } else {
+      if (typeof updateStatUI === 'function') updateStatUI(0, 0, 0);
+      return;
+    }
   }
-
-  if (typeof GRID_COLS === 'undefined' || !Array.isArray(GRID_COLS)) {
-    if (typeof L !== 'undefined' && L._) L._('calculateSummary: Chưa định nghĩa GRID_COLS', 'error');
-    return;
-  }
-
-  // 2. Tự động tìm Cấu hình Cột (Ngắn gọn hơn với hàm helper isMatch)
+  if (typeof GRID_COLS === 'undefined' || !Array.isArray(GRID_COLS)) return;
   const isMatch = (col, keywords) => keywords.includes(String(col.t).toLowerCase().trim());
-
   const colTotal = GRID_COLS.find((c) => isMatch(c, ['thành tiền', 'tổng cộng', 'tổng booking', 'tổng chi tiêu', 'tổng chi phí']));
   const colQty = GRID_COLS.find((c) => isMatch(c, ['sl', 'số lượng', 'ng lớn', 'người lớn']));
-
-  if (!colTotal) {
-    if (typeof L !== 'undefined' && L._) L._('Calc Summary: Không tìm thấy cột [Thành Tiền/Tổng Cộng]', 'error');
-    return;
-  }
-
-  // 3. Xác định khóa (Field Key) để mapping cho HD.agg
-  // Nhận diện dòng đầu tiên để biết mảng chứa Object (dữ liệu DB) hay mảng chứa Array (dữ liệu UI Table)
-  const firstRow = dataRows[0];
-  const isObjRow = typeof firstRow === 'object' && !Array.isArray(firstRow);
-
-  // Nếu là Object Row: Lấy thuộc tính key (hoặc k). Nếu là Array Row: Lấy chỉ số index (i).
+  if (!colTotal) return;
+  const firstRow = dataRows[0],
+    isObjRow = typeof firstRow === 'object' && !Array.isArray(firstRow);
   const fieldTotal = isObjRow ? colTotal.key || colTotal.k || colTotal.i : colTotal.i;
   const fieldQty = colQty ? (isObjRow ? colQty.key || colQty.k || colQty.i : colQty.i) : null;
-
-  // 4. TÍNH TOÁN VỚI HD.agg (Thay thế hoàn toàn vòng lặp For)
-  const sumTotal = HD.agg(dataRows, fieldTotal);
-  const sumQty = fieldQty !== null ? HD.agg(dataRows, fieldQty) : 0;
-
-  // 5. Tính Bình Quân (An toàn tránh chia cho 0)
-  const avg = sumQty !== 0 ? sumTotal / sumQty : 0;
-
-  // 6. Cập nhật giao diện
-  if (typeof updateStatUI === 'function') {
-    updateStatUI(sumTotal, sumQty, avg);
-  }
+  const sumTotal = HD.agg(dataRows, fieldTotal),
+    sumQty = fieldQty !== null ? HD.agg(dataRows, fieldQty) : 0,
+    avg = sumQty !== 0 ? sumTotal / sumQty : 0;
+  if (typeof updateStatUI === 'function') updateStatUI(sumTotal, sumQty, avg);
 }
 
-/**
- * Helper cập nhật HTML (Giữ nguyên)
- */
 function updateStatUI(total, qty, avg) {
-  const elTotal = getE('stat-total');
-  const elQty = getE('stat-qty');
-  const elAvg = getE('stat-avg');
-  // formatNumber là hàm tiện ích dùng chung
-  // Nếu chưa load được file utils thì fallback về toLocaleString
   const fmt = (n) => (typeof formatNumber === 'function' ? formatNumber(n) : Number(n).toLocaleString());
-  if (elTotal) setVal(elTotal, fmt(total));
-  if (elQty) setVal(elQty, Number(qty).toLocaleString());
-  if (elAvg) setVal(elAvg, fmt(avg));
+  setText('stat-total', fmt(total));
+  setText('stat-qty', fmt(qty));
+  setText('stat-avg', fmt(avg));
 }
 
-// =========================================================================
-// DOWNLOAD MANAGER (FINAL V3)
-// Logic: All-in-one, Auto VAT Filter, Dynamic ID Index
-// =========================================================================
 async function downloadData(type = 'excel') {
-  // --- CẤU HÌNH INDEX (HARD-CODED RULES) ---
-  // 1. Cột PayType để check VAT: Cột M trong Database -> Index 12 (0-based)
-  const IDX_PAY_TYPE = 12;
-
-  // 2. Cột ID dùng để đối chiếu:
-  const IDX_BOOKINGS_ID = 0; // Với Bookings: ID nằm cột đầu tiên
-  const IDX_DETAILS_ID = 1; // Với Details/Admin: ID nằm cột thứ 2
-
-  // ------------------------------------------
-
-  // 1. KIỂM TRA DỮ LIỆU ĐẦU VÀO
-  if (typeof PG_STATE === 'undefined' || !PG_STATE.data || PG_STATE.data.length === 0) {
-    typeof logA === 'function' ? logA('Không có dữ liệu!', false) : logA('Không có dữ liệu!', 'warning', 'alert');
-    return;
-  }
-
-  // 2. CHUẨN BỊ TÊN FILE & NGỮ CẢNH
+  const IDX_PAY_TYPE = 12,
+    IDX_BOOKINGS_ID = 0,
+    IDX_DETAILS_ID = 1;
+  if (!GRID_STATE.displayData.length) return;
   const selectEl = getE('btn-select-datalist');
-  let viewType = selectEl ? selectEl.value : 'bookings';
-  let viewText = selectEl ? selectEl.options[selectEl.selectedIndex].text : 'Export';
-
-  const now = new Date();
-  const dateStr = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getFullYear()).slice(2)}`;
-  let fileName = `${viewText}_${dateStr}`;
-
-  // Clone dữ liệu gốc để xử lý
-  let dataToProcess = [...PG_STATE.data];
-
-  // 3. LOGIC LỌC VAT (INLINE)
+  let viewType = selectEl ? selectEl.value : 'bookings',
+    viewText = selectEl ? selectEl.options[selectEl.selectedIndex].text : 'Export';
+  const now = new Date(),
+    dateStr = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getFullYear()).slice(2)}`;
+  let fileName = `${viewText}_${dateStr}`,
+    dataToProcess = [...GRID_STATE.displayData];
   if (['bookings', 'booking_details', 'operator_entries'].includes(viewType)) {
-    if (confirm(`Bạn có muốn lọc danh sách xuất Hóa Đơn (VAT, CK CT...) cho bảng [${viewText}] không?`)) {
-      if (typeof logA === 'function') logA('Đang lọc và xử lý dữ liệu...', true);
-      await new Promise((r) => setTimeout(r, 50));
-
-      const vatKeywords = ['CK CT', 'Đã Xuất', 'VAT', 'Chờ Xuất'];
-      const isVat = (val) =>
-        vatKeywords.some((k) =>
-          String(val || '')
-            .toLowerCase()
-            .includes(k.toLowerCase())
-        );
-
-      // --- A. XỬ LÝ LỌC ---
-      if (viewType === 'bookings') {
-        // BOOKINGS: Lọc trực tiếp cột M (Index 12)
-        dataToProcess = dataToProcess.filter((row) => isVat(row[IDX_PAY_TYPE]));
-      } else {
-        // DETAILS: Phải đối chiếu với Bookings gốc
+    if (confirm(`Lọc danh sách xuất Hóa Đơn cho bảng [${viewText}]?`)) {
+      const vatKeywords = ['CK CT', 'Đã Xuất', 'VAT', 'Chờ Xuất'],
+        isVat = (val) =>
+          vatKeywords.some((k) =>
+            String(val || '')
+              .toLowerCase()
+              .includes(k.toLowerCase())
+          );
+      if (viewType === 'bookings') dataToProcess = dataToProcess.filter((row) => isVat(row[IDX_PAY_TYPE]));
+      else {
         const bookingsrc = typeof APP_DATA !== 'undefined' ? Object.values(APP_DATA.bookings) : [];
-
-        if (bookingsrc && bookingsrc.length > 0) {
-          // B1: Quét Bookings để lấy danh sách ID hợp lệ
+        if (bookingsrc.length > 0) {
           const validIds = new Set();
           bookingsrc.forEach((mRow) => {
-            // Check cột M (PayType)
-            if (isVat(mRow[IDX_PAY_TYPE])) {
-              // Lấy ID của Bookings (Cột đầu tiên - Index 0)
-              validIds.add(String(mRow[IDX_BOOKINGS_ID]));
-            }
+            if (isVat(mRow[IDX_PAY_TYPE])) validIds.add(String(mRow[IDX_BOOKINGS_ID]));
           });
-
-          // B2: Lọc bảng Details hiện tại
-          dataToProcess = dataToProcess.filter((dRow) => {
-            // Lấy ID tham chiếu của Details (Cột thứ 2 - Index 1)
-            const refId = String(dRow[IDX_DETAILS_ID]);
-            return validIds.has(refId);
-          });
-        } else {
-          console.warn('Cảnh báo: Không tìm thấy Object.values(APP_DATA.bookings) để đối chiếu VAT');
+          dataToProcess = dataToProcess.filter((dRow) => validIds.has(String(dRow[IDX_DETAILS_ID])));
         }
       }
-
-      if (dataToProcess.length === 0) {
-        if (typeof logA === 'function') logA('Không tìm thấy dữ liệu VAT phù hợp!', false);
-        return;
-      }
+      if (dataToProcess.length === 0) return;
       fileName += '_VAT_ONLY';
     }
   }
-
-  // 4. MAPPING DỮ LIỆU (ARRAY -> OBJECT with HEADERS)
-  if (typeof GRID_COLS === 'undefined' || !GRID_COLS.length) {
-    Opps('Lỗi: Không tìm thấy cấu hình cột (GRID_COLS).');
-    return;
-  }
-
   const exportData = dataToProcess.map((row) => {
     const rowObj = {};
     GRID_COLS.forEach((col) => {
-      // Lấy dữ liệu theo index cột đã lưu trong cấu hình (col.i)
       let val = row[col.i];
-
-      if (val !== null && val !== undefined && val !== '') {
-        if (col.fmt === 'date') {
-          try {
-            const d = new Date(val);
-            if (!isNaN(d.getTime())) val = d.toLocaleDateString('vi-VN');
-          } catch (e) {}
-        }
-      } else {
-        val = '';
+      if (val && col.fmt === 'date') {
+        try {
+          const d = new Date(val);
+          if (!isNaN(d.getTime())) val = d.toLocaleDateString('vi-VN');
+        } catch (e) {}
       }
-      rowObj[col.t] = val;
+      rowObj[col.t] = val || '';
     });
     return rowObj;
   });
-
-  // 5. THỰC HIỆN TẢI FILE
   try {
     if (type === 'excel') {
-      if (typeof XLSX === 'undefined') throw new Error('Thư viện SheetJS chưa được tải.');
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      const wscols = Object.keys(exportData[0] || {}).map(() => ({ wch: 15 }));
-      ws['!cols'] = wscols;
+      const wb = XLSX.utils.book_new(),
+        ws = XLSX.utils.json_to_sheet(exportData);
+      ws['!cols'] = Object.keys(exportData[0] || {}).map(() => ({ wch: 15 }));
       XLSX.utils.book_append_sheet(wb, ws, 'Data');
       XLSX.writeFile(wb, `${fileName}.xlsx`);
     } else {
-      if (typeof window.jspdf === 'undefined') throw new Error('Thư viện jsPDF chưa được tải.');
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({ orientation: 'landscape' });
-      const headers = [Object.keys(exportData[0] || {})];
-      const body = exportData.map((obj) => Object.values(obj));
-      doc.setFontSize(10);
+      const { jsPDF } = window.jspdf,
+        doc = new jsPDF({ orientation: 'landscape' });
       doc.text(`BÁO CÁO: ${viewText}`, 14, 15);
-      doc.text(`Ngày xuất: ${new Date().toLocaleString('vi-VN')}`, 14, 20);
-      doc.autoTable({
-        head: headers,
-        body: body,
-        startY: 25,
-        theme: 'grid',
-        styles: { font: 'helvetica', fontSize: 8 },
-        headStyles: { fillColor: [44, 62, 80] },
-      });
+      doc.autoTable({ head: [Object.keys(exportData[0] || {})], body: exportData.map((obj) => Object.values(obj)), startY: 25, theme: 'grid', styles: { fontSize: 8 } });
       doc.save(`${fileName}.pdf`);
     }
-    if (typeof logA === 'function') logA('Đã xuất file thành công!', true);
-  } catch (err) {
-    Opps(err);
-    Opps('Lỗi khi xuất file: ' + err.message);
-  }
+  } catch (err) {}
 }
+
 function applyPresetDateRange(val) {
   if (!val || val === '-1') {
-    val = 'this_year';
-    setVal('list-preset-range', val);
+    setVal('filter-from', '');
+    setVal('filter-to', '');
+  } else {
+    const { start, end } = getDateRange(val);
+    setVal('filter-from', start);
+    setVal('filter-to', end);
+
+    // Tìm ưu tiên các field ngày trong select filter-col
+    const colSelect = getE('filter-col');
+    if (colSelect) {
+      const options = Array.from(colSelect.options).map((opt) => opt.value);
+      const priorityFields = ['start_date', 'check_in', 'created_at'];
+      const foundField = priorityFields.find((f) => options.includes(f));
+      if (foundField) setVal('filter-col', foundField);
+    }
+
+    const sortField = getVal('filter-col');
+    if (!sortField || !sortField.includes('date')) {
+      // Nếu sau khi tìm vẫn không có field ngày phù hợp, fallback về created_at nếu không phải field date
+      if (!['start_date', 'check_in', 'created_at'].includes(sortField)) {
+        setVal('filter-col', 'created_at');
+      }
+    }
+    applyGridFilterThrottled();
   }
-  const { start, end } = getDateRange(val);
-  setVal('filter-from', start);
-  setVal('filter-to', end);
-  applyGridFilterThrottled();
 }
-/**
- * Xử lý click dòng trên Dashboard
- * @param {string} idVal - Giá trị ID (BookingID hoặc SID)
- * @param {boolean} isServiceId - True nếu idVal là SID
- */
+
 function handleDashClick(idVal, isServiceId) {
   onGridRowClick(idVal);
 }
-// ==========================================
-// MODULE: BATCH EDIT (FULL ROW MODE)
-// ==========================================
 
-// Biến lưu trữ dữ liệu gốc của các dòng đang edit
 var CURRENT_BATCH_DATA = [];
-
-/**
- * 1. Đổ dữ liệu vào Form
- */
-
 function openBatchEdit(dataList, title) {
-  // A. Lưu bản sao dữ liệu để xử lý sau (Quan trọng)
-  // dataList là mảng các dòng (Array) lấy từ Object.values(APP_DATA.booking_details)
   CURRENT_BATCH_DATA = JSON.parse(JSON.stringify(dataList));
-
-  // B. Chuyển Tab & UI Footer (Giữ nguyên)
   activateTab('tab-form');
-  setClass('btn-save-form', 'd-none', true);
+  setClass('btn-save-group', 'd-none', true);
   setClass('btn-save-batch', 'd-none', false);
   refreshForm();
-
-  // C. Render giao diện
   const tbody = getE('detail-tbody');
   if (tbody) tbody.innerHTML = '';
-
-  // Duyệt qua dữ liệu đễ vẽ form, dùng index để liên kết với CURRENT_BATCH_DATA
-  CURRENT_BATCH_DATA.forEach((row, index) => {
-    if (typeof addDetailRow === 'function') {
-      addDetailRow(row);
-    }
+  CURRENT_BATCH_DATA.forEach((row) => {
+    if (typeof runFnByRole === 'function') runFnByRole('addDetailRow', 'UI', row);
   });
 }
 
 function refreshForm() {
   getE('main-form').reset();
   getE('detail-tbody').innerHTML = '';
-  getE('BK_Date').valueAsDate = new Date();
-  getE('BK_Start').valueAsDate = new Date();
-  getE('BK_End').valueAsDate = new Date();
+  const today = new Date();
+  ['BK_Date', 'BK_Start', 'BK_End'].forEach((id) => (getE(id).valueAsDate = today));
   setVal('BK_Staff', CURRENT_USER.name);
   detailRowCount = 0;
 }
 
-/**
- * UTILS: Đảo ngược thứ tự các dòng trong bảng chi tiết
- * Tác dụng: Hữu ích khi người dùng nhập liệu theo thứ tự ngược hoặc copy từ Excel
- */
 function reverseDetailsRows() {
-  // 1. Lấy phần thân bảng (Sử dụng getE helper nếu có, hoặc getElementById)
   const tbody = getE('detail-tbody');
-
-  if (!tbody || tbody.rows.length < 2) {
-    // Nếu bảng không có hoặc chỉ có 0-1 dòng thì không cần đảo
-    return;
-  }
-
-  // 2. Chuyển đổi HTMLCollection sang Array để dùng hàm reverse()
-  const rows = Array.from(tbody.rows);
-
-  // 3. Đảo ngược mảng
-  rows.reverse();
-
-  // 4. Gắn lại vào tbody (Việc appendChild node đã tồn tại sẽ tự động move nó)
-  rows.forEach((row) => {
-    tbody.appendChild(row);
-  });
-
-  // 5. QUAN TRỌNG: Đánh lại số thứ tự (STT) cột đầu tiên
+  if (!tbody || tbody.rows.length < 2) return;
+  const rows = Array.from(tbody.rows).reverse();
+  rows.forEach((row) => tbody.appendChild(row));
   _reindexTableRows(tbody);
-
-  // (Optional) Hiệu ứng nháy màu để báo hiệu đã đảo xong
-  tbody.classList.add('flash-effect');
-  setTimeout(() => tbody.classList.remove('flash-effect'), 500);
 }
 
-/**
- * HELPER INTERNAL: Đánh lại số thứ tự cho bảng
- * Giả định: Cột STT luôn nằm ở ô đầu tiên (cells[0])
- * Cập nhật: Icon fa-times cuối hàng với giá trị idx mới
- */
 function _reindexTableRows(tbodyObj) {
-  const rows = tbodyObj.rows;
-  for (let i = 0; i < rows.length; i++) {
-    // 1. Cập nhật ID của thẻ tr
-    rows[i].id = `row-${i + 1}`;
-
-    // 2. Cập nhật ô STT (thường là td đầu tiên)
-    const firstCell = rows[i].cells[0];
-    if (firstCell) firstCell.innerText = i + 1;
-
-    // 3. Cập nhật tham số removeRow(idx) cho icon fa-times ở cuối hàng
-    const deleteIcon = rows[i].querySelector('i.fa-times');
-    if (deleteIcon) {
-      // Cập nhật onclick attribute với giá trị idx mới
-      deleteIcon.setAttribute('onclick', `removeRow(${i})`);
-    }
-
-    // Nếu STT nằm trong input (trường hợp input hidden lưu order)
-    // const inputOrder = rows[i].querySelector('.input-order');
-    // if(inputOrder) inputOrder.value = i + 1;
-  }
+  Array.from(tbodyObj.rows).forEach((row, i) => {
+    row.id = `row-${i + 1}`;
+    if (row.cells[0]) row.cells[0].innerText = i + 1;
+    const delIcon = row.querySelector('i.fa-times');
+    if (delIcon) delIcon.setAttribute('onclick', `runFnByRole('removeRow', 'UI', ${i})`);
+  });
 }
 
-// Hàm xóa Local Cache
 function clearLocalCache() {
-  const confirm_clear = confirm('Bạn có chắc chắn muốn xóa Local Cache?\n\nTẤT CẢ dữ liệu trong localStorage sẽ bị xóa vĩnh viễn.');
-  if (!confirm_clear) return;
-
-  try {
-    // Xóa tất cả dữ liệu localStorage
-    localStorage.clear();
-    logA('✅ Tất cả dữ liệu Local Cache đã được xóa!\n\nVui lòng reload trang để áp dụng thay đổi.');
-    A.DB.stopNotificationsListener(); // Hủy tất cả subscription trước khi reload
-    // Optional: Tự động reload trang
-    setTimeout(() => reloadPage(true), 1000);
-  } catch (error) {
-    console.error('❌ Lỗi khi xóa Local Cache:', error);
-    Opps('❌ Có lỗi xảy ra khi xóa Local Cache');
-  }
+  if (!confirm('Xóa Local Cache?')) return;
+  localStorage.clear();
+  A.DB.stopNotificationsListener();
+  setTimeout(() => reloadPage(true), 1000);
 }
 
-/**
- * Xóa param ?mode= khỏi URL mà không reload trang (clean URL).
- */
 function _cleanModeFromUrl() {
   const url = new URL(window.location.href);
   url.searchParams.delete('mode');
   window.history.replaceState({}, '', url.toString());
 }
 
-/**
- * Đọc URL param ?mode= và tự động chuyển chế độ nếu hợp lệ.
- * Được gọi từ app.js#listenAuth ngay sau khi CURRENT_USER.role đã sẵn sàng,
- * trước khi render UI hoặc load data — để tránh lãng phí boot.
- *
- * Ví dụ URL:
- *   ?mode=SALE       → giả lập role Sales
- *   ?mode=OPERATOR   → giả lập role Operator
- *   ?mode=ACC        → giả lập role Kế toán
- *   ?mode=REAL       → tắt mock, quay về role thực
- *
- * @returns {boolean} true nếu có param hợp lệ VÀ đang xử lý chuyển chế độ (app sẽ reload)
- */
 function applyModeFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  const modeParam = params.get('mode');
+  const modeParam = new URLSearchParams(window.location.search).get('mode');
   if (!modeParam) return false;
-
-  const VALID_MODES = ['SALE', 'OPERATOR', 'ACC'];
   const modeCode = modeParam.toUpperCase();
-
-  // Xóa param khỏi URL ngay lập tức (tránh loop khi reload)
   _cleanModeFromUrl();
-
-  if (!VALID_MODES.includes(modeCode)) {
-    L._(`⚠️ URL mode không hợp lệ: "${modeParam}". Hợp lệ: ${VALID_MODES.join(', ')}`, 'warning');
-    return false;
-  }
-  // Áp dụng mock role
-  L._(`🔗 Phát hiện URL mode: ?mode=${modeCode} → Đang chuyển chế độ...`, 'info');
+  if (!['SALE', 'OPERATOR', 'ACC'].includes(modeCode)) return false;
   reloadSystemMode(modeCode);
   return true;
 }
 
-/**
- * Hàm khởi động lại App và chuyển chế độ (Chỉ dành cho Admin)
- * @param {string} modeCode - Mã Role muốn chuyển: 'SALE', 'OPERATOR', 'ACC'
- */
 function reloadSystemMode(modeCode) {
-  const roleData = {
-    realRole: CURRENT_USER.role,
-    maskedRole: modeCode,
-  };
-  localStorage.setItem('erp-mock-role', JSON.stringify(roleData));
-  L._('🎭 Chuyển chế độ thành công sang: ' + Object.values(roleData).join(' -> ') + '. Đang tải lại trang...');
-  A.DB.stopNotificationsListener(); // Hủy tất cả subscription trước khi reload
+  const user = A.getState('user');
+  let realRole;
+  if (user) realRole = user.role;
+  localStorage.setItem('erp-mock-role', JSON.stringify({ realRole: realRole, maskedRole: modeCode }));
+  A.DB.stopNotificationsListener();
   window.location.reload();
 }
 
 function handleServerError(err) {
-  Opps('Lỗi kết nối: ' + err.message);
-  handleRetry('Lỗi kết nối: ' + err.message);
+  handleRetry(err.message);
 }
 
-/**
- * Logic quyết định Thử lại hay Dừng
- */
 function handleRetry(reason) {
   if (retryCount < MAX_RETRIES) {
     retryCount++;
-    // Chờ 2s rồi gọi lại hàm load
-    L._('handleRetry run lần: ', retryCount);
     setTimeout(loadDataFromFirebase, RETRY_DELAY);
   } else {
-    // Đã thử hết số lần cho phép -> Báo lỗi chết (Fatal Error)
     showLoading(false);
-    const errorMsg = `Không thể kết nối Server sau ${MAX_RETRIES} lần thử.\nNguyên nhân: ${reason}\n\nVui lòng nhấn F5 để tải lại trang.`;
-    L._('FATAL ERROR: ' + reason, 'error');
   }
 }
 
-// ⏱️ Throttle variable cho initGlobalTableSearch — overridable via Admin Settings
 let _lastSearchClickTime = 0;
 const SEARCH_THROTTLE_MS = () => window.A?.getConfig?.('search_throttle_ms') ?? 500;
 
-/**
- * ✨ TỐI ƯU: Tìm kiếm bookings và hiển thị datalist
- * - Tìm trong Object.values(APP_DATA.bookings) (3 field: id, customer_full_name, customer_phone)
- * - Trả về max 10 hàng mới nhất (sắp xếp theo start_date)
- * - Hiển thị datalist với format "id - customer_full_name"
- * - Gọi onGridRowClick khi chọn item
- * ⏱️ Giới hạn: Chỉ chạy 1 lần mỗi 1 giây (throttle)
- */
 function handleBookingSearch(bkId) {
-  // ⏱️ THROTTLE: Kiểm tra thời gian kể từ lần gọi cuối
   const now = Date.now();
-  if (now - _lastSearchClickTime < SEARCH_THROTTLE_MS()) {
-    return; // Bỏ qua nếu chưa đủ 0.5 giây
-  }
+  if (now - _lastSearchClickTime < SEARCH_THROTTLE_MS()) return;
   _lastSearchClickTime = now;
-
-  const searchInput = getE('booking-search');
-  const kRaw = bkId ? bkId : searchInput?.value;
-  const k = String(kRaw ?? '').trim();
-
-  if (!k) {
-    logA('Vui lòng nhập từ khóa (ID, Tên, SĐT)!');
-    return;
-  }
-
+  const searchInput = getE('booking-search'),
+    k = String(bkId || searchInput?.value || '').trim();
+  if (!k) return;
   try {
-    // Lấy dữ liệu bookings
-    const bookingsObj = window.APP_DATA && Array.isArray(Object.values(APP_DATA.bookings)) ? Object.values(APP_DATA.bookings) : [];
-
-    if (!bookingsObj || bookingsObj.length === 0) {
-      logA('Chưa có dữ liệu bookings để tìm kiếm!', 'warning');
-      return;
-    }
-
-    // Chuẩn hóa từ khóa
-    const normText = (s) =>
-      String(s ?? '')
-        .toLowerCase()
-        .trim();
-    const normPhone = (s) => String(s ?? '').replace(/\D+/g, '');
-    const kText = normText(k);
-    const kPhone = normPhone(k);
-
-    // Tìm kiếm trong 3 field: id, customer_full_name, customer_phone
-    const results = bookingsObj.filter((row) => {
-      if (!row) return false;
-
-      const id = normText(row.id || '');
-      const name = normText(row.customer_full_name || '');
-      const phone = normPhone(row.customer_phone || '');
-
-      return id.includes(kText) || name.includes(kText) || (kPhone && phone.includes(kPhone));
-    });
-
-    if (results.length === 0) {
-      logA('Không tìm thấy booking phù hợp!', 'warning');
-      return;
-    }
-
-    // Sắp xếp theo start_date giảm dần (mới nhất trước)
-    const sorted = results.sort((a, b) => {
-      const dateA = new Date(a.start_date || 0);
-      const dateB = new Date(b.start_date || 0);
-      return dateB - dateA;
-    });
-
-    // Tối đa 10 kết quả
-    const topResults = sorted.slice(0, 10);
-
-    // ✨ TỐI ƯU: Nếu chỉ có 1 kết quả -> Hỏi người dùng có load luôn không
+    const bookingsObj = Object.values(APP_DATA.bookings || {});
+    if (!bookingsObj.length) return;
+    const norm = (s) =>
+        String(s ?? '')
+          .toLowerCase()
+          .trim(),
+      kText = norm(k),
+      kPhone = String(k).replace(/\D+/g, '');
+    const results = bookingsObj
+      .filter((row) => {
+        if (!row) return false;
+        return norm(row.id).includes(kText) || norm(row.customer_full_name).includes(kText) || (kPhone && String(row.customer_phone).includes(kPhone));
+      })
+      .sort((a, b) => new Date(b.start_date || 0) - new Date(a.start_date || 0));
+    if (!results.length) return;
+    const topResults = results.slice(0, 10);
     if (topResults.length === 1) {
-      const result = topResults[0];
-      if (bkId) return onGridRowClick(result.id);
-      const confirmMsg = `Tìm thấy 1 kết quả:\n\nID: ${result.id}\nTên: ${result.customer_full_name || 'N/A'}\n\nLoad dữ liệu booking này không?`;
-
-      logA(confirmMsg, 'info', async () => {
-        if (typeof onGridRowClick === 'function') {
-          onGridRowClick(result.id);
-          L._(`✅ Mở booking: ${result.id}`, 'success');
-        }
-        // Clear input sau khi chọn
+      if (bkId) return onGridRowClick(topResults[0].id);
+      logA(`Load booking ${topResults[0].id}?`, 'info', () => {
+        onGridRowClick(topResults[0].id);
         searchInput.value = '';
       });
-      return; // Dừng tại đây, không populate datalist
+      return;
     }
-
-    // Populate datalist nếu có > 1 kết quả
     _populateSearchDatalist(topResults, searchInput);
-    L._(`🔍 Tìm thấy ${topResults.length} kết quả`, 'info');
-  } catch (error) {
-    console.error('Lỗi search:', error);
-    Opps('Lỗi tìm kiếm: ' + error.message);
-  }
+  } catch (error) {}
 }
 
-/**
- * Khởi tạo tính năng tìm kiếm toàn cục cho tất cả các bảng (table tbody) trong UI
- * Áp dụng kỹ thuật Debounce để tối ưu hiệu suất render.
- * * @param {string} inputId - ID của thẻ input tìm kiếm (mặc định: 'global-search')
- */
 function initGlobalTableSearch(inputId = 'global-search') {
-  // 1. Lấy element input tìm kiếm
   const searchInput = getE(inputId);
-
-  // Nếu không tồn tại input trên giao diện thì bỏ qua để tránh lỗi JS
-  if (!searchInput) {
-    console.warn(`[Global Search] Không tìm thấy phần tử DOM với ID: #${inputId}`);
-    return;
-  }
-
+  if (!searchInput) return;
   let debounceTimer;
-
-  // Chuẩn hóa từ khóa: bỏ khoảng trắng thừa ở 2 đầu và chuyển thành chữ thường
-  const searchTerm = e.target.value.trim().toLowerCase();
-
-  // 4. Thiết lập timer mới (chờ 300ms sau khi ngừng gõ mới xử lý)
-  debounceTimer = setTimeout(() => {
-    try {
-      // Quét tìm tất cả các thẻ <tr> nằm bên trong <tbody> của tất cả <table>
-      const tableRows = document.querySelectorAll('table tbody tr');
-      let matchCount = 0;
-
-      tableRows.forEach((row) => {
-        // Lấy toàn bộ nội dung text của dòng đó và chuyển thành chữ thường
-        // (Lưu ý: textContent lấy text thuần, nhanh và an toàn hơn innerHTML)
-        const rowText = row.textContent.toLowerCase();
-
-        // Kiểm tra xem nội dung dòng có chứa từ khóa không
-        if (rowText.includes(searchTerm)) {
-          row.style.display = ''; // Khôi phục hiển thị (hiển thị lại dòng)
-          matchCount++;
-        } else {
-          row.style.display = 'none'; // Ẩn dòng không khớp
-        }
+  searchInput.oninput = (e) => {
+    clearTimeout(debounceTimer);
+    const searchTerm = e.target.value.trim().toLowerCase();
+    debounceTimer = setTimeout(() => {
+      document.querySelectorAll('table tbody tr').forEach((row) => {
+        row.style.display = row.textContent.toLowerCase().includes(searchTerm) ? '' : 'none';
       });
-
-      // Ghi log để theo dõi luồng dữ liệu (tuân thủ quy tắc bảo toàn và theo dõi)
-      console.log(`[Global Search] Tìm kiếm "${searchTerm}" - Hiển thị ${matchCount}/${tableRows.length} dòng.`);
-    } catch (error) {
-      console.error(`[Global Search] Lỗi khi xử lý tìm kiếm: `, error);
-    }
-  }, 300); // 300ms là mức delay lý tưởng giữa hiệu năng và trải nghiệm người dùng
+    }, 300);
+  };
 }
 
-/**
- * Helper: Populate HTML5 datalist với kết quả tìm kiếm
- * @param {Array} results - Danh sách booking objects
- * @param {HTMLElement} inputElement - Input element để attach datalist
- */
 function _populateSearchDatalist(results, inputElement) {
   if (!inputElement) return;
-
-  // Tìm hoặc tạo datalist
   let datalist = getE('search-bookings-datalist');
   if (!datalist) {
     datalist = document.createElement('datalist');
@@ -1279,164 +696,57 @@ function _populateSearchDatalist(results, inputElement) {
     document.body.appendChild(datalist);
     inputElement.setAttribute('list', 'search-bookings-datalist');
   }
-
-  // Xóa danh sách cũ
-  datalist.innerHTML = '';
-
-  // Populate với kết quả (dạng "id - customer_full_name")
-  results.forEach((row) => {
-    const option = document.createElement('option');
-    option.value = row.id;
-    option.textContent = `${row.id} - ${row.customer_full_name || 'N/A'}`;
-    datalist.appendChild(option);
-  });
-
-  // Thêm event listener cho việc chọn option
-  // Sử dụng 'change' event để detect khi user chọn từ datalist
+  datalist.innerHTML = results.map((r) => `<option value="${r.id}">${r.id} - ${r.customer_full_name || 'N/A'}</option>`).join('');
   inputElement.onchange = function () {
-    const selectedValue = this.value;
-    const selectedRow = results.find((r) => r.id === selectedValue);
-
-    if (selectedRow) {
-      // Gọi onGridRowClick với id
-      if (typeof onGridRowClick === 'function') {
-        onGridRowClick(selectedValue);
-        L._(`✅ Mở booking: ${selectedValue}`, 'success');
-      }
-      // Clear input sau khi chọn
+    if (results.find((r) => r.id === this.value)) {
+      onGridRowClick(this.value);
       this.value = '';
     }
   };
 }
 
-/**
- * 2. Hàm Xóa Item trong Database
- * @param {string} id - ID của item cần xóa
- * @param {string} dataSource - Tên bảng (bookings, booking_details, customer...), mặc định 'booking_details'
- */
 async function deleteItem(id, dataSource = 'booking_details') {
-  if (!id) {
-    logA('Không tìm thấy ID để xóa.', 'warning');
-    return;
-  }
-
-  const msg = `CẢNH BÁO: Hành động này sẽ xóa vĩnh viễn dòng dữ liệu (ID: ${id}) ở cả SALES & OPERATION.\n\nBạn có chắc chắn không?`;
-
-  // Sử dụng logA dạng confirm (Callback)
-  logA(msg, 'danger', async () => {
-    const res = await A.DB.deleteRecord(dataSource, id);
-    if (res) {
-      logA(`Đã xóa thành công dòng ID: ${id} từ "${dataSource}".`, 'success');
-      // Xóa dòng khỏi giao diện ngay lập tức (UX tối ưu)
+  if (!id) return;
+  logA(`Xóa vĩnh viễn ID: ${id}?`, 'danger', async () => {
+    if (await A.DB.deleteRecord(dataSource, id)) {
       if (CURRENT_CTX_ROW) {
         CURRENT_CTX_ROW.remove();
-        CURRENT_CTX_ROW = null; // Reset
-        CURRENT_CTX_ID = null;
+        CURRENT_CTX_ROW = null;
       }
-      // Tính lại tổng tiền nếu có hàm tính toán
-      if (typeof calcGrandTotal === 'function') calcGrandTotal();
     }
   });
 }
 
-/**
- * HÀM KHỞI TẠO GIAO DIỆN (UI INIT)
- * Tên giữ nguyên theo yêu cầu.
- */
 function handleServerData(data) {
   showLoading(false);
-
-  // 1. Kiểm tra an toàn lần cuối
-  if (!data) {
-    Opps('Lỗi hiển thị: Dữ liệu chưa sẵn sàng.');
-    return;
-  }
-
-  const sourceIcon = data.source === 'FIREBASE' ? '⚡ FIREBASE' : '🐢 LIVE SHEET';
-
-  // 3. KHỞI TẠO CÁC FORM CHỌN & SỰ KIỆN
+  if (!data) return;
   try {
-    // Init Dropdown Lists
-    if (typeof initBtnSelectDataList === 'function') {
-      initBtnSelectDataList(data);
-    }
-  } catch (e) {
-    console.error('Lỗi UI Init:', e);
-  }
-
-  // 4. KHỞI TẠO BỘ LỌC CỘT (Filter Header)
+    if (typeof initBtnSelectDataList === 'function') initBtnSelectDataList(data);
+  } catch (e) {}
   if (typeof initFilterUI === 'function') initFilterUI();
-
-  // 5. VẼ DASHBOARD (Nếu đang ở tab Dashboard)
-  // Dùng hàm runFnByRole mà ta đã tối ưu trước đó
-  if (typeof runFnByRole === 'function') {
-    runFnByRole('renderDashboard');
-  }
+  initDashboard();
 }
 
 async function loadDataFromFirebase(silent = false) {
-  // 1. UI: Hiển thị trạng thái tải
-  if (retryCount > 0) showLoading(true, `Đang thử lại (${retryCount}/${MAX_RETRIES})...`);
-
-  const startTime = Date.now();
-
+  if (retryCount > 0) showLoading(true, `Thử lại (${retryCount}/${MAX_RETRIES})...`);
   try {
-    let role = CURRENT_USER.role;
-
-    // ★ FIX Bug: Kiểm tra giá trị trả về — loadAllData() trả về null khi DB/auth chưa sẵn sàng
     const loadedData = await A.DB.loadAllData();
     if (!loadedData) {
-      console.error('❌ loadAllData() trả về null — DB hoặc auth chưa sẵn sàng');
-      handleRetry('Không thể khởi tạo cơ sở dữ liệu.');
+      handleRetry('DB chưa sẵn sàng');
       return;
     }
-
-    // ★ FIX Bug: Kiểm tra dữ liệu thực tế theo role, không dùng Object.keys(APP_DATA).length
-    // vì #buildEmptyResult() luôn pre-populate tất cả keys là {} → length > 0 dù data rỗng.
-    const primaryColl = role === 'op' ? 'operator_entries' : role === 'acc' || role === 'acc_thenice' ? 'transactions' : 'bookings';
-    const collData = APP_DATA?.[primaryColl];
-    if (!collData) {
-      console.error(`❌ APP_DATA.${primaryColl} không tồn tại`);
-      handleRetry('Server trả về dữ liệu rỗng.');
-      return;
-    }
-
-    // C. Mapping Details theo Role
-    const userRole = role;
-    const targetSourceKey = userRole === 'op' ? 'operator_entries' : 'booking_details';
-
-    L._(`✅ Tải xong sau: ${Date.now() - startTime}ms`, 'success');
-
     retryCount = 0;
   } catch (error) {
-    console.error('Lỗi loadDataFromFirebase:', error);
     handleServerError(error);
   }
 }
 
-/**
- * Hàm tải Module Kế toán (Lazy Loading)
- */
 async function loadModule_Accountant() {
   try {
-    // BƯỚC 1: HIỂN THỊ LOADING (Optional but recommended)
     const appContent = document.querySelector('.app-content');
-    if (appContent) {
-      appContent.innerHTML = '<div class="text-center p-5"><i class="fas fa-spinner fa-spin fa-3x text-primary"></i><br>Đang tải dữ liệu kế toán...</div>';
-    }
-
-    // BƯỚC 2: TẢI HTML TEMPLATE
-    // Sử dụng UI_RENDERER hoặc fetch thuần
+    if (appContent) appContent.innerHTML = 'Đang tải...';
     const response = await fetch('/accountant/tpl_accountant.html');
-    if (!response.ok) throw new Error('Không thể tải giao diện Kế toán');
-    const html = await response.text();
-
-    // Inject vào DOM
-    if (appContent) {
-      appContent.innerHTML = html;
-    }
-
-    // BƯỚC 3: TẢI CSS (Tránh trùng lặp)
+    if (appContent) appContent.innerHTML = await response.text();
     if (!getE('css-accountant')) {
       const link = document.createElement('link');
       link.id = 'css-accountant';
@@ -1444,143 +754,74 @@ async function loadModule_Accountant() {
       link.href = '/accountant/accountant.css';
       document.head.appendChild(link);
     }
-
-    // BƯỚC 4: IMPORT CONTROLLER & INIT
-    // Import động (Dynamic Import)
-    const module = await import('./accountant/controller_accountant.js');
-
-    // Lấy instance từ default export
-    const ctrl = module.default;
-
-    if (ctrl && typeof ctrl.init === 'function') {
-      await ctrl.init(); // <--- ĐÂY LÀ LÚC CONTROLLER BẮT ĐẦU CHẠY
-    } else {
-      console.error('Accountant Controller không có hàm init()');
-    }
-  } catch (error) {
-    console.error('Lỗi tải module Accountant:', error);
-    Opps('Không thể tải module Kế toán. Vui lòng kiểm tra console.');
-  }
+    const module = await import('../../accountant/controller_accountant.js');
+    if (module.default?.init) await module.default.init();
+  } catch (error) {}
 }
 
-/**
- * =========================================================================
- * SETTINGS MODAL - Theme & General Settings
- * Note: All theme-related logic delegated to THEME_MANAGER class
- * =========================================================================
- */
 async function openSettingsModal() {
   try {
-    // Render modal template
     await A.UI.renderTemplate('body', 'tmpl-download-library');
-    await A.Modal.render(getE('tmpl-settings-form'), 'Cài Đặt Chung', { size: 'modal-lg' });
+    await A.Modal.render(getE('tmpl-settings-form'), 'Cài Đặt Chung', { size: 'modal-xl' });
     await A.Modal.show(
       null,
       null,
       async (e, target) => {
         await saveBasicSettings(e, target);
       },
-      () => THEME_MANAGER.resetToDefault(true) // Reset callback with confirmation
+      () => THEME_MANAGER.resetToDefault(true)
     );
-
     await initSettingsTab();
-
-    // --- DELEGATE ALL THEME LOGIC TO THEME_MANAGER ---
-    if (!THEME_MANAGER) {
-      Opps('Theme manager not initialized');
-      return;
-    } else {
+    if (THEME_MANAGER) {
       THEME_MANAGER.fillSettingsForm();
       THEME_MANAGER.setupColorSync();
-      if (getE('st-logo-preview')) {
-        const mainLogo = getE('main-logo');
-        getE('st-logo-preview').src = mainLogo ? mainLogo.src : 'https://9tripvietnam.com/wp-content/uploads/2019/05/Logo-9-trip.png.webp';
-      }
     }
-    // 3. Load keyboard shortcuts (if function exists)
-    if (typeof loadShortcutsToForm === 'function') {
-      loadShortcutsToForm();
-    }
-  } catch (e) {
-    Opps('Lỗi mở Cài Đặt:', e);
-  }
+  } catch (e) {}
 }
 
-/**
- * Khởi tạo Tab Cài Đặt mới
- */
 async function initSettingsTab() {
   try {
-    // 1. Fill select collection
     const colSelect = getE('st-sync-collection');
-    if (colSelect && typeof APP_DATA !== 'undefined') {
-      const collections = Object.keys(APP_DATA).filter((k) => !k.includes('_by_') && !k.includes('lists')); // Loại bỏ các index phụ
-      fillSelect('st-sync-collection', collections, '-- Chọn Collection --');
-    }
-
-    // 2. Khởi tạo Dashboard Table (nếu có dữ liệu cũ trong config)
-    // Giả sử config lưu trong window.A.config.dash_tables
+    if (colSelect && typeof APP_DATA !== 'undefined')
+      fillSelect(
+        'st-sync-collection',
+        Object.keys(APP_DATA).filter((k) => !k.includes('_by_') && !k.includes('lists')),
+        '-- Chọn --'
+      );
     const dashConfig = localStorage.getItem('dashTables') ? JSON.parse(localStorage.getItem('dashTables')) : null;
     if (dashConfig) {
       for (let i = 1; i <= 4; i++) {
-        const el = getE(`st-dash-table-${i}`); // Hỗ trợ cả 2 ID cũ và mới
-        if (el) {
-          const val = dashConfig[`table${i}`] || '';
-          el.value = val; // Set giá trị đã lưu vào select
-        }
+        const el = getE(`st-dash-table-${i}`);
+        if (el) el.value = dashConfig[`table${i}`] || '';
       }
-      initDashboard(dashConfig); // Vẽ lại dashboard với config đã lưu
+      initDashboard(dashConfig);
     }
-    // Chạy logic loại trừ lần đầu
     handleDashTableChange();
-  } catch (e) {
-    console.error('initSettingsTab error:', e);
-  }
+  } catch (e) {}
 }
 
-/**
- * Xử lý logic loại trừ option trong Dashboard Table
- */
 function handleDashTableChange(el) {
-  try {
-    const selects = $$('.st-dash-table');
-    const selectedValues = selects.map((s) => s.value).filter((v) => v !== '');
-
-    selects.forEach((s) => {
-      const currentValue = s.value;
-      Array.from(s.options).forEach((opt) => {
-        if (opt.value === '') return;
-        // Nếu option này đang được chọn ở một select KHÁC thì ẩn nó đi
-        if (selectedValues.includes(opt.value) && opt.value !== currentValue) {
-          opt.disabled = true;
-          opt.style.display = 'none';
-        } else {
-          opt.disabled = false;
-          opt.style.display = 'block';
-        }
-      });
+  const selects = $$('.st-dash-table'),
+    selectedValues = selects.map((s) => s.value).filter((v) => v !== '');
+  selects.forEach((s) => {
+    Array.from(s.options).forEach((opt) => {
+      if (opt.value === '') return;
+      const isUsed = selectedValues.includes(opt.value) && opt.value !== s.value;
+      opt.disabled = isUsed;
+      opt.style.display = isUsed ? 'none' : 'block';
     });
-  } catch (e) {
-    console.error('handleDashTableChange error:', e);
-  }
+  });
 }
 
 async function saveBasicSettings(e, target) {
   const btn = e?.target || target?.querySelector('.btn-save') || getE('btn-save-modal');
   if (btn) setBtnLoading(btn, true, 'Đang lưu...');
-  // 1. Lấy giá trị từ form
-  let dash_tables = {};
-  dash_tables.table1 = getVal('st-dash-table-1') ? getVal('st-dash-table-1') : '';
-  dash_tables.table2 = getVal('st-dash-table-2') ? getVal('st-dash-table-2') : '';
-  dash_tables.table3 = getVal('st-dash-table-3') ? getVal('st-dash-table-3') : '';
-  dash_tables.table4 = getVal('st-dash-table-4') ? getVal('st-dash-table-4') : '';
-  L._('Lưu cài đặt Dashboard:', Object.values(dash_tables));
-
-  localStorage.setItem('dashTables', JSON.stringify(dash_tables)); // Lưu vào localStorage (có thể dùng để render lại dashboard ngay lập tức)
-  initDashboard(dash_tables); // Refresh dashboard with new config
+  let dash_tables = { table1: getVal('st-dash-table-1') || '', table2: getVal('st-dash-table-2') || '', table3: getVal('st-dash-table-3') || '', table4: getVal('st-dash-table-4') || '' };
+  localStorage.setItem('dashTables', JSON.stringify(dash_tables));
+  initDashboard(dash_tables);
   setTimeout(() => {
     if (btn) setBtnLoading(btn, false, 'Lưu Cài Đặt');
     A.Modal.hide();
-    activateTab('tab-dashboard'); // Chuyển về tab Dashboard sau khi lưu
+    activateTab('tab-dashboard');
   }, 500);
 }

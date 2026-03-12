@@ -1,16 +1,17 @@
-import { DraggableSetup, TableResizeManager } from '../libs/ui_helper.js';
-import { createFormBySchema, loadFormDataSchema } from './DBSchema.js';
+import { DraggableSetup, TableResizeManager } from '/src/js/libs/ui_helper.js';
+import { createFormBySchema, loadFormDataSchema } from '/src/js/modules/db/DBSchema.js';
 
 const UI_RENDERER = {
   renderedTemplates: {},
   currentSaveHandler: null,
-  COMPONENT_PATH: './src/components/',
+  COMPONENT_PATH: '/src/components/',
   htmlCache: {},
 
   // Render Dashboard & Load Data
   init: async function (moduleManager) {
     await Promise.all([this.renderMainLayout(), this.renderTemplate('body', 'tpl_all.html', true, '.app-container')]);
-    const role = CURRENT_USER.realrole ? CURRENT_USER.realrole : CURRENT_USER.role;
+    const user = A.getState('user');
+    const role = user ? user.role : CURRENT_USER.role;
     L._('UI: User Role:', role);
     if (!['acc', 'acc_thenice', 'ketoan'].includes(role)) {
       const [headerModule, chromeMenu, footerModule] = await Promise.all([moduleManager.loadModule('ErpHeaderMenu'), moduleManager.loadModule('ChromeMenuController', false), moduleManager.loadModule('ErpFooterMenu')]);

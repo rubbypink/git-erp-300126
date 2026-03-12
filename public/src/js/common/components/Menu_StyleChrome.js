@@ -3,7 +3,7 @@
  * 3. JAVASCRIPT: CORE MENU CONTROLLER & UTILS
  * ==========================================
  */
-import { AUTH_MANAGER } from '../../modules/LoginModule.js';
+import { AUTH_MANAGER } from '/src/js/modules/core/LoginModule.js';
 const MenuUtils = {
   currentZoom: 100,
   zoomIn: function (e) {

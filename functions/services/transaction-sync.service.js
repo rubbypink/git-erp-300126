@@ -15,7 +15,7 @@ const { getFirestore, admin } = require('../utils/firebase-admin.util');
  * @param {string} transactionId - ID của transaction
  * @param {Object|null} newData - Dữ liệu mới của transaction (null nếu là delete)
  * @param {Object|null} oldData - Dữ liệu cũ của transaction (null nếu là create)
- * @returns {Promise<Object>} Kết quả xử lý
+ * @return {Promise<Object>} Kết quả xử lý
  */
 async function syncTransactionToFundAccount(transactionId, newData, oldData) {
   const db = getFirestore();
@@ -144,7 +144,7 @@ async function syncTransactionToFundAccount(transactionId, newData, oldData) {
         action: actionCode,
         data: JSON.stringify({ coll: collection, fundAccountId, action: actionCode, payload: fundAccountData }),
         payload: fundAccountData,
-        created_at: firebase.firestore.FieldValue.serverTimestamp(),
+        created_at: admin.firestore.FieldValue.serverTimestamp(),
         created_by: 'transaction-sync-service',
       });
       return {

@@ -8,6 +8,7 @@
 const { logger } = require('firebase-functions');
 const { onDocumentWritten } = require('firebase-functions/v2/firestore');
 const { syncTransactionToFundAccount } = require('../services/transaction-sync.service');
+const { getFirestore } = require('../utils/firebase-admin.util');
 const config = require('../config/system.config');
 
 const REGION = config.FIREBASE.REGION;
@@ -27,6 +28,30 @@ exports.syncTransactionOnWrite = onDocumentWritten(
     const afterData = event.data.after.data?.();
 
     try {
+      // Kiểm tra nếu transaction đã chốt (Commited)
+      if (beforeData && beforeData.status === 'Commited') {
+        // Lấy UID từ auth context của trigger (v2 firestore trigger hỗ trợ event.auth)
+        const auth = event.auth;
+        let canUpdate = false;
+
+        if (auth && auth.uid) {
+          const db = getFirestore();
+          const userDoc = await db.collection('users').doc(auth.uid).get();
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            if (userData.level >= 50) {
+              canUpdate = true;
+              logger.info(`🔓 Admin ${auth.uid} (level ${userData.level}) đang chỉnh sửa transaction đã chốt: ${transactionId}`);
+            }
+          }
+        }
+
+        if (!canUpdate) {
+          logger.warn(`⚠️ Cố gắng chỉnh sửa transaction đã chốt: ${transactionId}. Thao tác bị chặn.`);
+          return { success: false, error: 'Không thể chỉnh sửa giao dịch đã chốt số dư.' };
+        }
+      }
+
       logger.info(`🚀 Bắt đầu xử lý đồng bộ cho transaction: ${transactionId}`);
 
       const result = await syncTransactionToFundAccount(transactionId, afterData || null, beforeData || null);

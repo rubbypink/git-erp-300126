@@ -40,7 +40,7 @@ function init() {
 async function _renderUI() {
   // 1. Load Template vào Modal
   const modal = document.querySelector('at-modal-full');
-  const resp = await fetch('./src/components/report_dashboard.html');
+  const resp = await fetch('/src/components/report_dashboard.html');
   if (resp.ok) {
     const htmlText = await resp.text();
     modal.render(htmlText, 'BÁO CÁO & THỐNG KÊ');

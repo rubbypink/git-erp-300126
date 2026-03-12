@@ -185,8 +185,9 @@ const THEME_CONFIG = {
 
 export default class ThemeManager {
   constructor() {
-    this.currentTheme = this.getStoredTheme() || 'light';
+    this.currentTheme = this.getStoredTheme();
     this.classOverridesStyle = null;
+    this.autoInit = false;
     this.init();
   }
 
@@ -196,16 +197,32 @@ export default class ThemeManager {
   init() {
     this.createClassOverridesStyle();
 
-    // Apply stored theme or default
-    this.applyTheme(this.currentTheme);
+    // 1. Kiểm tra theme đã lưu hoặc áp dụng theo hệ thống
+    if (this.currentTheme) {
+      this.applyTheme(this.currentTheme);
+    } else {
+      this._applySystemTheme();
+    }
 
-    // Listen to system theme changes (optional)
+    // 2. Lắng nghe thay đổi theme hệ thống
     if (window.matchMedia) {
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        // Chỉ tự động cập nhật nếu người dùng chưa thiết lập tùy chọn riêng (localStorage trống)
         if (!this.hasUserPreference()) {
-          this.applyTheme(e.matches ? 'dark' : 'light');
+          this._applySystemTheme();
         }
       });
+    }
+  }
+
+  /**
+   * Áp dụng theme dựa trên thiết lập hệ thống
+   * @private
+   */
+  _applySystemTheme() {
+    if (window.matchMedia) {
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      this.applyTheme(isDark ? 'dark' : 'light', false); // false = không lưu vào localStorage
     }
   }
 
@@ -213,10 +230,9 @@ export default class ThemeManager {
    * Create style element for class overrides
    */
   createClassOverridesStyle() {
-    if (this.classOverridesStyle) {
-      this.classOverridesStyle.remove();
+    if (typeof getE === 'function' && getE('theme-class-overrides')) {
+      getE('theme-class-overrides').remove();
     }
-
     this.classOverridesStyle = document.createElement('style');
     this.classOverridesStyle.id = 'theme-class-overrides';
     this.classOverridesStyle.setAttribute('data-theme-manager', 'true');
@@ -226,13 +242,14 @@ export default class ThemeManager {
   /**
    * Apply theme by updating CSS variables and Bootstrap classes
    * @param {string} themeName - 'light', 'dark', 'minimal', 'warm', or 'custom'
+   * @param {boolean} save - Có lưu vào localStorage hay không (mặc định true)
    * @returns {void}
    */
-  applyTheme(themeName) {
+  applyTheme(themeName, save = true) {
     const theme = THEME_CONFIG[themeName] || THEME_CONFIG['light'];
 
     if (!theme) {
-      Opps('Invalid theme: ' + themeName);
+      if (typeof Opps === 'function') Opps('Invalid theme: ' + themeName);
       return;
     }
 
@@ -240,18 +257,15 @@ export default class ThemeManager {
     const root = document.documentElement;
     root.removeAttribute('data-theme');
     root.removeAttribute('data-bs-theme');
-
     root.style.cssText = '';
 
-    if (themeName === 'dark' && !document.body.classList.contains('dark-theme')) {
-      root.setAttribute('data-bs-theme', themeName);
-      const themeClass = `${themeName}-theme`;
-      document.body.classList.add(themeClass);
-      // 5. Dispatch custom event
-      window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: themeName } }));
-      return;
+    // Xử lý riêng cho dark theme (Bootstrap native support)
+    if (themeName === 'dark') {
+      root.setAttribute('data-bs-theme', 'dark');
+      document.body.classList.add('dark-theme');
+    } else {
+      document.body.classList.remove('dark-theme');
     }
-    document.body.classList.remove('dark-theme');
 
     this.currentTheme = themeName;
 
@@ -266,11 +280,13 @@ export default class ThemeManager {
       this._updateClassOverrides(theme.classOverrides);
     }
 
-    // 4. Save to localStorage
-    this._saveThemePreference(themeName);
+    // 4. Save to localStorage nếu được yêu cầu
+    if (save) {
+      this._saveThemePreference(themeName);
+    }
 
     // 5. Dispatch custom event
-    window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: themeName } }));
+    window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: themeName, saved: save } }));
   }
 
   /**
@@ -353,7 +369,7 @@ export default class ThemeManager {
    */
   clearPreference() {
     localStorage.removeItem('app-theme');
-    this.applyTheme('light');
+    this._applySystemTheme();
   }
 
   /**
@@ -414,7 +430,7 @@ export default class ThemeManager {
    */
   updateColors(colorUpdates) {
     if (!colorUpdates || typeof colorUpdates !== 'object') {
-      Opps('updateColors requires an object with color mappings');
+      if (typeof Opps === 'function') Opps('updateColors requires an object with color mappings');
       return;
     }
 
@@ -464,7 +480,7 @@ export default class ThemeManager {
     };
 
     Object.entries(colorMapping).forEach(([elementId, colorVar]) => {
-      const el = getE(elementId);
+      const el = typeof getE === 'function' ? getE(elementId) : document.getElementById(elementId);
       if (el) {
         const color = config.colors[colorVar] || '#000000';
         el.value = color;
@@ -472,14 +488,14 @@ export default class ThemeManager {
     });
 
     // Fill font settings
-    const fontEl = getE('st-font-family');
+    const fontEl = typeof getE === 'function' ? getE('st-font-family') : document.getElementById('st-font-family');
     if (fontEl) fontEl.value = config.fontFamily || "'Segoe UI', sans-serif";
 
-    const spacingEl = getE('st-spacing-scale');
+    const spacingEl = typeof getE === 'function' ? getE('st-spacing-scale') : document.getElementById('st-spacing-scale');
     if (spacingEl) spacingEl.value = config.spacingScale || 1;
 
     // Set theme selector
-    const presetEl = getE('st-theme-preset');
+    const presetEl = typeof getE === 'function' ? getE('st-theme-preset') : document.getElementById('st-theme-preset');
     if (presetEl) presetEl.value = this.currentTheme;
   }
 
@@ -491,8 +507,8 @@ export default class ThemeManager {
     const colorPairs = ['st-app-bg', 'st-header-bg', 'st-footer-bg', 'st-tbl-head-bg', 'st-tbl-head-text', 'st-tab-active-bg', 'st-tab-active-text', 'st-tab-inactive-bg', 'st-tab-inactive-text', 'st-glass-bg', 'st-glass-text', 'st-btn-primary', 'st-btn-success', 'st-btn-danger', 'st-btn-info', 'st-btn-secondary', 'st-text-color', 'st-border-color', 'st-surface-color', 'st-hover-bg', 'st-input-bg'];
 
     colorPairs.forEach((id) => {
-      const picker = getE(id);
-      const textEl = getE(id + '-text');
+      const picker = typeof getE === 'function' ? getE(id) : document.getElementById(id);
+      const textEl = typeof getE === 'function' ? getE(id + '-text') : document.getElementById(id + '-text');
 
       if (picker && textEl) {
         // Initialize text display
@@ -503,7 +519,7 @@ export default class ThemeManager {
           textEl.value = picker.value;
 
           // Mark as custom theme when any color changes
-          const presetEl = getE('st-theme-preset');
+          const presetEl = typeof getE === 'function' ? getE('st-theme-preset') : document.getElementById('st-theme-preset');
           if (presetEl && presetEl.value !== 'custom') {
             presetEl.value = 'custom';
           }
@@ -518,10 +534,10 @@ export default class ThemeManager {
    * Returns true if successful, false otherwise
    */
   saveSettingsFromForm() {
-    const themePreset = getE('st-theme-preset')?.value;
+    const themePreset = (typeof getE === 'function' ? getE('st-theme-preset') : document.getElementById('st-theme-preset'))?.value;
 
     if (!themePreset) {
-      Opps('❌ Please select a theme before saving');
+      if (typeof Opps === 'function') Opps('❌ Please select a theme before saving');
       return false;
     }
 
@@ -536,7 +552,7 @@ export default class ThemeManager {
       }
       return true;
     } catch (e) {
-      Opps('❌ Error saving theme: ' + e.message);
+      if (typeof Opps === 'function') Opps('❌ Error saving theme: ' + e.message);
       return false;
     }
   }
@@ -560,8 +576,8 @@ export default class ThemeManager {
 
     if (showConfirm) {
       // Use logA for confirmation (from utils.js)
-      if (typeof logA === 'function') {
-        logA('Khôi phục cài đặt mặc định', 'info', performReset);
+      if (typeof showConfirm === 'function') {
+        showConfirm('Khôi phục cài đặt mặc định', 'info', performReset);
       } else {
         if (confirm('Restore default theme settings?')) {
           performReset();
@@ -603,7 +619,7 @@ export default class ThemeManager {
     };
 
     Object.entries(colorMapping).forEach(([elementId, colorVar]) => {
-      const el = getE(elementId);
+      const el = typeof getE === 'function' ? getE(elementId) : document.getElementById(elementId);
       if (el && el.value) {
         colors[colorVar] = el.value;
       }
@@ -702,7 +718,7 @@ window.applyThemePresetFromForm = applyThemePresetFromForm;
  * Global helper: Update theme toggle button
  */
 function updateThemeToggleButton(themeName) {
-  const btn = getE('theme-toggle');
+  const btn = typeof getE === 'function' ? getE('theme-toggle') : document.getElementById('theme-toggle');
   if (!btn) return;
 
   const icons = {
@@ -713,7 +729,7 @@ function updateThemeToggleButton(themeName) {
   };
 
   btn.innerHTML = icons[themeName] || '🎨';
-  setVal('st-theme-preset', themeName);
+  if (typeof setVal === 'function') setVal('st-theme-preset', themeName);
 }
 window.updateThemeToggleButton = updateThemeToggleButton;
 /**
@@ -721,8 +737,8 @@ window.updateThemeToggleButton = updateThemeToggleButton;
  * Called from HTML form: <input onchange="previewLogo()" />
  */
 function previewLogo() {
-  const fileInput = getE('st-logo-upload');
-  const preview = getE('st-logo-preview');
+  const fileInput = typeof getE === 'function' ? getE('st-logo-upload') : document.getElementById('st-logo-upload');
+  const preview = typeof getE === 'function' ? getE('st-logo-preview') : document.getElementById('st-logo-preview');
 
   if (!fileInput || !fileInput.files[0] || !preview) return;
 
@@ -739,7 +755,7 @@ window.previewLogo = previewLogo;
  */
 function saveThemeSettings() {
   if (!THEME_MANAGER) {
-    Opps('Theme manager not initialized');
+    if (typeof Opps === 'function') Opps('Theme manager not initialized');
     return false;
   }
 

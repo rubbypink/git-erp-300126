@@ -39,17 +39,6 @@ export const DB_SCHEMA = {
         placeholder: 'Auto-generated',
       },
       {
-        index: 16,
-        name: 'created_at',
-        displayNameEng: 'Created Date',
-        displayName: 'Ngày Đặt',
-        type: 'date',
-        tag: 'input',
-        attrs: ['readonly'],
-        class: '',
-        initial: 'today',
-      },
-      {
         index: 1,
         name: 'customer_id',
         displayNameEng: 'Customer ID',
@@ -275,7 +264,18 @@ export const DB_SCHEMA = {
         type: 'text',
         tag: 'input',
         attrs: ['readonly'],
+        class: 'text-break text-nowrap',
+      },
+      {
+        index: 18,
+        name: 'created_at',
+        displayNameEng: 'Created Date',
+        displayName: 'Ngày Đặt',
+        type: 'date',
+        tag: 'input',
+        attrs: ['readonly'],
         class: '',
+        initial: 'today',
       },
     ],
   },
@@ -324,6 +324,9 @@ export const DB_SCHEMA = {
         validation: {
           required: true,
         },
+        event: {
+          change: 'updateHotelSelect',
+        },
       },
       {
         index: 3,
@@ -339,6 +342,9 @@ export const DB_SCHEMA = {
         },
         dataSource: 'hotelLocations',
         description: 'Extracted from lists.hotelMatrix[col0] + lists.locOther',
+        event: {
+          change: 'updateServiceSelect',
+        },
       },
       {
         index: 4,
@@ -365,6 +371,9 @@ export const DB_SCHEMA = {
         tag: 'input',
         attrs: [],
         class: 'd-in',
+        event: {
+          change: 'autoSetOrCalcDate',
+        },
       },
       {
         index: 6,
@@ -2295,16 +2304,16 @@ export function createFormBySchema(collectionName, formId) {
     padding: 0.5rem 1rem 1rem 1rem;
     justify-content: center;
   ">
-    <button type="button" class="btn btn-danger me-auto" data-db-action="delete">
+    <button id="btn-delete-schema-form" type="button" class="btn btn-danger me-auto" data-db-action="delete">
       <i class="fa-solid fa-trash me-1"></i> Xóa
     </button>
-    <button type="button" class="btn btn-secondary" data-db-action="reset">
+    <button id="btn-reset-schema-form" type="button" class="btn btn-secondary" data-db-action="reset">
       <i class="fa-solid fa-rotate-left me-1"></i> Reset
     </button>
-    <button type="button" class="btn btn-primary" data-db-action="save">
+    <button id="btn-save-schema-form" type="button" class="btn btn-primary" data-db-action="save">
       <i class="fa-solid fa-save me-1"></i> Save
     </button>
-    <button type="button" class="btn btn-info" data-db-action="load">
+    <button id="btn-load-schema-form" type="button" class="btn btn-info" data-db-action="load">
       <i class="fa-solid fa-download me-1"></i> Load
     </button>
   </div>
@@ -2342,13 +2351,7 @@ function _getDataSourceArray(dataSourceName) {
   }
 
   // Try to get from APP_DATA[dataSourceName]
-  let data = Object.values(APP_DATA[dataSourceName]);
-  if (Array.isArray(data)) {
-    return data;
-  }
-
-  // Try to get from APP_DATA[dataSourceName_obj]
-  data = window.APP_DATA[`${dataSourceName}`];
+  let data = APP_DATA?.[dataSourceName] ?? APP_DATA?.[`${dataSourceName}`];
   if (Array.isArray(data)) {
     return data;
   }
@@ -2413,65 +2416,58 @@ function _getDataSourceArray(dataSourceName) {
 function _setupFormActions(formId) {
   // Legacy shim kept for any direct callers — now a no-op because
   // _initDocumentFormActions() handles everything at document level.
-  _initDocumentFormActions();
+  _initDocumentFormActions(formId);
 }
 
 // Flag so we only attach the document listener a single time.
 let _docFormActionsReady = false;
 
-function _initDocumentFormActions() {
+function _initDocumentFormActions(formId) {
   if (_docFormActionsReady) return;
   _docFormActionsReady = true;
+  A.Event.on(
+    getE(formId),
+    'click',
+    (e) => {
+      // Only handle clicks inside a .db-schema-form
+      const form = getE(formId);
+      if (!form) return;
 
-  document.addEventListener('click', (e) => {
-    // Only handle clicks inside a .db-schema-form
-    const form = e.target.closest('form.db-schema-form');
-    if (!form) return;
+      const el = e.target.closest('[data-db-action]');
+      if (!el) return;
 
-    const el = e.target.closest('[data-db-action]');
-    if (!el) return;
+      const action = el.getAttribute('data-db-action');
 
-    // Resolve formId from the closest form
-    const formId = form.id;
-    if (!formId) {
-      console.warn('[DBSchema] db-schema-form has no id, cannot dispatch action.');
-      return;
-    }
-
-    const action = el.getAttribute('data-db-action');
-
-    try {
-      switch (action) {
-        case 'reset':
-          resetFormSchema(formId);
-          break;
-        case 'save':
-          saveFormDataSchema(formId);
-          break;
-        case 'load':
-          handleLoadFormDataSchema(formId);
-          break;
-        case 'delete':
-          deleteFormDataSchema(formId);
-          break;
-        case 'toggle-collapse': {
-          const collapseId = el.dataset?.target;
-          if (collapseId) toggleCollapse(collapseId, el);
-          break;
+      try {
+        switch (action) {
+          case 'reset':
+            resetFormSchema(formId);
+            break;
+          case 'save':
+            saveFormDataSchema(formId);
+            break;
+          case 'load':
+            handleLoadFormDataSchema(formId);
+            break;
+          case 'delete':
+            deleteFormDataSchema(formId);
+            break;
+          case 'toggle-collapse': {
+            const collapseId = el.dataset?.target;
+            if (collapseId) toggleCollapse(collapseId, el);
+            break;
+          }
+          default:
+            console.warn(`[DBSchema] Unknown db-action: "${action}"`);
         }
-        default:
-          console.warn(`[DBSchema] Unknown db-action: "${action}"`);
+      } catch (err) {
+        console.error(`[DBSchema] db-action error (action="${action}", form="${formId}"):`, err);
+        if (typeof L._ === 'function') L._(`❌ Lỗi khi thực hiện "${action}": ${err.message}`, 'error');
       }
-    } catch (err) {
-      console.error(`[DBSchema] db-action error (action="${action}", form="${formId}"):`, err);
-      if (typeof log === 'function') L._(`❌ Lỗi khi thực hiện "${action}": ${err.message}`, 'error');
-    }
-  });
+    },
+    true
+  );
 }
-
-// Initialize immediately when module loads
-// _initDocumentFormActions();
-
 /**
  * Helper: Auto-populate all dynamic selects in a form
  * Called after form is inserted into DOM
@@ -2697,7 +2693,7 @@ function _getHotelLocationOptions() {
 
 /**
  * Get service name options based on service_type and hotel_name
- * Logic (from SalesModule.js updateServiceNameList):
+ * Logic (from SalesModule.js updateServiceSelect):
  *   - If service_type === 'Phòng': Get room types from lists.hotelMatrix[hotel_name].slice(2)
  *   - Otherwise: Get from lists.serviceMatrix where col[0] === service_type, return col[1]
  * @private

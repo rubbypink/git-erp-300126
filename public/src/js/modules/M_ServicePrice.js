@@ -237,6 +237,7 @@ export default class ServicePriceController {
   // INTERNAL VARIABLES (Singleton Instance & Cache Management)
   // =========================================================================
   static _instance = null;
+  static autoInit = false;
   static _cacheData = {
     suppliers: null,
     serviceSchedules: {}, // Map {docId: data}
@@ -244,10 +245,12 @@ export default class ServicePriceController {
 
   constructor(containerId) {
     this._initialized = false;
-    this.containerId = containerId;
     this.container = document.getElementById(containerId);
-    if (!this.container) throw new Error('Missing container');
-
+    if (!this.container) {
+      const modalEl = document.createElement('at-modal-full');
+      document.body.appendChild(modalEl);
+      this.container = document.getElementById(containerId);
+    }
     // ─────────────────────────────────────────────────────────────
     // Store event handler references for cleanup (prevent duplicate)
     // ─────────────────────────────────────────────────────────────
@@ -272,7 +275,7 @@ export default class ServicePriceController {
    */
   static init(containerId, isForce = false) {
     let instance;
-    if (this._initialized) {
+    if (this._initialized && !isForce) {
       console.warn('[EventManager] Đã khởi tạo rồi, bỏ qua...');
       return;
     }

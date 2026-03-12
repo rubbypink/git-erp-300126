@@ -415,8 +415,9 @@ const SECURITY_MANAGER = {
       const email = (userProfile.email || '').toLowerCase();
       const level = parseInt(userProfile.level || 0);
       const role = (userProfile.role || '').toLowerCase();
-      const maskedRole = userProfile.realRole ? userProfile.role : null;
-      const isHardAdmin = typeof ADMIN_EMAILS !== 'undefined' && ADMIN_EMAILS.includes(email);
+      const maskedRole = userProfile.realrole || null;
+      const admEmails = window.A.getConfig('ADMIN_EMAILS');
+      const isHardAdmin = typeof admEmails !== 'undefined' && admEmails.includes(email);
 
       // 1. Cấu hình Module dựa trên Role
       const ROLE_CONFIG = {
@@ -430,12 +431,12 @@ const SECURITY_MANAGER = {
         },
         accountant: {
           // Gom nhóm roles kế toán
-          jsFile: '../../../accountant/controller_accountant.js',
-          template: './src/components/tpl_accountant.html',
+          jsFile: './accountant/controller_accountant.js',
+          template: '/src/components/tpl_accountant.html',
           container: '.app-container',
           title: '9 Trip Phu Quoc - Accounting Center',
           moduleTitle: 'ACCOUNTING CENTER - QUẢN LÝ KẾ TOÁN',
-          css: { id: 'css-accountant', href: './accountant/accountant.css' },
+          css: { id: 'css-accountant', href: '/accountant/accountant.css' },
           footerTemplate: 'tmpl-acc-footer-bar',
         },
         sale: {
@@ -528,7 +529,8 @@ const SECURITY_MANAGER = {
 
     // Định nghĩa quy tắc xóa (Ngược lại với CSS hiển thị)
     // Nếu KHÔNG PHẢI Admin -> Xóa .admin-only
-    const isAdmin = CURRENT_USER.realRole && CURRENT_USER.realRole.toLowerCase() === 'admin';
+    const user = A.getState('user');
+    const isAdmin = user && (user.realrole === 'admin' || user.role === 'admin');
     if (!body.classList.contains('is-admin') && !isAdmin) {
       container.querySelectorAll('.admin-only').forEach((el) => el.remove());
     }

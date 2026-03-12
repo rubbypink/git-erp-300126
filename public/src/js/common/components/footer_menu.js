@@ -3,11 +3,13 @@
  * Chức năng: Quản lý thanh công cụ (Footer Menu) cố định dưới đáy màn hình.
  * Hỗ trợ Responsive: Horizontal Desktop, Drop-up Mobile.
  */
-
+import { HotelPriceController } from '/src/js/modules/M_HotelPrice.js';
 // ==========================================
 // 1. CLASS CORE (Quản lý UI & Logic DOM)
 // ==========================================
 export default class ErpFooterMenu {
+  static autoInit = false;
+  static _injectedStyles = false;
   constructor(containerId = 'erp-footer-menu-container') {
     this.containerId = containerId;
     this.buttons = [];
@@ -266,10 +268,8 @@ export default class ErpFooterMenu {
   }
 
   _injectStyles() {
-    if (document.getElementById('erp-footer-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'erp-footer-styles';
-    style.innerHTML = `
+    if (ErpFooterMenu._injectedStyles) return;
+    const css = `
             .erp-footer-wrapper {
                 position: fixed; bottom: 0; left: 0; width: 100%;
                 height: ${this.config.height}; background: transparent;
@@ -397,7 +397,8 @@ export default class ErpFooterMenu {
                 }
             }
         `;
-    document.head.appendChild(style);
+    addDynamicCSS(css);
+    ErpFooterMenu._injectedStyles = true;
   }
 
   _renderBaseLayout() {
@@ -546,6 +547,22 @@ export default class ErpFooterMenu {
           });
           mobileDropup.appendChild(mobileBtn);
         });
+      } else {
+        // Mobile Regular Mode
+        const mobileBtn = document.createElement('button');
+        mobileBtn.id = `mb-${id}`;
+        const roleClasses = btnClass
+          .split(' ')
+          .filter((c) => c.includes('only') || c === 'd-none')
+          .join(' ');
+        mobileBtn.className = `d-flex align-items-center gap-2 text-dark ${roleClasses}`;
+        mobileBtn.innerHTML = iconClass ? `<i class="${iconClass}"></i> <span>${safeLabel || 'Admin Action'}</span>` : `<span>${safeLabel || 'Admin Action'}</span>`;
+        Object.keys(attributes).forEach((key) => mobileBtn.setAttribute(key, attributes[key]));
+        mobileBtn.addEventListener('click', (e) => {
+          this._toggleMobileMenu();
+          callback(e);
+        });
+        mobileDropup.appendChild(mobileBtn);
       }
     } catch (error) {
       console.error('[9 Trip ERP] Lỗi thêm nút:', error);
@@ -618,7 +635,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
         callback: () => {
           if (typeof SalesModule.Logic.createContract === 'function') SalesModule.Logic.createContract();
         },
-        attributes: { 'data-ontabs': '2 4' },
+        attributes: { 'data-ontabs': '2' },
       },
       {
         id: 'btn-delete-form',
@@ -626,7 +643,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
         iconClass: 'fa-solid fa-trash',
         btnClass: 'btn-danger sales-only',
         callback: () => {
-          if (typeof logA === 'function') logA('CẢNH BÁO: Hủy Booking?', 'danger', cancelBooking);
+          if (typeof logA === 'function') logA('CẢNH BÁO: Hủy Booking?', 'danger', SalesModule.DB.cancelBooking);
         },
         attributes: { 'data-ontabs': '2' },
       },
@@ -637,8 +654,9 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
         iconClass: 'fa-solid fa-palette',
         btnClass: 'btn-primary op-only',
         callback: () => {
-          if (typeof PartnerMailModule !== 'undefined') PartnerMailModule.open();
+          if (typeof Op.PartnerMail !== 'undefined') Op.PartnerMail.open();
         },
+        attributes: { 'data-ontabs': '1 3 4' },
       },
       {
         id: 'btn-hotel-rate-plans',
@@ -658,10 +676,11 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
 
           // ★ Gọi static init() - tự động tạo hoặc reuse instance (dùng cache)
           // Không cleanup khi close → instance + cache sẽ tồn tại
-          await A.HotelPriceController.init('dynamic-modal-full-body');
+          await A.HotelPriceController.init('dynamic-modal-full-body', true);
 
           modal.show();
         },
+        attributes: { 'data-ontabs': '1 3' },
       },
       {
         id: 'btn-service-rate-plans',
@@ -680,9 +699,10 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
           modal.setFooter?.(false);
           // ★ Gọi static init() - tự động tạo hoặc reuse instance (dùng cache)
           // Không cleanup khi close → instance + cache sẽ tồn tại
-          await A.ServicePriceController.init('dynamic-modal-full-body');
+          await A.ServicePriceController.init('dynamic-modal-full-body', true);
           modal.show();
         },
+        attributes: { 'data-ontabs': '1 3' },
       },
       {
         id: 'btn-supplier-payment',
@@ -690,21 +710,11 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
         iconClass: 'fa-solid fa-money-bill',
         btnClass: 'btn-primary op-only',
         callback: async () => {
-          await SupplierPayment.openFilterDialog();
+          await Op.Supplier.openFilterDialog();
         },
         attributes: { 'data-ontabs': '2' },
       },
-      // -- COMMON (Nút dùng chung, không giới hạn quyền) --
-      {
-        id: 'btn-save-batch',
-        label: 'Lưu Theo (List)',
-        iconClass: 'fa-solid fa-check-double',
-        btnClass: 'btn-warning fw-bold d-none line-clamp-2',
-        callback: () => {
-          if (typeof saveBatchDetails === 'function') saveBatchDetails();
-        },
-        attributes: { 'data-ontabs': '' },
-      },
+
       {
         id: 'btn-save-group',
         label: 'Lưu',
@@ -717,7 +727,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
             label: 'Tạo Mới/Lưu All',
             btnClass: 'btn-light',
             callback: () => {
-              if (typeof saveForm === 'function') saveForm(false);
+              if (typeof runFnByRole === 'function') runFnByRole('saveForm', 'DB', false);
             },
             attributes: { 'data-ontabs': '2' },
           },
@@ -727,12 +737,24 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
             btnClass: 'btn-light',
             callback: () => {
               const bkId = getVal('BK_ID');
-              if (typeof saveForm === 'function') bkId ? saveForm(true) : saveForm(false);
+              if (typeof runFnByRole === 'function') bkId ? runFnByRole('saveForm', 'DB', true) : runFnByRole('saveForm', 'DB', false);
             },
             attributes: { 'data-ontabs': '2' },
           },
         ],
       },
+      // -- COMMON (Nút dùng chung, không giới hạn quyền) --
+      {
+        id: 'btn-save-batch',
+        label: 'Lưu Theo (List)',
+        iconClass: 'fa-solid fa-check-double',
+        btnClass: 'btn-warning fw-bold d-none line-clamp-2',
+        callback: () => {
+          if (typeof runFnByRole === 'function') runFnByRole('saveBatchDetails', 'DB');
+        },
+        attributes: { 'data-ontabs': '' },
+      },
+
       {
         id: 'btn-reset-form',
         label: 'Xóa Form',
@@ -753,7 +775,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
           const currentMode = localStorage.getItem('erp-footer-widget-mode') === 'true';
           footerInstance._setWidgetMode(!currentMode);
         },
-        attributes: { title: 'Chuyển đổi giữa thanh công cụ và chế độ widget' },
+        attributes: { title: 'Chuyển đổi giữa thanh công cụ và chế độ widget', 'data-ontabs': '1 3 4' },
       },
       {
         id: 'btn-toggle-offcanvas-menu',
@@ -765,7 +787,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
             A.OffcanvasMenu.toggle();
           }
         },
-        attributes: { title: 'Bật/Tắt Offcanvas menu' },
+        attributes: { title: 'Bật/Tắt Offcanvas menu', 'data-ontabs': '1 3 4' },
       },
     ];
 

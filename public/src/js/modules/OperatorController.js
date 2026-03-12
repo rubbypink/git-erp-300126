@@ -177,9 +177,9 @@ export const SupplierPayment = {
                     </div>
                 </div>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-secondary" onclick="SupplierPayment.closeView()"><i class="fa-solid fa-arrow-left"></i> Đóng</button>
-                    <button type="button" class="btn btn-warning" onclick="SupplierPayment.handleUpdateSync()"><i class="fa-solid fa-rotate"></i> Sync (Update)</button>
-                    ${debt > 0 ? `<button type="button" class="btn btn-success fw-bold shadow-sm" onclick="SupplierPayment.handlePayAll()"><i class="fa-solid fa-money-check-dollar"></i> Thanh toán Hết (${debt.toLocaleString()})</button>` : ''}
+                    <button type="button" class="btn btn-outline-secondary" onclick="Op.Supplier.closeView()"><i class="fa-solid fa-arrow-left"></i> Đóng</button>
+                    <button type="button" class="btn btn-warning" onclick="Op.Supplier.handleUpdateSync()"><i class="fa-solid fa-rotate"></i> Sync (Update)</button>
+                    ${debt > 0 ? `<button type="button" class="btn btn-success fw-bold shadow-sm" onclick="Op.Supplier.handlePayAll()"><i class="fa-solid fa-money-check-dollar"></i> Thanh toán Hết (${debt.toLocaleString()})</button>` : ''}
                 </div>
             </div>
         `;
@@ -359,6 +359,3 @@ export const SupplierPayment = {
     return fundId;
   },
 };
-
-// Gắn vào Global Scope để HTML có thể gọi
-window.SupplierPayment = SupplierPayment;

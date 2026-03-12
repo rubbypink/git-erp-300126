@@ -81,8 +81,9 @@ function _getDocInfo(ctx) {
 
   // 2. Fallback: row's .d-sid input
   if (!docId && (row || form)) {
-    const docEl = row?.querySelector('.d-sid') || row || form?.querySelector('.d-sid') || form?.querySelector('[data-field="id"]');
+    const docEl = row?.querySelector('[data-field="id"]') || row?.querySelector('[data-field="uid"]') || form?.querySelector('[data-field="id"]') || form?.querySelector('[data-field="uid"]');
     docId = getVal(docEl) || docEl?.value;
+    if (!docId) docId = row?.dataset.item || form?.dataset.item;
   }
 
   // 3. Fallback: virtual doc ID (new unsaved rows tracked by StateProxy)
@@ -92,9 +93,9 @@ function _getDocInfo(ctx) {
   }
 
   // 4. Fallback: data-doc-id on focused element (set by StateProxy bindElement)
-  if (!docId) {
-    docId = ctx.focusedEl?.dataset?.docId ?? target?.dataset?.docId ?? null;
-  }
+  // if (!docId) {
+  //   docId = ctx.focusedEl?.dataset?.docId ?? target?.dataset?.docId ?? null;
+  // }
 
   // 5. Fallback collection from user role
   if (!coll) {
@@ -109,7 +110,7 @@ function _getDocInfo(ctx) {
  * @returns {string}
  */
 function _getCollection(ctx) {
-  const container = ctx.form || ctx.target?.closest('table') || ctx.target?.closest('[data-collection]') || ctx.target?.closest('fieldset');
+  const container = ctx.target?.closest('[data-collection]') || ctx.form || ctx.target?.closest('tbody') || ctx.target?.closest('table') || ctx.target?.closest('fieldset');
   if (!container) return window.CURRENT_USER?.role === 'op' ? 'operator_entries' : 'booking_details';
   return container.dataset.collection || container.name;
 }
@@ -233,7 +234,6 @@ class ContextMenu {
   // ─────────────────────────────────────────────────────────────────────────
   // LIFECYCLE
   // ─────────────────────────────────────────────────────────────────────────
-
   constructor(config = {}) {
     this.#config = { ...DEFAULT_CONFIG, ...config };
   }
@@ -479,6 +479,35 @@ class ContextMenu {
               typeof logA === 'function' && logA(`↩️ Hoàn tác: ${result.field}`, 'success');
             } else {
               typeof logA === 'function' && logA('Không có thao tác để hoàn tác.', 'info');
+            }
+          },
+        },
+
+        {
+          id: 'ctx-redo',
+          label: 'Redo',
+          icon: 'fa-rotate-right',
+          iconColor: 'text-warning',
+          shortcut: 'Ctrl+Y',
+          disabled(ctx) {
+            const info = _getDocInfo(ctx);
+            if (!info) return true;
+            return !window.StateProxy?.canRedo?.(info.coll, info.id);
+          },
+          action(ctx) {
+            const info = _getDocInfo(ctx);
+            if (!info) {
+              typeof logA === 'function' && logA('Không xác định được dữ liệu.', 'warning');
+              return;
+            }
+            // Pass the focused field so redo restores only that field
+            const htmlField = ctx.focusedEl?.dataset?.field || ctx.target?.dataset?.field;
+            const result = window.StateProxy?.redo?.(info.coll, info.id);
+            if (result) {
+              // undo() writes directly to DOM via setVal — no extra sync needed
+              typeof logA === 'function' && logA(`↩️ Redo: ${result.field}`, 'success');
+            } else {
+              typeof logA === 'function' && logA('Không có thao tác để redo.', 'info');
             }
           },
         },
@@ -748,12 +777,16 @@ class ContextMenu {
             return !!container;
           },
           action(ctx) {
-            const container = ctx.target?.closest?.('[data-collection="bookings"]');
-            const collection = container?.dataset?.collection;
-            const doc = ctx.target.closest('table') || ctx.target.closest('fieldset') || ctx.target.closest('form');
-            const id = getVal($('[data-field="id"]', doc)) || doc?.id || doc?.dataset.item || ctx.rowId || '';
-            if (A?.BookingOverview?.open) {
-              A.BookingOverview.open(id);
+            let bkId;
+            if (CURRENT_TABLE_KEY === 'bookings') {
+              const idEl = ctx.target?.closest?.('[data-field="id"]');
+              bkId = getVal(idEl) || idEl?.value;
+            } else {
+              const idEl = ctx.target?.closest?.('[data-field="booking_id"]');
+              bkId = idEl ? getVal(idEl) : null;
+            }
+            if (A?.BookingOverview?.open && bkId) {
+              A.BookingOverview.open(bkId);
             }
           },
         },
@@ -837,6 +870,10 @@ class ContextMenu {
             const el = ctx.focusedEl || ctx.target;
             const info = _getDocInfo(ctx);
             const field = el?.dataset?.field || el?.closest('[data-field]')?.dataset?.field || '?';
+
+            // Lấy thông tin các event đang gắn vào element này từ EventManager
+            const events = window.A?.Event?.getListenersForElement?.(el) || [];
+
             const details = {
               tagName: el?.tagName,
               field,
@@ -844,9 +881,21 @@ class ContextMenu {
               docId: info?.id || '—',
               value: el?.value ?? el?.textContent?.substring(0, 50),
               dirty: info ? window.StateProxy?.isDirty?.(info.coll, info.id) : false,
+              eventsCount: events.length,
             };
+
+            console.group(`🔍 Inspect Field: ${field}`);
             console.table(details);
-            typeof logA === 'function' && logA(`🔍 ${field} → ${info?.coll || '?'}::${info?.id || '?'}`, 'info');
+            if (events.length > 0) {
+              console.log('📡 Active Event Listeners:');
+              console.table(events);
+            } else {
+              console.log('📡 No active event listeners found in EventManager.');
+            }
+            console.groupEnd();
+
+            const msg = `🔍 ${field} → ${info?.coll || '?'}::${info?.id || '?'}${events.length ? ` (${events.length} events)` : ''}`;
+            typeof logA === 'function' && logA(msg, 'info');
           },
         },
       ],
@@ -901,9 +950,9 @@ class ContextMenu {
       focusedEl,
       row,
       form,
-      rowIndex: row ? row.rowIndex : -1,
+      rowIndex: row ? row.dataset.row : -1,
       // 2. CẬP NHẬT: Ưu tiên lấy ID từ data-id (cho Admin Web Component), nếu không có mới tìm input .d-sid
-      rowId: row?.dataset?.id || row?.querySelector('.d-sid')?.value || '',
+      rowId: row?.dataset?.item || getVal('[data-field="id"]', row) || '',
       tbody,
       selector: matchedKey,
       menuEl,
@@ -920,7 +969,7 @@ class ContextMenu {
     // Legacy globals for backward compatibility
     if (row) {
       window.CURRENT_CTX_ROW = row;
-      const sidInput = row.querySelector('.d-sid');
+      const sidInput = row.querySelector('[data-field="id"]');
       window.CURRENT_CTX_ID = sidInput ? sidInput.value : '';
     }
 
@@ -1230,9 +1279,7 @@ class ContextMenu {
     if (this.#stylesInjected) return;
     this.#stylesInjected = true;
 
-    const style = document.createElement('style');
-    style.id = 'ctx-menu-styles';
-    style.textContent = `
+    const css = `
       /* ── Context Menu: Submenu Flyout ── */
       .ctx-submenu {
         position: relative;
@@ -1308,7 +1355,7 @@ class ContextMenu {
         }
       }
     `;
-    document.head.appendChild(style);
+    addDynamicCSS(css);
   }
 
   // =========================================================================
@@ -1331,15 +1378,15 @@ class ContextMenu {
         if (!row) return false;
 
         const collection = _getCollection(ctx);
-        const tbody = document.getElementById('detail-tbody');
-
+        const tbody = getE('detail-tbody');
         window.CURRENT_CTX_ROW = row;
-        const sidInput = row.querySelector('.d-sid');
-        window.CURRENT_CTX_ID = sidInput ? sidInput.value : '';
+        const sidInput = $(`[data-field="id"]`, row);
+        window.CURRENT_CTX_ID = sidInput ? getVal(sidInput) : '';
 
         if (typeof HD.getRowData === 'function') {
           window.CURRENT_ROW_DATA = HD.getRowData(collection, row, tbody);
         }
+        return true;
       },
 
       items: [
@@ -1412,12 +1459,14 @@ class ContextMenu {
           label: 'Save (1 Hàng)',
           icon: 'fa-floppy-disk',
           cls: 'text-success',
-          async action() {
+          async action(ctx) {
             if (window.CURRENT_CTX_ROW && window.CURRENT_ROW_DATA && window.A?.DB) {
               const collection = _getCollection(ctx);
-              const res = await window.A.DB.saveRecord(collection, window.CURRENT_ROW_DATA);
+              const res = await A.DB.updateSingle(collection, ctx.rowId, window.CURRENT_ROW_DATA);
               if (res?.success) {
                 typeof logA === 'function' && logA('✅ Lưu thành công!', 'success');
+              } else {
+                typeof logA === 'function' && logA('❌ Lưu thất bại!', 'error');
               }
             }
           },
@@ -1487,10 +1536,13 @@ class ContextMenu {
         if (!ctx.row) return false;
         const collection = _getCollection(ctx);
         // Lưu trữ thông tin row hiện tại vào context để các action sử dụng
+
         ctx.collection = collection;
         if (typeof HD.getRowData === 'function') {
           ctx.rowData = HD.getRowData(collection, ctx.row, ctx.tbody);
         }
+        L._('onBeforeOpen: ', collection + ' - ' + ctx.row);
+        return true;
       },
 
       items: [

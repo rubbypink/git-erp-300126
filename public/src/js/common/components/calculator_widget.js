@@ -375,11 +375,11 @@ const CalculatorWidget = {
 
 // ⚠️ Khỏi tạo chỉ nếu DOM sẵn sàng
 // Người dùng có thể gọi CalculatorWidget.init() thủ công nếu cần
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    CalculatorWidget.init();
-  });
-} else {
-  // DOM đã ready
-  CalculatorWidget.init();
-}
+// if (document.readyState === 'loading') {
+//   document.addEventListener('DOMContentLoaded', () => {
+//     CalculatorWidget.init();
+//   });
+// } else {
+//   // DOM đã ready
+//   CalculatorWidget.init();
+// }

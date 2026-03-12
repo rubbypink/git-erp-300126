@@ -19,6 +19,7 @@ export default class PriceManager {
    * @param {number} timeoutMs - Timeout milliseconds
    * @param {string} operationName - Tên operation (để log)
    */
+  static autoInit = false;
   static async _withTimeout(promise, timeoutMs, operationName = 'Operation') {
     return Promise.race([
       promise,

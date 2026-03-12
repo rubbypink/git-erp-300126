@@ -1,4 +1,4 @@
-import { DraggableSetup, Resizable, WindowMinimizer } from '../../libs/ui_helper.js';
+import { DraggableSetup, Resizable, WindowMinimizer } from '/src/js/libs/ui_helper.js';
 
 export class OffcanvasMenu extends HTMLElement {
   constructor() {

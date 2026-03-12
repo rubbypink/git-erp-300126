@@ -4,8 +4,8 @@
  * Updated: Fixed Firestore Path
  */
 
-import { DB_SCHEMA } from './DBSchema.js';
-import localDB from './DBLocalStorage.js';
+import { DB_SCHEMA } from '/src/js/modules/db/DBSchema.js';
+import localDB from '/src/js/modules/db/DBLocalStorage.js';
 
 // --- CẬP NHẬT ĐƯỜNG DẪN MỚI TẠI ĐÂY ---
 const ROOT_COL = 'app_config'; // Collection gốc

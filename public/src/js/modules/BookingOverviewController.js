@@ -2,13 +2,15 @@
  * =========================================================================
  * BookingOverviewController.js
  * Purpose: Controller cho modal Booking Overview (tổng hợp chi tiết booking).
- * Sử dụng A.Modal engine, StateProxy, HD.setFormData/getFormData.
+ * Refactored: Sử dụng Strategy Pattern để xử lý đa role (Sale/Operator).
  * =========================================================================
  */
 
+import { DB_SCHEMA } from './db/DBSchema.js';
+
 const BookingOverviewController = (function () {
   // =========================================================================
-  // 1. PRIVATE STATE
+  // 1. PRIVATE STATE & STRATEGIES
   // =========================================================================
   let _bookingId = null;
   let _bookingData = null;
@@ -18,60 +20,127 @@ const BookingOverviewController = (function () {
   let _detailRowCount = 0;
   let _rootEl = null;
   let _modalRef = null;
+  let _currentStrategy = null;
+
+  /**
+   * Định nghĩa các chiến lược xử lý theo Role
+   */
+  const STRATEGIES = {
+    sale: {
+      role: 'sale',
+      collection: 'booking_details',
+      dataKey: 'booking_details_by_booking',
+      displayFields: ['id', 'service_type', 'hotel_name', 'service_name', 'check_in', 'check_out', 'nights', 'quantity', 'unit_price', 'child_qty', 'child_price', 'surcharge', 'discount', 'total', 'ref_code', 'note'],
+      totalField: 'total',
+      summaryTotalField: 'total',
+      calculateRow: (tr, idx) => {
+        const g = (f) => getNum(tr.querySelector(`[data-field="${f}"]`));
+        const type = getVal('[data-field="service_type"]', tr);
+        const night = g('nights');
+        const multiplier = type === 'Phòng' ? Math.max(1, night) : 1;
+
+        const total = (g('quantity') * g('unit_price') + g('child_qty') * g('child_price')) * multiplier + g('surcharge') - g('discount');
+
+        const elTotal = tr.querySelector('[data-field="total"]');
+        if (elTotal) {
+          elTotal.value = formatNumber(total);
+          elTotal.dataset.val = total;
+        }
+        return total;
+      },
+    },
+    op: {
+      role: 'op',
+      collection: 'operator_entries',
+      dataKey: 'operator_entries_by_booking',
+      displayFields: ['id', 'service_type', 'hotel_name', 'service_name', 'check_in', 'check_out', 'nights', 'adults', 'cost_adult', 'children', 'cost_child', 'surcharge', 'discount', 'total_sale', 'total_cost', 'paid_amount', 'debt_balance', 'ref_code', 'operator_note'],
+      totalField: 'total_cost',
+      summaryTotalField: 'total_sale', // OP summary vẫn xem doanh thu sale
+      calculateRow: (tr, idx) => {
+        const g = (f) => getNum(tr.querySelector(`[data-field="${f}"]`));
+        const type = getVal('[data-field="service_type"]', tr);
+        const night = g('nights');
+        const multiplier = type === 'Phòng' ? Math.max(1, night) : 1;
+
+        // Tính Total Cost
+        const totalCost = (g('adults') * g('cost_adult') + g('children') * g('cost_child')) * multiplier + g('surcharge') - g('discount');
+        const elTotalCost = tr.querySelector('[data-field="total_cost"]');
+        if (elTotalCost) {
+          elTotalCost.value = formatNumber(totalCost);
+          elTotalCost.dataset.val = totalCost;
+        }
+
+        // Tính Debt Balance
+        const paid = g('paid_amount');
+        const elDebt = tr.querySelector('[data-field="debt_balance"]');
+        if (elDebt) {
+          const debt = totalCost - paid;
+          elDebt.value = formatNumber(debt);
+          elDebt.dataset.val = debt;
+        }
+        return totalCost;
+      },
+    },
+  };
+
+  // Admin dùng chung strategy với Sale nhưng có thể mở rộng sau này
+  STRATEGIES.admin = STRATEGIES.sale;
 
   // =========================================================================
   // 2. PUBLIC API
   // =========================================================================
 
-  /**
-   * Mở modal Booking Overview cho 1 booking.
-   *
-   * @param {string} bookingId - ID booking (VD: 'BK0001')
-   * @param {object} [options] - Cấu hình mở rộng
-   * @param {string} [options.activeTab] - Tab mặc định ('detail'|'customer'|'services'|'payment'|'notes'|'history')
-   */
   async function open(bookingId, options = {}) {
     if (!bookingId) {
-      prompt('Vui lòng nhập ID booking (VD: BK0001):', '11234').then((input) => {
-        if (input) {
-          this.open(input.trim(), options);
-        }
-        return;
-      });
+      const input = await prompt('Vui lòng nhập ID booking (VD: BK0001):', '11234');
+      if (input) this.open(input.trim(), options);
+      return;
     }
 
     _bookingId = bookingId;
     _detailRowCount = 0;
 
+    // Khởi tạo Strategy dựa trên role
+    const role = (window.CURRENT_USER?.role || 'sale').toLowerCase();
+    _currentStrategy = STRATEGIES[role] || STRATEGIES.sale;
+
     try {
       showLoading(true);
 
-      // 1. Load template vào modal
+      // ⚠️ Fix Modal Lifecycle: Đảm bảo modal cũ được dọn dẹp nếu có
+      if (_modalRef) {
+        try {
+          _modalRef.hide();
+        } catch (e) {}
+        _modalRef = null;
+      }
+
       _modalRef = await A.UI.renderModal('tpl_booking_overview.html', `Booking - ${bookingId}`, null, null, {
         footer: 'false',
         fullscreen: 'true',
         size: 'modal-xl',
       });
-      if (_modalRef) {
-        _modalRef.setFooter(false); // Footer được tích hợp sẵn trong template
-        const modalEl = _modalRef._getEl();
-        _modalRef.show();
-      }
 
-      // 2. Lấy root element sau khi modal đã render
+      if (!_modalRef) throw new Error('Không thể khởi tạo modal');
+
+      _modalRef.setFooter(false);
+      _modalRef.show();
+
+      // Chờ một chút để DOM được chèn vào (Fix Container not found)
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       _rootEl = getE('bkov-root');
       if (!_rootEl) {
-        Opps('BookingOverview', 'Không tìm thấy bkov-root');
-        return;
+        // Thử tìm lại sau 200ms nữa nếu vẫn chưa thấy
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        _rootEl = getE('bkov-root');
+        if (!_rootEl) throw new Error('Không tìm thấy bkov-root sau khi render modal');
       }
 
-      // 3. Đặt data-item cho StateProxy context resolution
       _rootEl.setAttribute('data-item', bookingId);
 
-      // 4. Load dữ liệu
       await _loadData(bookingId);
 
-      // 5. Populate UI
       _populateHeader();
       _populateDetail();
       _populateCustomer();
@@ -80,16 +149,10 @@ const BookingOverviewController = (function () {
       _populateNotes();
       _populateHistory();
 
-      // 6. Bind events
       _bindEvents();
-
-      // 7. Init StateProxy tracking
       _initStateProxy();
 
-      // 8. Chuyển tab nếu được chỉ định
-      if (options.activeTab) {
-        _switchTab(options.activeTab);
-      }
+      if (options.activeTab) _switchTab(options.activeTab);
     } catch (e) {
       Opps('BookingOverview.open', e);
     } finally {
@@ -97,20 +160,11 @@ const BookingOverviewController = (function () {
     }
   }
 
-  /**
-   * Đóng modal overview.
-   */
   function close() {
-    if (_modalRef) {
-      _modalRef.hide();
-    }
+    if (_modalRef) _modalRef.hide();
     _reset();
   }
 
-  /**
-   * Lấy booking data hiện tại.
-   * @returns {object|null}
-   */
   function getData() {
     return {
       booking: _bookingData,
@@ -121,49 +175,47 @@ const BookingOverviewController = (function () {
   }
 
   // =========================================================================
-  // 3. DATA LOADING
+  // 3. DATA LOADING (Refactored with Strategy)
   // =========================================================================
 
-  /**
-   * Load tất cả dữ liệu liên quan đến 1 booking từ APP_DATA.
-   * @private
-   */
   async function _loadData(bookingId) {
     const data = window.APP_DATA;
-    if (!data) {
-      Opps('BookingOverview._loadData', 'APP_DATA chưa sẵn sàng');
-      return;
-    }
+    if (!data) throw new Error('APP_DATA chưa sẵn sàng');
 
-    // Booking
     _bookingData = data.bookings?.[bookingId] || null;
     if (!_bookingData) {
       L._(`Không tìm thấy booking: ${bookingId}`, 'warning');
       return;
     }
 
-    // Customer
     const custId = _bookingData.customer_id;
     _customerData = custId ? data.customers?.[custId] || null : null;
 
-    // Booking Details (từ secondary index)
-    const detailsMap = data.booking_details_by_booking?.[bookingId];
-    if (Array.isArray(detailsMap)) {
-      _detailsData = detailsMap;
-    } else if (detailsMap && typeof detailsMap === 'object') {
-      _detailsData = Object.values(detailsMap);
-    } else {
-      _detailsData = [];
-    }
+    // 1. Lấy dữ liệu chi tiết dịch vụ theo Strategy
+    const detailsMap = data[_currentStrategy.dataKey]?.[bookingId];
+    _detailsData = Array.isArray(detailsMap) ? detailsMap : detailsMap ? Object.values(detailsMap) : [];
 
-    // Transactions (từ secondary index)
-    const txnMap = data.transactions_by_booking?.[bookingId];
-    if (Array.isArray(txnMap)) {
-      _transactionsData = txnMap;
-    } else if (txnMap && typeof txnMap === 'object') {
-      _transactionsData = Object.values(txnMap);
+    // 2. Fix Role-Based Transaction Mapping & Payment Table Logic
+    // - Sale/Admin: transactions map tới bookings.id
+    // - OP: transactions map tới operator_entries.id
+    if (_currentStrategy.role === 'op') {
+      const entryIds = _detailsData.map((d) => d.id).filter(Boolean);
+      let allOpTxns = [];
+
+      // Gom tất cả transactions của từng entry
+      entryIds.forEach((eid) => {
+        const txns = data.transactions_by_booking?.[eid];
+        if (txns) {
+          const txnList = Array.isArray(txns) ? txns : Object.values(txns);
+          allOpTxns = allOpTxns.concat(txnList);
+        }
+      });
+
+      // Loại bỏ trùng lặp nếu có
+      _transactionsData = Array.from(new Map(allOpTxns.map((t) => [t.id, t])).values());
     } else {
-      _transactionsData = [];
+      const txnMap = data.transactions_by_booking?.[bookingId];
+      _transactionsData = Array.isArray(txnMap) ? txnMap : txnMap ? Object.values(txnMap) : [];
     }
   }
 
@@ -171,7 +223,6 @@ const BookingOverviewController = (function () {
   // 4. UI POPULATION
   // =========================================================================
 
-  /** Populate sticky header summary */
   function _populateHeader() {
     if (!_bookingData) return;
     const bk = _bookingData;
@@ -185,68 +236,82 @@ const BookingOverviewController = (function () {
     setText('bkov-total-amount', formatNumber(bk.total_amount * 1000 || 0));
   }
 
-  /** Populate Tab Chi tiết (booking fields) */
   function _populateDetail() {
     if (!_bookingData) return;
     const root = getE('bkov-pane-detail');
     if (!root) return;
 
-    // Dùng HD.setFormData để đổ dữ liệu vào các [data-field] elements
     HD.setFormData(root, _bookingData);
-
-    // Populate service summary cards
     _renderServiceSummary();
-
-    // Populate select options
     _populateSelectOptions(root);
   }
 
-  /** Populate Tab Khách hàng */
   function _populateCustomer() {
     const root = getE('bkov-pane-customer');
     if (!root) return;
-
     if (_customerData) {
-      // Map customer fields (schema uses no prefix, but HTML has customer_ prefix via FIELD_ALIAS)
-      HD.setFormData(root, _customerData, true, { prefix: 'customer_' }); // uses customer_* aliased fields from booking
+      HD.setFormData(root, _customerData, true, { prefix: 'customer_' });
     }
   }
 
-  /** Populate Tab Dịch vụ (booking_details table) */
   function _populateServices() {
     const tbody = getE('bkov-detail-tbody');
-    if (!tbody) return;
+    // ⚠️ Fix Service Tab Data Rendering: Lấy thead chính xác từ table
+    const table = getE('bkov-detail-table');
+    const thead = table ? table.querySelector('thead') : null;
+
+    if (!tbody || !thead) return;
+
+    _renderServiceHeader(thead);
+
     tbody.innerHTML = '';
     _detailRowCount = 0;
 
     if (_detailsData.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="17" class="text-center text-muted fst-italic py-3">Chưa có dịch vụ</td></tr>';
+      const colCount = thead.querySelectorAll('th').length || 17;
+      tbody.innerHTML = `<tr><td colspan="${colCount}" class="text-center text-muted fst-italic py-3">Chưa có dịch vụ</td></tr>`;
       return;
     }
 
-    // Sort theo thứ tự ưu tiên
     const sorted = _sortDetails(_detailsData);
-    sorted.forEach((row) => _addDetailRow(row));
-    // tbody.addEventListener('dblclick', (e) => {
-    //   const tr = e.target.closest('tr');
-    //   if (!tr) return;
-    //   const dataId = tr?.dataset?.item;
-    //   showConfirm('Bạn có muốn chỉnh sửa dịch vụ này không?', () => {
-    //     A.UI.renderForm('booking_details', dataId);
-    //   });
-    // });
+    sorted.forEach((row) => _addBkDetailRow(row));
 
-    // Cập nhật tổng
     _calcServicesTotal();
   }
 
-  /** Populate Tab Thanh toán */
+  function _renderServiceHeader(thead) {
+    const schema = DB_SCHEMA[_currentStrategy.collection];
+    if (!schema) return;
+
+    let html = '<tr><th class="text-center" style="width:40px">#</th>';
+    _currentStrategy.displayFields.forEach((fName) => {
+      if (fName === 'id') return;
+      const field = schema.fields.find((f) => f.name === fName);
+      if (field) {
+        html += `<th class="text-nowrap">${field.displayName}</th>`;
+      }
+    });
+    html += '<th class="text-center" style="width:40px"></th></tr>';
+    thead.innerHTML = html;
+  }
+
   function _populatePayment() {
     if (!_bookingData) return;
+
+    // Tính toán tổng tiền và đã trả dựa trên transactions thực tế đã load
     const total = Number(_bookingData.total_amount * 1000) || 0;
-    const deposit = Number(_bookingData.deposit_amount * 1000) || 0;
+
+    // Đã trả = Tổng các giao dịch Thu/IN (trừ Chi/OUT nếu cần, tùy logic kế toán)
+    const deposit = _transactionsData.reduce((sum, tx) => {
+      if (tx.status === 'Hoàn thành' || tx.status === 'Completed' || tx.status === 'success') {
+        if (tx.type === 'Thu' || tx.type === 'IN') return sum + (Number(tx.amount) || 0);
+        if (tx.type === 'Chi' || tx.type === 'OUT') return sum - (Number(tx.amount) || 0);
+      }
+      return sum;
+    }, 0);
+
     const balance = total - deposit;
-    const pct = total > 0 ? Math.min(100, Math.round((deposit / total) * 100)) : 0;
+    const pct = total > 0 ? Math.min(100, Math.max(0, Math.round((deposit / total) * 100))) : 0;
 
     setText('bkov-pay-total', formatNumber(total));
     setText('bkov-pay-deposited', formatNumber(deposit));
@@ -258,26 +323,18 @@ const BookingOverviewController = (function () {
       progressEl.style.width = pct + '%';
       progressEl.setAttribute('aria-valuenow', pct);
       progressEl.title = `${pct}% đã thanh toán`;
+      progressEl.className = `progress-bar ${pct >= 100 ? 'bg-success' : pct > 0 ? 'bg-info' : 'bg-secondary'}`;
     }
 
-    // Render transactions table
     _renderTransactions();
   }
 
-  /** Populate Tab Ghi chú */
   function _populateNotes() {
     if (!_bookingData) return;
     setVal('bkov-n-note', _bookingData.note || '');
-
-    // Render ghi chú nội bộ (note_internal — array of strings)
     _renderInternalNotes();
   }
 
-  /**
-   * Render danh sách ghi chú nội bộ từ bookings.note_internal (dạng array).
-   * Mỗi entry có format: "[DD/MM/YYYY HH:mm] Nội dung - Người tạo"
-   * @private
-   */
   function _renderInternalNotes() {
     const feed = getE('bkov-notes-feed');
     if (!feed) return;
@@ -288,7 +345,6 @@ const BookingOverviewController = (function () {
       return;
     }
 
-    // Render mới nhất trước (reverse copy)
     const reversed = [...notes].reverse();
     let html = '';
     reversed.forEach((entry) => {
@@ -305,38 +361,15 @@ const BookingOverviewController = (function () {
     feed.innerHTML = html;
   }
 
-  /**
-   * Parse 1 entry note_internal string.
-   * Expected format: "[DD/MM/YYYY HH:mm] Nội dung - Người tạo"
-   * Fallback: trả về toàn bộ string làm content.
-   * @private
-   * @param {string} entry
-   * @returns {{ timestamp: string, content: string, author: string }}
-   */
   function _parseNoteEntry(entry) {
     if (typeof entry !== 'string') return { timestamp: '', content: String(entry), author: '' };
-
-    // Try parse: [timestamp] content - author (same format as history)
     const match = entry.match(/^\[([^\]]+)\]\s*:?\s*(.+?)\s*-\s*([^-]+)$/);
-    if (match) {
-      return { timestamp: match[1].trim(), content: match[2].trim(), author: match[3].trim() };
-    }
-
-    // Fallback: try parse [timestamp] content (no author)
+    if (match) return { timestamp: match[1].trim(), content: match[2].trim(), author: match[3].trim() };
     const match2 = entry.match(/^\[([^\]]+)\]\s*:?\s*(.+)$/);
-    if (match2) {
-      return { timestamp: match2[1].trim(), content: match2[2].trim(), author: '' };
-    }
-
-    // Plain string fallback
+    if (match2) return { timestamp: match2[1].trim(), content: match2[2].trim(), author: '' };
     return { timestamp: '', content: entry, author: '' };
   }
 
-  /**
-   * Populate Tab Lịch sử từ bookings.history (array of strings).
-   * Mỗi entry có format: "[DD/MM/YYYY HH:mm]: $detail - Booking $id - $actor"
-   * @private
-   */
   function _populateHistory() {
     const feed = getE('bkov-history-feed');
     if (!feed) return;
@@ -347,7 +380,6 @@ const BookingOverviewController = (function () {
       return;
     }
 
-    // Render mới nhất trước (reverse copy)
     const reversed = [...historyArr].reverse();
     let html = '';
     reversed.forEach((entry) => {
@@ -369,41 +401,29 @@ const BookingOverviewController = (function () {
     feed.innerHTML = html;
   }
 
-  /**
-   * Parse 1 entry history string.
-   * Expected format: "[DD/MM/YYYY HH:mm]: $detail - Booking $id - $actor"
-   * @private
-   * @param {string} entry
-   * @returns {{ timestamp: string, detail: string, actor: string, icon: string, color: string }}
-   */
   function _parseHistoryEntry(entry) {
     if (typeof entry !== 'string') return { timestamp: '', detail: String(entry), actor: '', icon: 'fa-circle-info', color: 'secondary' };
 
-    let timestamp = '';
-    let detail = entry;
-    let actor = '';
-
-    // Extract [timestamp]
+    let timestamp = '',
+      detail = entry,
+      actor = '';
     const tsMatch = entry.match(/^\[([^\]]+)\]\s*:?\s*/);
     if (tsMatch) {
       timestamp = tsMatch[1].trim();
       detail = entry.slice(tsMatch[0].length);
     }
 
-    // Extract actor (last segment after " - ")
     const lastDash = detail.lastIndexOf(' - ');
     if (lastDash > 0) {
       actor = detail.slice(lastDash + 3).trim();
       detail = detail.slice(0, lastDash).trim();
     }
 
-    // Remove "Booking BKxxxx" suffix if present
     detail = detail.replace(/\s*-\s*Booking\s+\S+$/i, '').trim();
 
-    // Determine icon/color by action keyword
     const lc = detail.toLowerCase();
-    let icon = 'fa-circle-info';
-    let color = 'secondary';
+    let icon = 'fa-circle-info',
+      color = 'secondary';
     if (lc.includes('tạo mới') || lc.includes('thêm')) {
       icon = 'fa-plus-circle';
       color = 'success';
@@ -422,122 +442,114 @@ const BookingOverviewController = (function () {
   }
 
   // =========================================================================
-  // 5. DETAIL ROW RENDERING (Reuse addDetailRow pattern)
+  // 5. DETAIL ROW RENDERING (Refactored with Strategy)
   // =========================================================================
 
-  /**
-   * Thêm 1 dòng chi tiết dịch vụ vào bảng overview.
-   * Tương tự SalesModule.addDetailRow nhưng tối ưu cho readonly/overview.
-   * @private
-   */
-  function _addDetailRow(data) {
+  function _addBkDetailRow(data) {
     _detailRowCount++;
     const idx = _detailRowCount;
+    const schema = DB_SCHEMA[_currentStrategy.collection];
     const lists = APP_DATA.lists || {};
-
-    // Dropdown Loại DV
-    const optsType = (lists.types || []).map((x) => `<option value="${x}">${x}</option>`).join('');
 
     const tr = document.createElement('tr');
     tr.id = `bkov-row-${idx}`;
     tr.setAttribute('data-row', idx);
     if (data?.id) tr.setAttribute('data-item', data.id);
 
-    tr.innerHTML = `
-      <td class="text-center text-muted align-middle">${idx}<input type="hidden" class="d-sid" data-field="id"></td>
-      <td>
-        <select class="form-select form-select-sm d-type" data-field="service_type">
-          <option value="">-</option>${optsType}
-        </select>
-      </td>
-      <td>
-        <select class="form-select form-select-sm d-loc" data-field="hotel_name">
-          <option value="">-</option>
-        </select>
-      </td>
-      <td>
-        <select class="form-select form-select-sm d-name" data-field="service_name">
-          <option value="">-</option>
-        </select>
-      </td>
-      <td><input type="date" class="form-control form-control-sm d-in" data-field="check_in"></td>
-      <td><input type="date" class="form-control form-control-sm d-out" data-field="check_out"></td>
-      <td><input type="number" class="form-control form-control-sm d-night number bg-light text-center" data-field="nights" readonly></td>
-      <td><input type="number" class="form-control form-control-sm d-qty number" data-field="quantity" value="1"></td>
-      <td><input type="number" class="form-control form-control-sm d-pri number" data-field="unit_price" placeholder="-"></td>
-      <td><input type="number" class="form-control form-control-sm d-qtyC number" data-field="child_qty" placeholder="-"></td>
-      <td><input type="number" class="form-control form-control-sm d-priC number" data-field="child_price" placeholder="-"></td>
-      <td><input type="number" class="form-control form-control-sm d-sur number" data-field="surcharge" placeholder="-"></td>
-      <td><input type="number" class="form-control form-control-sm d-disc number" data-field="discount" placeholder="-"></td>
-      <td><input type="text" class="form-control form-control-sm d-total number fw-bold text-end" data-field="total" readonly data-val="0"></td>
-      <td><input type="text" class="form-control form-control-sm d-code" data-field="ref_code"></td>
-      <td><input type="text" class="form-control form-control-sm d-note" data-field="note"></td>
+    let html = `<td class="text-center text-muted align-middle">${idx}<input type="hidden" class="d-sid" data-field="id"></td>`;
+
+    _currentStrategy.displayFields.forEach((fName) => {
+      if (fName === 'id') return;
+      const field = schema.fields.find((f) => f.name === fName);
+      if (!field) return;
+
+      let cellContent = '';
+      const fieldClass = field.class || '';
+      const isReadonly = field.attrs?.includes('readonly') ? 'readonly' : '';
+
+      if (field.tag === 'select') {
+        let options = '<option value="">-</option>';
+        if (fName === 'service_type') {
+          options += (lists.types || []).map((x) => `<option value="${x}">${x}</option>`).join('');
+        } else if (fName === 'supplier') {
+          options += (lists.supplier || []).map((s) => `<option value="${s}">${s}</option>`).join('');
+        }
+        cellContent = `<select class="form-select form-select-sm ${fieldClass}" data-field="${fName}" ${isReadonly}>${options}</select>`;
+      } else if (field.tag === 'textarea') {
+        cellContent = `<input type="text" class="form-control form-control-sm ${fieldClass}" data-field="${fName}" ${isReadonly}>`;
+      } else {
+        const inputType = field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text';
+        const alignClass = field.type === 'number' || fieldClass.includes('number') ? 'text-end' : '';
+        cellContent = `<input type="${inputType}" class="form-control form-control-sm ${fieldClass} ${alignClass}" data-field="${fName}" ${isReadonly}>`;
+      }
+
+      html += `<td>${cellContent}</td>`;
+    });
+
+    html += `
       <td class="text-center align-middle">
         <i class="fa-solid fa-times text-danger" style="cursor:pointer" data-action="remove-row" data-row-idx="${idx}"></i>
       </td>
     `;
 
+    tr.innerHTML = html;
     const tbody = getE('bkov-detail-tbody');
     if (tbody) tbody.appendChild(tr);
 
-    // Fill location list
-    _updateLocationList(idx);
+    _updateHotelSelect(idx);
 
-    // Set data values if row has data
     if (data) {
-      setVal('.d-sid', data.id || '', tr);
-      setVal('.d-type', data.service_type, tr);
-      _onTypeChange(idx, false);
-      setVal('.d-loc', data.hotel_name, tr);
-      _onLocationChange(idx, false);
-      setVal('.d-name', data.service_name, tr);
-      setVal('.d-in', data.check_in, tr);
-      setVal('.d-out', data.check_out, tr);
-      setVal('.d-qty', data.quantity, tr);
-      setVal('.d-pri', data.unit_price, tr);
-      setVal('.d-qtyC', data.child_qty, tr);
-      setVal('.d-priC', data.child_price, tr);
-      setVal('.d-sur', data.surcharge, tr);
-      setVal('.d-disc', data.discount, tr);
-      setVal('.d-code', data.ref_code, tr);
-      setVal('.d-note', data.note, tr);
-      _calcDetailRow(idx);
+      _currentStrategy.displayFields.forEach((fName) => {
+        const el = tr.querySelector(`[data-field="${fName}"]`);
+        if (el) {
+          if (fName === 'service_type') {
+            setVal(el, data[fName], tr);
+            _onTypeChange(idx, false);
+          } else if (fName === 'hotel_name') {
+            setVal(el, data[fName], tr);
+            _onLocationChange(idx, false);
+          } else {
+            setVal(el, data[fName], tr);
+          }
+        }
+      });
 
-      // Snapshot initial values
       tr.querySelectorAll('input, select').forEach((el) => {
         el.setAttribute('data-initial', el.value);
       });
+
+      _calcDetailRow(idx);
     }
   }
 
   // =========================================================================
-  // 6. CASCADING DROPDOWN LOGIC (Mirrors SalesModule patterns)
+  // 6. CASCADING DROPDOWN LOGIC
   // =========================================================================
 
   function _onTypeChange(idx, resetChildren = true) {
-    _updateLocationList(idx);
+    _updateHotelSelect(idx);
     if (resetChildren) {
       const tr = getE(`bkov-row-${idx}`);
       if (tr) {
-        setVal('.d-loc', '', tr);
-        setVal('.d-name', '', tr);
+        setVal('[data-field="hotel_name"]', '', tr);
+        setVal('[data-field="service_name"]', '', tr);
       }
     }
   }
 
   function _onLocationChange(idx, resetName = true) {
-    _updateServiceNameList(idx);
+    _updateServiceSelect(idx);
     if (resetName) {
       const tr = getE(`bkov-row-${idx}`);
-      if (tr) setVal('.d-name', '', tr);
+      if (tr) setVal('[data-field="service_name"]', '', tr);
     }
   }
 
-  function _updateLocationList(idx) {
+  function _updateHotelSelect(idx) {
     const tr = getE(`bkov-row-${idx}`);
     if (!tr) return;
     const lists = APP_DATA.lists || {};
-    const selLoc = tr.querySelector('.d-loc');
+    const selLoc = tr.querySelector('[data-field="hotel_name"]');
     if (!selLoc) return;
 
     const currentVal = selLoc.value;
@@ -546,17 +558,16 @@ const BookingOverviewController = (function () {
     const allLocs = [...new Set([...hotels, ...others])];
 
     selLoc.innerHTML = '<option value="">-</option>' + allLocs.map((loc) => `<option value="${loc}">${loc}</option>`).join('');
-
     if (currentVal) selLoc.value = currentVal;
   }
 
-  function _updateServiceNameList(idx) {
+  function _updateServiceSelect(idx) {
     const tr = getE(`bkov-row-${idx}`);
     if (!tr) return;
     const lists = APP_DATA.lists || {};
-    const type = getVal('.d-type', tr);
-    const loc = getVal('.d-loc', tr);
-    const selName = tr.querySelector('.d-name');
+    const type = getVal('[data-field="service_type"]', tr);
+    const loc = getVal('[data-field="hotel_name"]', tr);
+    const selName = tr.querySelector('[data-field="service_name"]');
     if (!selName) return;
 
     const currentVal = selName.value;
@@ -564,9 +575,7 @@ const BookingOverviewController = (function () {
 
     if (type === 'Phòng' && loc) {
       const hotelRow = (lists.hotelMatrix || []).find((r) => r[0] === loc);
-      if (hotelRow) {
-        options = hotelRow.slice(2).filter((c) => c);
-      }
+      if (hotelRow) options = hotelRow.slice(2).filter((c) => c);
     } else if (type) {
       options = (lists.serviceMatrix || [])
         .filter((r) => r[0] === type)
@@ -575,21 +584,20 @@ const BookingOverviewController = (function () {
     }
 
     selName.innerHTML = '<option value="">-</option>' + options.map((opt) => `<option value="${opt}">${opt}</option>`).join('');
-
     if (currentVal) selName.value = currentVal;
   }
 
   // =========================================================================
-  // 7. CALCULATION (Mirrors SalesModule.calcRow / calcGrandTotal)
+  // 7. CALCULATION (Refactored with Strategy)
   // =========================================================================
 
   function _calcDetailRow(idx) {
     const tr = getE(`bkov-row-${idx}`);
     if (!tr) return;
 
-    const dInStr = getVal('.d-in', tr);
-    const dOutStr = getVal('.d-out', tr);
-    const type = getVal('.d-type', tr);
+    const dInStr = getVal('[data-field="check_in"]', tr);
+    const dOutStr = getVal('[data-field="check_out"]', tr);
+    const type = getVal('[data-field="service_type"]', tr);
 
     let night = 0;
     if (dInStr && dOutStr) {
@@ -598,24 +606,11 @@ const BookingOverviewController = (function () {
       const diff = (dOut - dIn) / 86400000;
       night = type !== 'Phòng' || diff <= 0 ? 1 : diff;
     }
-    const nightEl = tr.querySelector('.d-night');
+    const nightEl = tr.querySelector('[data-field="nights"]');
     if (nightEl) nightEl.value = night;
 
-    const g = (cls) => Number(tr.querySelector('.' + cls)?.value) || 0;
-    const qtyA = g('d-qty');
-    const priA = g('d-pri');
-    const qtyC = g('d-qtyC');
-    const priC = g('d-priC');
-    const sur = g('d-sur');
-    const disc = g('d-disc');
-    const multiplier = type === 'Phòng' ? Math.max(1, night) : 1;
-    const total = (qtyA * priA + qtyC * priC) * multiplier + sur - disc;
-
-    const elTotal = tr.querySelector('.d-total');
-    if (elTotal) {
-      elTotal.value = formatNumber(total);
-      elTotal.dataset.val = total;
-    }
+    // Gọi logic tính toán từ Strategy
+    _currentStrategy.calculateRow(tr, idx);
 
     _calcServicesTotal();
   }
@@ -625,8 +620,8 @@ const BookingOverviewController = (function () {
     const tbody = getE('bkov-detail-tbody');
     if (!tbody) return;
 
-    tbody.querySelectorAll('.d-total').forEach((el) => {
-      grandTotal += Number(el.dataset.val) || 0;
+    tbody.querySelectorAll(`[data-field="${_currentStrategy.totalField}"]`).forEach((el) => {
+      grandTotal += getNum(el);
     });
 
     setText('bkov-services-total', formatNumber(grandTotal));
@@ -636,7 +631,6 @@ const BookingOverviewController = (function () {
   // 8. RENDER HELPERS
   // =========================================================================
 
-  /** Render tóm tắt dịch vụ dạng card nhỏ */
   function _renderServiceSummary() {
     const container = getE('bkov-service-summary');
     if (!container) return;
@@ -646,33 +640,16 @@ const BookingOverviewController = (function () {
       return;
     }
 
-    // Group bằng service_type
     const grouped = {};
     _detailsData.forEach((d) => {
       const type = d.service_type || 'Khác';
-      if (!grouped[type]) grouped[type] = { count: 0, total: 0, items: [] };
+      if (!grouped[type]) grouped[type] = { count: 0, total: 0 };
       grouped[type].count++;
-      grouped[type].total += Number(d.total) || 0;
-      grouped[type].items.push(d);
+      grouped[type].total += Number(d[_currentStrategy.summaryTotalField]) || 0;
     });
 
-    const typeIcons = {
-      Phòng: 'fa-bed',
-      'Vé MB': 'fa-plane',
-      'Vé Tàu': 'fa-train',
-      Ăn: 'fa-utensils',
-      Xe: 'fa-car',
-      Tour: 'fa-map-marked-alt',
-    };
-
-    const typeColors = {
-      Phòng: 'primary',
-      'Vé MB': 'info',
-      'Vé Tàu': 'warning',
-      Ăn: 'success',
-      Xe: 'secondary',
-      Tour: 'danger',
-    };
+    const typeIcons = { Phòng: 'fa-bed', 'Vé MB': 'fa-plane', 'Vé Tàu': 'fa-train', Ăn: 'fa-utensils', Xe: 'fa-car', Tour: 'fa-map-marked-alt' };
+    const typeColors = { Phòng: 'primary', 'Vé MB': 'info', 'Vé Tàu': 'warning', Ăn: 'success', Xe: 'secondary', Tour: 'danger' };
 
     let html = '';
     for (const [type, info] of Object.entries(grouped)) {
@@ -691,7 +668,6 @@ const BookingOverviewController = (function () {
     container.innerHTML = html;
   }
 
-  /** Render bảng lịch sử giao dịch */
   function _renderTransactions() {
     const tbody = getE('bkov-txn-tbody');
     if (!tbody) return;
@@ -701,12 +677,8 @@ const BookingOverviewController = (function () {
       return;
     }
 
-    // Sort theo ngày mới nhất
-    const sorted = [..._transactionsData].sort((a, b) => {
-      return (b.transaction_date || '').localeCompare(a.transaction_date || '');
-    });
-
-    const typeColors = { IN: 'success', OUT: 'danger', PENDING: 'info' };
+    const sorted = [..._transactionsData].sort((a, b) => (b.transaction_date || '').localeCompare(a.transaction_date || ''));
+    const typeColors = { IN: 'success', OUT: 'danger', PENDING: 'info', Thu: 'success', Chi: 'danger' };
 
     let html = '';
     sorted.forEach((txn) => {
@@ -719,21 +691,11 @@ const BookingOverviewController = (function () {
           <td class="text-end fw-bold number">${formatNumber(txn.amount || 0)}</td>
           <td>${escapeHtml(txn.category || '—')}</td>
           <td>${escapeHtml(A.Lang.t(txn.fund_source) || '—')}</td>
-          <td class="text-center">
-            <span class="badge bg-${color}">${escapeHtml(A.Lang.t(txn.status) || '—')}</span>
-          </td>
+          <td class="text-center"><span class="badge bg-${color}">${escapeHtml(A.Lang.t(txn.status) || '—')}</span></td>
           <td class="small">${escapeHtml(txn.description || '')}</td>
         </tr>`;
     });
     tbody.innerHTML = html;
-    // tbody.addEventListener('dblclick', (e) => {
-    //   const tr = e.target.closest('tr');
-    //   if (!tr) return;
-    //   const dataId = tr?.dataset?.item;
-    //   showConfirm('Bạn có muốn chỉnh sửa dịch vụ này không?', () => {
-    //     A.UI.renderForm('transactions', dataId);
-    //   });
-    // });
   }
 
   // =========================================================================
@@ -744,7 +706,6 @@ const BookingOverviewController = (function () {
     if (!root) return;
     const data = window.APP_DATA;
 
-    // Staff select
     const staffSelect = root.querySelector('[data-field="staff_id"]');
     if (staffSelect && data.users) {
       const users = Object.values(data.users);
@@ -752,10 +713,9 @@ const BookingOverviewController = (function () {
       if (_bookingData?.staff_id) staffSelect.value = _bookingData.staff_id;
     }
 
-    // Payment method select
     const paySelect = root.querySelector('[data-field="payment_method"]');
     if (paySelect) {
-      const methods = ['TM', 'CK CN', 'CK CT', 'Công Nợ', 'Thẻ tín dụng'];
+      const methods = APP_DATA.lists.payment;
       paySelect.innerHTML = '<option value="">-</option>' + methods.map((m) => `<option value="${m}">${m}</option>`).join('');
       if (_bookingData?.payment_method) paySelect.value = _bookingData.payment_method;
     }
@@ -767,38 +727,34 @@ const BookingOverviewController = (function () {
 
   function _bindEvents() {
     if (!_rootEl) return;
-
-    // Delegate click events
     _rootEl.addEventListener('click', _handleClick);
-
-    // Detail row change events (delegate trên bkov-detail-tbody)
     const detailTbody = getE('bkov-detail-tbody');
     if (detailTbody) {
       detailTbody.addEventListener('change', _handleDetailChange);
       detailTbody.addEventListener('dblclick', _handleTblDblClick);
     }
     const transTbody = getE('bkov-txn-tbody');
-    if (transTbody) {
-      transTbody.addEventListener('dblclick', _handleTblDblClick);
-    }
+    if (transTbody) transTbody.addEventListener('dblclick', _handleTblDblClick);
   }
 
   async function _handleTblDblClick(e) {
+    e.stopPropagation();
     const tr = e.target.closest('tr');
     if (!tr) return;
     const dataId = tr?.dataset?.item;
     if (!dataId) return;
-    const parentId = tr.closest('#bkov-detail-tbody') ? 'booking_details' : tr.closest('#bkov-txn-tbody') ? 'transactions' : null;
+    const parentId = tr.closest('#bkov-detail-tbody') ? _currentStrategy.collection : tr.closest('#bkov-txn-tbody') ? 'transactions' : null;
     if (!parentId) return;
+
     showConfirm('Bạn có muốn chỉnh sửa mục này không?', async () => {
-      if (parentId === 'booking_details') {
+      if (parentId === 'booking_details' || parentId === 'operator_entries') {
         A.UI.renderForm(parentId, dataId);
       } else {
-        // Dynamic import AccountantController and call openTransactionModal
         const module = await import('/accountant/controller_accountant.js');
-        if (module && module.default) {
-          const AccountantCtrl = module.default;
-          await AccountantCtrl.openTransactionModal('IN', dataId); // Pass transaction ID for editing
+        const AccountantCtrl = module?.default || window.AccountantCtrl;
+        if (AccountantCtrl) {
+          const type = window.CURRENT_USER?.role === 'op' ? 'OUT' : 'IN';
+          await AccountantCtrl.openEditModal(type, dataId);
         }
       }
     });
@@ -807,22 +763,18 @@ const BookingOverviewController = (function () {
   async function _handleClick(e) {
     const actionEl = e.target.closest('[data-action]');
     if (!actionEl) return;
-
     const action = actionEl.dataset.action;
 
     switch (action) {
       case 'close-overview':
         close();
         break;
-
       case 'save-booking':
         _saveBkOverview();
         break;
-
       case 'add-service-row':
-        _addDetailRow();
+        _addBkDetailRow();
         break;
-
       case 'remove-row': {
         const idx = actionEl.dataset.rowIdx;
         const row = getE(`bkov-row-${idx}`);
@@ -830,41 +782,33 @@ const BookingOverviewController = (function () {
         _calcServicesTotal();
         break;
       }
-
       case 'add-transaction':
         await _openTransactionForm();
         break;
-
       case 'add-note':
         _addInternalNote();
         break;
-
       case 'confirm-email':
-        if (typeof createConfirmation === 'function') createConfirmation();
+        if (typeof SalesModule?.Confirmation?.openModal === 'function') SalesModule.Confirmation.openModal();
         break;
-
       case 'update-deposit':
-        if (typeof updateDeposit === 'function') updateDeposit();
+        if (typeof SalesModule?.DB?.updateDeposit === 'function') SalesModule.DB.updateDeposit();
         break;
-
       case 'update-status':
-        if (typeof updateBkStatus === 'function') updateBkStatus();
+        if (typeof SalesModule?.Logic?.updateBkStatus === 'function') SalesModule.Logic.updateBkStatus();
         break;
-
       case 'recalc-total':
-        if (typeof calcGrandTotal === 'function') calcGrandTotal();
+        if (typeof SalesModule?.Logic?.calcGrandTotal === 'function') SalesModule.Logic.calcGrandTotal();
         break;
-
       case 'export-pdf':
-        if (typeof ConfirmationModule !== 'undefined') {
-          await ConfirmationModule.openModal();
-          await ConfirmationModule.exportPDF();
+        if (typeof SalesModule?.Confirmation !== 'undefined') {
+          await SalesModule.Confirmation.openModal();
+          await SalesModule.Confirmation.exportPDF();
         }
         break;
-
       case 'create-contract':
-        if (typeof loadBookingToUI === 'function') {
-          loadBookingToUI(_bookingData, _customerData, _detailsData);
+        if (typeof runFnByRole === 'function') {
+          runFnByRole(loadBookingToUI, 'UI', _bookingData, _customerData, _detailsData);
           await SalesModule.Logic.createContract();
         }
         break;
@@ -877,53 +821,41 @@ const BookingOverviewController = (function () {
     const idx = tr.getAttribute('data-row');
     if (!idx) return;
 
-    const el = e.target;
-    if (el.classList.contains('d-type')) {
+    const field = e.target.getAttribute('data-field');
+    if (field === 'service_type') {
       _onTypeChange(Number(idx));
-    } else if (el.classList.contains('d-loc')) {
+    } else if (field === 'hotel_name') {
       _onLocationChange(Number(idx));
     } else {
-      // Recalc for any numeric field change
       _calcDetailRow(Number(idx));
     }
   }
 
   // =========================================================================
-  // 11. ACTIONS
+  // 11. ACTIONS (Refactored with Strategy)
   // =========================================================================
 
-  /** Thu thập và lưu dữ liệu booking */
   async function _saveBkOverview() {
     try {
       showLoading(true, 'Đang lưu dữ liệu...');
 
-      // =====================================================================
-      // VẤN ĐỀ 4: DÙNG FILTER-UPDATE-DATA ĐỂ LẤY DỮ LIỆU THAY ĐỔI
-      // (Có fallback nếu hàm chưa được define để chống lỗi)
-      // =====================================================================
       const getExtract = (cId) => (typeof window.filterUpdateData === 'function' ? window.filterUpdateData(cId, document, true) || {} : _extractAllDataFields(cId));
 
       let bookingUpdates = getExtract('bkov-pane-detail');
       const noteData = getExtract('bkov-pane-notes');
       let customerUpdates = getExtract('bkov-pane-customer');
 
-      // Gộp ghi chú vào bản ghi booking
       bookingUpdates = { ...bookingUpdates, ...noteData };
 
-      // Khởi tạo ID gốc
       const bkId = getVal(getE('bkov-f-id')) || _bookingId;
       const custId = getVal(getE('bkov-c-id')) || _customerData?.id;
 
       if (Object.keys(bookingUpdates).length > 0) bookingUpdates.id = bkId;
       if (Object.keys(customerUpdates).length > 0) customerUpdates.id = custId;
 
-      // =====================================================================
-      // VẤN ĐỀ 1 & 2: MAP THÔNG TIN KHÁCH HÀNG VÀO BOOKING BẰNG GETVAL/GETE
-      // =====================================================================
       const custName = getVal(getE('bkov-c-name'));
       const custPhone = getVal(getE('bkov-c-phone'));
 
-      // Đảm bảo booking luôn có thông tin khách cập nhật nhất
       if (Object.keys(bookingUpdates).length > 0 || custName !== _bookingData?.customer_full_name || custPhone !== _bookingData?.customer_phone) {
         bookingUpdates.id = bkId;
         bookingUpdates.customer_id = custId || '';
@@ -931,75 +863,44 @@ const BookingOverviewController = (function () {
         bookingUpdates.customer_phone = custPhone;
       }
 
-      // =====================================================================
-      // VẤN ĐỀ 3: CẬP NHẬT DEPOSIT/BALANCE TỪ TRANSACTIONS MỚI
-      // Nếu user thêm phiếu THU mới, APP_DATA sẽ có, cần tính lại cọc
-      // =====================================================================
       let calcDeposit = 0;
       if (window.APP_DATA?.transactions_by_booking?.[bkId]) {
         const txns = Object.values(window.APP_DATA.transactions_by_booking[bkId]);
         calcDeposit = txns.reduce((sum, tx) => {
-          // Thu/IN làm tăng cọc, Chi/OUT làm giảm cọc
           if (tx.type === 'Thu' || tx.type === 'IN') return sum + (Number(tx.amount) || 0);
-          return sum / 1000;
+          return sum;
         }, 0);
       } else {
-        // Fallback về UI hiện tại
-        calcDeposit = Number(String(getVal(getE('bkov-f-deposit'))).replace(/[^0-9.-]+/g, '')) || 0;
+        calcDeposit = getNum(getE('bkov-f-deposit'));
       }
 
-      // Parse số cho fields tiền tệ của Booking
-      // ['adults', 'children', 'total_amount', 'balance_amount'].forEach(f => {
-      //     if (bookingUpdates[f] !== undefined) {
-      //         bookingUpdates[f] = Number(String(bookingUpdates[f]).replace(/[^0-9.-]+/g, '')) || 0;
-      //     }
-      // });
+      const totalAmt = bookingUpdates.total_amount !== undefined ? getNum(bookingUpdates.total_amount) : Number(_bookingData?.total_amount) || 0;
 
-      const totalAmt = bookingUpdates.total_amount !== undefined ? bookingUpdates.total_amount : Number(_bookingData?.total_amount) || 0;
-
-      // Cập nhật giá trị đã tính vào payload
-      bookingUpdates.id = bkId; // Đảm bảo force update ID
+      bookingUpdates.id = bkId;
       bookingUpdates.deposit_amount = calcDeposit;
       bookingUpdates.balance_amount = totalAmt - calcDeposit;
 
-      // =====================================================================
-      // VẤN ĐỀ 5: ĐỌC CHI TIẾT DỊCH VỤ 100% QUA DATA-FIELD
-      // =====================================================================
       const detailsUpdates = [];
       const tbody = getE('bkov-detail-tbody');
+
       if (tbody) {
         tbody.querySelectorAll('tr').forEach((tr) => {
           const typeEl = tr.querySelector('[data-field="service_type"]');
-          if (!typeEl || !getVal(typeEl)) return; // Bỏ qua nếu không có loại DV
+          if (!typeEl || !getVal(typeEl)) return;
 
           const rowData = {};
           tr.querySelectorAll('[data-field]').forEach((el) => {
             const fieldName = el.getAttribute('data-field');
-            if (fieldName) {
-              rowData[fieldName] = getVal(el);
-
-              // // Tự động ép kiểu số đối với các field cấu hình tính toán
-              // if (['nights', 'quantity', 'unit_price', 'child_qty', 'child_price', 'surcharge', 'discount', 'total'].includes(fieldName)) {
-              //     rowData[fieldName] = Number(String(rowData[fieldName]).replace(/[^0-9.-]+/g, '')) || 0;
-              // }
-            }
+            if (fieldName) rowData[fieldName] = getVal(el);
           });
 
-          // Sinh ID an toàn cho dòng dịch vụ mới (nếu chưa có)
-          // if (!rowData.id) {
-          //     rowData.id = 'BD_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-          // }
           rowData.booking_id = bkId;
           detailsUpdates.push(rowData);
         });
       }
 
-      // =====================================================================
-      // THỰC THI BATCH SAVE
-      // =====================================================================
       const promises = [];
 
-      // Xử lý Schema Customer (loại bỏ prefix "customer_" của giao diện)
       if (Object.keys(customerUpdates).length > 1) {
         const cleanCustUpdates = { id: customerUpdates.id };
         Object.keys(customerUpdates).forEach((k) => {
@@ -1009,14 +910,12 @@ const BookingOverviewController = (function () {
         promises.push(A.DB.batchSave('customers', [cleanCustUpdates]));
       }
 
-      // Save Bookings
       if (Object.keys(bookingUpdates).length > 1) {
         promises.push(A.DB.batchSave('bookings', [bookingUpdates]));
       }
 
-      // Save Booking Details
       if (detailsUpdates.length > 0) {
-        promises.push(A.DB.batchSave('booking_details', detailsUpdates));
+        promises.push(A.DB.batchSave(_currentStrategy.collection, detailsUpdates));
       }
 
       if (promises.length === 0) {
@@ -1026,28 +925,19 @@ const BookingOverviewController = (function () {
 
       await Promise.all(promises);
 
-      // Cập nhật StateProxy
-      if (window.StateProxy) {
-        await StateProxy.commitSession();
-      }
+      if (window.StateProxy) await StateProxy.commitSession();
 
-      // Cập nhật lại UI tiền mới nhất
       setVal(getE('bkov-f-deposit'), calcDeposit);
       setVal(getE('bkov-f-balance'), bookingUpdates.balance_amount);
 
       logA('Lưu dữ liệu Tổng quan Booking thành công!', 'success');
     } catch (e) {
       Opps('BookingOverview._saveBkOverview', e);
-      Opps('Lỗi khi lưu dữ liệu: ' + e.message);
     } finally {
       showLoading(false);
     }
   }
 
-  /**
-   * Helper dự phòng trường hợp hàm filterUpdateData không khả dụng.
-   * Quét tất cả phần tử có data-field trong container
-   */
   function _extractAllDataFields(containerId) {
     const container = getE(containerId);
     if (!container) return {};
@@ -1060,22 +950,26 @@ const BookingOverviewController = (function () {
   }
 
   async function _openTransactionForm() {
-    // Dynamic import AccountantController and call openTransactionModal
-    await import('/accountant/controller_accountant.js')
-      .then(async (mod) => {
-        const AccountantCtrl = mod.default || window.AccountantCtrl;
-        if (AccountantCtrl && typeof AccountantCtrl.openTransactionModal === 'function') {
-          await AccountantCtrl.openTransactionModal('IN'); // Default to 'IN', or pass type as needed
-        } else {
-          L._('Không thể mở modal giao dịch: AccountantCtrl không khả dụng.', 'error');
-        }
-      })
-      .catch((e) => {
-        Opps('Lỗi import AccountantController: ', e);
-      });
+    try {
+      const mod = await import('/accountant/controller_accountant.js');
+      const AccountantCtrl = mod.default || window.AccountantCtrl;
+      if (AccountantCtrl?.openTransactionModal) {
+        const type = window.CURRENT_USER?.role === 'op' ? 'OUT' : 'IN';
+        // ⚠️ Fix Payment Table Logic: Truyền đúng format object cho AccountantCtrl
+        const relatedId = _currentStrategy.role === 'op' ? _detailsData[0]?.id || _bookingId : _bookingId;
+        await AccountantCtrl.openTransactionModal({
+          type: type,
+          booking_id: relatedId,
+          description: `Thanh toán cho Booking ${_bookingId}`,
+        });
+      } else {
+        L._('Không thể mở modal giao dịch: AccountantCtrl không khả dụng.', 'error');
+      }
+    } catch (e) {
+      Opps('Lỗi import AccountantController: ', e);
+    }
   }
 
-  /** Thêm ghi chú nội bộ → lưu vào bookings.note_internal (arrayUnion) */
   function _addInternalNote() {
     const input = getE('bkov-note-input');
     if (!input || !input.value.trim()) return;
@@ -1087,27 +981,19 @@ const BookingOverviewController = (function () {
     const ts = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
     const author = user?.user_name || user?.name || user?.email || 'User';
 
-    // Build entry string matching note_internal format
     const entry = `[${ts}] ${noteText} - ${author}`;
 
-    // 1. Persist to Firestore via arrayUnion (fire-and-forget)
     if (_bookingId && A.DB) {
-      A.DB.updateSingle('bookings', _bookingId, {
-        note_internal: A.DB.arrayUnion(entry),
-      }).catch((e) => {
+      A.DB.arrayUnionField('bookings', _bookingId, 'note_internal', entry).catch((e) => {
         Opps('Lỗi lưu ghi chú nội bộ: ', e);
       });
     }
 
-    // 3. Also update _bookingData ref
     if (_bookingData) {
-      if (!Array.isArray(_bookingData.note_internal)) {
-        _bookingData.note_internal = [];
-      }
+      if (!Array.isArray(_bookingData.note_internal)) _bookingData.note_internal = [];
       _bookingData.note_internal.push(entry);
     }
 
-    // 4. Re-render feed
     _renderInternalNotes();
     input.value = '';
     input.focus();
@@ -1119,25 +1005,13 @@ const BookingOverviewController = (function () {
 
   function _initStateProxy() {
     if (!window.StateProxy || !_bookingData) return;
-
     StateProxy.clearSession();
 
-    // Track booking
-    if (_bookingData.id) {
-      StateProxy.beginEdit('bookings', _bookingData.id);
-    }
+    if (_bookingData.id) StateProxy.beginEdit('bookings', _bookingData.id);
+    if (_customerData?.id) StateProxy.beginEdit('customers', _customerData.id);
 
-    // Track customer
-    const custId = _customerData?.id;
-    if (custId) {
-      StateProxy.beginEdit('customers', custId);
-    }
-
-    // Track details
     _detailsData.forEach((row) => {
-      if (row?.id) {
-        StateProxy.beginEdit('booking_details', row.id);
-      }
+      if (row?.id) StateProxy.beginEdit(_currentStrategy.collection, row.id);
     });
   }
 
@@ -1172,16 +1046,10 @@ const BookingOverviewController = (function () {
     _detailRowCount = 0;
     _rootEl = null;
     _modalRef = null;
+    _currentStrategy = null;
   }
 
-  // =========================================================================
-  // EXPOSE PUBLIC API
-  // =========================================================================
-  return {
-    open,
-    close,
-    getData,
-  };
+  return { open, close, getData };
 })();
 
 export default BookingOverviewController;

@@ -3,21 +3,16 @@
 // =====================================================================
 import Swal from 'sweetalert2';
 window.Swal = Swal; // Expose globally for legacy plain scripts (utils.js, logA, etc.)
-import DB_MANAGER from './modules/DBManager.js';
-import { AUTH_MANAGER, SECURITY_MANAGER } from './modules/LoginModule.js';
-import { DraggableSetup, Resizable, WindowMinimizer } from './libs/ui_helper.js';
-import UI_RENDERER from './modules/UI_Manager.js';
-import EVENT_MANAGER from './modules/EventManager.js';
-import StateProxy from './modules/StateProxy.js';
-import ShortKey from './modules/M_ShortKey.js';
-import ContextMenu from './modules/M_ContextMenu.js';
-import './modules/M_AutoMobileEvents.js'; // Self-initializing: tap→click, double-tap→dblclick, long-press→contextmenu
-import { HotelPriceController } from './modules/M_HotelPrice.js';
-import { SupplierPayment } from './modules/OperatorController.js';
-import SalesModule from './modules/M_SalesModule.js';
+import DB_MANAGER from '/src/js/modules/db/DBManager.js';
+import { AUTH_MANAGER, SECURITY_MANAGER } from './LoginModule.js';
+import { DraggableSetup, Resizable, WindowMinimizer } from '/src/js/libs/ui_helper.js';
+import UI_RENDERER from './UI_Manager.js';
+import EVENT_MANAGER from './EventManager.js';
+import MobileEvent from './M_AutoMobileEvents.js'; // Self-initializing: tap→click, double-tap→dblclick, long-press→contextmenu
+import NotificationManager from './NotificationModule.js';
+window.NotificationManager = NotificationManager;
 
 // Expose globally so legacy scripts (logic_operator, api_operator, etc.) can access it
-window.StateProxy = StateProxy;
 
 // ─── Private Symbol used as lazy-wrapper marker inside Application.#modules ───
 // Using a Symbol (instead of a string key) prevents accidental collision with
@@ -41,7 +36,8 @@ class Application {
   #moduleManager = null;
 
   #config = {
-    debug: false,
+    debug: true,
+    fbDebugToken: '42655718-72A6-44EE-B9E9-3135A302B0D4',
     roles: {},
     tables: {},
     path: {},
@@ -51,7 +47,8 @@ class Application {
       DB_DATE_FMT: 'YYYY-MM-DD',
     },
     intl: { locale: 'vi-VN', dateOptions: { day: '2-digit', month: '2-digit', year: 'numeric' }, currencyOptions: { style: 'currency', currency: 'VND', minimumFractionDigits: 0, maximumFractionDigits: 1 }, numberOptions: { minimumFractionDigits: 0, maximumFractionDigits: 1 } },
-    disabledModules: ['Router'],
+    disabledModules: ['Router', 'CalculatorWidget'],
+    ADMIN_EMAILS: ['tranthuaanh90@gmail.com', '9tripphuquoc@gmail.com', 'tranthuaanh90@9tripphuquoc.com'],
   };
 
   #modules = {
@@ -659,7 +656,15 @@ class Application {
           const module = this.#resolveModule(moduleName);
           if (!module) return undefined;
 
-          const value = module[prop];
+          let value = module[prop];
+
+          // ─── 9TRIP FIX: Support Static Properties for Class-based Modules ───
+          // If property not found on instance, check the original class (static members)
+          if (value === undefined && stored?.[_LAZY] && stored._class) {
+            value = stored._class[prop];
+            if (typeof value === 'function') return value.bind(stored._class);
+          }
+
           // Bind method to the resolved instance so private fields (#) work correctly.
           // Arrow functions / non-function values are returned as-is.
           if (typeof value === 'function') return value.bind(module);
@@ -761,36 +766,49 @@ class Application {
     }
 
     // ── Robust class detection ────────────────────────────────────────────────
-    // toString().includes('class ') breaks for:
-    //   • anonymous classes: `class {}` → 'class{' (no space)
-    //   • minified builds:   class identifier may be 1-char, losing the space
-    // The canonical check: class constructors always have a non-writable prototype
-    // descriptor, whereas regular functions have writable prototype.
-    // Arrow functions have no prototype at all → descriptor is undefined → not a class.
     const protoDesc = typeof moduleOrClass === 'function' ? Object.getOwnPropertyDescriptor(moduleOrClass, 'prototype') : undefined;
-    const isClass = protoDesc !== undefined && protoDesc.writable === false;
+    const isClassConstructor = protoDesc !== undefined && protoDesc.writable === false;
 
-    if (isClass) {
-      // Shape B — lazy wrapper: #resolveModule() instantiates on first property access
-      this.#modules[name] = {
-        [_LAZY]: true,
-        _class: moduleOrClass,
-        _instance: null,
-        _autoInit: initialized,
-        _ctorArgs: ctorArgs,
-      };
+    if (isClassConstructor) {
+      // ── 9TRIP OPTIMIZATION: Handle Lazy vs Eager instantiation ──
+      // Nếu class có static autoInit = false HOẶC tham số initialized = false
+      // => Sử dụng Lazy Wrapper để trì hoãn việc tạo instance.
+      const shouldLazy = moduleOrClass.autoInit === false || initialized === false;
+
+      if (shouldLazy) {
+        this.#modules[name] = {
+          [_LAZY]: true,
+          _class: moduleOrClass,
+          _instance: null,
+          _autoInit: initialized,
+          _ctorArgs: ctorArgs,
+        };
+      } else {
+        // Khởi tạo ngay lập tức (Eager)
+        try {
+          const instance = new moduleOrClass(...ctorArgs);
+          this.#modules[name] = instance;
+
+          if (initialized && typeof instance.init === 'function' && !instance._initialized) {
+            instance.init();
+            instance._initialized = true;
+          }
+        } catch (error) {
+          console.error(`[App.addModule] ❌ Lỗi khi khởi tạo class "${name}":`, error);
+          return false;
+        }
+      }
     } else {
-      // Shape A — plain object / singleton / function-as-namespace
+      // Shape A — plain object / singleton / instance đã có
       this.#modules[name] = moduleOrClass;
 
-      // Call init() eagerly for plain objects (classes do it lazily in #resolveModule)
       if (initialized && typeof moduleOrClass?.init === 'function' && !moduleOrClass?._initialized) {
         moduleOrClass.init();
         moduleOrClass._initialized = true;
       }
     }
 
-    // Both shapes use the same proxy engine — no duplication
+    // Đăng ký Proxy để truy cập module qua A.<name>
     Object.defineProperty(this, name, {
       get: () => this.#createProxy(name),
       configurable: true,
@@ -817,6 +835,7 @@ class Application {
   // =========================================================================
 
   getState(key = null) {
+    if (key === 'user') return Object.freeze(structuredClone(this.#state.user));
     return key ? this.#state[key] : this.#state;
   }
   getConfig(key = null) {
@@ -834,7 +853,7 @@ class Application {
   }
 
   setConfig(updates) {
-    if (this.#state.user && this.#state.user.role !== 'admin' && !this.#config.saveLoad) {
+    if (this.#state.user && this.#state.user.role !== 'admin' && !this.#config.saveLoad && !this.#config.debug) {
       L._('Only admin can update config');
       return;
     }
@@ -853,7 +872,8 @@ class Application {
   }
 
   setState(updates) {
-    if (!this.#state.user) throw new Error('Only user can update state');
+    if (!this.#state.user || updates.user) throw new Error('Only user can update state');
+
     this.#state = { ...this.#state, ...updates };
   }
 
@@ -903,7 +923,7 @@ class Application {
    */
   async saveAppConfig() {
     try {
-      if (this.#state.user && this.#state.user.role !== 'admin') {
+      if (this.#state.user && this.#state.user.role !== 'admin' && !this.#config.debug) {
         L._('⛔ Chỉ Admin mới có quyền lưu cài đặt', 'error');
         return;
       }
@@ -1103,7 +1123,7 @@ class Application {
         const userProfile = docSnap.data();
 
         if ((userProfile.role === 'admin' || userProfile.level >= 50) && typeof applyModeFromUrl === 'function' && applyModeFromUrl()) return;
-
+        this.#state.user = userProfile;
         const masker = localStorage.getItem('erp-mock-role');
         if (masker) {
           const mockData = JSON.parse(masker);
@@ -1111,7 +1131,7 @@ class Application {
           if (realRole === 'admin' || realRole === 'manager' || userProfile.level >= 50) {
             userProfile.role = mockData.maskedRole;
             window.CURRENT_USER = window.CURRENT_USER || {};
-            CURRENT_USER.realRole = realRole;
+            this.#state.user.realRole = realRole;
             localStorage.removeItem('erp-mock-role');
             this.#modules['UI'].renderedTemplates = {};
             // Xóa script/template của role cũ
@@ -1127,14 +1147,11 @@ class Application {
             });
           }
         }
-        this.#state.user = userProfile;
-        CURRENT_USER.uid = user.uid;
-        CURRENT_USER.email = user.email;
-        CURRENT_USER.name = userProfile.user_name || '';
-        CURRENT_USER.level = userProfile.level;
-        CURRENT_USER.profile = userProfile;
-        CURRENT_USER.group = userProfile.group || '';
-        CURRENT_USER.role = userProfile.role;
+
+        this.#state.user.uid = user.uid;
+        this.#state.user.name = userProfile.user_name || '';
+        this.#state.user.profile = userProfile;
+        CURRENT_USER = this.#state.user;
 
         // ★ URL mode override: chạy ngay sau khi có role — trước khi render bất cứ thứ gì.
         // Nếu có ?mode= hợp lệ và user là admin/manager → reloadSystemMode + return (bỏ qua toàn bộ boot).
@@ -1147,12 +1164,11 @@ class Application {
 
         CR_COLLECTION = (typeof ROLE_DATA !== 'undefined' ? ROLE_DATA[CURRENT_USER.role] : '') || '';
 
-        await Promise.all([this._call('UI', 'init', moduleManager), SECURITY_MANAGER.applySecurity(CURRENT_USER)]);
+        await Promise.all([this._call('UI', 'init', moduleManager), SECURITY_MANAGER.applySecurity(CURRENT_USER), moduleManager.loadForRole(CURRENT_USER.role)]);
         moduleManager.loadModule('Router', false);
 
         this.#config.saveLoad = false;
         this._ensureModalExists();
-
         // 5. Hiển thị app — xóa màn hình loading
         if (appEl) appEl.style.opacity = 1;
         if (launcher) launcher.remove();
@@ -1160,8 +1176,7 @@ class Application {
         showLoading(false);
 
         this.#state.isReady = true;
-        L._('✅ App ready', 'success');
-        window.dispatchEvent(new CustomEvent('app-ready'));
+
         // Chạy tất cả tác vụ background — KHÔNG block UI
         this.#runPostBoot(user, moduleManager);
       } catch (err) {
@@ -1202,8 +1217,6 @@ class Application {
 
     try {
       await Promise.all([mgr.loadCommonModules(), mgr.loadAsyncModules(CURRENT_USER.role), dataPromise]);
-      // ServicePriceController.init(); // ★ Init module cần thiết cho booking trước để tránh lỗi khi render booking widget (có thể bỏ qua nếu không dùng widget)
-      // HotelPriceController.init(); // ★ Init module cần thiết cho booking trước để tránh lỗi khi render booking widget (có thể bỏ qua nếu không dùng widget)
     } catch (e) {
       console.warn('[PostBoot] Module load error:', e.message);
     }
@@ -1223,7 +1236,8 @@ class Application {
     // hookSetters() patches setToEl / setNum so proxy binding is deferred until an
     // element actually receives a non-empty value (lazy — no eager bindContainer scan).
     try {
-      StateProxy.hookSetters();
+      window.StateProxy = this.StateProxy;
+      StateProxy?.hookSetters();
     } catch (e) {
       console.warn('[PostBoot] StateProxy.hookSetters:', e.message);
     }
@@ -1235,10 +1249,13 @@ class Application {
       console.warn('[PostBoot] EventManager:', e.message);
     }
 
+    L._('✅ App ready', 'success');
+    window.dispatchEvent(new CustomEvent('app-ready'));
+
     // f2. Context menu — init (auto-registers booking menu internally)
     try {
       if (!this.#modules['ContextMenu']) {
-        this.addModule('ContextMenu', new ContextMenu(), true);
+        await mgr.loadModule('ContextMenu');
       }
       this.#modules['ContextMenu']?.init?.();
     } catch (e) {
@@ -1248,16 +1265,6 @@ class Application {
     // g. Acc footer toggle
     if (['acc', 'acc_thenice'].includes(CURRENT_USER.role)) {
       if (typeof toggleTemplate === 'function') toggleTemplate('erp-footer-menu-container');
-    }
-
-    // h. Notification manager
-    if (this.#modules['NotificationManager']) {
-      try {
-        await this._call('NotificationManager', 'init');
-        // this.#modules['NotificationManager'].sendToAdmin('User Login', `${CURRENT_USER.name} (${CURRENT_USER.email}) vừa đăng nhập.`);
-      } catch (e) {
-        console.warn('[PostBoot] NotificationManager:', e.message);
-      }
     }
 
     // j. Mobile-specific tweaks (chạy sau khi UI đã render)
@@ -1290,7 +1297,6 @@ class Application {
       });
       // menu.toggleSide();
     }
-    await ShortKey.init();
   }
 }
 
@@ -1307,26 +1313,28 @@ class MODULELOADER {
     // Normalize disabledModules to lowercase for case-insensitive comparison
     this.#config.disabledModules = (disabledModules || []).map((m) => m);
     this.registry = {
-      DB: () => import('./modules/DBManager.js').then((m) => m.default),
-      Router: () => import('./common/Router.js').then((m) => m.default),
-      HotelPriceController: () => import('./modules/M_HotelPrice.js').then((m) => m.HotelPriceController),
-      ServicePriceController: () => import('./modules/M_ServicePrice.js').then((m) => m.default),
-      PriceManager: () => import('./modules/M_PriceManager.js').then((m) => m.default),
-      AdminConsole: () => import('./modules/AdminController.js').then((m) => m.default),
-      ReportModule: () => import('./modules/ReportModule.js').then((m) => m.default),
-      ThemeManager: () => import('./modules/ThemeManager.js').then((m) => m.default),
-      ShortKey: () => import('./modules/M_ShortKey.js').then((m) => m.default),
-      Lang: () => import('./modules/TranslationModule.js').then((m) => m.Lang),
-      NotificationManager: () => import('./modules/NotificationModule.js').then((m) => m.default),
-      CalculatorWidget: () => import('./common/components/calculator_widget.js').then((m) => m.CalculatorWidget),
-      ErpHeaderMenu: () => import('./common/components/header_menu.js').then((m) => m.default),
-      ErpFooterMenu: () => import('./common/components/footer_menu.js').then((m) => m.default),
-      ChromeMenuController: () => import('./common/components/Menu_StyleChrome.js').then((m) => m.ChromeMenuController),
+      DB: () => import('/src/js/modules/db/DBManager.js').then((m) => m.default),
+      HotelPriceController: () => import('../M_HotelPrice.js').then((m) => m.HotelPriceController),
+      ServicePriceController: () => import('../M_ServicePrice.js').then((m) => m.default),
+      PriceManager: () => import('../M_PriceManager.js').then((m) => m.default),
+      AdminConsole: () => import('../AdminController.js').then((m) => m.default),
+      ReportModule: () => import('../ReportModule.js').then((m) => m.default),
+      BookingOverview: () => import('../BookingOverviewController.js').then((m) => m.default),
+      ThemeManager: () => import('./ThemeManager.js').then((m) => m.default),
+      Router: () => import('./Router.js').then((m) => m.default),
+      ShortKey: () => import('./M_ShortKey.js').then((m) => m.default),
+      Lang: () => import('./TranslationModule.js').then((m) => m.Lang),
+      NotificationManager: () => import('./NotificationModule.js').then((m) => m.default),
+      StateProxy: () => import('./StateProxy.js').then((m) => m.default),
+      ErpHeaderMenu: () => import('/src/js/common/components/header_menu.js').then((m) => m.default),
+      ErpFooterMenu: () => import('/src/js/common/components/footer_menu.js').then((m) => m.default),
+      ChromeMenuController: () => import('/src/js/common/components/Menu_StyleChrome.js').then((m) => m.ChromeMenuController),
       // Side-effect import: đăng ký custom element <offcanvas-menu> + <at-modal-full>
       // Trả về adapter object trỏ đến DOM instance để A.OffcanvasMenu.open() hoạt động
-      BookingOverview: () => import('./modules/BookingOverviewController.js').then((m) => m.default),
+      ContextMenu: () => import('/src/js/common/components/M_ContextMenu.js').then((m) => m.default),
+      CalculatorWidget: () => import('/src/js/common/components/calculator_widget.js').then((m) => m.CalculatorWidget),
       OffcanvasMenu: async () => {
-        await import('./common/components/offcanvas_menu.js');
+        await import('/src/js/common/components/offcanvas_menu.js');
         const getEl = () => document.querySelector('offcanvas-menu');
         return {
           init: () => getEl()?.open(),
@@ -1341,7 +1349,7 @@ class MODULELOADER {
         };
       },
       ModalFull: async () => {
-        await import('./common/components/at_modal_full.js');
+        await import('/src/js/common/components/at_modal_full.js');
         const getEl = () => document.querySelector('at-modal-full');
         return {
           init: () => getEl()?.init(),
@@ -1356,20 +1364,22 @@ class MODULELOADER {
           },
         };
       },
-      SalesModule: () => import('./modules/M_SalesModule.js').then((m) => m.default),
+      SalesModule: () => import('/src/js/modules/M_SalesModule.js').then((m) => m.default),
+      Op: () => import('/src/js/modules/M_OperatorModule.js').then((m) => m.default),
+      AccountantCtrl: () => import('/accountant/controller_accountant.js').then((m) => m.default),
     };
 
     this.roleMap = {
-      admin: ['AdminConsole', 'HotelPriceController', 'ServicePriceController'],
-      op: ['HotelPriceController', 'ServicePriceController'],
-      acc: [],
+      admin: ['AdminConsole', 'HotelPriceController', 'ServicePriceController', 'SalesModule'],
+      op: ['Op', 'HotelPriceController', 'ServicePriceController'],
+      acc: ['AccountantCtrl'],
       sale: ['SalesModule'],
       acc_thenice: [],
     };
-    this.forAllModules = ['ReportModule', 'CalculatorWidget', 'ThemeManager', 'Lang', 'NotificationManager', 'PriceManager', 'ShortKey', 'BookingOverview', 'Router'];
-    this.commonModules = ['Lang', 'ThemeManager'];
+    this.forAllModules = ['ReportModule', 'CalculatorWidget', 'ThemeManager', 'Lang', 'NotificationManager', 'PriceManager', 'ShortKey', 'BookingOverview', 'Router', 'ContextMenu'];
+    this.commonModules = ['Lang', 'ThemeManager', 'StateProxy'];
     this.uiModules = ['OffcanvasMenu', 'ModalFull'];
-    this.asyncModules = ['AdminConsole', 'ReportModule', 'CalculatorWidget', 'HotelPriceController', 'ServicePriceController', 'PriceManager', 'NotificationManager', 'ShortKey', 'BookingOverview'];
+    this.asyncModules = ['AdminConsole', 'ReportModule', 'CalculatorWidget', 'HotelPriceController', 'ServicePriceController', 'PriceManager', 'ShortKey', 'BookingOverview', 'ContextMenu'];
   }
 
   /**
@@ -1414,6 +1424,7 @@ class MODULELOADER {
   async loadForRole(role) {
     const roleKey = role.toLowerCase();
     let modulesToLoad = this.roleMap[roleKey] || this.roleMap['sale'];
+    if (CURRENT_USER.level === 99) modulesToLoad = [...modulesToLoad, ['AdminConsole']];
 
     const activeModules = modulesToLoad
       .filter((key) => !this._isModuleDisabled(key))
