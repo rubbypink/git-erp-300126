@@ -1,0 +1,281 @@
+/* 
+ * 9TRIP ERP - ADMIN MODULE STYLES
+ * Version: 1.0.1
+ * Author: 9Trip Tech Lead
+ */
+
+:root {
+    --sidebar-bg: #1e293b;
+    --sidebar-hover: #334155;
+    --sidebar-active: #3b82f6;
+    --sidebar-text: #f8fafc;
+    --primary-color: #3b82f6;
+    --bg-body: #f8fafc;
+    --card-bg: #ffffff;
+    --header-height: 60px;
+    --sidebar-width: 260px;
+    --sidebar-collapsed-width: 70px;
+    --transition-speed: 0.3s;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    background-color: var(--bg-body);
+    color: #1e293b;
+    overflow-x: hidden;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+/* Layout Structure */
+#admin-wrapper {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+    overflow-x: hidden;
+}
+
+/* Sidebar Styles */
+#sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    transition: all var(--transition-speed) ease-in-out;
+    z-index: 1050; /* Cao hơn Bootstrap sticky-top */
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    height: 100vh;
+    left: 0;
+    top: 0;
+}
+
+#sidebar.collapsed {
+    width: var(--sidebar-collapsed-width);
+}
+
+#sidebar .sidebar-header {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    background: rgba(0,0,0,0.1);
+    flex-shrink: 0;
+}
+
+#sidebar .sidebar-brand {
+    font-weight: 700;
+    font-size: 1.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    color: #fff;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+}
+
+#sidebar .nav-link {
+    color: rgba(248, 250, 252, 0.7);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    transition: all 0.2s;
+    border-left: 3px solid transparent;
+    white-space: nowrap;
+}
+
+#sidebar .nav-link:hover {
+    background-color: var(--sidebar-hover);
+    color: #fff;
+}
+
+#sidebar .nav-link.active {
+    background-color: var(--sidebar-hover);
+    color: #fff;
+    border-left-color: var(--sidebar-active);
+}
+
+#sidebar .nav-link i {
+    width: 24px;
+    font-size: 1.1rem;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+#sidebar.collapsed .nav-link span,
+#sidebar.collapsed .sidebar-brand span {
+    display: none;
+}
+
+#sidebar .menu-group {
+    padding: 20px 20px 10px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(248, 250, 252, 0.4);
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+#sidebar.collapsed .menu-group {
+    display: none;
+}
+
+/* Main Content Area */
+#main-content {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    transition: all var(--transition-speed) ease-in-out;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; /* Quan trọng để flex child không bị tràn */
+    width: 100%;
+}
+
+#main-content.expanded {
+    margin-left: var(--sidebar-collapsed-width);
+}
+
+/* Header Styles */
+#admin-header {
+    height: var(--header-height);
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    width: 100%;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    min-width: 0;
+}
+
+.header-right {
+    flex-shrink: 0;
+}
+
+.breadcrumb {
+    margin-bottom: 0;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* UI Components */
+.card {
+    border: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    max-width: 100%;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* Table Styles */
+.table-responsive {
+    border-radius: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.table thead th {
+    background-color: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
+    font-weight: 600;
+    color: #475569;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    padding: 12px 15px;
+    white-space: nowrap;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    #sidebar {
+        transform: translateX(-100%);
+        width: 280px; /* Cố định width trên mobile khi show */
+    }
+    #sidebar.show {
+        transform: translateX(0);
+    }
+    #main-content {
+        margin-left: 0 !important;
+        width: 100%;
+    }
+    #main-content.expanded {
+        margin-left: 0;
+    }
+    #admin-header {
+        padding: 0 15px;
+    }
+    .admin-body {
+        padding: 15px !important;
+    }
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1040;
+    }
+    .sidebar-overlay.show {
+        display: block;
+    }
+    
+    /* Tối ưu cho các phần tử có thể gây tràn trên mobile */
+    .d-flex.flex-wrap {
+        gap: 10px !important;
+    }
+    
+    .input-group {
+        width: 100% !important;
+    }
+    
+    #admin-collection-selector {
+        min-width: 100% !important;
+    }
+}
+
+/* Fix cho màn hình cực nhỏ */
+@media (max-width: 400px) {
+    .header-right .gap-3 {
+        gap: 10px !important;
+    }
+    #admin-header {
+        padding: 0 10px;
+    }
+}

@@ -1,0 +1,20 @@
+{
+	"mcpServers": {
+		"firebase": {
+			"command": "npx",
+			"args": [
+				"-y",
+				"firebase-tools@14.15.2",
+				"experimental:mcp",
+				"--dir",
+				"",
+				"--only",
+				"auth,firestore,functions,hosting"
+			],
+			"alwaysAllow": [
+				"firestore_get_documents",
+				"firestore_query_collection"
+			]
+		}
+	}
+}
