@@ -230,13 +230,13 @@ const UI_RENDERER = {
       setupMainFormUI(APP_DATA.lists);
       this.initTableResizer('detail-tbody');
     }
-    if (tabId === 'tab-price-pkg') {
-      // Vào tab list thì check xem có data chưa để vẽ bảng
-      const tbody = document.getElementById('grid-body');
-      if (APP_DATA && Object.values(APP_DATA.bookings) && tbody && tbody.innerHTML.trim() === '') {
-        renderTableByKey('bookings');
-      }
-    }
+    // if (tabId === 'tab-price-pkg') {
+    //   // Vào tab list thì check xem có data chưa để vẽ bảng
+    //   const tbody = document.getElementById('grid-body');
+    //   if (APP_DATA && Object.values(APP_DATA.bookings) && tbody && tbody.innerHTML.trim() === '') {
+    //     renderTableByKey('bookings');
+    //   }
+    // }
 
     tabEl.dataset.isLoaded = 'true';
   },
@@ -285,6 +285,43 @@ const UI_RENDERER = {
 
     btn.addEventListener('click', this.currentSaveHandler);
     L._('Đã gán sự kiện mới cho Btn Save Modal.');
+  },
+
+  initBtnSelectDataList: function (data) {
+    const selectElem = getE('btn-select-datalist');
+    if (!data) data = APP_DATA;
+    if (!selectElem) return;
+    selectElem.innerHTML = '';
+    let hasOption = false;
+    const userRole = CURRENT_USER?.role || 'sale',
+      allowedCollections = COLL_MANIFEST?.[userRole] || [],
+      mappedKeys = A.DB.schema.getCollectionNames();
+    allowedCollections.forEach((key) => {
+      if (data[key] && Object.values(data[key]).length > 0) {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = mappedKeys?.[key] || key;
+        selectElem.appendChild(opt);
+        hasOption = true;
+      }
+    });
+    selectElem.disabled = false;
+  },
+
+  initTableResizer: function (tableId) {
+    if (typeof TableResizeManager === 'undefined') return;
+
+    if (!this._debouncedResizer) {
+      this._debouncedResizer = debounce((tid) => {
+        try {
+          const resizer = new TableResizeManager(tid);
+          resizer.init();
+        } catch (e) {
+          console.warn('[UI_RENDERER] Resizer init failed:', e);
+        }
+      }, 300);
+    }
+    this._debouncedResizer(tableId);
   },
 
   stableSort: function (data, currentTable, sort) {
@@ -422,485 +459,450 @@ const UI_RENDERER = {
     }
   },
 
-  iniGroupByOps: function (containerId) {
-    if (containerId) {
-      const select = getE('group-by-tab-data-tbl');
-      if (!select) return;
-      select.innerHTML = '';
-      const headers = STATE_TABLE?.['tab-data-tbl'].fieldConfigs;
-      const optDefault = document.createElement('option');
-      optDefault.value = '';
-      optDefault.textContent = '-- Group --';
-      select.appendChild(optDefault);
-      select.options[0].selected = true;
-      Object.values(headers).forEach((col) => {
-        const opt = document.createElement('option');
-        opt.value = col.name;
-        opt.textContent = col.displayName;
-        select.appendChild(opt);
-        // if (col.name === 'booking_id') {
-        //   select.selectedIndex = select.options.length - 1;
-        //   select.dispatchEvent(new Event('change'));
-        // }
-      });
-    }
-  },
+  // iniGroupByOps: function (containerId) {
+  //   if (containerId) {
+  //     const select = getE('group-by-tab-data-tbl');
+  //     if (!select) return;
+  //     select.innerHTML = '';
+  //     const headers = STATE_TABLE?.['tab-data-tbl'].fieldConfigs;
+  //     const optDefault = document.createElement('option');
+  //     optDefault.value = '';
+  //     optDefault.textContent = '-- Group --';
+  //     select.appendChild(optDefault);
+  //     select.options[0].selected = true;
+  //     Object.values(headers).forEach((col) => {
+  //       const opt = document.createElement('option');
+  //       opt.value = col.name;
+  //       opt.textContent = col.displayName;
+  //       select.appendChild(opt);
+  //       // if (col.name === 'booking_id') {
+  //       //   select.selectedIndex = select.options.length - 1;
+  //       //   select.dispatchEvent(new Event('change'));
+  //       // }
+  //     });
+  //   }
+  // },
 
-  /**
-   * Render các dòng dữ liệu cho bảng
-   * @private
-   */
-  _renderTableRows: function (items, headers, fieldConfigs = {}, containerId = '') {
-    const tblData = containerId ? window.STATE_TABLE?.[containerId] : null;
-    const groupByField = tblData?.groupByField;
+  // /**
+  //  * Render các dòng dữ liệu cho bảng
+  //  * @private
+  //  */
+  // _renderTableRows: function (items, headers, fieldConfigs = {}, containerId = '') {
+  //   const tblData = containerId ? window.STATE_TABLE?.[containerId] : null;
+  //   const groupByField = tblData?.groupByField;
 
-    if (groupByField) {
-      return this._renderGroupedRows(items, headers, fieldConfigs, groupByField);
-    }
+  //   if (groupByField) {
+  //     return this._renderGroupedRows(items, headers, fieldConfigs, groupByField);
+  //   }
 
-    return items
-      .map((item) => {
-        const itemId = item.id || item.uid || '';
-        const itemAttr = itemId ? `data-item="${itemId}"` : '';
-        return `
-        <tr ${itemAttr}>
-          ${headers
-            .map((h) => {
-              let val = item[h] !== undefined && item[h] !== null ? item[h] : '';
-              const config = fieldConfigs[h] || {};
+  //   return items
+  //     .map((item) => {
+  //       const itemId = item.id || item.uid || '';
+  //       const itemAttr = itemId ? `data-item="${itemId}"` : '';
+  //       return `
+  //       <tr ${itemAttr}>
+  //         ${headers
+  //           .map((h) => {
+  //             let val = item[h] !== undefined && item[h] !== null ? item[h] : '';
+  //             const config = fieldConfigs[h] || {};
 
-              // Format dữ liệu dựa trên type trong schema
-              if (config.type === 'date' && val) val = formatDateVN(val);
-              if (config.class?.split(' ').includes('number') && val) val = formatNumber(val);
+  //             // Format dữ liệu dựa trên type trong schema
+  //             if (config.type === 'date' && val) val = formatDateVN(val);
+  //             if (config.class?.split(' ').includes('number') && val) val = formatNumber(val);
 
-              const displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
-              const isLong = displayVal.length > 50;
-              const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
-              const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
+  //             const displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+  //             const isLong = displayVal.length > 50;
+  //             const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
+  //             const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
 
-              return `<td data-field="${h}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${escapeHtml(shortVal)}</td>`;
-            })
-            .join('')}
-        </tr>`;
-      })
-      .join('');
-  },
+  //             return `<td data-field="${h}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${escapeHtml(shortVal)}</td>`;
+  //           })
+  //           .join('')}
+  //       </tr>`;
+  //     })
+  //     .join('');
+  // },
 
-  /**
-   * Render các dòng dữ liệu đã được gom nhóm
-   * @private
-   */
-  _renderGroupedRows: function (items, headers, fieldConfigs, groupByField) {
-    const groups = {};
-    items.forEach((item) => {
-      const groupVal = item[groupByField] !== undefined && item[groupByField] !== null ? String(item[groupByField]) : 'Khác';
-      if (!groups[groupVal]) groups[groupVal] = [];
-      groups[groupVal].push(item);
-    });
+  // /**
+  //  * Render các dòng dữ liệu đã được gom nhóm
+  //  * @private
+  //  */
+  // _renderGroupedRows: function (items, headers, fieldConfigs, groupByField) {
+  //   const groups = {};
+  //   items.forEach((item) => {
+  //     const groupVal = item[groupByField] !== undefined && item[groupByField] !== null ? String(item[groupByField]) : 'Khác';
+  //     if (!groups[groupVal]) groups[groupVal] = [];
+  //     groups[groupVal].push(item);
+  //   });
 
-    let html = '';
-    const colSpan = headers.length;
+  //   let html = '';
+  //   const colSpan = headers.length;
 
-    Object.entries(groups).forEach(([groupName, groupItems]) => {
-      // Render Group Header
-      const displayGroupName = fieldConfigs[groupByField]?.type === 'date' ? formatDateVN(groupName) : groupName;
-      html += `
-        <tr class="table-info fw-bold text-start" style="cursor:pointer" onclick="A.UI.toggleGroup(this)">
-          <td colspan="${colSpan}" class="ps-3">
-            <i class="fas fa-chevron-down me-2 group-icon"></i> ${displayGroupName} (${groupItems.length} dòng)
-          </td>
-        </tr>`;
+  //   Object.entries(groups).forEach(([groupName, groupItems]) => {
+  //     // Render Group Header
+  //     const displayGroupName = fieldConfigs[groupByField]?.type === 'date' ? formatDateVN(groupName) : groupName;
+  //     html += `
+  //       <tr class="table-info fw-bold text-start" style="cursor:pointer" onclick="A.UI.toggleGroup(this)">
+  //         <td colspan="${colSpan}" class="ps-3">
+  //           <i class="fas fa-chevron-down me-2 group-icon"></i> ${displayGroupName} (${groupItems.length} dòng)
+  //         </td>
+  //       </tr>`;
 
-      // Render Group Items
-      groupItems.forEach((item) => {
-        const itemId = item.id || item.uid || '';
-        const itemAttr = itemId ? `data-item="${itemId}"` : '';
-        html += `
-          <tr ${itemAttr}>
-            ${headers
-              .map((h) => {
-                let val = item[h] !== undefined && item[h] !== null ? item[h] : '';
-                const config = fieldConfigs[h] || {};
+  //     // Render Group Items
+  //     groupItems.forEach((item) => {
+  //       const itemId = item.id || item.uid || '';
+  //       const itemAttr = itemId ? `data-item="${itemId}"` : '';
+  //       html += `
+  //         <tr ${itemAttr}>
+  //           ${headers
+  //             .map((h) => {
+  //               let val = item[h] !== undefined && item[h] !== null ? item[h] : '';
+  //               const config = fieldConfigs[h] || {};
 
-                if (config.type === 'date' && val) val = formatDateVN(val);
-                if (config.class?.split(' ').includes('number') && val) val = formatNumber(val);
+  //               if (config.type === 'date' && val) val = formatDateVN(val);
+  //               if (config.class?.split(' ').includes('number') && val) val = formatNumber(val);
 
-                const displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
-                const isLong = displayVal.length > 50;
-                const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
-                const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
+  //               const displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+  //               const isLong = displayVal.length > 50;
+  //               const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
+  //               const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
 
-                return `<td data-field="${h}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${escapeHtml(shortVal)}</td>`;
-              })
-              .join('')}
-          </tr>`;
-      });
-    });
+  //               return `<td data-field="${h}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${escapeHtml(shortVal)}</td>`;
+  //             })
+  //             .join('')}
+  //         </tr>`;
+  //     });
+  //   });
 
-    return html;
-  },
-  /**
-   * Ẩn/Hiện các dòng trong một nhóm
-   */
-  toggleGroup: function (headerRow) {
-    let next = headerRow.nextElementSibling;
-    const icon = headerRow.querySelector('.group-icon');
-    let isHiding = false;
+  //   return html;
+  // },
+  // /**
+  //  * Ẩn/Hiện các dòng trong một nhóm
+  //  */
+  // toggleGroup: function (headerRow) {
+  //   let next = headerRow.nextElementSibling;
+  //   const icon = headerRow.querySelector('.group-icon');
+  //   let isHiding = false;
 
-    // Kiểm tra trạng thái của dòng đầu tiên để quyết định ẩn hay hiện
-    if (next && !next.classList.contains('table-info')) {
-      isHiding = !next.classList.contains('d-none');
-    }
+  //   // Kiểm tra trạng thái của dòng đầu tiên để quyết định ẩn hay hiện
+  //   if (next && !next.classList.contains('table-info')) {
+  //     isHiding = !next.classList.contains('d-none');
+  //   }
 
-    while (next && !next.classList.contains('table-info')) {
-      if (isHiding) next.classList.add('d-none');
-      else next.classList.remove('d-none');
-      next = next.nextElementSibling;
-    }
+  //   while (next && !next.classList.contains('table-info')) {
+  //     if (isHiding) next.classList.add('d-none');
+  //     else next.classList.remove('d-none');
+  //     next = next.nextElementSibling;
+  //   }
 
-    if (icon) {
-      icon.className = isHiding ? 'fas fa-chevron-right me-2 group-icon' : 'fas fa-chevron-down me-2 group-icon';
-    }
-  },
+  //   if (icon) {
+  //     icon.className = isHiding ? 'fas fa-chevron-right me-2 group-icon' : 'fas fa-chevron-down me-2 group-icon';
+  //   }
+  // },
 
-  /**
-   * Render Footer cho bảng dựa trên aggregate config
-   * @private
-   */
-  _renderTableFooter: function (items, headers, fieldConfigs, colName) {
-    const aggregate = DB_SCHEMA[colName]?.aggregate || {};
-    const sumFields = aggregate.sum || [];
-    const uniqueFields = aggregate.unique || [];
+  // /**
+  //  * Render Footer cho bảng dựa trên aggregate config
+  //  * @private
+  //  */
+  // _renderTableFooter: function (items, headers, fieldConfigs, colName) {
+  //   const aggregate = DB_SCHEMA[colName]?.aggregate || {};
+  //   const sumFields = aggregate.sum || [];
+  //   const uniqueFields = aggregate.unique || [];
 
-    return `
-      <tr>
-        ${headers
-          .map((h) => {
-            let result = '';
-            if (sumFields.includes(h)) {
-              const total = items.reduce((acc, item) => {
-                const val = typeof getNum === 'function' ? getNum(item[h]) : parseFloat(String(item[h] || '0').replace(/[^0-9.-]+/g, '')) || 0;
-                return acc + val;
-              }, 0);
-              result = `<div class="small text-muted">Tổng:</div><div class="text-primary">${formatNumber(total)}</div>`;
-            } else if (uniqueFields.includes(h)) {
-              const uniqueCount = new Set(items.map((item) => item[h]).filter((v) => v !== undefined && v !== null && v !== '')).size;
-              result = `<div class="small text-muted"></div><div class="text-success">${uniqueCount}</div>`;
-            }
-            return `<td class="bg-light sticky-bottom" style="bottom: 0; z-index: 2;">${result}</td>`;
-          })
-          .join('')}
-      </tr>`;
-  },
+  //   return `
+  //     <tr>
+  //       ${headers
+  //         .map((h) => {
+  //           let result = '';
+  //           if (sumFields.includes(h)) {
+  //             const total = items.reduce((acc, item) => {
+  //               const val = typeof getNum === 'function' ? getNum(item[h]) : parseFloat(String(item[h] || '0').replace(/[^0-9.-]+/g, '')) || 0;
+  //               return acc + val;
+  //             }, 0);
+  //             result = `<div class="small text-muted">Tổng:</div><div class="text-primary">${formatNumber(total)}</div>`;
+  //           } else if (uniqueFields.includes(h)) {
+  //             const uniqueCount = new Set(items.map((item) => item[h]).filter((v) => v !== undefined && v !== null && v !== '')).size;
+  //             result = `<div class="small text-muted"></div><div class="text-success">${uniqueCount}</div>`;
+  //           }
+  //           return `<td class="bg-light sticky-bottom" style="bottom: 0; z-index: 2;">${result}</td>`;
+  //         })
+  //         .join('')}
+  //     </tr>`;
+  // },
 
-  /**
-   * Render thanh phân trang
-   * @private
-   */
-  _renderPagination: function (containerId, totalItems, pageSize, currentPage) {
-    const totalPages = Math.ceil(totalItems / pageSize) || 1;
-    const startIdx = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-    const endIdx = Math.min(currentPage * pageSize, totalItems);
+  // /**
+  //  * Render thanh phân trang
+  //  * @private
+  //  */
+  // _renderPagination: function (containerId, totalItems, pageSize, currentPage) {
+  //   const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  //   const startIdx = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  //   const endIdx = Math.min(currentPage * pageSize, totalItems);
 
-    let pagesHtml = '';
-    // Hiển thị tối đa 5 nút trang xung quanh trang hiện tại
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, startPage + 4);
-    if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+  //   let pagesHtml = '';
+  //   // Hiển thị tối đa 5 nút trang xung quanh trang hiện tại
+  //   let startPage = Math.max(1, currentPage - 2);
+  //   let endPage = Math.min(totalPages, startPage + 4);
+  //   if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
 
-    for (let i = startPage; i <= endPage; i++) {
-      pagesHtml += `
-        <li class="page-item ${i === currentPage ? 'active' : ''}">
-          <a class="page-link" ${currentPage === 1 ? 'disabled' : ''} href="javascript:void(0)" onclick="A.UI.changeTablePage('${containerId}', ${i})">${i}</a>
-        </li>`;
-    }
+  //   for (let i = startPage; i <= endPage; i++) {
+  //     pagesHtml += `
+  //       <li class="page-item ${i === currentPage ? 'active' : ''}">
+  //         <a class="page-link" ${currentPage === 1 ? 'disabled' : ''} href="javascript:void(0)" onclick="A.UI.changeTablePage('${containerId}', ${i})">${i}</a>
+  //       </li>`;
+  //   }
 
-    return `
-      <div class="d-flex justify-content-between align-items-center mt-0 px-2">
-        <small class="text-muted">Hiển thị ${startIdx}-${endIdx} / ${totalItems} dòng</small>
-        <nav aria-label="Table pagination">
-          <ul class="pagination pagination-sm mb-0">
-            <li class="page-item ${currentPage === 1 ? 'd-none' : ''}">
-              <a class="page-link" href="javascript:void(0)" onclick="A.UI.changeTablePage('${containerId}', ${currentPage - 1})">Trước</a>
-            </li>
-            ${pagesHtml}
-            <li class="page-item ${currentPage === totalPages || totalPages === 1 ? 'd-none' : ''}">
-              <a class="page-link" href="javascript:void(0)" onclick="A.UI.changeTablePage('${containerId}', ${currentPage + 1})">Sau</a>
-            </li>
-          </ul>
-        </nav>
-      </div>`;
-  },
+  //   return `
+  //     <div class="d-flex justify-content-between align-items-center mt-0 px-2">
+  //       <small class="text-muted">Hiển thị ${startIdx}-${endIdx} / ${totalItems} dòng</small>
+  //       <nav aria-label="Table pagination">
+  //         <ul class="pagination pagination-sm mb-0">
+  //           <li class="page-item ${currentPage === 1 ? 'd-none' : ''}">
+  //             <a class="page-link" href="javascript:void(0)" onclick="A.UI.changeTablePage('${containerId}', ${currentPage - 1})">Trước</a>
+  //           </li>
+  //           ${pagesHtml}
+  //           <li class="page-item ${currentPage === totalPages || totalPages === 1 ? 'd-none' : ''}">
+  //             <a class="page-link" href="javascript:void(0)" onclick="A.UI.changeTablePage('${containerId}', ${currentPage + 1})">Sau</a>
+  //           </li>
+  //         </ul>
+  //       </nav>
+  //     </div>`;
+  // },
 
-  /**
-   * Chuyển trang cho bảng
-   * @param {string} containerId
-   * @param {number} page
-   */
-  changeTablePage: function (containerId, page) {
-    const tblData = window.STATE_TABLE?.[containerId];
-    if (!tblData) return;
+  // /**
+  //  * Chuyển trang cho bảng
+  //  * @param {string} containerId
+  //  * @param {number} page
+  //  */
+  // changeTablePage: function (containerId, page) {
+  //   const tblData = window.STATE_TABLE?.[containerId];
+  //   if (!tblData) return;
 
-    const { filteredData, opts, fieldConfigs: cachedConfigs } = tblData;
-    const pageSize = opts.pageSize || A.getConfig('table_page_size') || 25;
-    const totalItems = filteredData.length;
-    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  //   const { filteredData, opts, fieldConfigs: cachedConfigs } = tblData;
+  //   const pageSize = opts.pageSize || A.getConfig('table_page_size') || 25;
+  //   const totalItems = filteredData.length;
+  //   const totalPages = Math.ceil(totalItems / pageSize) || 1;
 
-    if (page < 1 || !page) page = 1;
-    if (page > totalPages && totalPages > 0) page = totalPages;
+  //   if (page < 1 || !page) page = 1;
+  //   if (page > totalPages && totalPages > 0) page = totalPages;
 
-    // 1. Xác định Headers và Configs (Ưu tiên dùng cache từ state)
-    let fieldConfigs = cachedConfigs;
-    let headers = [];
+  //   // 1. Xác định Headers và Configs (Ưu tiên dùng cache từ state)
+  //   let fieldConfigs = cachedConfigs;
+  //   let headers = [];
 
-    if (!fieldConfigs || Object.keys(fieldConfigs).length === 0) {
-      fieldConfigs = {};
-      const colName = opts.colName;
-      if (colName && DB_SCHEMA[colName]) {
-        console.log('[DEBUG] changeTablePage colName:', colName);
-        console.log('[DEBUG] changeTablePage fields:', DB_SCHEMA[colName].fields);
-        headers = DB_SCHEMA[colName].fields.filter((f) => f.class !== 'd-none' && f.type !== 'hidden').map((f) => f.name);
-        const schemaFields = DB_SCHEMA[colName].fields || [];
-        headers = schemaFields.filter((f) => f.class !== 'd-none' && f.type !== 'hidden').map((f) => f.name);
-        schemaFields.forEach((f) => {
-          fieldConfigs[f.name] = f;
-        });
-      } else {
-        const allKeys = new Set();
-        filteredData.forEach((item) => {
-          if (item && typeof item === 'object') {
-            Object.keys(item).forEach((key) => allKeys.add(key));
-          }
-        });
-        headers = Array.from(allKeys);
-      }
-      tblData.fieldConfigs = fieldConfigs; // Cập nhật ngược lại cache
-    } else {
-      // Nếu đã có fieldConfigs, lấy headers từ schema nếu có để đảm bảo thứ tự
-      const colName = opts.colName;
-      if (colName && DB_SCHEMA[colName]) {
-        headers = DB_SCHEMA[colName].fields.filter((f) => f.class !== 'd-none' && f.type !== 'hidden').map((f) => f.name);
-      } else {
-        headers = Object.keys(fieldConfigs);
-      }
-    }
+  //   if (!fieldConfigs || Object.keys(fieldConfigs).length === 0) {
+  //     fieldConfigs = {};
+  //     const colName = opts.colName;
+  //     if (colName && DB_SCHEMA[colName]) {
+  //       console.log('[DEBUG] changeTablePage colName:', colName);
+  //       console.log('[DEBUG] changeTablePage fields:', DB_SCHEMA[colName].fields);
+  //       headers = DB_SCHEMA[colName].fields.filter((f) => f.class !== 'd-none' && f.type !== 'hidden').map((f) => f.name);
+  //       const schemaFields = DB_SCHEMA[colName].fields || [];
+  //       headers = schemaFields.filter((f) => f.class !== 'd-none' && f.type !== 'hidden').map((f) => f.name);
+  //       schemaFields.forEach((f) => {
+  //         fieldConfigs[f.name] = f;
+  //       });
+  //     } else {
+  //       const allKeys = new Set();
+  //       filteredData.forEach((item) => {
+  //         if (item && typeof item === 'object') {
+  //           Object.keys(item).forEach((key) => allKeys.add(key));
+  //         }
+  //       });
+  //       headers = Array.from(allKeys);
+  //     }
+  //     tblData.fieldConfigs = fieldConfigs; // Cập nhật ngược lại cache
+  //   } else {
+  //     // Nếu đã có fieldConfigs, lấy headers từ schema nếu có để đảm bảo thứ tự
+  //     const colName = opts.colName;
+  //     if (colName && DB_SCHEMA[colName]) {
+  //       headers = DB_SCHEMA[colName].fields.filter((f) => f.class !== 'd-none' && f.type !== 'hidden').map((f) => f.name);
+  //     } else {
+  //       headers = Object.keys(fieldConfigs);
+  //     }
+  //   }
 
-    // 2. Cắt dữ liệu cho trang hiện tại
-    const start = (page - 1) * pageSize;
-    const displayItems = filteredData.slice(start, start + pageSize);
+  //   // 2. Cắt dữ liệu cho trang hiện tại
+  //   const start = (page - 1) * pageSize;
+  //   const displayItems = filteredData.slice(start, start + pageSize);
 
-    // 3. Cập nhật DOM
-    const tbody = getE(`${containerId}-tbody`);
-    const paginContainer = getE(`${containerId}-pagination`);
+  //   // 3. Cập nhật DOM
+  //   const tbody = getE(`${containerId}-tbody`);
+  //   const paginContainer = getE(`${containerId}-pagination`);
 
-    if (tbody) tbody.innerHTML = this._renderTableRows(displayItems, headers, fieldConfigs, containerId);
-    if (paginContainer) paginContainer.innerHTML = this._renderPagination(containerId, totalItems, pageSize, page);
+  //   if (tbody) tbody.innerHTML = this._renderTableRows(displayItems, headers, fieldConfigs, containerId);
+  //   if (paginContainer) paginContainer.innerHTML = this._renderPagination(containerId, totalItems, pageSize, page);
 
-    // 3.1. Re-init TableResizeManager với Debounce
-    this.initTableResizer(`tbl-${containerId}`);
-    // 4. Re-init tooltips nếu có dùng Bootstrap Tooltip
-    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
-      const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-      tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-      });
-    }
-  },
+  //   // 3.1. Re-init TableResizeManager với Debounce
+  //   this.initTableResizer(`tbl-${containerId}`);
+  //   // 4. Re-init tooltips nếu có dùng Bootstrap Tooltip
+  //   if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+  //     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  //     tooltipTriggerList.map(function (tooltipTriggerEl) {
+  //       return new bootstrap.Tooltip(tooltipTriggerEl);
+  //     });
+  //   }
+  // },
 
-  /**
-   * Cập nhật dữ liệu cho bảng hiện có (Tối ưu render nhanh nhất)
-   * @param {string} containerId
-   * @param {Object|Array} newData
-   * @param {Object} newOpts
-   */
-  updateTable: function (containerId, newData, newOpts = {}) {
-    return this.createTable(containerId, newData, { ...newOpts, mode: 'replace' });
-  },
+  // /**
+  //  * Cập nhật dữ liệu cho bảng hiện có (Tối ưu render nhanh nhất)
+  //  * @param {string} containerId
+  //  * @param {Object|Array} newData
+  //  * @param {Object} newOpts
+  //  */
+  // updateTable: function (containerId, newData, newOpts = {}) {
+  //   return this.createTable(containerId, newData, { ...newOpts, mode: 'replace' });
+  // },
 
-  downloadData: async function (type = 'excel') {
-    try {
-      // showLoading(true, `Đang chuẩn bị xuất file ${type}...`);
-      // 1. Kiểm tra và load thư viện cần thiết
-      if (type === 'excel') {
-        await loadLibraryAsync('xlsx');
-      } else {
-        await loadLibraryAsync('jspdf');
-        await loadLibraryAsync('autotable');
-      }
+  // downloadData: async function (type = 'excel') {
+  //   try {
+  //     // showLoading(true, `Đang chuẩn bị xuất file ${type}...`);
+  //     // 1. Kiểm tra và load thư viện cần thiết
+  //     if (type === 'excel') {
+  //       await loadLibraryAsync('xlsx');
+  //     } else {
+  //       await loadLibraryAsync('jspdf');
+  //       await loadLibraryAsync('autotable');
+  //     }
 
-      const tblData = window.STATE_TABLE?.['tab-data-tbl'];
-      const data = tblData?.filteredData || [];
-      // showLoading(false);
-      if (!data.length) {
-        return logA('Không có dữ liệu để xuất!', 'warning');
-      }
+  //     const tblData = window.STATE_TABLE?.['tab-data-tbl'];
+  //     const data = tblData?.filteredData || [];
+  //     // showLoading(false);
+  //     if (!data.length) {
+  //       return logA('Không có dữ liệu để xuất!', 'warning');
+  //     }
 
-      const selectEl = getE('btn-select-datalist');
-      let viewType = selectEl ? selectEl.value : 'bookings',
-        viewText = selectEl ? selectEl.options[selectEl.selectedIndex].text : 'Export';
+  //     const selectEl = getE('btn-select-datalist');
+  //     let viewType = selectEl ? selectEl.value : 'bookings',
+  //       viewText = selectEl ? selectEl.options[selectEl.selectedIndex].text : 'Export';
 
-      const now = new Date(),
-        dateStr = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getFullYear()).slice(2)}`;
-      let fileName = `${viewText}_${dateStr}`,
-        dataToProcess = [...data];
+  //     const now = new Date(),
+  //       dateStr = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getFullYear()).slice(2)}`;
+  //     let fileName = `${viewText}_${dateStr}`,
+  //       dataToProcess = [...data];
 
-      // 2. Logic lọc VAT (Chỉ áp dụng cho một số collection nhất định)
-      if (['bookings', 'booking_details', 'operator_entries'].includes(viewType)) {
-        const isConfirmed = await showConfirm(`Lọc danh sách xuất Hóa Đơn cho bảng [${viewText}]?`);
+  //     // 2. Logic lọc VAT (Chỉ áp dụng cho một số collection nhất định)
+  //     if (['bookings', 'booking_details', 'operator_entries'].includes(viewType)) {
+  //       const isConfirmed = await showConfirm(`Lọc danh sách xuất Hóa Đơn cho bảng [${viewText}]?`);
 
-        if (isConfirmed) {
-          const vatKeywords = ['ck ct', 'đã xuất', 'vat', 'chờ xuất'];
-          const isVat = (val) =>
-            vatKeywords.some((k) =>
-              String(val || '')
-                .toLowerCase()
-                .includes(k)
-            );
+  //       if (isConfirmed) {
+  //         const vatKeywords = ['ck ct', 'đã xuất', 'vat', 'chờ xuất'];
+  //         const isVat = (val) =>
+  //           vatKeywords.some((k) =>
+  //             String(val || '')
+  //               .toLowerCase()
+  //               .includes(k)
+  //           );
 
-          if (viewType === 'bookings') {
-            dataToProcess = dataToProcess.filter((row) => isVat(row.payment_type));
-          } else {
-            // Đối với chi tiết, cần check pay_type của booking cha
-            const bookingsrc = typeof APP_DATA !== 'undefined' ? Object.values(APP_DATA.bookings || {}) : [];
-            if (bookingsrc.length > 0) {
-              const validBookingIds = new Set(bookingsrc.filter((b) => isVat(b.payment_type)).map((b) => String(b.id)));
-              dataToProcess = dataToProcess.filter((dRow) => validBookingIds.has(String(dRow.booking_id)));
-            }
-          }
+  //         if (viewType === 'bookings') {
+  //           dataToProcess = dataToProcess.filter((row) => isVat(row.payment_type));
+  //         } else {
+  //           // Đối với chi tiết, cần check pay_type của booking cha
+  //           const bookingsrc = typeof APP_DATA !== 'undefined' ? Object.values(APP_DATA.bookings || {}) : [];
+  //           if (bookingsrc.length > 0) {
+  //             const validBookingIds = new Set(bookingsrc.filter((b) => isVat(b.payment_type)).map((b) => String(b.id)));
+  //             dataToProcess = dataToProcess.filter((dRow) => validBookingIds.has(String(dRow.booking_id)));
+  //           }
+  //         }
 
-          if (dataToProcess.length === 0) {
-            // showLoading(false);
-            return logA('Không tìm thấy dữ liệu thỏa điều kiện VAT!', 'info');
-          } else L._('Đã lọc dữ liệu VAT: ' + dataToProcess.length, 'info');
-          fileName += '_VAT_ONLY';
-        }
-      }
+  //         if (dataToProcess.length === 0) {
+  //           // showLoading(false);
+  //           return logA('Không tìm thấy dữ liệu thỏa điều kiện VAT!', 'info');
+  //         } else L._('Đã lọc dữ liệu VAT: ' + dataToProcess.length, 'info');
+  //         fileName += '_VAT_ONLY';
+  //       }
+  //     }
 
-      // 3. Map dữ liệu sang định dạng xuất (Dùng fieldConfigs từ state bảng)
-      const fieldConfigs = tblData.fieldConfigs || {};
-      const headers = Object.keys(fieldConfigs).length > 0 ? Object.keys(fieldConfigs).filter((k) => !fieldConfigs[k].class?.includes('d-none')) : Object.keys(dataToProcess[0] || {});
+  //     // 3. Map dữ liệu sang định dạng xuất (Dùng fieldConfigs từ state bảng)
+  //     const fieldConfigs = tblData.fieldConfigs || {};
+  //     const headers = Object.keys(fieldConfigs).length > 0 ? Object.keys(fieldConfigs).filter((k) => !fieldConfigs[k].class?.includes('d-none')) : Object.keys(dataToProcess[0] || {});
 
-      const exportData = dataToProcess.map((row) => {
-        const rowObj = {};
-        headers.forEach((h) => {
-          const config = fieldConfigs[h] || {};
-          let val = row[h] !== undefined && row[h] !== null ? row[h] : '';
+  //     const exportData = dataToProcess.map((row) => {
+  //       const rowObj = {};
+  //       headers.forEach((h) => {
+  //         const config = fieldConfigs[h] || {};
+  //         let val = row[h] !== undefined && row[h] !== null ? row[h] : '';
 
-          // Format dữ liệu
-          if (config.type === 'date' && val) val = formatDateVN(val);
-          else if (config.class?.split(' ').includes('number') && val) val = formatNumber(val);
+  //         // Format dữ liệu
+  //         if (config.type === 'date' && val) val = formatDateVN(val);
+  //         else if (config.class?.split(' ').includes('number') && val) val = formatNumber(val);
 
-          const label = config.displayName || A.Lang?.t(h) || h;
-          rowObj[label] = typeof val === 'object' ? JSON.stringify(val) : val;
-        });
-        return rowObj;
-      });
-      // 4. Thực hiện tải file
-      if (type === 'excel') {
-        const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.json_to_sheet(exportData);
-        // Auto-size columns (tạm thời set cố định 20)
-        ws['!cols'] = Object.keys(exportData[0] || {}).map(() => ({ wch: 20 }));
-        XLSX.utils.book_append_sheet(wb, ws, 'Data');
-        XLSX.writeFile(wb, `${fileName}.xlsx`);
-      } else {
-        // Sử dụng html2pdf để hỗ trợ tiếng Việt tốt hơn jsPDF thuần
-        await loadLibraryAsync('html2pdf');
+  //         const label = config.displayName || A.Lang?.t(h) || h;
+  //         rowObj[label] = typeof val === 'object' ? JSON.stringify(val) : val;
+  //       });
+  //       return rowObj;
+  //     });
+  //     // 4. Thực hiện tải file
+  //     if (type === 'excel') {
+  //       const wb = XLSX.utils.book_new();
+  //       const ws = XLSX.utils.json_to_sheet(exportData);
+  //       // Auto-size columns (tạm thời set cố định 20)
+  //       ws['!cols'] = Object.keys(exportData[0] || {}).map(() => ({ wch: 20 }));
+  //       XLSX.utils.book_append_sheet(wb, ws, 'Data');
+  //       XLSX.writeFile(wb, `${fileName}.xlsx`);
+  //     } else {
+  //       // Sử dụng html2pdf để hỗ trợ tiếng Việt tốt hơn jsPDF thuần
+  //       await loadLibraryAsync('html2pdf');
 
-        // Tạo bảng HTML tạm thời để render
-        const tempDiv = document.createElement('div');
-        tempDiv.style.padding = '20px';
-        tempDiv.style.fontFamily = 'Arial, sans-serif';
+  //       // Tạo bảng HTML tạm thời để render
+  //       const tempDiv = document.createElement('div');
+  //       tempDiv.style.padding = '20px';
+  //       tempDiv.style.fontFamily = 'Arial, sans-serif';
 
-        const tableHtml = `
-          <h3 style="text-align: center; color: #2c3e50;">BÁO CÁO: ${viewText}</h3>
-          <p style="text-align: center; font-size: 12px; color: #7f8c8d;">Ngày xuất: ${new Date().toLocaleString('vi-VN')}</p>
-          <table border="1" style="width: 100%; border-collapse: collapse; font-size: 10px;">
-            <thead>
-              <tr style="background-color: #2c3e50; color: white;">
-                ${Object.keys(exportData[0] || {})
-                  .map((h) => `<th style="padding: 8px;">${h}</th>`)
-                  .join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${exportData
-                .map(
-                  (row) => `
-                <tr>
-                  ${Object.values(row)
-                    .map((v) => `<td style="padding: 5px; text-align: center;">${v}</td>`)
-                    .join('')}
-                </tr>
-              `
-                )
-                .join('')}
-            </tbody>
-          </table>
-        `;
-        tempDiv.innerHTML = tableHtml;
-        A.Modal.show(tempDiv, 'Xuất file PDF');
+  //       const tableHtml = `
+  //         <h3 style="text-align: center; color: #2c3e50;">BÁO CÁO: ${viewText}</h3>
+  //         <p style="text-align: center; font-size: 12px; color: #7f8c8d;">Ngày xuất: ${new Date().toLocaleString('vi-VN')}</p>
+  //         <table border="1" style="width: 100%; border-collapse: collapse; font-size: 10px;">
+  //           <thead>
+  //             <tr style="background-color: #2c3e50; color: white;">
+  //               ${Object.keys(exportData[0] || {})
+  //                 .map((h) => `<th style="padding: 8px;">${h}</th>`)
+  //                 .join('')}
+  //             </tr>
+  //           </thead>
+  //           <tbody>
+  //             ${exportData
+  //               .map(
+  //                 (row) => `
+  //               <tr>
+  //                 ${Object.values(row)
+  //                   .map((v) => `<td style="padding: 5px; text-align: center;">${v}</td>`)
+  //                   .join('')}
+  //               </tr>
+  //             `
+  //               )
+  //               .join('')}
+  //           </tbody>
+  //         </table>
+  //       `;
+  //       tempDiv.innerHTML = tableHtml;
+  //       A.Modal.show(tempDiv, 'Xuất file PDF');
 
-        const opt = {
-          margin: [10, 10, 10, 10],
-          filename: `${fileName}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, logging: false },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-        };
+  //       const opt = {
+  //         margin: [10, 10, 10, 10],
+  //         filename: `${fileName}.pdf`,
+  //         image: { type: 'jpeg', quality: 0.98 },
+  //         html2canvas: { scale: 2, useCORS: true, logging: false },
+  //         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+  //       };
 
-        await html2pdf().set(opt).from(tempDiv).save();
-        // document.body.removeChild(tempDiv);
-        A.Modal.hide();
-      }
+  //       await html2pdf().set(opt).from(tempDiv).save();
+  //       // document.body.removeChild(tempDiv);
+  //       A.Modal.hide();
+  //     }
 
-      L._(`Đã xuất file ${type} thành công: ${fileName}`, 'success');
-    } catch (err) {
-      Opps('Lỗi trong downloadData: ', err);
-    } finally {
-      showLoading(false);
-    }
-  },
+  //     L._(`Đã xuất file ${type} thành công: ${fileName}`, 'success');
+  //   } catch (err) {
+  //     Opps('Lỗi trong downloadData: ', err);
+  //   } finally {
+  //     showLoading(false);
+  //   }
+  // },
 
-  /**
-   * Khởi tạo TableResizeManager với debounce để tối ưu hiệu suất
-   * @param {string} tableId
-   */
-  initTableResizer: function (tableId) {
-    if (typeof TableResizeManager === 'undefined') return;
-
-    if (!this._debouncedResizer) {
-      this._debouncedResizer = debounce((tid) => {
-        try {
-          const resizer = new TableResizeManager(tid);
-          resizer.init();
-        } catch (e) {
-          console.warn('[UI_RENDERER] Resizer init failed:', e);
-        }
-      }, 300);
-    }
-    this._debouncedResizer(tableId);
-  },
-  initBtnSelectDataList: function (data) {
-    const selectElem = getE('btn-select-datalist');
-    if (!data) data = APP_DATA;
-    if (!selectElem) return;
-    selectElem.innerHTML = '';
-    let hasOption = false;
-    const userRole = CURRENT_USER?.role || 'sale',
-      allowedCollections = COLL_MANIFEST?.[userRole] || [],
-      mappedKeys = A.DB.schema.getCollectionNames();
-    allowedCollections.forEach((key) => {
-      if (data[key] && Object.values(data[key]).length > 0) {
-        const opt = document.createElement('option');
-        opt.value = key;
-        opt.textContent = mappedKeys?.[key] || key;
-        selectElem.appendChild(opt);
-        hasOption = true;
-      }
-    });
-    selectElem.disabled = false;
-  },
+  // /**
+  //  * Khởi tạo TableResizeManager với debounce để tối ưu hiệu suất
+  //  * @param {string} tableId
+  //  */
 };
 
 export default UI_RENDERER;

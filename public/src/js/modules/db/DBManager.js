@@ -76,15 +76,15 @@ class DBManager {
 
   // ─── Cấu hình secondary indexes ──────────────────────────────────────
   // Khai báo tập trung — dễ thêm index mới sau này
-  static #INDEX_CONFIG = [
-    { index: 'booking_details_by_booking', source: 'booking_details', groupBy: 'booking_id', sumBy: 'total' },
-    { index: 'operator_entries_by_booking', source: 'operator_entries', groupBy: 'booking_id', sumBy: 'total_cost' },
-    { index: 'operator_entries_by_supplier', source: 'operator_entries', groupBy: 'supplier', sumBy: 'total_cost' },
-    { index: 'operator_entries_by_month', source: 'operator_entries', groupBy: 'check_in', sumBy: 'total_cost' },
-    { index: 'transactions_by_booking', source: 'transactions', groupBy: 'booking_id', sumBy: 'amount' },
-    { index: 'transactions_by_fund', source: 'transactions', groupBy: 'fund_source', sumBy: 'amount' },
-    { index: 'transactions_by_month', source: 'transactions', groupBy: 'transaction_date', sumBy: 'amount' },
-  ];
+  // static #INDEX_CONFIG = [
+  //   { index: 'booking_details_by_booking', source: 'booking_details', groupBy: 'booking_id', sumBy: 'total' },
+  //   { index: 'operator_entries_by_booking', source: 'operator_entries', groupBy: 'booking_id', sumBy: 'total_cost' },
+  //   { index: 'operator_entries_by_supplier', source: 'operator_entries', groupBy: 'supplier', sumBy: 'total_cost' },
+  //   { index: 'operator_entries_by_month', source: 'operator_entries', groupBy: 'check_in', sumBy: 'total_cost' },
+  //   { index: 'transactions_by_booking', source: 'transactions', groupBy: 'booking_id', sumBy: 'amount' },
+  //   { index: 'transactions_by_fund', source: 'transactions', groupBy: 'fund_source', sumBy: 'amount' },
+  //   { index: 'transactions_by_month', source: 'transactions', groupBy: 'transaction_date', sumBy: 'amount' },
+  // ];
 
   /**
    * Mapping role → danh sách collections được phép truy cập.
@@ -106,8 +106,7 @@ class DBManager {
    */
 
   #getRoleCollections(role) {
-    const indexNames = new Set(DBManager.#INDEX_CONFIG.map((c) => c.index));
-    return (DBManager.#ROLE_COLL_MAP[role] ? DBManager.#ROLE_COLL_MAP[role] : ['bookings', 'booking_details', 'operator_entries', 'customers', 'transactions']).filter((c) => !indexNames.has(c)); // secondary index names
+    return DBManager.#ROLE_COLL_MAP[role] ? DBManager.#ROLE_COLL_MAP[role] : ['bookings', 'booking_details', 'operator_entries', 'customers', 'transactions'];
   }
 
   /**
@@ -255,7 +254,7 @@ class DBManager {
         this.loadMeta(APP_DATA).catch((e) => L.log('Meta load fail:', e));
 
         // Rebuild indexes & Sort để UI sẵn sàng
-        this.#rebuildAllSecondaryIndexes();
+        // this.#rebuildAllSecondaryIndexes();
         this.#localDB.setMeta('LAST_SYNC_ROLE', currentRole);
 
         const networkSaver = window.A?.getConfig?.('network_saver');
@@ -354,10 +353,10 @@ class DBManager {
     if (collList.length === 0) return 0;
 
     // Loại bỏ secondary index names — không phải Firestore collection thật
-    const indexNames = new Set(DBManager.#INDEX_CONFIG.map((c) => c.index));
-    collList = collList.filter((c) => !indexNames.has(c));
+    // const indexNames = new Set(DBManager.#INDEX_CONFIG.map((c) => c.index));
+    // collList = collList.filter((c) => !indexNames.has(c));
 
-    if (collList.length === 0) return 0;
+    // if (collList.length === 0) return 0;
 
     // ── Delta: mốc thời gian cho updated_at filter ────────────────────
     const lastSyncRaw = this.#localDB.getMeta('LAST_SYNC_DELTA');
@@ -408,11 +407,11 @@ class DBManager {
 
               // Bước 2: DỌN DẸP RAM (Mirror)
               APP_DATA[collName] = {};
-              DBManager.#INDEX_CONFIG
-                .filter((c) => c.source === collName)
-                .forEach(({ index }) => {
-                  APP_DATA[index] = {};
-                });
+              // DBManager.#INDEX_CONFIG
+              //   .filter((c) => c.source === collName)
+              //   .forEach(({ index }) => {
+              //     APP_DATA[index] = {};
+              //   });
 
               // Bước 3: ĐỔ VÀO RAM
               for (const doc of fetchedDocs) {
@@ -469,7 +468,7 @@ class DBManager {
     for (const coll of currentInApp) {
       // Không xóa meta collections
       if (['lists', 'currentUser', 'users'].includes(coll)) continue;
-      if (DBManager.#INDEX_CONFIG.some((c) => c.index === coll)) continue;
+      // if (DBManager.#INDEX_CONFIG.some((c) => c.index === coll)) continue;
 
       if (!allowedSet.has(coll)) {
         delete APP_DATA[coll]; // Xóa memory
@@ -606,7 +605,6 @@ class DBManager {
           }
         }
       }
-      AIzaSyDeVeF6GgDglrMQ_GtRIziePTWdYYw_ftg;
 
       // 4. ĐẨY VÀO APP_DATA (MEMORY MIRROR) - Thực hiện sau
       if (appDataExists) {
@@ -1234,8 +1232,8 @@ class DBManager {
         collectionsToSync = [...new Set([...roleColls, ...selectedColls])];
       }
       // Loại bỏ secondary index names — không phải Firestore collection thật
-      const _indexNames = new Set(DBManager.#INDEX_CONFIG.map((c) => c.index));
-      collectionsToSync = collectionsToSync.filter((c) => !_indexNames.has(c));
+      // const _indexNames = new Set(DBManager.#INDEX_CONFIG.map((c) => c.index));
+      // collectionsToSync = collectionsToSync.filter((c) => !_indexNames.has(c));
 
       L._(`🔄 Sync Delta: ${collectionsToSync.length} collection(s) to sync`);
 
@@ -1262,11 +1260,11 @@ class DBManager {
             if (isMissingData || forceNew) {
               // Full reload: reset primary collection + secondary indexes liên quan
               APP_DATA[colName] = {};
-              DBManager.#INDEX_CONFIG
-                .filter((c) => c.source === colName)
-                .forEach(({ index }) => {
-                  APP_DATA[index] = {};
-                });
+              // DBManager.#INDEX_CONFIG
+              //   .filter((c) => c.source === colName)
+              //   .forEach(({ index }) => {
+              //     APP_DATA[index] = {};
+              //   });
 
               // Sử dụng for...of để await từng item, đảm bảo APP_DATA được nạp đầy đủ trước khi kết thúc
               for (const d of querySnapshot.docs) {
@@ -1510,93 +1508,93 @@ class DBManager {
    * @param {string} collName - Tên collection nguồn
    * @param {object} data - Document data cần index
    */
-  #buildSecondaryIndexes(result, collName, data) {
-    DBManager.#INDEX_CONFIG
-      .filter((cfg) => cfg.source === collName)
-      .forEach(({ index, groupBy }) => {
-        let rawValue = data[groupBy];
+  // #buildSecondaryIndexes(result, collName, data) {
+  //   DBManager.#INDEX_CONFIG
+  //     .filter((cfg) => cfg.source === collName)
+  //     .forEach(({ index, groupBy }) => {
+  //       let rawValue = data[groupBy];
 
-        // 1. Kiểm tra tính hợp lệ của dữ liệu đầu vào
-        if (rawValue === undefined || rawValue === null || rawValue === '') return;
+  //       // 1. Kiểm tra tính hợp lệ của dữ liệu đầu vào
+  //       if (rawValue === undefined || rawValue === null || rawValue === '') return;
 
-        let groupKey = rawValue;
+  //       let groupKey = rawValue;
 
-        // 2. Xử lý logic Group By Month (Nếu tên index có suffix _by_month)
-        if (index.endsWith('_by_month')) {
-          let dateObj = null;
+  //       // 2. Xử lý logic Group By Month (Nếu tên index có suffix _by_month)
+  //       if (index.endsWith('_by_month')) {
+  //         let dateObj = null;
 
-          // Hỗ trợ nhiều định dạng ngày tháng phổ biến trong hệ thống
-          if (rawValue instanceof Date) {
-            dateObj = rawValue;
-          } else if (typeof rawValue === 'string') {
-            // Thử parse định dạng VN (DD/MM/YYYY) thường gặp trong UI
-            const vnParts = rawValue.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-            if (vnParts) {
-              dateObj = new Date(`${vnParts[3]}-${vnParts[2]}-${vnParts[1]}`);
-            } else {
-              // Thử parse ISO hoặc các định dạng chuẩn khác
-              dateObj = new Date(rawValue);
-            }
-          }
+  //         // Hỗ trợ nhiều định dạng ngày tháng phổ biến trong hệ thống
+  //         if (rawValue instanceof Date) {
+  //           dateObj = rawValue;
+  //         } else if (typeof rawValue === 'string') {
+  //           // Thử parse định dạng VN (DD/MM/YYYY) thường gặp trong UI
+  //           const vnParts = rawValue.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  //           if (vnParts) {
+  //             dateObj = new Date(`${vnParts[3]}-${vnParts[2]}-${vnParts[1]}`);
+  //           } else {
+  //             // Thử parse ISO hoặc các định dạng chuẩn khác
+  //             dateObj = new Date(rawValue);
+  //           }
+  //         }
 
-          // Rủi ro: Dữ liệu ngày tháng không hợp lệ -> Bỏ qua để tránh làm hỏng cấu trúc Index
-          if (!dateObj || isNaN(dateObj.getTime())) {
-            // L._(`⚠️ Index [${index}] bỏ qua doc [${data.id}] do ngày lỗi: ${rawValue}`, 'warning');
-            return;
-          }
+  //         // Rủi ro: Dữ liệu ngày tháng không hợp lệ -> Bỏ qua để tránh làm hỏng cấu trúc Index
+  //         if (!dateObj || isNaN(dateObj.getTime())) {
+  //           // L._(`⚠️ Index [${index}] bỏ qua doc [${data.id}] do ngày lỗi: ${rawValue}`, 'warning');
+  //           return;
+  //         }
 
-          const m = dateObj.getMonth() + 1;
-          const yy = dateObj.getFullYear().toString().slice(-2);
-          groupKey = `${m}-${yy}`; // Kết quả mong muốn: "3-26"
-        }
+  //         const m = dateObj.getMonth() + 1;
+  //         const yy = dateObj.getFullYear().toString().slice(-2);
+  //         groupKey = `${m}-${yy}`; // Kết quả mong muốn: "3-26"
+  //       }
 
-        // 3. Khởi tạo cấu trúc cây Object trong APP_DATA
-        if (!result[index]) result[index] = {};
-        if (!result[index][groupKey]) result[index][groupKey] = {};
+  //       // 3. Khởi tạo cấu trúc cây Object trong APP_DATA
+  //       if (!result[index]) result[index] = {};
+  //       if (!result[index][groupKey]) result[index][groupKey] = {};
 
-        // 4. Lưu vết dữ liệu (Sử dụng tham chiếu để tiết kiệm bộ nhớ)
-        result[index][groupKey][data.id] = data;
-      });
-  }
+  //       // 4. Lưu vết dữ liệu (Sử dụng tham chiếu để tiết kiệm bộ nhớ)
+  //       result[index][groupKey][data.id] = data;
+  //     });
+  // }
 
-  /**
-   * Rebuild toàn bộ Index với kỹ thuật Time Slicing (Chống đơ UI khi data > 50.000 dòng)
-   */
-  async #rebuildAllSecondaryIndexes() {
-    if (!window.APP_DATA) return;
+  // /**
+  //  * Rebuild toàn bộ Index với kỹ thuật Time Slicing (Chống đơ UI khi data > 50.000 dòng)
+  //  */
+  // async #rebuildAllSecondaryIndexes() {
+  //   if (!window.APP_DATA) return;
 
-    // 1. Reset các bảng Index
-    DBManager.#INDEX_CONFIG.forEach(({ index }) => {
-      window.APP_DATA[index] = {};
-    });
+  //   // 1. Reset các bảng Index
+  //   DBManager.#INDEX_CONFIG.forEach(({ index }) => {
+  //     window.APP_DATA[index] = {};
+  //   });
 
-    const uniqueSources = [...new Set(DBManager.#INDEX_CONFIG.map((cfg) => cfg.source))];
+  //   const uniqueSources = [...new Set(DBManager.#INDEX_CONFIG.map((cfg) => cfg.source))];
 
-    // 2. Xử lý từng bảng gốc
-    for (const sourceName of uniqueSources) {
-      const coll = window.APP_DATA[sourceName];
-      if (!coll) continue;
+  //   // 2. Xử lý từng bảng gốc
+  //   for (const sourceName of uniqueSources) {
+  //     const coll = window.APP_DATA[sourceName];
+  //     if (!coll) continue;
 
-      const docs = Object.values(coll);
+  //     const docs = Object.values(coll);
 
-      // CHUNK_SIZE: Số lượng dòng xử lý trong 1 nhịp (2000 là mức tối ưu nhất)
-      const CHUNK_SIZE = 2000;
+  //     // CHUNK_SIZE: Số lượng dòng xử lý trong 1 nhịp (2000 là mức tối ưu nhất)
+  //     const CHUNK_SIZE = 2000;
 
-      for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
-        // Lấy ra 2000 dòng để xử lý
-        const chunk = docs.slice(i, i + CHUNK_SIZE);
+  //     for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
+  //       // Lấy ra 2000 dòng để xử lý
+  //       const chunk = docs.slice(i, i + CHUNK_SIZE);
 
-        chunk.forEach((doc) => {
-          this.#buildSecondaryIndexes(window.APP_DATA, sourceName, doc);
-        });
+  //       chunk.forEach((doc) => {
+  //         this.#buildSecondaryIndexes(window.APP_DATA, sourceName, doc);
+  //       });
 
-        // ĐIỂM SÁNG GIÁ NHẤT: Nhường CPU (Yield to Main Thread)
-        // Lệnh này ép JS tạm dừng 0ms để trình duyệt kịp cập nhật giao diện (UI)
-        // Nhờ vậy user vẫn có thể click, cuộn trang mượt mà dù app đang load data ngầm.
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      }
-    }
-  }
+  //       // ĐIỂM SÁNG GIÁ NHẤT: Nhường CPU (Yield to Main Thread)
+  //       // Lệnh này ép JS tạm dừng 0ms để trình duyệt kịp cập nhật giao diện (UI)
+  //       // Nhờ vậy user vẫn có thể click, cuộn trang mượt mà dù app đang load data ngầm.
+  //       await new Promise((resolve) => setTimeout(resolve, 0));
+  //     }
+  //   }
+  // }
   /**
    * Fetcher callback dùng for localDB.autoSync().
    * Tải docs từ Firestore cho 1 collection (incremental nếu có sinceDate).
@@ -1638,9 +1636,9 @@ class DBManager {
     });
 
     // Secondary grouped indexes
-    DBManager.#INDEX_CONFIG.forEach(({ index }) => {
-      APP_DATA[index] = {};
-    });
+    // DBManager.#INDEX_CONFIG.forEach(({ index }) => {
+    //   APP_DATA[index] = {};
+    // });
     return APP_DATA;
   }
 
@@ -3088,7 +3086,7 @@ class DBManager {
     APP_DATA[collectionName][dataObj.id] = merged;
 
     // 2. Cập nhật Secondary Indexes
-    this.#buildSecondaryIndexes(APP_DATA, collectionName, merged);
+    // this.#buildSecondaryIndexes(APP_DATA, collectionName, merged);
   }
 
   _removeFromAppDataObj(collectionName, id) {
@@ -3099,15 +3097,15 @@ class DBManager {
     delete APP_DATA[collectionName][id];
 
     // 2. Xóa khỏi Secondary Indexes
-    DBManager.#INDEX_CONFIG
-      .filter((cfg) => cfg.source === collectionName)
-      .forEach(({ index, groupBy }) => {
-        const groupKey = docData[groupBy];
-        if (groupKey && APP_DATA[index]?.[groupKey]) {
-          delete APP_DATA[index][groupKey][id];
-          if (Object.keys(APP_DATA[index][groupKey]).length === 0) delete APP_DATA[index][groupKey];
-        }
-      });
+    // DBManager.#INDEX_CONFIG
+    //   .filter((cfg) => cfg.source === collectionName)
+    //   .forEach(({ index, groupBy }) => {
+    //     const groupKey = docData[groupBy];
+    //     if (groupKey && APP_DATA[index]?.[groupKey]) {
+    //       delete APP_DATA[index][groupKey][id];
+    //       if (Object.keys(APP_DATA[index][groupKey]).length === 0) delete APP_DATA[index][groupKey];
+    //     }
+    //   });
   }
 
   /**

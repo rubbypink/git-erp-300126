@@ -7,9 +7,9 @@ import { getFirestore, collection, doc, getDoc, getDocs, query, limit, writeBatc
 import { getApp } from 'firebase/app';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
-import { migrationHelper, runMigrateRooms } from './db/migration-helper.js';
+import { migrationHelper, runMigrateFieldData } from './db/migration-helper.js';
 import NavBarMenuController from '/src/js/common/components/M_NavBarResponsive.js';
-
+window.runMigrateFieldData = runMigrateFieldData;
 // =============================================================================
 // PHẦN 1: WEB COMPONENT (UPDATED RENDER LOGIC)
 // =============================================================================

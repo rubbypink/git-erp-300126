@@ -249,8 +249,8 @@ class ReportModule {
     this._renderLineChart(Object.keys(revenueByDate).sort(), Object.values(revenueByDate), 'Doanh thu ngày');
 
     // Render ATable
-    this._initTable({ colName: 'report_sales_general', header: true });
-    this.table.init(data);
+    if (!this.table) this._initTable({ colName: 'report_sales_general', header: true, data: data });
+    else this.table.init(data, 'report_sales_general');
   }
 
   _processSalesServices() {
@@ -282,8 +282,8 @@ class ReportModule {
     );
 
     // Render ATable
-    this._initTable({ colName: 'report_sales_services', header: true });
-    this.table.init(sorted);
+    if (!this.table) this._initTable({ colName: 'report_sales_services', header: true, data: sorted });
+    else this.table.init(sorted, 'report_sales_services');
   }
 
   _processSalesMatrixStaff() {
@@ -334,9 +334,8 @@ class ReportModule {
       rowData['TỔNG CỘNG'] = rowTotal;
       return rowData;
     });
-
-    this._initTable({ colName: '', header: true });
-    this.table.init(rows);
+    if (!this.table) this._initTable({ colName: '', header: true, data: rows });
+    else this.table.init(rows);
   }
 
   _processOperatorGeneral() {
@@ -362,8 +361,8 @@ class ReportModule {
     );
 
     // Sử dụng schema gốc operator_entries
-    this._initTable({ colName: 'operator_entries', header: true });
-    this.table.init(ops);
+    if (!this.table) this._initTable({ colName: 'operator_entries', header: true, data: ops });
+    else this.table.init(ops, 'operator_entries');
   }
 
   _processOperatorDebtDetail() {
@@ -382,7 +381,8 @@ class ReportModule {
         debt_display: debt > 0 ? this.FMT.format(debt) : '0',
       };
     });
-
+    if (!this.table) this._initTable({ colName: 'report_op_debt_detail', groupBy: true, groupByField: 'supplier', header: true, data: data });
+    else this.table.init(data, 'report_op_debt_detail');
     this._initTable({ colName: 'report_op_debt_detail', groupBy: true, groupByField: 'supplier', header: true });
     this.table.init(data);
   }
@@ -416,9 +416,8 @@ class ReportModule {
         margin: m + '%',
       };
     });
-
-    this._initTable({ colName: 'report_fin_general', header: true });
-    this.table.init(data);
+    if (!this.table) this._initTable({ colName: 'report_fin_general', header: true, data: data });
+    else this.table.init(data, 'report_fin_general');
   }
 
   _processFinancialByType() {
@@ -463,9 +462,8 @@ class ReportModule {
       sorted.map((s) => s.profit),
       'Lợi nhuận theo Loại DV'
     );
-
-    this._initTable({ colName: '', header: true });
-    this.table.init(sorted);
+    if (!this.table) this._initTable({ colName: '', header: true, data: sorted });
+    else this.table.init(sorted);
   }
 
   // --- ERROR REPORTS ---
@@ -498,9 +496,8 @@ class ReportModule {
         status: bk.status,
       };
     });
-
-    this._initTable({ colName: '', header: true });
-    this.table.init(data);
+    if (!this.table) this._initTable({ colName: '', header: true, data: data });
+    else this.table.init(data);
   }
 
   _processErrorSyncSalesAccounting() {

@@ -147,7 +147,7 @@ function selectTab(targetTabId) {
         header: true,
         headerExtra: [
           `<div class="btn btn-sm btn-warning shadow-sm p-0" id="datalist-select"">
-        <select id="btn-select-datalist" class="form-select form-select-sm bg-warning rounded border-0" style="min-width: 6rem;">
+        <select id="btn-select-datalist" data-source="A.DB.schema.getCollectionNames" class="smart-select form-select form-select-sm bg-warning rounded border-0" style="min-width: 6rem;">
         </select>
       </div>`,
         ],
@@ -298,70 +298,6 @@ function renderGrid(dataList, table) {
   // calculateSummary(dataList);
 }
 
-// // =========================================================================
-// // 5. PAGINATION LOGIC
-
-// function initPagination(sourceData, table) {
-//   if (!Array.isArray(sourceData)) sourceData = [];
-//   // GRID_STATE.pagination đã được khởi tạo trong logic_base.js
-//   renderCurrentPage(table);
-// }
-
-// function renderCurrentPage(table) {
-//   if (!table) table = getE('tbl-container-tab2');
-//   const { data, currentPage, limit } = GRID_STATE.pagination;
-//   const total = GRID_STATE.displayData.length;
-//   const pagination = table.querySelector('#pagination'),
-//     gridCount = table.querySelector('#grid-count');
-
-//   if (total === 0) {
-//     renderGrid([], table);
-//     if (pagination) pagination.innerHTML = '';
-//     if (gridCount) gridCount.innerText = 'Không có dữ liệu';
-//     return;
-//   }
-
-//   const startIndex = (currentPage - 1) * limit,
-//     endIndex = Math.min(startIndex + limit, total);
-//   const pageData = GRID_STATE.displayData.slice(startIndex, endIndex);
-
-//   renderGrid(pageData, table);
-//   if (pagination) renderPaginationControls(pagination);
-//   if (gridCount) gridCount.innerText = `Hiển thị ${startIndex + 1} - ${endIndex} trên tổng ${total} dòng`;
-// }
-
-// function changePage(page) {
-//   const p = GRID_STATE.pagination;
-//   if (page === 'prev') {
-//     if (p.currentPage > 1) p.currentPage--;
-//   } else if (page === 'next') {
-//     if (p.currentPage < p.totalPages) p.currentPage++;
-//   } else {
-//     p.currentPage = Number(page);
-//   }
-//   renderCurrentPage();
-//   document.dispatchEvent(new CustomEvent('paginationchange', { detail: { page: p.currentPage } }));
-// }
-
-// function renderPaginationControls(container) {
-//   const { currentPage, totalPages } = GRID_STATE.pagination;
-//   let html = '<ul class="pagination pagination-sm m-0">';
-//   html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0)" onclick="changePage('prev')">&laquo;</a></li>`;
-//   let startPage = Math.max(1, currentPage - 2),
-//     endPage = Math.min(totalPages, currentPage + 2);
-//   if (startPage > 1) {
-//     html += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="changePage(1)">1</a></li>`;
-//     if (startPage > 2) html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-//   }
-//   for (let i = startPage; i <= endPage; i++) html += `<li class="page-item ${i === currentPage ? 'active' : ''}"><a class="page-link" href="javascript:void(0)" onclick="changePage(${i})">${i}</a></li>`;
-//   if (endPage < totalPages) {
-//     if (endPage < totalPages - 1) html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-//     html += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="changePage(${totalPages})">${totalPages}</a></li>`;
-//   }
-//   html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0)" onclick="changePage('next')">&raquo;</a></li></ul>`;
-//   container.innerHTML = html;
-// }
-
 function setupLongPress(element, callback, threshold = 500) {
   let touchStartTime = 0,
     touchStartX = 0,
@@ -417,7 +353,7 @@ function renderTableByKey(key, tblId) {
     GRID_STATE.sort = { column: '', dir: 'desc' };
     if (!GRID_STATE.sourceData?.length) {
       if (tbody) tbody.innerHTML = `<tr><td colspan="${(GRID_COLS?.length || 0) + 1}" class="text-center p-4 text-muted">Không có dữ liệu</td></tr>`;
-      initFilterUI();
+
       return;
     }
     const schemaDef = A.DB.schema[key];
@@ -427,7 +363,7 @@ function renderTableByKey(key, tblId) {
       generateGridColsFromObject(key);
     }
     refreshGridPipeline(true);
-    initFilterUI();
+
     if (typeof TableResizeManager !== 'undefined')
       try {
         new TableResizeManager('grid-table').init();

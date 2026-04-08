@@ -16,7 +16,7 @@
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getAuth } from 'firebase/auth';
 import { getApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc, query, where, limit, orderBy, writeBatch, runTransaction, serverTimestamp } from 'firebase/firestore';
 
 // Nhớ import 'db' từ file cấu hình Firebase của bạn
 // import { db } from "./config/firebase-config.js";
@@ -128,8 +128,9 @@ export const migrationHelper = (() => {
 
 /**
  * =========================================================================
- * MIGRATION: CẬP NHẬT HÀNG LOẠT GIÁ TRỊ CHO 1 FIELD
+ * MIGRATION: CẬP NHẬT HÀNG LOẠT GIÁ TRỊ CHO 1 FIELD (OPTIMIZED)
  * =========================================================================
+ * @description Sử dụng LocalDB để lọc dữ liệu và Batch Write để cập nhật Firestore & LocalDB
  * @param {string} collectionName - Tên collection (vd: 'bookings')
  * @param {string} field - Tên trường cần update (vd: 'status')
  * @param {any} oldVal - Giá trị cũ cần tìm
@@ -137,50 +138,48 @@ export const migrationHelper = (() => {
  */
 export async function runMigrateFieldData(collectionName, field, oldVal, newVal) {
   L._(`🚀 [MIGRATION] Bắt đầu cập nhật ${collectionName}: ${field} [${oldVal}] -> [${newVal}]`, 'info');
-  const db = getFirestore();
+  const db = A.DB;
   try {
-    // 1. Query tìm các bản ghi khớp giá trị cũ
-    const q = query(collection(db, collectionName), where(field, '==', oldVal));
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) {
-      L._(`ℹ️ Không tìm thấy bản ghi nào trong '${collectionName}' có ${field} = ${oldVal}`, 'warning');
+    // 1. Lấy dữ liệu từ IndexedDB bằng A.DB.storage.getCollection
+    const storage = A.DB?.local || window.localDB;
+    if (!storage || typeof storage.getCollection !== 'function') {
+      throw new Error('Không tìm thấy DB Storage (A.DB.storage) hoặc hàm getCollection không khả dụng.');
+    }
+
+    L._(`📥 Đang lấy dữ liệu từ LocalDB cho '${collectionName}'...`);
+    const allDocs = await storage.getCollection(collectionName);
+
+    // 2. Lọc các bản ghi cần cập nhật (item[field] === oldVal)
+    const filteredDocs = allDocs.filter((item) => item[field] === oldVal);
+
+    if (filteredDocs.length === 0) {
+      L._(`ℹ️ Không tìm thấy bản ghi nào trong LocalDB '${collectionName}' có ${field} = ${oldVal}`, 'warning');
       return;
     }
-    const total = snapshot.size;
+
+    const total = filteredDocs.length;
     L._(`📦 Tìm thấy ${total} bản ghi cần cập nhật.`, 'info');
+
     let processed = 0;
-    const batchSize = 450; // Giới hạn Firestore là 500, dùng 450 cho an toàn
-    let batch = writeBatch(db);
+    let localBatch = [];
     let countInBatch = 0;
-    // 2. Duyệt và gom vào batch
-    for (const docSnap of snapshot.docs) {
-      batch.update(docSnap.ref, {
+
+    // 3. Duyệt và cập nhật Firestore bằng writeBatch
+    for (const docData of filteredDocs) {
+      const docId = docData.id || docData.uid;
+      if (!docId) continue;
+
+      // Chuẩn bị dữ liệu cho Local DB (updated_at dùng Date.now())
+      localBatch.push({
+        ...docData,
         [field]: newVal,
-        updated_at: serverTimestamp(),
+        updated_at: Date.now(),
       });
+    }
+    A.DB.batchSave(collectionName, localBatch);
+    A.DB.local.putBatch(collectionName, localBatch);
 
-      countInBatch++;
-      processed++;
-      // 3. Commit khi đủ batch size
-      if (countInBatch >= batchSize) {
-        await batch.commit();
-        L._(`✅ Đã commit batch (${processed}/${total})`, 'success');
-        batch = writeBatch(db);
-        countInBatch = 0;
-      }
-    }
-    // 4. Commit nốt phần còn lại
-    if (countInBatch > 0) {
-      await batch.commit();
-      L._(`✅ Đã commit batch cuối cùng (${processed}/${total})`, 'success');
-    }
-    L._(`🎉 [MIGRATION HOÀN TẤT] Đã cập nhật thành công ${processed} bản ghi!`, 'success');
-
-    // Tự động yêu cầu DBManager đồng bộ lại nếu đang ở môi trường có DBManager
-    if (window.DB && typeof window.DB.loadCollections === 'function') {
-      L._(`🔄 Đang đồng bộ lại dữ liệu local cho '${collectionName}'...`);
-      await window.DB.loadCollections(collectionName, { forceNew: true });
-    }
+    L._(`🎉 [MIGRATION HOÀN TẤT] Đã cập nhật thành công ${processed} bản ghi lên Firestore và LocalDB!`, 'success');
   } catch (error) {
     if (typeof Opps === 'function') {
       Opps(`❌ [MIGRATION ERROR] Thất bại khi migrate ${collectionName}:`, error);

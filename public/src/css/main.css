@@ -1,10 +1,11 @@
 /* =========================================================================
        MAIN.CSS - RESTRUCTURED WITH CSS GRID & REM UNITS
-       Last Updated: February 2026
+       Last Updated: April 2026 (Optimized by 9Trip Tech Lead)
        Changes:
-       - Grid layout: body with 3 rows × 13 columns
-       - All px converted to rem (base: 16px = 1rem)
-       - Mobile responsive optimization
+       - Optimized !important usage
+       - Fixed mobile viewport scrolling
+       - Commented out redundant/overridden declarations
+       - Improved transition support for header/footer
        ========================================================================= */
 
 /* --- 1. GLOBAL RESET & BOX MODEL --- */
@@ -13,6 +14,7 @@
 *::after {
   box-sizing: border-box; /* Đảm bảo padding/margin không làm vỡ kích thước 100% */
 }
+
 /* =========================================================================
        COLOR SCHEME: LIGHT & DARK THEMES
        Sử dụng 2 bộ màu hài hòa phổ biến nhất
@@ -37,7 +39,7 @@
   --text-color: #0f141c; /* Tối - Văn bản chính */
   --text-secondary: #3b4450; /* Xám tối - Văn bản phụ (contrast ≥4.5:1) */
   --border-color: #afb8c4; /* Xám sáng - Border */
-  --surface-color: #e7e7e7; /* Trắng - Card/Modal */
+  --surface-color: #f7f7f7; /* Trắng - Card/Modal */
   --hover-bg: #eaeaeb; /* Xám siêu nhạt - Hover */
   --input-bg: #e4e4e4; /* Trắng - Input background */
   --success-color: #10b981; /* Xanh lá - Thành công */
@@ -137,7 +139,8 @@ fieldset > * {
 legend {
   font-size: inherit; /* Tăng kích thước chữ */
   width: unset; /* Đặt lại width mặc định */
-  float: initial !important; /* Đặt legend ở giữa */
+  /* float: initial !important; */ /* Đã xóa !important vì không cần thiết đè Bootstrap ở đây */
+  float: initial;
   font-weight: 600; /* In đậm */
   padding: 0 0.5rem; /* Khoảng cách ngang */
   color: var(--secondary-color); /* Màu chính */
@@ -145,6 +148,7 @@ legend {
 
 /* 1. Xóa mũi tên mặc định của trình duyệt */
 select {
+  /* Giữ !important để đè mặc định trình duyệt và Bootstrap */
   -webkit-appearance: none !important;
   -moz-appearance: none !important;
   appearance: none !important;
@@ -152,7 +156,7 @@ select {
 
 /* 2. Xóa mũi tên của Bootstrap 5 (nếu đang dùng class form-select) */
 select.form-select {
-  background-image: none !important;
+  background-image: none !important; /* Bắt buộc để xóa icon mặc định của BS5 */
   /* Reset lại padding bên phải cho cân đối vì đã bỏ icon (mặc định của BS5 là khoảng 2.25rem) */
   padding-right: 0.75rem !important;
 }
@@ -164,12 +168,15 @@ select.form-select {
 
 /* Fix Header/Footer Contrast */
 .app-header {
+  /* Giữ !important để đảm bảo theme được áp dụng chính xác trên nền Bootstrap */
   background: var(--header-bg) !important;
   border-color: var(--border-color) !important;
   color: var(--text-color) !important;
   transition:
     background-color 0.3s ease,
-    color 0.3s ease;
+    color 0.3s ease,
+    transform 0.3s ease,
+    opacity 0.3s ease; /* Thêm transition cho auto-hide logic sau này */
 }
 
 /* ─── SCROLLABLE CONTAINERS: Allow scroll gestures ─── */
@@ -177,6 +184,7 @@ select.form-select {
   border-bottom: 1px solid var(--border-color);
 }
 .nav-tabs .nav-link {
+  /* Giữ !important để đè style mặc định của Bootstrap nav-tabs */
   background-color: var(--tab-inactive-bg) !important;
   color: var(--tab-inactive-text) !important;
   border: 1px solid transparent;
@@ -224,6 +232,7 @@ select.form-select {
 
 /* --- DROPDOWN & MENU --- */
 .dropdown-menu {
+  /* Giữ !important cho các thuộc tính quan trọng của dropdown để đè Bootstrap popper */
   background-color: var(--surface-color) !important;
   color: var(--text-color) !important;
   border: 0.0625rem solid var(--border-color);
@@ -233,16 +242,17 @@ select.form-select {
   max-width: 20rem !important;
   box-shadow: 0 0.375rem 0.75rem rgba(0, 0, 0, 0.15) !important;
   transition: all 0.2s ease;
-  font-size: 0.8125rem;
+  font-size: 0.6rem;
   max-height: 20rem;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* Tối ưu scroll mobile */
 }
 
 .dropdown-item {
   color: var(--text-color) !important;
-  padding: 0.375rem 0.75rem;
-  font-size: 0.8125rem;
-  font-weight: 500 !important;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 400 !important;
   border-radius: 0.25rem !important;
   margin: 0 0.25rem !important;
   transition: all 0.15s ease;
@@ -285,6 +295,7 @@ select.form-select {
 }
 .form-control:focus,
 .form-select:focus {
+  /* Giữ !important để đè focus state của Bootstrap */
   background-color: transparent !important;
   color: var(--text-color) !important;
   border-color: transparent !important;
@@ -296,57 +307,10 @@ select.form-select {
   transition: all 0.2s ease;
   font-weight: 500;
   text-align: center;
-  line-clamp: 2;
+  /* line-clamp: 2; */ /* line-clamp không hoạt động trực tiếp trên button mà không có display: -webkit-box */
   touch-action: manipulation; /* ✅ Allow but block double-tap zoom */
   pointer-events: auto; /* ✅ Ensure button is clickable */
   border-radius: 0.5rem;
-}
-
-.btn-primary {
-  background-color: var(--primary-color) !important;
-  border-color: var(--primary-color) !important;
-  color: #ffffff !important;
-}
-
-.btn-primary:hover {
-  opacity: 0.85;
-  box-shadow: var(--shadow-md);
-}
-
-.btn-secondary {
-  background-color: var(--secondary-color) !important;
-  border-color: var(--secondary-color) !important;
-  color: #ffffff !important;
-}
-
-.btn-success {
-  background-color: var(--success-color) !important;
-  border-color: var(--success-color) !important;
-  color: #ffffff !important;
-}
-
-.btn-danger {
-  background-color: var(--error-color) !important;
-  border-color: var(--error-color) !important;
-  color: #ffffff !important;
-}
-
-.btn-warning {
-  background-color: var(--warning-color) !important;
-  border-color: var(--warning-color) !important;
-  color: #1e293b !important;
-}
-
-.btn-info {
-  background-color: var(--info-color) !important;
-  border-color: var(--info-color) !important;
-  color: #ffffff !important;
-}
-
-.btn-light {
-  background-color: var(--surface-color) !important;
-  border-color: var(--border-color) !important;
-  color: var(--text-color) !important;
 }
 
 /* --- TABLE STYLING --- */
@@ -378,11 +342,10 @@ tbody td {
 
 /* --- MODAL & OVERLAY --- */
 .modal-content {
+  /* Giữ !important để đè style mặc định của Bootstrap modal */
   background-color: var(--surface-color) !important;
   color: var(--text-color) !important;
   border-color: var(--border-color) !important;
-  display: flex !important;
-  flex-direction: column !important;
 }
 
 .modal-header {
@@ -397,12 +360,6 @@ tbody td {
   border-color: var(--border-color) !important;
   width: 100%;
 }
-
-/* @media (prefers-color-scheme: dark) {
-  .btn-close {
-    filter: invert(1);
-  }
-} */
 
 /* --- SCROLLBAR STYLING --- */
 ::-webkit-scrollbar {
@@ -478,11 +435,12 @@ body {
   width: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  overflow: hidden; /* Body không scroll, chỉ scroll trong các container con */
 }
 
 /* --- 2. MAIN GRID LAYOUT (3 rows × 13 columns) --- */
 body {
+  /* Giữ !important để đè các thiết lập mặc định từ Bootstrap hoặc trình duyệt */
   background-color: var(--app-bg) !important;
   color: var(--text-color) !important;
   font-family: var(--font-family) !important;
@@ -514,9 +472,7 @@ body {
   display: grid;
   grid-template-rows: 35% 65%;
   grid-template-columns: repeat(var(--grid-cols), minmax(0, 1fr));
-  transition:
-    background-color 0.3s ease,
-    color 0.3s ease;
+  /* transition: background-color 0.3s ease, color 0.3s ease; */ /* Trùng lặp với khai báo ở dòng 166 */
   gap: 0;
 }
 
@@ -562,14 +518,14 @@ body {
   overflow: hidden;
 }
 
-input::-webkit-calendar-picker-indicator {
+input[type='date']::-webkit-calendar-picker-indicator {
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666666"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H5V10h14v8zm0-10H5V6h14v2z"/></svg>');
   filter: invert(0.5);
 }
 
 /* Fix Button Group Border Radius - Giữ lại border-radius cho tất cả button trong group */
 .btn-group > .btn {
-  border-radius: 0.5rem !important;
+  border-radius: 0.5rem !important; /* Cần thiết để đè style mặc định của Bootstrap btn-group triệt tiêu border-radius */
 }
 
 /* ─── SCROLLABLE CONTAINERS: Allow scroll gestures ─── */
@@ -587,7 +543,7 @@ td {
 td select.form-select-sm,
 td input.form-control-sm {
   margin: 0;
-  padding: 0 !important;
+  padding: 0 !important; /* Giữ !important để đảm bảo input trong table không có padding dư thừa */
   border: none;
 }
 
@@ -624,13 +580,16 @@ td input.form-control-sm {
 
 .form-floating {
   font-size: 0.75rem;
-  padding: 0.15rem 0.25rem !important;
+  /* padding: 0.15rem 0.25rem !important; */ /* Đã xóa !important vì không cần thiết đè Bootstrap ở đây */
+  padding: 0.15rem 0.25rem;
 }
 
 /* Form Labels */
 .form-label {
-  margin-bottom: 0 !important;
-  font-size: 0.625rem !important;
+  /* margin-bottom: 0 !important; */ /* Đã xóa !important */
+  margin-bottom: 0;
+  /* font-size: 0.625rem !important; */ /* Đã xóa !important */
+  font-size: 0.625rem;
   color: #666;
   font-weight: 600;
 }
@@ -642,8 +601,8 @@ td input.form-control-sm {
   padding: 0 0.25rem 0.25rem 0.25rem;
   height: 100%;
   width: 100%;
-  overflow: hidden; /* Allow scrolling */
-  -webkit-overflow-scrolling: auto;
+  overflow: hidden; /* Allow scrolling in panes */
+  -webkit-overflow-scrolling: touch; /* Tối ưu scroll mobile */
 }
 
 .tab-pane {
@@ -692,7 +651,8 @@ td input.form-control-sm {
   flex-direction: column;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
-  height: 100% !important;
+  /* height: 100% !important; */ /* Đã xóa !important */
+  height: 100%;
   pointer-events: auto;
 }
 
@@ -700,6 +660,7 @@ td input.form-control-sm {
 #tbl-container-tab2 .flex-grow-1 {
   flex: 1 1 auto;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Vùng Pagination (Footer của Card) */
@@ -731,7 +692,7 @@ td input.form-control-sm {
   box-shadow: 0 0.125rem 0.125rem -0.0625rem rgba(0, 0, 0, 0.1);
   overflow: hidden;
   text-wrap: wrap;
-  line-clamp: 2;
+  /* line-clamp: 2; */ /* Cần display: -webkit-box để hoạt động */
 }
 
 .table-data td {
@@ -782,14 +743,16 @@ body.dark-theme .chrome-trigger-btn:focus {
 
 /* Tắt transition khi đang kéo để tránh giật lag */
 .is-resizing {
-  transition: none !important;
+  transition: none !important; /* Bắt buộc để tránh lag khi resize */
 }
 /* TỐI ƯU CHO RESIZABLE MODAL */
 
 /* Ép phần body tự động giãn nở (flex-grow: 1) lấp đầy khoảng trống */
 .modal-content > .modal-body {
+  /* Giữ !important để đè style mặc định của Bootstrap modal-body */
   flex: 1 1 auto !important;
   overflow-y: auto; /* Tự động hiện thanh cuộn nếu bạn thu nhỏ quá */
+  -webkit-overflow-scrolling: touch;
   min-height: 0; /* Fix lỗi flexbox trên một số trình duyệt Safari/cũ */
 }
 
@@ -807,6 +770,9 @@ body.dark-theme .chrome-trigger-btn:focus {
   gap: 10px;
   z-index: 9999; /* Luôn nổi trên cùng */
   pointer-events: none; /* Xuyên qua phần rỗng */
+  transition:
+    transform 0.3s ease,
+    opacity 0.3s ease; /* Hỗ trợ auto-hide logic */
 }
 
 /* Các nút thu nhỏ trên Taskbar */
@@ -947,7 +913,7 @@ body.dark-theme .chrome-trigger-btn:focus {
 
 /* 1. ADMIN ONLY: Chỉ Admin mới thấy (Level cao nhất) */
 body:not(.is-admin) .admin-only {
-  display: none !important;
+  display: none !important; /* Bắt buộc để đảm bảo bảo mật UI */
 }
 
 /* 2. MANAGER ONLY: Manager thấy + Admin cũng thấy */
@@ -998,11 +964,13 @@ body:not(.is-acc):not(.is-admin) .acc-only {
   /* 1. Đảm bảo container chiếm trọn màn hình và không cuộn body */
   html,
   body {
-    overflow: hidden !important;
-    height: auto !important;
-    touch-action: manipulation !important;
-    -webkit-overflow-scrolling: touch;
+    /* overflow: hidden !important; */ /* Đã xóa !important */
+    overflow: hidden;
+    /* height: auto !important; */ /* Đã xóa !important */
     height: 100dvh;
+    /* touch-action: manipulation !important; */ /* Đã xóa !important */
+    touch-action: manipulation;
+    -webkit-overflow-scrolling: touch;
   }
 
   .app-container {
@@ -1023,37 +991,48 @@ body:not(.is-acc):not(.is-admin) .acc-only {
     top: 0;
     width: 100%;
     z-index: 200;
-    touch-action: auto !important;
+    /* touch-action: auto !important; */ /* Đã xóa !important */
+    touch-action: auto;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease,
+      transform 0.3s ease,
+      opacity 0.3s ease; /* Đảm bảo transition cho auto-hide */
   }
 
   .app-content {
     flex: 1 1 0; /* 0 thay vì auto */
     min-height: 0; /* Cho phép shrink đúng */
-    overflow-y: auto !important;
+    /* overflow-y: auto !important; */ /* Đã xóa !important */
+    overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     display: flex;
     flex-direction: column;
     /* Bỏ max-height: 88dvh (magic number không chính xác) */
     /* Thay bằng padding để tránh content bị footer che */
-    padding-bottom: 0.5rem !important;
+    /* padding-bottom: 0.5rem !important; */ /* Đã xóa !important */
+    padding-bottom: 0.5rem;
     position: relative;
   }
 
   .tab-content {
     flex: 1 1 auto;
-    overflow-y: auto !important;
+    /* overflow-y: auto !important; */ /* Đã xóa !important */
+    overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
   }
 
   /* 5. FIX NAV-CONTAINER NGANG */
   .nav-container {
+    /* Giữ !important để đè flex-wrap mặc định của Bootstrap nav */
     display: flex !important;
     flex-wrap: nowrap !important;
     -webkit-overflow-scrolling: touch;
     white-space: nowrap;
-    padding: 0.2rem !important;
+    /* padding: 0.2rem !important; */ /* Đã xóa !important */
+    padding: 0.2rem;
   }
 
   .admin-wrapper {
@@ -1062,15 +1041,17 @@ body:not(.is-acc):not(.is-admin) .acc-only {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    overflow-y: auto !important;
+    /* overflow-y: auto !important; */ /* Đã xóa !important */
+    overflow-y: auto;
     overflow-x: hidden;
-    -webkit-overflow-scrolling: touch !important;
+    -webkit-overflow-scrolling: touch;
     align-items: center;
     background-color: var(--app-bg);
     padding: 1rem 3rem;
   }
 
   #sub-booking-form {
+    /* Giữ !important để đè flex-direction mặc định trên mobile */
     flex-direction: column !important;
     justify-content: start !important;
     margin: 0.15rem !important;
@@ -1082,9 +1063,10 @@ body:not(.is-acc):not(.is-admin) .acc-only {
     width: 100%;
     flex-direction: column;
     justify-content: center;
-    overflow-y: auto !important;
+    /* overflow-y: auto !important; */ /* Đã xóa !important */
+    overflow-y: auto;
     overflow-x: hidden;
-    -webkit-overflow-scrolling: touch !important;
+    -webkit-overflow-scrolling: touch;
     align-items: center;
   }
   #tab-dashboard .card.active .card-body {
@@ -1097,12 +1079,14 @@ body:not(.is-acc):not(.is-admin) .acc-only {
 
   /* Đảm bảo Modal Container bao phủ toàn màn hình nhưng cho phép click xuyên qua vùng trống */
   .modal {
+    /* Giữ !important để đè style mặc định của Bootstrap modal */
     background-color: rgba(0, 0, 0, 0.5) !important; /* Tạo lớp nền mờ thủ công nếu cần */
     pointer-events: auto !important;
     top: 10dvh;
   }
 
   .modal .modal-title {
+    /* Giữ !important để đè style mặc định của Bootstrap modal-title */
     font-size: 1rem !important;
     padding: 0.25rem !important;
     max-height: 2rem !important;
@@ -1118,6 +1102,7 @@ body:not(.is-acc):not(.is-admin) .acc-only {
   input,
   select,
   textarea {
+    /* Giữ !important để đảm bảo tương tác trên mobile không bị chặn bởi các lớp overlay */
     pointer-events: auto !important;
     touch-action: manipulation !important; /* Cho phép zoom nhấp nhưng không lag */
     width: fit-content;
@@ -1128,13 +1113,14 @@ body:not(.is-acc):not(.is-admin) .acc-only {
   button,
   .btn,
   .btn-sm {
+    /* Giữ !important để đảm bảo tương tác trên mobile */
     touch-action: manipulation !important;
     display: inline-block; /* Stack buttons vertically if multiple */
     margin: 0.5rem 0.25rem; /* Add vertical spacing */
     cursor: pointer;
-    --webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
-    --webkit-user-select: none; /* Prevent text selection on buttons */
-    --webkit-touch-callout: none; /* Disable callout on long press */
+    -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+    -webkit-user-select: none; /* Prevent text selection on buttons */
+    -webkit-touch-callout: none; /* Disable callout on long press */
     user-select: none;
   }
   button:active,
@@ -1144,6 +1130,7 @@ body:not(.is-acc):not(.is-admin) .acc-only {
   }
 
   .nav-tabs {
+    /* Giữ !important để đè flex-wrap mặc định của Bootstrap nav-tabs */
     display: flex !important;
     flex-wrap: nowrap !important;
     -webkit-overflow-scrolling: touch;
@@ -1155,7 +1142,8 @@ body:not(.is-acc):not(.is-admin) .acc-only {
   }
 
   .no-select {
-    user-select: none !important; /* Ngăn người dùng chọn văn bản trong phần này */
+    /* Giữ !important để đảm bảo không thể chọn văn bản */
+    user-select: none !important;
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
     -ms-user-select: none !important;
@@ -1185,6 +1173,21 @@ body:not(.is-acc):not(.is-admin) .acc-only {
   fieldset > * {
     width: 100%;
   }
+
+  /* ── AUTO-HIDE HEADER/FOOTER ON SCROLL ── */
+  /* Ẩn header khi scroll xuống */
+  .app-header.header-hidden {
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Ẩn footer/taskbar khi scroll xuống */
+  .erp-taskbar.footer-hidden {
+    transform: translateY(100%);
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 
 /* =========================================================================
@@ -1193,6 +1196,7 @@ body:not(.is-acc):not(.is-admin) .acc-only {
 
 /* Field-level: highlight any input/select that was changed since last save */
 .is-dirty {
+  /* Giữ !important để đảm bảo highlight nổi bật trên nền input */
   background-color: #fff8e1 !important;
   border-color: #f59e0b !important;
   box-shadow: inset 0 0 0 1.5px #f59e0b !important;
@@ -1304,6 +1308,7 @@ html {
 /* Bootstrap .dropstart/.dropend: override side-popping behavior */
 .dropstart > .dropdown-menu.show,
 .dropend > .dropdown-menu.show {
+  /* Giữ !important để đè style mặc định của Bootstrap popper */
   position: static !important;
   transform: none !important;
   inset: auto !important;
@@ -1317,6 +1322,7 @@ html {
 
 /* Nested dropdown menus (dropdown inside dropdown) → vertical stack */
 .dropdown-menu .dropdown-menu.show {
+  /* Giữ !important để đè style mặc định của Bootstrap popper */
   position: static !important;
   transform: none !important;
   inset: auto !important;
@@ -1364,6 +1370,7 @@ html {
 @media (max-width: 767.98px) {
   /* Hiện nút toggle trên Mobile — compact, không full-width */
   .rtm-toggle-btn {
+    /* Giữ !important để đè display: none mặc định */
     display: inline-flex !important;
     width: fit-content !important;
     gap: 0.5rem;
@@ -1392,6 +1399,7 @@ html {
   }
 
   .rtm-tabs-list.show {
+    /* Giữ !important để đè display: none */
     display: flex !important;
     animation: rtmFadeIn 0.18s ease-out both;
   }
@@ -1403,6 +1411,7 @@ html {
 
   /* Style tab thành dropdown item */
   .rtm-tabs-list .nav-link {
+    /* Giữ !important để đè style mặc định của Bootstrap nav-link */
     border: none !important;
     border-radius: 0 !important;
     width: 100%;
@@ -1418,6 +1427,7 @@ html {
   .rtm-tabs-list .nav-link.active {
     background-color: var(--hover-bg, #f8f9fa);
     color: var(--primary-color, #0d6efd);
+    /* Giữ !important để đè border mặc định */
     border-left: 3px solid var(--primary-color, #0d6efd) !important;
     font-weight: 600;
   }
@@ -1429,6 +1439,7 @@ html {
 
   /* Tắt border-bottom của Bootstrap nav-tabs trong dropdown */
   .rtm-tabs-list {
+    /* Giữ !important để đè border-bottom mặc định của nav-tabs */
     border-bottom: none !important;
   }
 }

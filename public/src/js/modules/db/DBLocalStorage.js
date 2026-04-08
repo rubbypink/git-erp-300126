@@ -88,7 +88,7 @@ class IndexedDBHelper {
   async _doInitDB() {
     try {
       // Nâng cấp version lên 6 để cập nhật index cho notification_dedup
-      this.db.version(7).stores(buildDexieSchema());
+      this.db.version(8).stores(buildDexieSchema());
       await this.db.open();
       await this._loadSyncMeta();
       return true;
@@ -333,6 +333,46 @@ class IndexedDBHelper {
     }
   }
 
+  /**
+   * Tìm kiếm theo khoảng giá trị (Range Query)
+   * @param {string} storeName
+   * @param {any} startValue
+   * @param {any} endValue
+   * @param {string} fieldName Mặc định là 'created_at'
+   */
+  async findRange(storeName, startValue, endValue, fieldName = 'created_at') {
+    try {
+      if (!this.db.isOpen()) await this.initDB();
+      const table = this.db.table(storeName);
+
+      try {
+        let query = table.where(fieldName);
+        if (startValue != null && endValue != null) {
+          return await query.between(startValue, endValue, true, true).toArray();
+        } else if (startValue != null) {
+          return await query.aboveOrEqual(startValue).toArray();
+        } else if (endValue != null) {
+          return await query.belowOrEqual(endValue).toArray();
+        } else {
+          return await table.toArray();
+        }
+      } catch (indexError) {
+        // Fallback: Scan filter nếu thiếu Index hoặc lỗi query index
+        return await table
+          .filter((doc) => {
+            const val = doc[fieldName];
+            if (startValue != null && endValue != null) return val >= startValue && val <= endValue;
+            if (startValue != null) return val >= startValue;
+            if (endValue != null) return val <= endValue;
+            return true;
+          })
+          .toArray();
+      }
+    } catch (error) {
+      return this._handleError(error, `findRange (${fieldName})`, storeName, []);
+    }
+  }
+
   // ==========================================
   // NEW MODULE: ENHANCED UTILITIES (9TRIP ERP)
   // ==========================================
@@ -508,6 +548,49 @@ class IndexedDBHelper {
     } catch (error) {
       console.error(`[ERP Dexie] getStores Error:`, error);
       return [];
+    }
+  }
+
+  /**
+   * Lấy danh sách dữ liệu từ collection theo yêu cầu logic 9Trip
+   * @param {string} collection Tên store/collection
+   * @param {string|null} id ID document hoặc path (docId.fieldName)
+   * @returns {Promise<Array>}
+   */
+  async getList(collection, id = null) {
+    try {
+      if (!this.db.isOpen()) await this.initDB();
+
+      // 1. Nếu id === null: Lấy toàn bộ data của collection
+      if (id === null) {
+        const data = await this.db.table(collection).toArray();
+        return data.map((item) => ({
+          id: item.id || item.uid,
+          name: item.name || item.full_name || item.displayName || item.id || item.uid,
+        }));
+      }
+
+      // 2. Nếu id !== null: Kiểm tra định dạng id (docId.fieldName)
+      if (typeof id === 'string' && id.includes('.')) {
+        const [docId, fieldName] = id.split('.');
+        const doc = await this.db.table(collection).get(docId);
+        if (!doc) return [];
+
+        const fieldValue = doc[fieldName];
+        // Nếu là Array hoặc Object, trả về đúng định dạng array
+        if (Array.isArray(fieldValue)) return fieldValue;
+        if (fieldValue && typeof fieldValue === 'object') return [fieldValue];
+        return [];
+      } else if (id) {
+        // Nếu là string, lấy 1 item theo id
+        const doc = await this.db.table(collection).get(id);
+        if (doc) return doc;
+      }
+
+      // Nếu id không có dấu chấm, mặc định trả về [] theo logic yêu cầu (hoặc có thể mở rộng lấy 1 doc)
+      return [];
+    } catch (error) {
+      return this._handleError(error, `getList (${id})`, collection, []);
     }
   }
 }

@@ -1,12 +1,12 @@
 /**
  * Module: ASelect (9Trip ERP Core)
- * Version: 1.3.0 (Production - Initial Value Capture & Fallback Option)
+ * Version: 1.4.0 (Enhanced Value/Text Fallback & Data-Val Sync)
  * Architecture: Declarative UI + Global Event Delegation + Static State Sync
  */
 
 export default class ASelect {
   static instances = new Map();
-  static fetchPromises = new Map(); // [BỔ SUNG] Bộ đệm để gộp các request DB trùng lặp
+  static fetchPromises = new Map(); // Bộ đệm để gộp các request DB trùng lặp
 
   constructor(selectEl, opts = {}) {
     this.autoInit = false;
@@ -19,7 +19,6 @@ export default class ASelect {
     this.onChangeCallback = opts.onChange || selectEl.dataset.onchange;
 
     // FIX CHỦ LỰC: Chụp ngay giá trị và text khởi tạo trước khi DOM bị thay đổi
-    // Sửa dòng này trong constructor
     this.initialValue = selectEl.dataset?.val || selectEl.getAttribute('data-selected-value') || selectEl.value || '';
     const initialSelectedOption = selectEl.querySelector('option:checked');
     this.initialText = initialSelectedOption && initialSelectedOption.value !== '' ? initialSelectedOption.textContent : '-- Vui lòng chọn --';
@@ -44,7 +43,6 @@ export default class ASelect {
       this.buildUI();
 
       // TỐI ƯU 1: FAST-PATH (Đường cao tốc RAM)
-      // Nếu data có sẵn, render NGAY LẬP TỨC (Đồng bộ) để không bị chớp giật UI
       const syncData = this.checkSyncData(this.dataSourceStr);
 
       if (syncData) {
@@ -52,7 +50,6 @@ export default class ASelect {
         this.renderList(this.data);
         this.updateSelectedUI();
       } else {
-        // Nếu phải chọc xuống DB hoặc chạy Function, mới đẩy vào hàng đợi Async
         await this.loadAndRenderDataAsync();
       }
 
@@ -63,7 +60,6 @@ export default class ASelect {
     }
   }
 
-  // MỚI: Hàm kiểm tra nhanh xem data có sẵn trên RAM không
   checkSyncData(source) {
     if (typeof source === 'object' && source !== null) return source;
     if (typeof source !== 'string' || !source.trim()) return null;
@@ -72,9 +68,8 @@ export default class ASelect {
       let current = window;
       for (const part of parts) {
         if (current && current[part] !== undefined) current = current[part];
-        else return null; // Không có sẵn
+        else return null;
       }
-      // Bỏ qua nếu là hàm hoặc Promise, để hàm loadAsync xử lý
       if (typeof current === 'function' || current instanceof Promise) return null;
       return current;
     } catch (err) {
@@ -90,7 +85,6 @@ export default class ASelect {
         .filter((c) => !['smart-select', 'd-none', 'form-select'].includes(c))
         .join(' ');
 
-      // KIỂM TRA: Có nằm trong thẻ TD hoặc TH của bảng không?
       const isInTable = this.originalSelect.closest('td, th') !== null;
 
       this.wrapper.className = `smart-select-wrapper dropdown position-relative d-inline-block ${inheritedClasses}`;
@@ -117,9 +111,8 @@ export default class ASelect {
 
       const textClass = this.initialText === '-- Vui lòng chọn --' ? 'text-muted' : '';
 
-      // UX TỐI ƯU: Nếu trong bảng thì xóa sạch border, background, min-width. Ngược lại giữ giao diện thẻ Select chuẩn.
       if (isInTable) {
-        this.wrapper.style.minWidth = 'auto'; // Cho phép bảng tự ép kích thước
+        this.wrapper.style.minWidth = 'auto';
         this.wrapper.innerHTML = `
             <div class="smart-toggle-btn d-flex align-items-center w-100 h-100" tabindex="0" style="cursor: pointer; user-select: none; border: none !important; background-color: transparent !important; padding: 0 !important; outline: none; min-height: 24px;">
                 <span class="smart-selected-text text-truncate d-block ${textClass}" style="max-width: 100%;">${this.initialText}</span> 
@@ -175,7 +168,6 @@ export default class ASelect {
 
     const sourceStr = source.trim();
 
-    // 1. Chạy hàm từ string (Nếu có)
     try {
       const parts = sourceStr.split('.');
       let parent = window,
@@ -193,8 +185,6 @@ export default class ASelect {
       if (found && typeof current === 'function') return (await current.call(parent)) || [];
     } catch (err) {}
 
-    // TỐI ƯU 2: GỘP REQUEST (DEDUPLICATION)
-    // Nếu có 1 thẻ đang tải DB data này rồi, các thẻ sau chỉ việc "đợi ké"
     if (ASelect.fetchPromises.has(sourceStr)) {
       return await ASelect.fetchPromises.get(sourceStr);
     }
@@ -215,7 +205,6 @@ export default class ASelect {
       } catch (dbError) {
         return [];
       } finally {
-        // Xong việc thì xóa khỏi bộ nhớ để các lần update/sync data sau vẫn gọi được DB thật
         ASelect.fetchPromises.delete(sourceStr);
       }
     })();
@@ -267,10 +256,9 @@ export default class ASelect {
         const matchedItem = itemsToRender.find((i) => String(i.id) === String(valToSet) || String(i.text) === String(valToSet));
 
         if (matchedItem) {
-          // Ưu tiên dùng ID chuẩn của data tìm được (Giúp tự động sửa lỗi data cũ lưu nhầm tên)
           const realId = matchedItem.id;
           this.originalSelect.value = realId;
-          this.originalSelect.setAttribute('data-val', realId);
+          this.originalSelect.setAttribute('data-val', matchedItem.text); // YÊU CẦU 1: Lưu text vào data-val
           this.originalSelect.setAttribute('data-selected-value', realId);
         } else if (this.initialText !== '-- Vui lòng chọn --') {
           const hiddenOpt = document.createElement('option');
@@ -281,7 +269,7 @@ export default class ASelect {
 
           this.originalSelect.appendChild(hiddenOpt);
           this.originalSelect.value = valToSet;
-          this.originalSelect.setAttribute('data-val', valToSet);
+          this.originalSelect.setAttribute('data-val', this.initialText); // YÊU CẦU 1: Lưu text vào data-val
           this.originalSelect.setAttribute('data-selected-value', valToSet);
         }
       }
@@ -304,11 +292,12 @@ export default class ASelect {
   async triggerOnChange(value) {
     if (!this.onChangeCallback) return;
     try {
-      // Tận dụng helper toàn cục trong utils.js bạn vừa tạo
       if (typeof window.executeDynamicFunction === 'function') {
         await window.executeDynamicFunction(this.onChangeCallback, [value, this.originalSelect, this]);
+      } else if (typeof window.runFn === 'function') {
+        await window.runFn(this.onChangeCallback, [value, this.originalSelect, this]);
       } else {
-        console.warn('[ASelect] Chưa nạp utils.js chứa hàm executeDynamicFunction');
+        console.warn('[ASelect] Chưa nạp utils.js chứa hàm executeDynamicFunction hoặc runFn');
       }
     } catch (error) {
       console.error(`[ASelect] Lỗi gọi hàm onChange:`, error);
@@ -325,7 +314,6 @@ export default class ASelect {
         const createWrapper = this.wrapper.querySelector('.smart-create-wrapper');
         const keywordSpan = this.wrapper.querySelector('.create-keyword');
 
-        // logic ĐÚNG: Kiểm tra quyền dựa trên mảng manifest của Role
         const canCreate = window.COLL_MANIFEST && Array.isArray(window.COLL_MANIFEST) && window.COLL_MANIFEST.includes(this.dataSourceStr);
 
         if (keyword.length > 0 && filtered.length === 0 && canCreate) {
@@ -341,11 +329,8 @@ export default class ASelect {
   async handleCreateNew(keyword) {
     try {
       const source = this.dataSourceStr;
-
-      // logic ĐÚNG: COLL_MANIFEST chứa danh sách các collection mà Role này được phép sửa/tạo
       const hasPermission = window.COLL_MANIFEST && Array.isArray(window.COLL_MANIFEST) && window.COLL_MANIFEST.includes(source);
 
-      // 1. CHẶN NGAY NẾU KHÔNG CÓ QUYỀN
       if (!hasPermission) {
         if (window.Swal) {
           Swal.fire({
@@ -358,7 +343,6 @@ export default class ASelect {
         return;
       }
 
-      // 2. XÁC NHẬN VÀ MỞ FORM
       if (window.Swal) {
         const confirm = await window.Swal.fire({
           title: 'Xác nhận tạo mới',
@@ -383,19 +367,24 @@ export default class ASelect {
 
   setValue(val) {
     try {
-      this.originalSelect.value = val;
-      this.originalSelect.setAttribute('data-val', val); // BỔ SUNG
-      this.originalSelect.setAttribute('data-selected-value', val);
+      // YÊU CẦU 2: Xử lý fallback tìm theo text nếu không tìm thấy value
+      const matchedItem = this.data.find((item) => String(item.id) === String(val) || String(item.text) === String(val));
+      const finalVal = matchedItem ? matchedItem.id : val;
+
+      this.originalSelect.value = finalVal;
+      this.originalSelect.setAttribute('data-val', matchedItem ? matchedItem.text : val); // YÊU CẦU 1
+      this.originalSelect.setAttribute('data-selected-value', finalVal);
       this.originalSelect.dispatchEvent(new Event('change', { bubbles: true }));
     } catch (error) {
       console.error('[ASelect] Lỗi set value:', error);
     }
   }
+
   updateSelectedUI() {
     try {
       const val = this.originalSelect.value;
 
-      // BỔ SUNG MỚI: Tìm theo id, NẾU KHÔNG CÓ thì tìm tiếp theo text
+      // YÊU CẦU 2: Tìm theo id, NẾU KHÔNG CÓ thì tìm tiếp theo text
       const selectedItem = this.data.find((item) => String(item.id) === String(val) || String(item.text) === String(val));
 
       if (selectedItem) {
@@ -405,23 +394,24 @@ export default class ASelect {
         // AUTO-CORRECTION: Nếu giá trị gốc đang là Text, hãy tự động sửa lại thành ID chuẩn cho thẻ select
         if (String(selectedItem.id) !== String(val)) {
           this.originalSelect.value = selectedItem.id;
-          this.originalSelect.setAttribute('data-val', selectedItem.id);
           this.originalSelect.setAttribute('data-selected-value', selectedItem.id);
         }
+        this.originalSelect.setAttribute('data-val', selectedItem.text); // YÊU CẦU 1
       } else {
         const nativeOption = this.originalSelect.querySelector(`option[value="${val}"]`);
         if (nativeOption && val !== '') {
           this.toggleText.textContent = nativeOption.textContent;
           this.toggleText.classList.remove('text-muted');
+          this.originalSelect.setAttribute('data-val', nativeOption.textContent); // YÊU CẦU 1
         } else {
           this.toggleText.textContent = '-- Vui lòng chọn --';
           this.toggleText.classList.add('text-muted');
+          this.originalSelect.setAttribute('data-val', ''); // YÊU CẦU 1
         }
       }
     } catch (error) {}
   }
 
-  // --- CÁC HÀM STATIC ---
   static initDOMWatcher() {
     try {
       const observer = new MutationObserver((mutations) => {
@@ -488,7 +478,6 @@ export default class ASelect {
           if (instance) {
             const keyword = menu.querySelector('.smart-search-input').value.trim();
             menu.classList.remove('show');
-            // GỌI HÀM XỬ LÝ RIÊNG (Được định nghĩa bên dưới)
             instance.handleCreateNew(keyword);
           }
           return;
@@ -507,15 +496,12 @@ export default class ASelect {
         }
       });
 
-      // SỬA LỖI UX CUỘN CHUỘT
       window.addEventListener(
         'scroll',
         (e) => {
-          // Bỏ qua nếu hành động cuộn đang xảy ra BÊN TRONG thẻ menu dropdown của chúng ta
           if (e.target && e.target.nodeType === 1 && e.target.closest('.smart-dropdown-menu')) {
             return;
           }
-          // Nếu cuộn bên ngoài thì đóng tất cả menu
           document.querySelectorAll('.smart-dropdown-menu.show').forEach((m) => m.classList.remove('show'));
         },
         { passive: true, capture: true }
@@ -526,14 +512,13 @@ export default class ASelect {
   static syncData(collectionName) {
     try {
       if (!collectionName) return;
-      let updateCount = 0;
       ASelect.instances.forEach((instance, uid) => {
         if (!document.body.contains(instance.originalSelect)) {
           ASelect.instances.delete(uid);
           return;
         }
         if (instance.dataSourceStr === collectionName) {
-          instance.loadAndRenderData();
+          instance.loadAndRenderDataAsync();
           updateCount++;
         }
       });

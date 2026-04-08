@@ -19,8 +19,10 @@ export class AdminDatabaseController {
   async render() {
     try {
       // Lấy danh sách bảng từ Schema
+      const archivedCollections = ['archived_bookings', 'archived_booking_details', 'archived_operator_entries', 'archived_transactions'];
       const collectionsMap = A.DB.schema.getCollectionNames() || {};
-      const collectionKeys = Object.keys(collectionsMap);
+      let collectionKeys = Object.keys(collectionsMap);
+      collectionKeys = [...collectionKeys, ...archivedCollections];
 
       if (collectionKeys.length === 0) {
         this.container.innerHTML = `<div class="alert alert-warning m-4">Chưa có cấu hình Collection nào trong DBSchema!</div>`;
@@ -65,7 +67,7 @@ export class AdminDatabaseController {
         if (!this.aTableInstance) return this.loadTableData();
         let dataArray = await A.DB.local.getCollection(this.currentCollection);
         if (!dataArray) dataArray = await A.DB.getCollection(this.currentCollection);
-        await this.aTableInstance?.init(dataArray, this.currentCollection);
+        await this.aTableInstance?.init(dataArray);
       });
 
       document.getElementById('btn-admin-add-record').addEventListener('click', () => {
@@ -117,11 +119,12 @@ export class AdminDatabaseController {
         data: dataArray,
         colName: this.currentCollection,
         title: A.Lang?.t(this.currentCollection) || this.currentCollection,
-        pageSize: 20,
+        pageSize: 50,
         sorter: true,
         header: true,
         footer: true,
         search: true,
+        zoom: true,
         editable: true,
       });
     } catch (error) {
@@ -136,44 +139,4 @@ export class AdminDatabaseController {
         `;
     }
   }
-
-  // async handleSaveRecord(recordId) {
-  //   const saveBtn = document.getElementById('btn-save-record');
-  //   try {
-  //     // 1. Thu thập dữ liệu từ Form (A.DB.schema.getFormData tự động xử lý theo Schema)
-  //     const formData = A.DB.schema.getFormData(this.currentCollection);
-
-  //     // 2. Validation cơ bản (DBSchema đã có rules)
-  //     if (!formData) {
-  //       A.UI.toast('Dữ liệu không hợp lệ, vui lòng kiểm tra lại!', 'warning');
-  //       return;
-  //     }
-
-  //     // 3. Hiển thị Loading
-  //     A.UI.setBtnLoading(saveBtn, true, 'Đang lưu...');
-
-  //     // 4. Thực hiện lưu vào Firestore qua DBManager
-  //     // Nếu recordId có giá trị -> Update, ngược lại -> Add
-  //     let result;
-  //     if (recordId) {
-  //       result = await A.DB.updateRecord(this.currentCollection, recordId, formData);
-  //     } else {
-  //       result = await A.DB.addRecord(this.currentCollection, formData);
-  //     }
-
-  //     if (result) {
-  //       A.UI.toast('Đã lưu dữ liệu thành công!', 'success');
-  //       A.Modal.hide();
-  //       // Reload bảng để cập nhật UI
-  //       await this.loadTableData();
-  //     } else {
-  //       throw new Error('Không nhận được phản hồi từ hệ thống lưu trữ.');
-  //     }
-  //   } catch (error) {
-  //     console.error('[Admin DB] Save Error:', error);
-  //     A.UI.toast(`Lỗi khi lưu: ${error.message}`, 'danger');
-  //   } finally {
-  //     A.UI.setBtnLoading(saveBtn, false);
-  //   }
-  // }
 }

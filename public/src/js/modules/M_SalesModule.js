@@ -33,7 +33,7 @@ class SalesModule {
     /**
      * Hiển thị dữ liệu Booking lên Form
      */
-    loadBookingToUI: (bkData, customerData, detailsData) => {
+    loadBookingToUI: async (bkData, customerData, detailsData) => {
       if (!bkData) return;
 
       if (window.StateProxy) {
@@ -97,7 +97,7 @@ class SalesModule {
         if (detailsArr.length > 0) {
           const sortedDetails = SalesModule.Logic.sortDetailsData(detailsArr);
           sortedDetails.forEach((row) => {
-            SalesModule.UI.addDetailRow(row);
+            await SalesModule.UI.addDetailRow(row);
           });
         }
 
@@ -122,7 +122,7 @@ class SalesModule {
     /**
      * Thêm một dòng dịch vụ chi tiết
      */
-    addDetailRow: (data = null) => {
+    addDetailRow: async (data = null) => {
       try {
         SalesModule.State.detailRowCount++;
         const idx = SalesModule.State.detailRowCount;
@@ -176,7 +176,7 @@ class SalesModule {
         const tbody = getE('detail-tbody');
         if (tbody) tbody.appendChild(tr);
 
-        SalesModule.UI.updateHotelSelect(idx);
+        await SalesModule.UI.updateHotelSelect(idx);
 
         if (data) {
           const detailId = data.id || '';
@@ -222,11 +222,11 @@ class SalesModule {
       }
     },
 
-    updateHotelSelect: (idx) => {
+    updateHotelSelect: async (idx) => {
       return;
       try {
         const lists = window.APP_DATA?.lists || {};
-        const hotels = Object.values(window.APP_DATA?.hotels || {}).map((h) => h);
+        const hotels = A.DB.local.getList('hotels');
         const others = Object.values(lists.locOther || {}) || [];
         const allLocs = [...new Set([...hotels, ...others])];
         const tr = getE(`row-${idx}`);
@@ -249,7 +249,7 @@ class SalesModule {
         const elName = $('[data-field="service_name"]', tr);
         let options = [];
         if (type === 'Phòng') {
-          const hotel = Object.values(window.APP_DATA?.hotels || {}).find((h) => h.id === loc || h.name === loc);
+          let hotel = A.DB.local.get('hotels', loc);
           if (hotel && hotel.rooms) {
             options = Object.values(hotel.rooms);
           }
@@ -295,7 +295,7 @@ class SalesModule {
               logA('Vui lòng điền đầy đủ: Ngày Đi, Ngày Về và Số người lớn!', 'warning');
               return;
             }
-            SalesModule.Logic.processAndFillTemplate(template.booking_details, template.anchorDate, start, adult);
+            await SalesModule.Logic.processAndFillTemplate(template.booking_details, template.anchorDate, start, adult);
           }
         }
       } catch (e) {
@@ -886,7 +886,7 @@ class SalesModule {
       }
     },
 
-    processAndFillTemplate: (booking_details, anchorDateStr, newStartStr, newAdult) => {
+    processAndFillTemplate: async (booking_details, anchorDateStr, newStartStr, newAdult) => {
       try {
         const parseDate = (dStr) => (dStr instanceof Date ? dStr : new Date(dStr));
         const bkId = getVal('BK_ID');
@@ -1575,7 +1575,7 @@ class SalesModule {
         if (!bookingId) bookingId = getVal('BK_ID');
         if (!bookingId) return logA('Không có mã Booking!', 'warning');
 
-        const res = typeof findBookingInLocal === 'function' ? findBookingInLocal(bookingId) : null;
+        const res = typeof findBookingInLocal === 'function' ? await findBookingInLocal(bookingId) : null;
         if (res?.success) {
           SalesModule.State.currentBookingData = res;
           const formEl = getE('tmpl-confirmation-modal');

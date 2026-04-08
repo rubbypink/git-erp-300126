@@ -23,7 +23,7 @@ class EventManager {
     try {
       // 1. Gắn events từ các module con
       this._setupServerActionEvents();
-      this._setupGridFilterEvents();
+      // this._setupGridFilterEvents();
       this._setupSearchEvents();
       this._setupFormEvents();
       this._setupNumberInputEvents();
@@ -364,95 +364,95 @@ class EventManager {
    * SECTION 3: GRID FILTER & SORT EVENTS
    * =========================================================================
    */
-  _setupGridFilterEvents() {
-    this.on(
-      '#btn-data-filter',
-      'click',
-      () => {
-        if (window.FILTER_ACTIVE) {
-          if (typeof resetGridData === 'function') {
-            resetGridData();
-          }
-        } else {
-          if (typeof applyGridFilterThrottled === 'function') {
-            applyGridFilterThrottled();
-          }
-        }
-      },
-      true
-    );
+  // _setupGridFilterEvents() {
+  //   this.on(
+  //     '#btn-data-filter',
+  //     'click',
+  //     () => {
+  //       if (window.FILTER_ACTIVE) {
+  //         if (typeof resetGridData === 'function') {
+  //           resetGridData();
+  //         }
+  //       } else {
+  //         if (typeof applyGridFilterThrottled === 'function') {
+  //           applyGridFilterThrottled();
+  //         }
+  //       }
+  //     },
+  //     true
+  //   );
 
-    this.on(
-      '#filter-val',
-      'input',
-      () => {
-        if (typeof applyGridFilterThrottled === 'function') {
-          applyGridFilterThrottled();
-        }
-      },
-      true
-    );
+  //   this.on(
+  //     '#filter-val',
+  //     'input',
+  //     () => {
+  //       if (typeof applyGridFilterThrottled === 'function') {
+  //         applyGridFilterThrottled();
+  //       }
+  //     },
+  //     true
+  //   );
 
-    this.on(
-      '#filter-val',
-      'change',
-      () => {
-        if (typeof applyGridFilterThrottled === 'function') {
-          applyGridFilterThrottled();
-        }
-      },
-      true
-    );
+  //   this.on(
+  //     '#filter-val',
+  //     'change',
+  //     () => {
+  //       if (typeof applyGridFilterThrottled === 'function') {
+  //         applyGridFilterThrottled();
+  //       }
+  //     },
+  //     true
+  //   );
 
-    this.on(
-      '#btn-data-sort',
-      'click',
-      () => {
-        if (typeof applyGridSorter === 'function') {
-          applyGridSorter();
-        }
-      },
-      true
-    );
-    this.on(
-      '#btn-reload-collection',
-      'click',
-      () => {
-        if (typeof A.DB.syncDelta === 'function') {
-          A.DB.syncDelta(getVal('btn-select-datalist') || null, true);
-        }
-      },
-      true
-    );
-    this.on(
-      '#btn-sync-delta-collection',
-      'click',
-      () => {
-        if (typeof A.DB.syncDelta === 'function') {
-          L._('Start Delta Sync');
-          A.DB.syncDelta();
-        }
-      },
-      true
-    );
-    this.on(
-      '#btn-select-datalist',
-      'change',
-      async (e) => {
-        const el = e.target;
-        const selectedKey = el.value;
-        CURRENT_TABLE_KEY = selectedKey;
-        // STATE_TABLE['tab-data-tbl'].groupByField = null;
-        if (getE('tbl-tab-data-tbl')) {
-          A.UI.createTable('tab-data-tbl', { colName: selectedKey, data: APP_DATA[`${selectedKey}`] });
-          A.UI.initBtnSelectDataList();
-          getE('btn-select-datalist').value = selectedKey;
-          A.UI.iniGroupByOps('tab-data-tbl');
-        }
-      },
-      true
-    );
-  }
+  //   this.on(
+  //     '#btn-data-sort',
+  //     'click',
+  //     () => {
+  //       if (typeof applyGridSorter === 'function') {
+  //         applyGridSorter();
+  //       }
+  //     },
+  //     true
+  //   );
+  //   this.on(
+  //     '#btn-reload-collection',
+  //     'click',
+  //     () => {
+  //       if (typeof A.DB.syncDelta === 'function') {
+  //         A.DB.syncDelta(getVal('btn-select-datalist') || null, true);
+  //       }
+  //     },
+  //     true
+  //   );
+  //   this.on(
+  //     '#btn-sync-delta-collection',
+  //     'click',
+  //     () => {
+  //       if (typeof A.DB.syncDelta === 'function') {
+  //         L._('Start Delta Sync');
+  //         A.DB.syncDelta();
+  //       }
+  //     },
+  //     true
+  //   );
+  //   this.on(
+  //     '#btn-select-datalist',
+  //     'change',
+  //     async (e) => {
+  //       const el = e.target;
+  //       const selectedKey = el.value;
+  //       CURRENT_TABLE_KEY = selectedKey;
+  //       // STATE_TABLE['tab-data-tbl'].groupByField = null;
+  //       if (getE('tbl-tab-data-tbl')) {
+  //         A.UI.createTable('tab-data-tbl', { colName: selectedKey, data: APP_DATA[`${selectedKey}`] });
+  //         A.UI.initBtnSelectDataList();
+  //         getE('btn-select-datalist').value = selectedKey;
+  //         A.UI.iniGroupByOps('tab-data-tbl');
+  //       }
+  //     },
+  //     true
+  //   );
+  // }
 
   /**
    * =========================================================================
@@ -730,24 +730,22 @@ class EventManager {
     });
 
     const handleRowClick = (e) => {
-      if (!e || !e.target || typeof e.target.closest !== 'function' || getE('detail-tbody')?.contains(e.target)) return;
-
+      // if (!e || !e.target || typeof e.target.closest !== 'function' || getE('detail-tbody')?.contains(e.target)) return;
+      if (!e || !e.target || getE('detail-tbody')?.contains(e.target)) return;
       const table = e.target.closest('table');
       if (!table) return;
+      const coll = table.dataset.collection;
+      const isOk = ['booking_details', 'operator_entries', 'bookings'].includes(coll);
+      if (!isOk) return;
       const tbody = table.querySelector('tbody');
       if (!tbody) return;
 
       const tr = e.target.closest('tr');
       if (!tr) return;
-      const coll = table.dataset.collection;
       const trId = tr.id || tr.dataset.item;
-
       if (!coll || !trId) return;
-
-      const isDetailEntry = ['booking_details', 'operator_entries'].includes(coll);
-
       if (typeof onGridRowClick === 'function') {
-        onGridRowClick(trId, isDetailEntry);
+        if (coll === 'bookings') onGridRowClick(trId, coll);
       }
     };
 
@@ -756,6 +754,7 @@ class EventManager {
       'dblclick',
       (e) => {
         e.preventDefault();
+        L._('EventManager.on tr dblclick');
         if (getE('#detail-tbody')?.contains(e.target) || getE('#bkov-detail-tbody')?.contains(e.target) || getE('#bkov-txn-tbody')?.contains(e.target)) return;
         handleRowClick(e);
       },

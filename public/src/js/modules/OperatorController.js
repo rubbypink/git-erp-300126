@@ -19,11 +19,11 @@ export const SupplierPayment = {
   async openFilterDialog() {
     try {
       // 1.1 Chuẩn bị Options cho Nhà cung cấp
-      const suppliers = APP_DATA?.lists?.suppliers || Object.values(window.APP_DATA?.suppliers || {});
-      let supplierOptions = '<option value="">-- Chọn Nhà Cung Cấp --</option>';
-      suppliers.forEach((s) => {
-        supplierOptions += `<option value="${s.id || s}">${s.name || s}</option>`;
-      });
+      // const suppliers = APP_DATA?.lists?.suppliers || Object.values(window.APP_DATA?.suppliers || {});
+      // let supplierOptions = '<option value="">-- Chọn Nhà Cung Cấp --</option>';
+      // suppliers.forEach((s) => {
+      //   supplierOptions += `<option value="${s.id || s}">${s.name || s}</option>`;
+      // });
 
       // 1.2 Render Popup
       const { value: filterParams } = await Swal.fire({
@@ -32,7 +32,7 @@ export const SupplierPayment = {
                     <div class="text-start">
                         <div class="mb-3">
                             <label class="form-label fw-bold">Nhà cung cấp <span class="text-danger">*</span></label>
-                            <select id="swal-supplier" class="form-select">${supplierOptions}</select>
+                            <select id="swal-supplier" class="smart-select form-select" data-source="suppliers"></select>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Giai đoạn</label>
@@ -95,12 +95,13 @@ export const SupplierPayment = {
       Swal.showLoading();
 
       // 2.1 Load Dữ liệu ưu tiên APP_DATA, fallback Firestore
-      let sourceData = APP_DATA?.operator_entries;
+      let sourceData = await A.DB.local.getCollection('operator_entries');
       if (!sourceData || sourceData.length === 0) {
         sourceData = await A.DB.getCollection('operator_entries');
         if (APP_DATA) APP_DATA.operator_entries = sourceData; // Cache lại
       }
-      let supData = HD.find(APP_DATA?.suppliers, supplier, 'id') || HD.find(APP_DATA?.suppliers, supplier, 'name');
+      let suppliers = await A.DB.getCollection('suppliers');
+      let supData = HD.find(suppliers, supplier, 'id') || HD.find(suppliers, supplier, 'name');
 
       // 2.2 Lọc bằng HD.filter (Lọc Supplier trước)
       let filtered = HD.filter(sourceData, supData.name, '==', 'supplier') || HD.filter(sourceData, supplier, '==', 'supplier');

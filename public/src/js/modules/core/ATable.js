@@ -4,7 +4,7 @@
  * Kế thừa và tối ưu hóa từ UI_RENDERER.createTable.
  *
  * @author 9Trip Tech Lead
- * @version 2.3.1
+ * @version 2.5.0
  */
 
 import { DB_SCHEMA } from '../db/DBSchema.js';
@@ -44,6 +44,8 @@ export default class ATable {
       draggable: false,
       download: false,
       contextMenu: false,
+      zoom: false, // Mặc định không zoom
+      style: 'auto', // Mặc định auto (bootstrap default)
       title: '',
       onCellChange: null,
       data: null,
@@ -59,6 +61,7 @@ export default class ATable {
       fieldConfigs: {},
       isSecondary: false,
       currentColName: '',
+      zoomLevel: 1, // 100%
     };
 
     if (!this.container) {
@@ -78,30 +81,61 @@ export default class ATable {
    */
   async init(data = [], colName = null) {
     try {
-      // 1. Reset trạng thái cấu trúc và phân trang để đảm bảo render lại đúng colName mới
-      this.state.fieldConfigs = {};
-      this.state.currentPage = 1;
-      this.state.sort = { field: null, dir: 'asc' };
-      this.state.isSecondary = false;
+      // 1. Chuẩn hóa dữ liệu (Hỗ trợ Firestore Collection Object hoặc Array)
+      const normalizedData = Array.isArray(data) ? data : typeof Object.values(data)[0] === 'object' ? Object.values(data) : [data];
+      const newColName = colName || this.options.colName;
 
-      // 2. Chuẩn hóa dữ liệu (Hỗ trợ Firestore Collection Object hoặc Array)
-      if (data) this.state.fullData = Array.isArray(data) ? data : typeof Object.values(data)[0] === 'object' ? Object.values(data) : [data];
-      if (colName) this.options.colName = colName;
-      // 3. Tự động nhận diện colName nếu không có
-      if (!this.options.colName) {
-        this._autoDetectColName(data);
+      // 2. Kiểm tra cấu trúc dữ liệu có thay đổi không
+      let isStructureChanged = false;
+      if (newColName !== this.options.colName) {
+        isStructureChanged = true;
+      } else {
+        const currentKeys = Object.keys(this.state.fieldConfigs);
+        if (currentKeys.length === 0) {
+          isStructureChanged = true;
+        } else {
+          const firstItem = normalizedData[0];
+          if (firstItem && typeof firstItem === 'object') {
+            const newKeys = Object.keys(firstItem);
+            // So sánh số lượng keys và từng key
+            if (newKeys.length !== currentKeys.length || !newKeys.every((k) => currentKeys.includes(k))) {
+              isStructureChanged = true;
+            }
+          } else if (normalizedData.length === 0 && currentKeys.length > 0) {
+            // Nếu data mới rỗng nhưng cũ có config, coi như không đổi để giữ header (hoặc tùy logic)
+            // Ở đây ta giữ nguyên logic cũ: nếu data rỗng thì không nhất thiết phải reset config nếu colName không đổi
+          }
+        }
+      }
+      if (isStructureChanged) {
+        // Reset trạng thái cấu trúc và phân trang
+        this.state.fieldConfigs = {};
+        this.state.currentPage = 1;
+        this.state.sort = { field: null, dir: 'asc' };
+        this.state.isSecondary = false;
+
+        if (colName) this.options.colName = colName;
+        // Tự động nhận diện colName nếu không có
+        if (!this.options.colName) {
+          this._autoDetectColName(normalizedData);
+        }
+        // Xử lý colName đặc biệt (_by_)
+        await this._handleSpecialColName();
+        this.state.fullData = normalizedData;
+        this.state.filteredData = [...this.state.fullData];
+        this._resolveFieldConfigs();
+
+        // Render toàn bộ
+        this.render(false);
+      } else {
+        // Cấu trúc trùng khớp hoàn toàn
+        this.state.fullData = normalizedData;
+        this.state.filteredData = [...this.state.fullData];
+        // Render update, bỏ qua header update
+        this.render(true, true);
       }
 
-      // 4. Xử lý colName đặc biệt (_by_)
-      this._handleSpecialColName();
-
-      this.state.filteredData = [...this.state.fullData];
-      this._resolveFieldConfigs();
-
-      // Render toàn bộ lần đầu
-      this.render(!this.state.isNew);
-
-      // 5. Đăng ký ContextMenu nếu cần
+      // 3. Đăng ký ContextMenu nếu cần
       if (this.options.contextMenu && window.A?.ContextMenu) {
         window.A.ContextMenu.register(`#tbl-${this.containerId} .grid-body`, { useGlobal: true });
       }
@@ -117,10 +151,9 @@ export default class ATable {
 
   _autoDetectColName(data) {
     const collections = window.A?.getConfig?.('consts/collections') || Object.keys(DB_SCHEMA);
-    // Thử tìm theo tham chiếu dữ liệu trong APP_DATA
-    if (typeof APP_DATA !== 'undefined') {
-      const foundCol = collections.find((col) => APP_DATA[col] === data);
-      if (foundCol) this.options.colName = foundCol;
+    const rElement = $('[data-collection]', getE(this.containerId));
+    if (rElement) {
+      this.options.colName = rElement.dataset.collection;
     }
     // Nếu vẫn không thấy, thử tìm trong containerId
     if (!this.options.colName) {
@@ -133,7 +166,7 @@ export default class ATable {
     }
   }
 
-  _handleSpecialColName() {
+  async _handleSpecialColName() {
     let { colName } = this.options;
     if (colName && colName.includes('_by_')) {
       this.state.currentColName = colName;
@@ -144,10 +177,7 @@ export default class ATable {
         // Cập nhật colName loại bỏ phần _by_...
         this.options.colName = colName.split('_by_')[0];
         this.state.isSecondary = true;
-
-        if (typeof APP_DATA !== 'undefined' && APP_DATA[this.options.colName]) {
-          this.state.fullData = Object.values(APP_DATA[this.options.colName]);
-        }
+        this.state.fullData = await A.DB.local.getCollection(this.options.colName);
       }
     }
   }
@@ -182,12 +212,13 @@ export default class ATable {
   /**
    * Render bảng.
    * @param {boolean} isUpdate Nếu true, chỉ render lại phần dữ liệu (thead, tbody, tfoot, pagination), giữ nguyên header menu.
+   * @param {boolean} skipHeaderUpdate Nếu true, bỏ qua việc cập nhật thead.
    */
-  render(isUpdate = false) {
+  render(isUpdate = false, skipHeaderUpdate = false) {
     if (!this.container) return;
 
-    const { fs, header, footer, mode } = this.options;
-    const { filteredData, currentPage, fieldConfigs } = this.state;
+    const { fs, header, footer, mode, style } = this.options;
+    const { filteredData, currentPage, fieldConfigs, zoomLevel } = this.state;
     const pageSize = this.options.pageSize || window.A?.getConfig?.('table_page_size') || 25;
     const headers = Object.keys(fieldConfigs);
 
@@ -199,8 +230,10 @@ export default class ATable {
     if (isUpdate && wrapper) {
       try {
         // 1. Cập nhật thead (để đổi icon sort hoặc cấu trúc cột)
-        const thead = wrapper.querySelector('thead');
-        if (thead) thead.innerHTML = `<tr>${this._renderTableHead(headers)}</tr>`;
+        if (!skipHeaderUpdate) {
+          const thead = wrapper.querySelector('thead');
+          if (thead) thead.innerHTML = `<tr>${this._renderTableHead(headers)}</tr>`;
+        }
 
         // 2. Cập nhật tbody
         const tbody = wrapper.querySelector(`#${this.containerId}-tbody`);
@@ -239,11 +272,17 @@ export default class ATable {
       headerHtml = this._buildHeaderHtml(headers);
     }
 
+    // Xử lý bootstrap style
+    let tableClass = 'table table-sm table-hover table-bordered text-center align-middle mb-0 w-100';
+    if (style && style !== 'auto') {
+      tableClass += ` table-${style}`;
+    }
+
     let tableHtml = `
       <div class="d-flex flex-column h-100 w-100 table-container-wrapper" style="${fsStyle}">
         ${headerHtml}
-        <div class="table-responsive w-100" style="overflow: auto; position: relative;">
-          <table class="table table-sm table-hover table-bordered text-center align-middle mb-0 w-100" id="${tableId}" ${collectionAttr}>
+        <div class="table-responsive w-100 at-table-container" style="overflow: auto; position: relative; transform: scale(${zoomLevel}); transform-origin: top left;">
+          <table class="${tableClass}" id="${tableId}" ${collectionAttr}>
             <thead class="table-secondary text-nowrap sticky-top border-bottom" style="z-index: 3; top: 0;">
               <tr>${this._renderTableHead(headers)}</tr>
             </thead>
@@ -272,7 +311,7 @@ export default class ATable {
   }
 
   _buildHeaderHtml(headers) {
-    const { colName, groupBy, title, headerExtra } = this.options;
+    const { colName, groupBy, title, headerExtra, zoom } = this.options;
     const { fieldConfigs, groupByField } = this.state;
 
     let groupByHtml = '';
@@ -298,6 +337,16 @@ export default class ATable {
               <button class="dropdown-item py-2 at-reload-data" type="button"><i class="fa-solid fa-sync-alt"></i> Cập Nhật Dữ Liệu</button>
           </div>
       </div>`;
+    }
+
+    // Zoom UI
+    let zoomHtml = '';
+    if (zoom) {
+      zoomHtml = `
+        <div class="btn-group btn-group-sm shadow-sm at-zoom-group">
+          <button type="button" class="btn btn-light border at-zoom-out" title="Thu nhỏ"><i class="fas fa-minus"></i></button>
+          <button type="button" class="btn btn-light border at-zoom-in" title="Phóng to"><i class="fas fa-plus"></i></button>
+        </div>`;
     }
 
     // Xử lý headerExtra: Chèn lần lượt các item vào đầu header
@@ -333,6 +382,7 @@ export default class ATable {
             <input type="text" class="form-control bg-light border-0 ps-0 at-search-input" placeholder="Tìm kiếm nhanh..." style="box-shadow: none;">
           </div>
         </div>
+        ${zoomHtml}
         ${groupByHtml}
         ${downloadHtml}
         ${extraHtml}
@@ -382,13 +432,25 @@ export default class ATable {
               }
 
               const isHtml = config.type === 'html' || config.html === true;
-              const displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+              let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+
+              // Xử lý tra cứu tên từ dataSource cho cell không editable
+              if (config.dataSource && val) {
+                const sourceData = this._getDataSource(config.dataSource);
+                if (sourceData) {
+                  const matched = sourceData.find((i) => String(i.id || i.uid || i.value) === String(val));
+                  if (matched) {
+                    displayVal = matched.displayName || matched.name || matched.title || matched.user_name || matched.text || matched.full_name || displayVal;
+                  }
+                }
+              }
+
               const isLong = !isHtml && displayVal.length > 50;
               const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
               const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
               const firstCell = h === 'id' || h === 'uid';
 
-              return `<td data-field="${h}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''} ${firstCell ? 'drag-handle' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${isHtml ? displayVal : escapeHtml(shortVal)}</td>`;
+              return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''} ${firstCell ? 'drag-handle' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${isHtml ? displayVal : escapeHtml(shortVal)}</td>`;
             })
             .join('')}
         </tr>`;
@@ -398,7 +460,10 @@ export default class ATable {
 
   _renderGroupedRows(items, headers) {
     const { groupByField, fieldConfigs } = this.state;
-    const { editable } = this.options;
+    const { editable, colName } = this.options;
+    const aggregate = DB_SCHEMA[colName]?.aggregate || {};
+    const sumFields = aggregate.sum || [];
+
     const groups = {};
     items.forEach((item) => {
       const groupVal = item[groupByField] !== undefined && item[groupByField] !== null ? String(item[groupByField]) : 'Khác';
@@ -407,15 +472,33 @@ export default class ATable {
     });
 
     let html = '';
-    const colSpan = headers.length;
 
     Object.entries(groups).forEach(([groupName, groupItems]) => {
       const displayGroupName = fieldConfigs[groupByField]?.type === 'date' ? formatDateVN(groupName) : groupName;
+
+      // Tính toán tổng cho group header
+      const groupSums = {};
+      sumFields.forEach((f) => {
+        groupSums[f] = groupItems.reduce((acc, item) => {
+          const val = typeof getNum === 'function' ? getNum(item[f]) : parseFloat(String(item[f] || '0').replace(/[^0-9.-]+/g, '')) || 0;
+          return acc + val;
+        }, 0);
+      });
+
+      // Render Group Header Row (Sử dụng nhiều <td> thay vì colspan)
       html += `
         <tr class="table-info fw-bold text-start at-group-header" style="cursor:pointer">
-          <td colspan="${colSpan}" class="ps-3">
-            <i class="fas fa-chevron-down me-2 group-icon"></i> ${displayGroupName} (${groupItems.length} dòng)
-          </td>
+          ${headers
+            .map((h, index) => {
+              let content = '';
+              if (index === 0) {
+                content = `<i class="fas fa-chevron-down me-2 group-icon"></i> ${displayGroupName} (${groupItems.length} dòng)`;
+              } else if (sumFields.includes(h)) {
+                content = formatNumber(groupSums[h]);
+              }
+              return `<td class="ps-3">${content}</td>`;
+            })
+            .join('')}
         </tr>`;
 
       groupItems.forEach((item) => {
@@ -434,12 +517,24 @@ export default class ATable {
                   return this._renderEditableCell(h, val, config);
                 }
 
-                const displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+                let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+
+                // Xử lý tra cứu tên từ dataSource cho cell không editable
+                if (config.dataSource && val) {
+                  const sourceData = this._getDataSource(config.dataSource);
+                  if (sourceData) {
+                    const matched = sourceData.find((i) => String(i.id || i.uid || i.value) === String(val));
+                    if (matched) {
+                      displayVal = matched.displayName || matched.name || matched.title || matched.user_name || matched.text || matched.full_name || displayVal;
+                    }
+                  }
+                }
+
                 const isLong = displayVal.length > 50;
                 const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
                 const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
 
-                return `<td data-field="${h}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${escapeHtml(shortVal)}</td>`;
+                return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${escapeHtml(shortVal)}</td>`;
               })
               .join('')}
           </tr>`;
@@ -462,9 +557,22 @@ export default class ATable {
 
     let inputHtml = '';
     if (tag === 'select') {
-      const options = config.options || [];
-      const optionsHtml = options.map((opt) => `<option value="${opt}" ${String(opt) === String(val) ? 'selected' : ''}>${opt}</option>`).join('');
-      inputHtml = `<select class="${fullClass}" data-field="${field}" ${attrs}>${optionsHtml}</select>`;
+      const isSmart = config.dataSource || extraClass.includes('smart-select');
+      const smartClass = isSmart ? 'smart-select' : '';
+      const dataSource = config.dataSource || '';
+      const searchable = config.searchable !== undefined ? config.searchable : 'true';
+      const creatable = config.creatable !== undefined ? config.creatable : 'false';
+
+      const selectAttrs = `${attrs} data-source="${dataSource}" data-searchable="${searchable}" data-creatable="${creatable}" data-val="${val}"`.trim();
+
+      if (isSmart) {
+        // ASelect sẽ tự load options từ dataSource
+        inputHtml = `<select class="${fullClass} ${smartClass}" data-field="${field}" ${selectAttrs}></select>`;
+      } else {
+        const options = config.options || [];
+        const optionsHtml = options.map((opt) => `<option value="${opt}" ${String(opt) === String(val) ? 'selected' : ''}>${opt}</option>`).join('');
+        inputHtml = `<select class="${fullClass}" data-field="${field}" ${selectAttrs}>${optionsHtml}</select>`;
+      }
     } else if (tag === 'textarea') {
       inputHtml = `<textarea class="${fullClass}" data-field="${field}" ${attrs}>${val}</textarea>`;
     } else {
@@ -472,6 +580,30 @@ export default class ATable {
     }
 
     return `<td class="p-0">${inputHtml}</td>`;
+  }
+
+  _getDataSource(source) {
+    if (!source) return null;
+    try {
+      if (window.A?.DB?.local?.getCollection) {
+        const data = window.A.DB.local.getCollection(source);
+        if (data) return Array.isArray(data) ? data : Object.values(data);
+      }
+      // 3. Thử phân giải đường dẫn chuỗi (VD: 'consts.status')
+      const parts = source.split('.');
+      let current = window;
+      for (const part of parts) {
+        if (current && current[part] !== undefined) current = current[part];
+        else {
+          current = null;
+          break;
+        }
+      }
+      if (current) return Array.isArray(current) ? current : Object.values(current);
+    } catch (e) {
+      console.warn(`[ATable] _getDataSource error for ${source}:`, e);
+    }
+    return null;
   }
 
   _renderTableFooter(items, headers) {
@@ -593,6 +725,18 @@ export default class ATable {
         this.updateData(this.state.fullData);
         return;
       }
+
+      // Zoom In
+      if (target.closest('.at-zoom-in')) {
+        this.zoom(1);
+        return;
+      }
+
+      // Zoom Out
+      if (target.closest('.at-zoom-out')) {
+        this.zoom(-1);
+        return;
+      }
     });
 
     // 3. Event Delegation cho Change Events
@@ -662,8 +806,8 @@ export default class ATable {
     const dir = sort.field === field && sort.dir === 'asc' ? 'desc' : 'asc';
     this.state.sort = { field, dir };
 
-    if (window.A?.UI?.stableSort) {
-      this.state.filteredData = window.A.UI.stableSort(filteredData, this.options.colName, { column: field, dir: dir });
+    if (A?.UI?.stableSort) {
+      this.state.filteredData = A.UI.stableSort(filteredData, this.options.colName, { column: field, dir: dir });
     } else {
       this.state.filteredData = [...filteredData].sort((a, b) => {
         let valA = a[field] ?? '';
@@ -694,6 +838,32 @@ export default class ATable {
 
     this.state.currentPage = page;
     this.render(true);
+  }
+
+  /**
+   * Xử lý zoom bảng
+   * @param {number} direction 1: Phóng to, -1: Thu nhỏ
+   */
+  zoom(direction) {
+    const step = 0.1; // 10%
+    let newLevel = this.state.zoomLevel + direction * step;
+
+    // Giới hạn zoom từ 0.5 đến 2.0
+    if (newLevel < 0.5) newLevel = 0.5;
+    if (newLevel > 2.0) newLevel = 2.0;
+
+    this.state.zoomLevel = parseFloat(newLevel.toFixed(1));
+
+    const tableContainer = this.container.querySelector('.at-table-container');
+    if (tableContainer) {
+      tableContainer.style.transform = `scale(${this.state.zoomLevel})`;
+      tableContainer.style.transformOrigin = 'top left';
+
+      // Điều chỉnh chiều rộng container để tránh bị cắt khi zoom out hoặc tràn khi zoom in
+      // Lưu ý: transform scale không thay đổi layout space của element gốc,
+      // nên ta có thể cần điều chỉnh width/height nếu cần thiết.
+      // Ở đây ta giữ đơn giản bằng cách dùng transform.
+    }
   }
 
   _handleCellChange(itemId, field, value) {
@@ -763,7 +933,7 @@ export default class ATable {
           if (viewType === 'bookings') {
             dataToProcess = dataToProcess.filter((row) => isVat(row.payment_type));
           } else {
-            const bookingsrc = typeof APP_DATA !== 'undefined' ? Object.values(APP_DATA.bookings || {}) : [];
+            const bookingsrc = await A.DB.local.getCollection('bookings');
             if (bookingsrc.length > 0) {
               const validBookingIds = new Set(bookingsrc.filter((b) => isVat(b.payment_type)).map((b) => String(b.id)));
               dataToProcess = dataToProcess.filter((dRow) => validBookingIds.has(String(dRow.booking_id)));

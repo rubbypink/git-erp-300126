@@ -304,22 +304,19 @@ class Op {
       }
     },
 
-    handleAggClick: (key, filterType) => {
+    handleAggClick: async (key, filterType) => {
       try {
         L._(`Op.Logic.handleAggClick: 📂 Mở Batch Edit: [${filterType}] ${key}`);
 
         const dFrom = new Date(getVal('dash-filter-from')).getTime();
         const dTo = new Date(getVal('dash-filter-to')).setHours(23, 59, 59, 999);
 
-        const source = window.APP_DATA?.operator_entries || {};
-
-        const batchData = Object.values(source).filter((row) => {
+        const source = await A.DB.local.findRange('operator_entries', dFrom, dTo, 'check_in');
+        if (source.length === 0) return;
+        const batchData = source.filter((row) => {
           if (!row) return false;
-          const checkInTime = new Date(row.check_in || 0).getTime();
-          if (checkInTime < dFrom || checkInTime > dTo) return false;
-
           if (filterType === 'supplier') {
-            const supplier = row.suppliers || '(Chưa có NCC)';
+            const supplier = row.supplier || '(Chưa có NCC)';
             return String(supplier) === String(key);
           } else if (filterType === 'type') {
             const type = row.service_type || 'Other';

@@ -321,6 +321,18 @@ function normalizeList(list) {
       return { id: key, name: value };
     });
   }
+  if (typeof list === 'string') {
+    const parts = list.split('.');
+    let current = window;
+    for (const part of parts) {
+      if (current && current[part] !== undefined) current = current[part];
+      else {
+        current = null;
+        break;
+      }
+    }
+    return current;
+  }
   return [];
 }
 
@@ -440,6 +452,21 @@ const isDateInRange = (dateCheck, range) => {
   // 3. So sánh (Dùng getTime để chính xác tuyệt đối từng milisecond)
   return target.getTime() >= range.start.getTime() && target.getTime() <= range.end.getTime();
 };
+
+function parseDateVal(input) {
+  if (!input) return 0;
+  if (input instanceof Date) return input.getTime();
+  const str = String(input).trim();
+  if (str.includes('/')) {
+    const parts = str.split('/');
+    if (parts.length === 3) return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+  }
+  if (str.includes('-')) {
+    const parts = str.split('-');
+    if (parts.length === 3) return new Date(parts[0], parts[1] - 1, parts[2]).getTime();
+  }
+  return new Date(str).getTime() || 0;
+}
 
 function pad2(n) {
   return String(n).padStart(2, '0');
@@ -3085,6 +3112,8 @@ const HD = {
         switch (op) {
           case '==':
             return itemDate === dateVal;
+          case '=':
+            return itemDate === dateVal;
           case '!=':
             return itemDate !== dateVal;
           case '>':
@@ -3108,6 +3137,8 @@ const HD = {
         switch (op) {
           case '==':
             return itemNum === numVal;
+          case '=':
+            return itemNum === numVal;
           case '!=':
             return itemNum !== numVal;
           case '>':
@@ -3127,6 +3158,8 @@ const HD = {
     const sVal = String(targetVal).toLowerCase().trim();
     switch (op) {
       case '==':
+        return sItem === sVal;
+      case '=':
         return sItem === sVal;
       case '!=':
         return sItem !== sVal;
