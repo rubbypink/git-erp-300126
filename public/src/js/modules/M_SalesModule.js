@@ -194,6 +194,7 @@ class SalesModule {
           // Chuẩn bị task xử lý dữ liệu cho hàng này
           const task = (async (currentRow, currentIdx, currentData) => {
             try {
+              L._(`[addDetailRow] 🚀 Task Start for Row ${currentIdx}`, { currentData });
               // 1. Luôn update danh sách khách sạn/địa điểm trước
               // await SalesModule.UI.updateHotelSelect(currentRow);
 
@@ -205,11 +206,13 @@ class SalesModule {
                 // 2. Gán select
                 setVal('[data-field="service_type"]', currentData.service_type, currentRow);
                 setVal('[data-field="hotel_name"]', currentData.hotel_name, currentRow);
+                L._(`[addDetailRow] 📍 Set hotel_name: ${currentData.hotel_name}, DOM value: ${getVal('[data-field="hotel_name"]', currentRow)}`);
 
                 // 4. Update danh sách dịch vụ (phòng hoặc dịch vụ khác)
                 await SalesModule.UI.updateServiceSelect(currentRow);
                 // 5. Gán service_name
                 setVal('[data-field="service_name"]', currentData.service_name, currentRow);
+                L._(`[addDetailRow] 🛎️ Set service_name: ${currentData.service_name}, DOM value: ${getVal('[data-field="service_name"]', currentRow)}`);
 
                 // 6. Gán các trường còn lại
                 setVal('[data-field="check_in"]', currentData.check_in, currentRow);
@@ -263,13 +266,23 @@ class SalesModule {
     },
 
     getLocationList: async () => {
+      L._(`[getLocationList] 🔄 Fetching locations...`);
       if (SalesModule.State.locations && SalesModule.State?.locations?.length > 0) {
+        L._(`[getLocationList] ✅ Returning cached locations: ${SalesModule.State.locations.length}`);
         return SalesModule.State.locations;
       }
-      let uniqueLocs = [];
+      var uniqueLocs = [];
       const lists = SalesModule.State?.lists || (await A.DB.local.get('app_config', 'lists')) || window.APP_DATA?.lists || {};
-      const hotels = SalesModule.State?.hotels || (await A.DB.local.getCollection('hotels')) || [];
-      if (!SalesModule.State.hotels || SalesModule.State.hotels.length === 0) SalesModule.State.hotels = hotels;
+      const hotelsRaw = SalesModule.State?.hotels || (await A.DB.local.getCollection('hotels')) || [];
+
+      // Đảm bảo hotels luôn là Array
+      const hotels = Array.isArray(hotelsRaw) ? hotelsRaw : Object.values(hotelsRaw);
+      L._(`[getLocationList] 🏨 Hotels raw count: ${hotels.length}`);
+
+      if (!SalesModule.State.hotels || SalesModule.State.hotels.length === 0) {
+        SalesModule.State.hotels = hotels;
+        L._(`[getLocationList] 💾 Saved hotels to State.hotels`);
+      }
       const others = Object.values(lists.locOther || {}) || [];
       // Chuẩn hóa dữ liệu: hotels thường là object {id, name}, others có thể là string hoặc object
       const normalizedOthers = others.map((x) => (typeof x === 'string' ? { id: x, name: x } : x));
@@ -294,15 +307,14 @@ class SalesModule {
         if (id && !map.has(id)) {
           map.set(id, true);
 
-          // Đảm bảo item được push vào luôn là object có id và name
-          const finalItem = typeof item === 'object' ? { id: item.id || id, name: item.name || id } : { id: item, name: item };
+          // Đảm bảo item được push vào luôn là object có id và name, và GIỮ LẠI các thuộc tính khác (như rooms)
+          const finalItem = typeof item === 'object' ? { ...item, id: item.id || id, name: item.name || id } : { id: item, name: item };
 
           uniqueLocs.push(finalItem);
         }
       }
 
       if (uniqueLocs.length > 0) SalesModule.State.locations = uniqueLocs;
-      L._(`[getLocationList] 🔍 Found ${uniqueLocs}`);
       return uniqueLocs;
     },
 
@@ -337,17 +349,32 @@ class SalesModule {
         }
         const type = getVal('[data-field="service_type"]', tr);
         const loc = getVal('[data-field="hotel_name"]', tr);
+        L._(`[updateServiceSelect] 🔍 Type: ${type}, Loc: ${loc}`);
+
         const elName = $('[data-field="service_name"]', tr);
         if (!elName) return;
         let options = [];
         if (type.trim() === 'Phòng') {
-          let hotels = SalesModule.State.hotels?.length > 0 ? SalesModule.State.hotels : await SalesModule.UI.getLocationList();
-          L._(`[updateServiceSelect] 🔍 Location: ${loc} - Type: ${type} - Hotels: ${hotels}`);
-          let hotel = hotels.filter((h) => h.id === loc || h.name === loc)[0];
-          L._(`[updateServiceSelect] 🔍 Found hotel: ${hotel}`);
+          let hotelsRaw = SalesModule.State.hotels?.length > 0 ? SalesModule.State.hotels : await SalesModule.UI.getLocationList();
+          let hotels = Array.isArray(hotelsRaw) ? hotelsRaw : Object.values(hotelsRaw || {});
+          L._(`[updateServiceSelect] 🏨 Hotels in State: ${hotels.length}`);
+
+          // Chuẩn hóa loc để so sánh (trim khoảng trắng)
+          const searchLoc = String(loc || '').trim();
+
+          let hotel = hotels.find((h) => {
+            const hId = String(h.id || '').trim();
+            const hName = String(h.name || '').trim();
+            return hId === searchLoc || hName === searchLoc;
+          });
+
+          L._(`[updateServiceSelect] 🎯 Found Hotel:`, hotel);
+
           if (hotel && hotel.rooms) {
             options = Array.isArray(hotel.rooms) ? hotel.rooms : Object.values(hotel.rooms);
-            L._(`[SalesModule] 🔍 Found ${options} rooms for hotel ${loc}`);
+            L._(`[updateServiceSelect] 🛌 Rooms found: ${options.length}`);
+          } else {
+            L._(`[updateServiceSelect] ⚠️ No rooms found for hotel: ${searchLoc}`, { hotel });
           }
         } else if (SalesModule.State.services && SalesModule.State.services.length > 0) {
           options = SalesModule.State.services.filter((r) => r[0] === type).map((r) => r[1]);
@@ -374,7 +401,7 @@ class SalesModule {
 
         // 2. Nếu tìm thấy, lấy id của option đó (fallback về name hoặc chính nó) và gán vào form
         if (isId || isName) {
-          setVal('[data-field="service_name"]', isId ? isId : isName, tr);
+          setVal('[data-field="service_name"]', isId ? currentVal : isName, tr);
         }
       } catch (e) {
         L.log('SalesModule.UI.updateServiceSelect Error:', e);
