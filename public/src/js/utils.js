@@ -1756,18 +1756,21 @@ window.runFn = async function (funcRef, args = [], defaultContext = window) {
 };
 
 /**
- * Tự động tìm và chạy hàm theo Role của User hiện tại.
+ * Tự động tìm và chạy hàm theo Role của User hiện tại. Hỗ trợ an toàn cả hàm Sync và Async (Promise).
  * Quy tắc ghép tên: [tên_gốc]_[RoleViếtHoaChữCáiĐầu]
  * Ví dụ: baseName='init', Role='SALE' => Chạy hàm init_Sale()
  * * @param {string} baseFuncName - Tên hàm gốc (ví dụ: 'render', 'saveData')
  * @param {...any} args - Các tham số muốn truyền vào hàm đó (nếu có)
- * @return {any} - Trả về kết quả của hàm được gọi (nếu có)
+ * @return {any} - Trả về kết quả của hàm được gọi (có thể là giá trị ngay lập tức hoặc một Promise)
  */
-function runFnByRole(baseFuncName, ...args) {
+window.runFnByRole = function (baseFuncName, ...args) {
   try {
-    if (typeof CURRENT_USER === 'undefined' || !CURRENT_USER.role) {
-      console.warn('❌ [runFnByRole] CURRENT_USER chưa init.');
-      if (typeof window[baseFuncName] === 'function') return window[baseFuncName](...args);
+    // 1. Kiểm tra User context
+    if (typeof CURRENT_USER === 'undefined' || !CURRENT_USER || !CURRENT_USER.role) {
+      console.warn('❌ [runFnByRole] CURRENT_USER chưa init. Thử chạy hàm gốc.');
+      if (typeof window[baseFuncName] === 'function') {
+        return executeAndHandlePromise(window[baseFuncName], baseFuncName, args);
+      }
       return;
     }
 
@@ -1776,7 +1779,7 @@ function runFnByRole(baseFuncName, ...args) {
     let moduleKey = null;
     let finalArgs = [...args];
 
-    // Tự động nhận diện moduleKey nếu tham số đầu tiên nằm trong danh sách
+    // 2. Tự động nhận diện moduleKey nếu tham số đầu tiên nằm trong danh sách
     if (typeof args[0] === 'string' && moduleObj.includes(args[0])) {
       moduleKey = args[0];
       finalArgs.shift(); // Loại bỏ moduleKey khỏi danh sách tham số truyền vào hàm đích
@@ -1792,28 +1795,58 @@ function runFnByRole(baseFuncName, ...args) {
 
     const prefix = prefixMap[rawRole] || null;
     let targetFn = null;
+    let executedFuncName = baseFuncName;
 
+    // 3. Phân tích tên hàm đích
     if (prefix && moduleKey) {
       // Truy cập hàm lồng nhau: window[prefix][moduleKey][baseFuncName]
       targetFn = window[prefix]?.[moduleKey]?.[baseFuncName];
+      executedFuncName = `${prefix}.${moduleKey}.${baseFuncName}`;
     } else {
       // Ghép tên hàm phẳng: baseFuncName_Role
       const roleSuffix = rawRole.charAt(0).toUpperCase() + rawRole.slice(1).toLowerCase();
       const targetFuncName = `${baseFuncName}_${roleSuffix}`;
       targetFn = window[targetFuncName];
+      executedFuncName = targetFuncName;
     }
 
-    // Thực thi
+    // 4. Chọn hàm để thực thi
+    let fnToRun = null;
     if (typeof targetFn === 'function') {
-      return targetFn(...finalArgs);
+      fnToRun = targetFn;
     } else if (typeof window[baseFuncName] === 'function') {
-      return window[baseFuncName](...finalArgs);
+      fnToRun = window[baseFuncName];
+      executedFuncName = baseFuncName; // Fallback về hàm gốc
     } else {
-      console.warn(`⚠️ [runFnByRole] Không tìm thấy hàm mục tiêu: ${prefix ? prefix + '.' + (moduleKey ? moduleKey + '.' : '') : ''}${baseFuncName}`);
+      console.warn(`⚠️ [runFnByRole] Không tìm thấy hàm mục tiêu: ${executedFuncName} hoặc ${baseFuncName}`);
+      return;
     }
+
+    // 5. Thực thi và xử lý kết quả trả về
+    return executeAndHandlePromise(fnToRun, executedFuncName, finalArgs);
   } catch (err) {
-    console.error(`❌ [runFnByRole] Lỗi khi thực thi ${baseFuncName}:`, err);
+    // Lỗi này bắt các sự cố đồng bộ (ví dụ: lỗi đánh máy biến, lỗi syntax nội tại khi thiết lập logic)
+    console.error(`❌ [runFnByRole] Lỗi SYNC nội tại khi chuẩn bị/thực thi ${baseFuncName}:`, err);
+    throw err;
   }
+};
+
+/**
+ * Hàm Helper nội bộ: Nhận diện và bắt lỗi an toàn cho cả hàm thường và hàm trả về Promise
+ */
+function executeAndHandlePromise(fn, fnName, args) {
+  const result = fn(...args);
+
+  // Kiểm tra xem kết quả có phải là Promise không (Duck typing: object có chứa hàm .then)
+  if (result && typeof result.then === 'function' && typeof result.catch === 'function') {
+    return result.catch((err) => {
+      // Lỗi này bắt các sự cố bất đồng bộ (ví dụ: lỗi Firestore, lỗi Fetch API)
+      console.error(`❌ [runFnByRole] Lỗi ASYNC (Promise Rejection) khi chạy ${fnName}:`, err);
+      throw err; // Tiếp tục ném lỗi lên để caller gốc (nếu có await) có thể handle tiếp
+    });
+  }
+
+  return result; // Hàm đồng bộ bình thường
 }
 
 // =========================================================================

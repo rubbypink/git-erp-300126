@@ -292,12 +292,28 @@ export default class ASelect {
   async triggerOnChange(value) {
     if (!this.onChangeCallback) return;
     try {
-      if (typeof window.executeDynamicFunction === 'function') {
-        await window.executeDynamicFunction(this.onChangeCallback, [value, this.originalSelect, this]);
+      let funcRef = this.onChangeCallback;
+      if (typeof funcRef === 'string' && funcRef.trim() !== '') {
+        // Nếu chuỗi chứa các ký tự đặc trưng của một đoạn code (dấu ;, ngoặc, khoảng trắng)
+        L._(`[triggerOnChange] runFn: Chuỗi chứa các ký tự đặc trưng của một đoạn code`, funcRef);
+        if (funcRef.includes(';') || funcRef.includes('(') || funcRef.match(/\s/)) {
+          try {
+            // Tạo một hàm ẩn danh nhận 3 tham số từ string code của bạn
+            const dynamicScript = new Function('value', 'selectEl', 'instance', funcRef);
+            return await dynamicScript(args[0], args[1], args[2]);
+          } catch (err) {
+            Opps('Lỗi khi chạy script nội tuyến:', err);
+            return null;
+          }
+        }
+      }
+      if (typeof window.runFn === 'function') {
+        L._(`[triggerOnChange] runFn: window.runFn`);
+        await window.runFn(this.onChangeCallback, [value, this.originalSelect], this);
       } else if (typeof window.runFn === 'function') {
-        await window.runFn(this.onChangeCallback, [value, this.originalSelect, this]);
+        await window.runFn(this, [value, this.originalSelect, this]);
       } else {
-        console.warn('[ASelect] Chưa nạp utils.js chứa hàm executeDynamicFunction hoặc runFn');
+        console.warn('[ASelect] Chưa nạp utils.js chứa hàm runFn hoặc runFn');
       }
     } catch (error) {
       console.error(`[ASelect] Lỗi gọi hàm onChange:`, error);

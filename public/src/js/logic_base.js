@@ -121,9 +121,8 @@ function openBatchEdit(dataList, title) {
   refreshForm();
   const tbody = getE('detail-tbody');
   if (tbody) tbody.innerHTML = '';
-  CURRENT_BATCH_DATA.forEach((row) => {
-    if (typeof runFnByRole === 'function') runFnByRole('addDetailRow', 'UI', row);
-  });
+
+  if (typeof runFnByRole === 'function') runFnByRole('addDetailRow', 'UI', CURRENT_BATCH_DATA);
 }
 
 function refreshForm() {
@@ -401,7 +400,7 @@ async function onGridRowClick(id, collection = 'bookings') {
       runFnByRole('fillFormFromSearch', 'UI', localResult);
       return;
     }
-    await A.DB.syncDelta();
+    await A.DB.syncDelta(collection);
     const retryResult = await findBookingInLocal(id, collection);
     if (retryResult) {
       runFnByRole('fillFormFromSearch', 'UI', retryResult);

@@ -87,7 +87,7 @@ class IndexedDBHelper {
 
   async _doInitDB() {
     try {
-      // Nâng cấp version lên 6 để cập nhật index cho notification_dedup
+      // Nâng cấp version lên 8 để cập nhật index cho notification_dedup
       this.db.version(8).stores(buildDexieSchema());
       await this.db.open();
       await this._loadSyncMeta();
@@ -301,35 +301,48 @@ class IndexedDBHelper {
     }
   }
 
-  async find(storeName, fieldName, value) {
+  /**
+   * Tìm kiếm theo field
+   * @param {string} storeName
+   * @param {string} fieldName
+   * @param {any} value
+   * @param {boolean} isSingle Nếu true, trả về 1 item duy nhất thay vì mảng
+   */
+  async find(storeName, fieldName, value, isSingle = false) {
     try {
       if (!this.db.isOpen()) await this.initDB();
       const table = this.db.table(storeName);
       try {
-        return await table.where(fieldName).equals(value).toArray();
+        const query = table.where(fieldName).equals(value);
+        return isSingle ? await query.first() : await query.toArray();
       } catch (indexError) {
         // Fallback: Nếu không khai báo Index, âm thầm chuyển sang scan filter
-        return await table.filter((doc) => doc[fieldName] === value).toArray();
+        const collection = table.filter((doc) => doc[fieldName] === value);
+        return isSingle ? await collection.first() : await collection.toArray();
       }
     } catch (error) {
-      return this._handleError(error, `Find (${fieldName})`, storeName, []);
+      return this._handleError(error, `Find (${fieldName})`, storeName, isSingle ? null : []);
     }
   }
 
-  async findByMultiple(storeName, conditions) {
+  /**
+   * Tìm kiếm theo nhiều điều kiện
+   * @param {string} storeName
+   * @param {Object} conditions
+   * @param {boolean} isSingle Nếu true, trả về 1 item duy nhất
+   */
+  async findByMultiple(storeName, conditions, isSingle = false) {
     try {
       if (!this.db.isOpen()) await this.initDB();
-      return await this.db
-        .table(storeName)
-        .filter((doc) => {
-          for (const [key, val] of Object.entries(conditions)) {
-            if (doc[key] !== val) return false;
-          }
-          return true;
-        })
-        .toArray();
+      const collection = this.db.table(storeName).filter((doc) => {
+        for (const [key, val] of Object.entries(conditions)) {
+          if (doc[key] !== val) return false;
+        }
+        return true;
+      });
+      return isSingle ? await collection.first() : await collection.toArray();
     } catch (error) {
-      return this._handleError(error, `findByMultiple`, storeName, []);
+      return this._handleError(error, `findByMultiple`, storeName, isSingle ? null : []);
     }
   }
 
@@ -339,37 +352,39 @@ class IndexedDBHelper {
    * @param {any} startValue
    * @param {any} endValue
    * @param {string} fieldName Mặc định là 'created_at'
+   * @param {boolean} isSingle Nếu true, trả về 1 item duy nhất
    */
-  async findRange(storeName, startValue, endValue, fieldName = 'created_at') {
+  async findRange(storeName, startValue, endValue, fieldName = 'created_at', isSingle = false) {
     try {
       if (!this.db.isOpen()) await this.initDB();
       const table = this.db.table(storeName);
 
       try {
         let query = table.where(fieldName);
+        let collection;
         if (startValue != null && endValue != null) {
-          return await query.between(startValue, endValue, true, true).toArray();
+          collection = query.between(startValue, endValue, true, true);
         } else if (startValue != null) {
-          return await query.aboveOrEqual(startValue).toArray();
+          collection = query.aboveOrEqual(startValue);
         } else if (endValue != null) {
-          return await query.belowOrEqual(endValue).toArray();
+          collection = query.belowOrEqual(endValue);
         } else {
-          return await table.toArray();
+          collection = table.toCollection();
         }
+        return isSingle ? await collection.first() : await collection.toArray();
       } catch (indexError) {
         // Fallback: Scan filter nếu thiếu Index hoặc lỗi query index
-        return await table
-          .filter((doc) => {
-            const val = doc[fieldName];
-            if (startValue != null && endValue != null) return val >= startValue && val <= endValue;
-            if (startValue != null) return val >= startValue;
-            if (endValue != null) return val <= endValue;
-            return true;
-          })
-          .toArray();
+        const collection = table.filter((doc) => {
+          const val = doc[fieldName];
+          if (startValue != null && endValue != null) return val >= startValue && val <= endValue;
+          if (startValue != null) return val >= startValue;
+          if (endValue != null) return val <= endValue;
+          return true;
+        });
+        return isSingle ? await collection.first() : await collection.toArray();
       }
     } catch (error) {
-      return this._handleError(error, `findRange (${fieldName})`, storeName, []);
+      return this._handleError(error, `findRange (${fieldName})`, storeName, isSingle ? null : []);
     }
   }
 
@@ -396,10 +411,10 @@ class IndexedDBHelper {
   /**
    * Truy vấn nâng cao với Phân trang & Sắp xếp
    * @param {string} storeName
-   * @param {Object} options { filter, orderBy, reverse, offset, limit }
+   * @param {Object} options { filter, orderBy, reverse, offset, limit, isSingle }
    */
   async query(storeName, options = {}) {
-    const { filter, orderBy, reverse = false, offset = 0, limit = 50 } = options;
+    const { filter, orderBy, reverse = false, offset = 0, limit = 50, isSingle = false } = options;
     try {
       if (!this.db.isOpen()) await this.initDB();
       let collection = this.db.table(storeName);
@@ -411,7 +426,7 @@ class IndexedDBHelper {
           const key = filterKeys[0];
           collection = collection.where(key).equals(filter[key]);
         } else {
-          // Đa điều kiện: Dùng filter scan (Dexie không hỗ trợ compound query tự động tốt bằng filter cho dynamic keys)
+          // Đa điều kiện: Dùng filter scan
           collection = collection.filter((doc) => {
             return filterKeys.every((k) => doc[k] === filter[k]);
           });
@@ -423,8 +438,6 @@ class IndexedDBHelper {
         if (collection instanceof Dexie.Table) {
           collection = collection.orderBy(orderBy);
         } else {
-          // Nếu đã là Collection (sau where), Dexie không cho orderBy trực tiếp trên collection đó dễ dàng
-          // Ta sẽ sort thủ công hoặc dùng logic Dexie Collection nếu có thể
           collection = collection.sortBy ? collection : collection.toCollection();
         }
       } else {
@@ -434,13 +447,19 @@ class IndexedDBHelper {
       // 3. Đảo ngược
       if (reverse) collection = collection.reverse();
 
-      // 4. Phân trang
+      // 4. Phân trang & Limit
       if (offset) collection = collection.offset(offset);
+      
+      // Nếu isSingle, ta chỉ cần lấy 1
+      if (isSingle) {
+        return await collection.first();
+      }
+
       if (limit) collection = collection.limit(limit);
 
       return await collection.toArray();
     } catch (error) {
-      return this._handleError(error, `Query`, storeName, []);
+      return this._handleError(error, `Query`, storeName, isSingle ? null : []);
     }
   }
 
@@ -449,13 +468,18 @@ class IndexedDBHelper {
    * @param {string} storeName
    * @param {string} fieldName
    * @param {string} searchTerm
+   * @param {boolean} isSingle Nếu true, trả về 1 item duy nhất
    */
-  async search(storeName, fieldName, searchTerm) {
+  async search(storeName, fieldName, searchTerm, isSingle = false) {
     try {
       if (!this.db.isOpen()) await this.initDB();
-      return await this.db.table(storeName).where(fieldName).startsWithIgnoreCase(searchTerm).limit(20).toArray();
+      const query = this.db.table(storeName).where(fieldName).startsWithIgnoreCase(searchTerm);
+      if (isSingle) {
+        return await query.first();
+      }
+      return await query.limit(20).toArray();
     } catch (error) {
-      return this._handleError(error, `Search (${fieldName})`, storeName, []);
+      return this._handleError(error, `Search (${fieldName})`, storeName, isSingle ? null : []);
     }
   }
 

@@ -952,10 +952,10 @@ class DBManager {
           if (targetColl && targetDocId && action) {
             const dedupId = `${targetColl}_${targetDocId}_${action}_${updatedAt}`;
             const isProcessed = await this.#localDB.get('notification_dedup', dedupId);
-            if (isProcessed) {
-              if (this.#debug) L._(`⏭️ Skip redundant notification: ${dedupId}`);
-              continue;
-            }
+            // if (isProcessed) {
+            //   if (this.#debug) L._(`⏭️ Skip redundant notification: ${dedupId}`);
+            //   continue;
+            // }
             // Đánh dấu đã xử lý (fire-and-forget)
             this.#localDB.put('notification_dedup', { id: dedupId, processed_at: Date.now() }).catch(() => {});
           }

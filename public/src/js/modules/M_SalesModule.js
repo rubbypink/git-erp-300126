@@ -26,6 +26,10 @@ class SalesModule {
     lang: 'vi',
     mode: 'service', // 'service' | 'tour'
     showPrice: true,
+    services: null,
+    locations: null,
+    hotels: null,
+    lists: null,
   };
 
   // ─── 3. UI RENDERERS ───────────────────────────────────────────────
@@ -96,9 +100,8 @@ class SalesModule {
 
         if (detailsArr.length > 0) {
           const sortedDetails = SalesModule.Logic.sortDetailsData(detailsArr);
-          sortedDetails.forEach((row) => {
-            await SalesModule.UI.addDetailRow(row);
-          });
+          // Tối ưu: Gọi addDetailRow một lần với mảng dữ liệu
+          await SalesModule.UI.addDetailRow(sortedDetails);
         }
 
         tbody.style.display = 'table-row-group';
@@ -120,93 +123,130 @@ class SalesModule {
     },
 
     /**
-     * Thêm một dòng dịch vụ chi tiết
+     * Thêm một hoặc nhiều dòng dịch vụ chi tiết
+     * @param {Object|Array} data - Object dữ liệu hàng đơn lẻ hoặc Mảng các object dữ liệu
      */
     addDetailRow: async (data = null) => {
       try {
-        SalesModule.State.detailRowCount++;
-        const idx = SalesModule.State.detailRowCount;
-        const lists = window.APP_DATA?.lists || {};
+        const tbody = getE('detail-tbody');
+        if (!tbody) return;
+
+        const isArray = Array.isArray(data);
+        const dataList = isArray ? data : [data];
+        const fragment = document.createDocumentFragment();
+        const lists = SalesModule.State.lists || (await A.DB.local.getList('app_config', 'lists'));
+        const locations = SalesModule.State.locations || (await SalesModule.UI.getLocationList());
         const optsType = Object.values(lists.types || {})
           .map((x) => `<option value="${x}">${x}</option>`)
           .join('');
 
-        const tr = document.createElement('tr');
-        tr.id = `row-${idx}`;
-        tr.setAttribute('data-row', idx);
-        tr.innerHTML = `
-          <td class="text-center text-muted align-middle">${idx} <input type="hidden" data-field="id"></td>
-          <td>
-            <select class="form-select form-select-sm" data-field="service_type" onchange="SalesModule.Logic.onTypeChange(${idx})">
-            <option value="">-</option>${optsType}
-            </select>
-          </td>
-          <td>
-            <select data-source="hotels" data-searchable="true" class="smart-select form-select form-select-sm" data-field="hotel_name" onchange="SalesModule.Logic.onLocationChange(${idx})">
-              <option value="">-</option>
-            </select>
-          </td>
-          <td>
-            <select class="form-select form-select-sm" data-field="service_name">
-              <option value="">-</option>
-            </select>
-          </td>
-          <td><input type="date" class="form-control form-control-sm" data-field="check_in" onchange="SalesModule.Logic.autoSetOrCalcDate(this.value, ${idx})" style="cursor:pointer"></td>
-          <td><input type="date" class="form-control form-control-sm" data-field="check_out" onchange="SalesModule.Logic.calcRow(${idx})"></td>
-          <td><input type="number" class="form-control form-control-sm number bg-light text-center" data-field="nights" readonly></td>
-          <td><input type="number" class="form-control form-control-sm number" data-field="quantity" value="1"></td>
-          <td>
-            <div class="input-group input-group-sm">
-              <input type="number" class="form-control number" data-field="unit_price" placeholder="-">
-              <button class="btn btn-outline-secondary px-1" type="button" onclick="SalesModule.Logic.lookupPrice(${idx})" title="Tra cứu giá">
-                <i class="bi bi-search"></i>
-              </button>
-            </div>
-          </td>
-          <td><input type="number" class="form-control form-control-sm number" data-field="child_qty" placeholder="-"></td>
-          <td><input type="number" class="form-control form-control-sm number" data-field="child_price" placeholder="-"></td>
-          <td><input type="number" class="form-control form-control-sm number" data-field="surcharge" placeholder="-"></td>
-          <td><input type="number" class="form-control form-control-sm number" data-field="discount" placeholder="-"></td>
-          <td><input type="text" class="form-control form-control-sm number fw-bold text-end" data-field="total" readonly data-val="0"></td>
-          <td><input type="text" class="form-control form-control-sm" data-field="ref_code"></td>
-          <td><input type="text" class="form-control form-control-sm" data-field="note"></td>
-          <td class="text-center align-middle"><i class="fa-solid fa-times text-danger" style="cursor:pointer" onclick="SalesModule.UI.removeRow(${idx})"></i></td>
-        `;
+        // Mảng chứa các promise xử lý logic phụ trợ sau khi append
+        const postProcessTasks = [];
 
-        const tbody = getE('detail-tbody');
-        if (tbody) tbody.appendChild(tr);
+        for (const rowData of dataList) {
+          SalesModule.State.detailRowCount++;
+          const idx = SalesModule.State.detailRowCount;
 
-        await SalesModule.UI.updateHotelSelect(idx);
+          const tr = document.createElement('tr');
+          tr.id = `row-${idx}`;
+          tr.setAttribute('data-row', idx);
+          tr.innerHTML = `
+            <td class="text-center text-muted align-middle">${idx} <input type="hidden" data-field="id"></td>
+            <td>
+              <select class="form-select form-select-sm" data-field="service_type" onchange="SalesModule.Logic.onTypeChange(this)">
+              <option value="">-</option>${optsType}
+              </select>
+            </td>
+            <td>
+              <select data-source="SalesModule.State.locations" data-searchable="true" class="smart-select form-select form-select-sm" data-field="hotel_name" onchange="SalesModule.Logic.onLocationChange(this)">
+                <option value="">-</option>
+              </select>
+            </td>
+            <td>
+              <select class="form-select form-select-sm" data-field="service_name">
+                <option value="">-</option>
+              </select>
+            </td>
+            <td><input type="date" class="form-control form-control-sm" data-field="check_in" onchange="SalesModule.Logic.autoSetOrCalcDate(this.value, ${idx})" style="cursor:pointer"></td>
+            <td><input type="date" class="form-control form-control-sm" data-field="check_out" onchange="SalesModule.Logic.calcRow(${idx})"></td>
+            <td><input type="number" class="form-control form-control-sm number bg-light text-center" data-field="nights" readonly></td>
+            <td><input type="number" class="form-control form-control-sm number" data-field="quantity" value="1"></td>
+            <td>
+              <div class="input-group input-group-sm">
+                <input type="number" class="form-control number" data-field="unit_price" placeholder="-">
+                <button class="btn btn-outline-secondary px-1" type="button" onclick="SalesModule.Logic.lookupPrice(${idx})" title="Tra cứu giá">
+                  <i class="bi bi-search"></i>
+                </button>
+              </div>
+            </td>
+            <td><input type="number" class="form-control form-control-sm number" data-field="child_qty" placeholder="-"></td>
+            <td><input type="number" class="form-control form-control-sm number" data-field="child_price" placeholder="-"></td>
+            <td><input type="number" class="form-control form-control-sm number" data-field="surcharge" placeholder="-"></td>
+            <td><input type="number" class="form-control form-control-sm number" data-field="discount" placeholder="-"></td>
+            <td><input type="text" class="form-control form-control-sm number fw-bold text-end" data-field="total" readonly data-val="0"></td>
+            <td><input type="text" class="form-control form-control-sm" data-field="ref_code"></td>
+            <td><input type="text" class="form-control form-control-sm" data-field="note"></td>
+            <td class="text-center align-middle"><i class="fa-solid fa-times text-danger" style="cursor:pointer" onclick="SalesModule.UI.removeRow(${idx})"></i></td>
+          `;
 
-        if (data) {
-          const detailId = data.id || '';
-          setVal('[data-field="id"]', detailId, tr);
-          if (detailId) tr.setAttribute('data-item', detailId);
-          setVal('[data-field="service_type"]', data.service_type, tr);
-          SalesModule.Logic.onTypeChange(idx, false);
-          setVal('[data-field="hotel_name"]', data.hotel_name, tr);
-          SalesModule.Logic.onLocationChange(idx, false);
-          setVal('[data-field="service_name"]', data.service_name, tr);
-          setVal('[data-field="check_in"]', data.check_in, tr);
-          setVal('[data-field="check_out"]', data.check_out, tr);
-          setVal('[data-field="nights"]', data.nights, tr);
-          setVal('[data-field="quantity"]', data.quantity, tr);
-          setVal('[data-field="unit_price"]', data.unit_price, tr);
-          setVal('[data-field="child_qty"]', data.child_qty, tr);
-          setVal('[data-field="child_price"]', data.child_price, tr);
-          setVal('[data-field="surcharge"]', data.surcharge, tr);
-          setVal('[data-field="discount"]', data.discount, tr);
-          setVal('[data-field="ref_code"]', data.ref_code, tr);
-          setVal('[data-field="note"]', data.note, tr);
-          SalesModule.Logic.calcRow(idx);
+          fragment.appendChild(tr);
 
-          tr.querySelectorAll('input, select').forEach((el) => {
-            el.setAttribute('data-initial', el.value);
-          });
-        } else if (idx === 1) {
-          setVal('[data-field="service_type"]', 'Phòng', tr);
-          tr.querySelector('[data-field="service_type"]').dispatchEvent(new Event('change'));
+          // Chuẩn bị task xử lý dữ liệu cho hàng này
+          const task = (async (currentRow, currentIdx, currentData) => {
+            try {
+              // 1. Luôn update danh sách khách sạn/địa điểm trước
+              // await SalesModule.UI.updateHotelSelect(currentRow);
+
+              if (currentData) {
+                const detailId = currentData.id || '';
+                setVal('[data-field="id"]', detailId, currentRow);
+                if (detailId) currentRow.setAttribute('data-item', detailId);
+
+                // 2. Gán select
+                setVal('[data-field="service_type"]', currentData.service_type, currentRow);
+                setVal('[data-field="hotel_name"]', currentData.hotel_name, currentRow);
+
+                // 4. Update danh sách dịch vụ (phòng hoặc dịch vụ khác)
+                await SalesModule.UI.updateServiceSelect(currentRow);
+                // 5. Gán service_name
+                setVal('[data-field="service_name"]', currentData.service_name, currentRow);
+
+                // 6. Gán các trường còn lại
+                setVal('[data-field="check_in"]', currentData.check_in, currentRow);
+                setVal('[data-field="check_out"]', currentData.check_out, currentRow);
+                setVal('[data-field="nights"]', currentData.nights, currentRow);
+                setVal('[data-field="quantity"]', currentData.quantity, currentRow);
+                setVal('[data-field="unit_price"]', currentData.unit_price, currentRow);
+                setVal('[data-field="child_qty"]', currentData.child_qty, currentRow);
+                setVal('[data-field="child_price"]', currentData.child_price, currentRow);
+                setVal('[data-field="surcharge"]', currentData.surcharge, currentRow);
+                setVal('[data-field="discount"]', currentData.discount, currentRow);
+                setVal('[data-field="ref_code"]', currentData.ref_code, currentRow);
+                setVal('[data-field="note"]', currentData.note, currentRow);
+
+                SalesModule.Logic.calcRow(currentIdx);
+
+                currentRow.querySelectorAll('input, select').forEach((el) => {
+                  el.setAttribute('data-initial', el.value);
+                });
+              } else if (currentIdx === 1) {
+                setVal('[data-field="service_type"]', 'Phòng', currentRow);
+                // Đối với dòng mới (trống), vẫn cần trigger change để auto-fill
+                await SalesModule.Logic.onTypeChange(currentRow, true);
+              }
+            } catch (err) {
+              L.log(`SalesModule.UI.addDetailRow Task Error (Row ${currentIdx}):`, err);
+            }
+          })(tr, idx, rowData);
+
+          postProcessTasks.push(task);
         }
+
+        // Append toàn bộ fragment vào DOM một lần duy nhất
+        tbody.appendChild(fragment);
+
+        // Thực thi các logic phụ trợ sau khi đã append vào DOM
+        await Promise.all(postProcessTasks);
       } catch (e) {
         L.log('SalesModule.UI.addDetailRow Error:', e);
       }
@@ -222,44 +262,120 @@ class SalesModule {
       }
     },
 
-    updateHotelSelect: async (idx) => {
+    getLocationList: async () => {
+      if (SalesModule.State.locations && SalesModule.State?.locations?.length > 0) {
+        return SalesModule.State.locations;
+      }
+      let uniqueLocs = [];
+      const lists = SalesModule.State?.lists || (await A.DB.local.get('app_config', 'lists')) || window.APP_DATA?.lists || {};
+      const hotels = SalesModule.State?.hotels || (await A.DB.local.getCollection('hotels')) || [];
+      if (!SalesModule.State.hotels || SalesModule.State.hotels.length === 0) SalesModule.State.hotels = hotels;
+      const others = Object.values(lists.locOther || {}) || [];
+      // Chuẩn hóa dữ liệu: hotels thường là object {id, name}, others có thể là string hoặc object
+      const normalizedOthers = others.map((x) => (typeof x === 'string' ? { id: x, name: x } : x));
+      const allLocs = [...hotels, ...normalizedOthers];
+      // Loại bỏ trùng lặp dựa trên ID
+      const map = new Map();
+      for (let item of allLocs) {
+        // 1. Xử lý trường hợp item là object có key là index (0, 1, 2...)
+        // Nếu item là object và không có id/name nhưng có các key dạng số
+        if (item && typeof item === 'object' && !item.id && !item.name) {
+          const values = Object.values(item);
+          if (values.length > 0) {
+            const val = values[0]; // Lấy giá trị đầu tiên (ví dụ: "Phú Quốc")
+            item = { id: val, name: val }; // Ghi đè item thành object chuẩn
+          }
+        }
+
+        // 2. Xác định ID để kiểm tra trùng lặp
+        const id = item && typeof item === 'object' ? item.id : item;
+
+        // 3. Kiểm tra và push vào danh sách duy nhất
+        if (id && !map.has(id)) {
+          map.set(id, true);
+
+          // Đảm bảo item được push vào luôn là object có id và name
+          const finalItem = typeof item === 'object' ? { id: item.id || id, name: item.name || id } : { id: item, name: item };
+
+          uniqueLocs.push(finalItem);
+        }
+      }
+
+      if (uniqueLocs.length > 0) SalesModule.State.locations = uniqueLocs;
+      L._(`[getLocationList] 🔍 Found ${uniqueLocs}`);
+      return uniqueLocs;
+    },
+
+    updateHotelSelect: async (el) => {
       return;
       try {
-        const lists = window.APP_DATA?.lists || {};
-        const hotels = A.DB.local.getList('hotels');
-        const others = Object.values(lists.locOther || {}) || [];
-        const allLocs = [...new Set([...hotels, ...others])];
-        const tr = getE(`row-${idx}`);
+        let uniqueLocs = [];
+        if (SalesModule.State.locations && SalesModule.State.locations.length > 0) {
+          uniqueLocs = SalesModule.State.locations;
+        } else {
+          uniqueLocs = await SalesModule.UI.getLocationList();
+        }
+
+        const tr = el.closest('tr');
         if (!tr) return;
         const elLoc = tr.querySelector('[data-field="hotel_name"]');
-        let currentVal = elLoc?.value;
-        elLoc.innerHTML = '<option value="">-</option>' + allLocs.map((x) => `<option value="${x.id || x}">${x.name || x}</option>`).join('');
-        elLoc.value = currentVal;
+        if (!elLoc) return;
+
+        let currentVal = getVal(elLoc);
+        elLoc.innerHTML = '<option value="">-</option>' + uniqueLocs.map((x) => `<option value="${x.id || x}">${x.name || x}</option>`).join('');
+
+        if (currentVal) setVal(elLoc, currentVal);
       } catch (e) {
         L.log('SalesModule.UI.updateHotelSelect Error:', e);
       }
     },
 
-    updateServiceSelect: (idx) => {
+    updateServiceSelect: async (tr, el) => {
       try {
-        const tr = getE(`row-${idx}`);
-        if (!tr) return;
+        if (!tr) {
+          tr = el.closest('tr');
+        }
         const type = getVal('[data-field="service_type"]', tr);
         const loc = getVal('[data-field="hotel_name"]', tr);
         const elName = $('[data-field="service_name"]', tr);
+        if (!elName) return;
         let options = [];
-        if (type === 'Phòng') {
-          let hotel = A.DB.local.get('hotels', loc);
+        if (type.trim() === 'Phòng') {
+          let hotels = SalesModule.State.hotels?.length > 0 ? SalesModule.State.hotels : await SalesModule.UI.getLocationList();
+          L._(`[updateServiceSelect] 🔍 Location: ${loc} - Type: ${type} - Hotels: ${hotels}`);
+          let hotel = hotels.filter((h) => h.id === loc || h.name === loc)[0];
+          L._(`[updateServiceSelect] 🔍 Found hotel: ${hotel}`);
           if (hotel && hotel.rooms) {
-            options = Object.values(hotel.rooms);
+            options = Array.isArray(hotel.rooms) ? hotel.rooms : Object.values(hotel.rooms);
+            L._(`[SalesModule] 🔍 Found ${options} rooms for hotel ${loc}`);
           }
+        } else if (SalesModule.State.services && SalesModule.State.services.length > 0) {
+          options = SalesModule.State.services.filter((r) => r[0] === type).map((r) => r[1]);
         } else {
-          const svcMatrix = Object.values(window.APP_DATA?.lists?.serviceMatrix) || [];
+          const svcMatrix = Object.values(window.APP_DATA?.lists?.serviceMatrix || {}) || [];
           options = svcMatrix.filter((r) => r[0] === type).map((r) => r[1]);
+          SalesModule.State.services = svcMatrix;
         }
-        const currentVal = getVal('[data-field="service_name"]', tr);
-        elName.innerHTML = '<option value="">-</option>' + options.map((x) => `<option value="${x.id || x}">${x.name || x}</option>`).join('');
-        if (options.includes(currentVal)) setVal('[data-field="service_name"]', currentVal, tr);
+
+        let currentVal = getVal('[data-field="service_name"]', tr);
+        let isId;
+        let isName;
+        elName.innerHTML =
+          '<option value="">-</option>' +
+          options
+            .map((x) => {
+              const val = x.id || x;
+              const name = x.name || x;
+              isId = x.id === currentVal || x === currentVal;
+              isName = x.name === currentVal ? x.id : null;
+              return `<option value="${val}">${name}</option>`;
+            })
+            .join('');
+
+        // 2. Nếu tìm thấy, lấy id của option đó (fallback về name hoặc chính nó) và gán vào form
+        if (isId || isName) {
+          setVal('[data-field="service_name"]', isId ? isId : isName, tr);
+        }
       } catch (e) {
         L.log('SalesModule.UI.updateServiceSelect Error:', e);
       }
@@ -384,20 +500,36 @@ class SalesModule {
 
   // ─── 4. LOGIC HANDLERS ─────────────────────────────────────────────
   static Logic = {
-    onTypeChange: (idx, resetChildren = true) => {
+    onTypeChange: async (el, resetChildren = true) => {
       try {
         const tbody = getE('detail-tbody');
-        const tr = getE(`row-${idx}`, tbody);
+
+        const tr = el.closest('tr');
         if (!tr) return;
-        else if (resetChildren) {
+
+        if (resetChildren) {
           setVal('[data-field="hotel_name"]', '', tr);
-          SalesModule.UI.updateServiceSelect(idx);
+          await SalesModule.UI.updateServiceSelect(tr);
           SalesModule.Logic.autoFillRowData(idx);
         } else {
-          SalesModule.UI.updateServiceSelect(idx);
+          await SalesModule.UI.updateServiceSelect(tr);
         }
       } catch (e) {
         L.log('SalesModule.Logic.onTypeChange Error:', e);
+      }
+    },
+    onLocationChange: async (el, resetName = true) => {
+      try {
+        const tr = el.closest('tr');
+        L._(`[onLocationChange] 🔍 Location: ${getVal('[data-field="hotel_name"]', tr)} - el ${getVal(el)}`);
+        if (!tr) return;
+        const type = getVal('[data-field="service_type"]', tr);
+        if (type === 'Phòng') {
+          await SalesModule.UI.updateServiceSelect(tr, el);
+          if (resetName) setVal('[data-field="service_name"]', '', tr);
+        }
+      } catch (e) {
+        L.log('SalesModule.Logic.onLocationChange Error:', e);
       }
     },
 
@@ -459,20 +591,6 @@ class SalesModule {
         SalesModule.Logic.calcRow(idx);
       } catch (e) {
         L.log('SalesModule.Logic.autoFillRowData Error:', e);
-      }
-    },
-
-    onLocationChange: (idx, resetName = true) => {
-      try {
-        const tr = getE(`row-${idx}`);
-        if (!tr) return;
-        const type = tr.querySelector('[data-field="service_type"]')?.value;
-        if (type === 'Phòng') {
-          SalesModule.UI.updateServiceSelect(idx);
-          if (resetName) setVal('[data-field="service_name"]', '', tr);
-        }
-      } catch (e) {
-        L.log('SalesModule.Logic.onLocationChange Error:', e);
       }
     },
 
@@ -898,7 +1016,7 @@ class SalesModule {
         if (tbody) tbody.innerHTML = '';
         SalesModule.State.detailRowCount = 0;
 
-        booking_details.forEach((row) => {
+        const rowDataList = booking_details.map((row) => {
           let shiftedIn = '';
           let shiftedOut = '';
           if (row.in || row.check_in) {
@@ -916,7 +1034,7 @@ class SalesModule {
             finalQtyA = type === 'Phòng' ? Math.ceil(newAdult / 2) : newAdult;
           }
 
-          const rowData = {
+          return {
             id: '',
             booking_id: bkId,
             service_type: type,
@@ -935,8 +1053,11 @@ class SalesModule {
             ref_code: row.code || row.ref_code,
             note: row.note,
           };
-          SalesModule.UI.addDetailRow(rowData);
         });
+
+        // Tối ưu: Gọi addDetailRow một lần với mảng dữ liệu
+        await SalesModule.UI.addDetailRow(rowDataList);
+
         if (typeof logA === 'function') logA('Đã tải Template và cập nhật ngày tháng thành công!', 'success');
       } catch (e) {
         L.log('SalesModule.Logic.processAndFillTemplate Error:', e);
@@ -1009,7 +1130,7 @@ class SalesModule {
         if (tbody) tbody.innerHTML = '';
         SalesModule.State.detailRowCount = 0;
 
-        detailsArr.forEach((row) => {
+        const rowDataList = detailsArr.map((row) => {
           let shiftedIn = '';
           let shiftedOut = '';
           if (row.check_in || row.in) {
@@ -1031,7 +1152,7 @@ class SalesModule {
             finalQtyC = newChild;
           }
 
-          const rowData = {
+          return {
             id: '',
             booking_id: currentBkId ?? '',
             service_type: type,
@@ -1050,8 +1171,10 @@ class SalesModule {
             ref_code: '',
             note: '',
           };
-          SalesModule.UI.addDetailRow(rowData);
         });
+
+        // Tối ưu: Gọi addDetailRow một lần với mảng dữ liệu
+        await SalesModule.UI.addDetailRow(rowDataList);
 
         if (typeof logA === 'function') logA(`Đã copy thành công ${detailsArr.length} dịch vụ từ Booking ${bkId}`, 'success');
       } catch (e) {
