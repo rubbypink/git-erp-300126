@@ -1,0 +1,206 @@
+<!--
+  9TRIP ERP - Price Manager Template
+  Path: public/src/components/tpl_price_manager.html
+  Tech: Bootstrap 5, Vanilla JS
+-->
+<div id="price-manager-module" class="container-fluid p-0 h-100 d-flex flex-column">
+    <!-- Toolbar / Header -->
+    <div class="bg-white border-bottom p-2 shadow-sm sticky-top">
+        <div class="row g-2 align-items-center">
+            <div class="col-12 col-md-auto d-flex gap-2">
+                <div class="btn-group" role="group">
+                    <input type="radio" class="btn-check" name="pm-module-switch" id="pm-switch-hotel" value="hotel" checked>
+                    <label class="btn btn-outline-primary btn-sm" for="pm-switch-hotel">
+                        <i class="bi bi-building"></i> Khách sạn
+                    </label>
+                    <input type="radio" class="btn-check" name="pm-module-switch" id="pm-switch-service" value="service">
+                    <label class="btn btn-outline-primary btn-sm" for="pm-switch-service">
+                        <i class="bi bi-ticket-perforated"></i> Dịch vụ
+                    </label>
+                    <input type="radio" class="btn-check" name="pm-module-switch" id="pm-switch-config" value="config">
+                    <label class="btn btn-outline-secondary btn-sm" for="pm-switch-config">
+                        <i class="bi bi-gear"></i> Cấu hình
+                    </label>
+                </div>
+            </div>
+
+            <!-- OVERLAP: Bộ lọc global này đã có trong từng module con (Hotel/Service) -->
+            <!-- 
+            <div class="col-12 col-md d-flex gap-2 flex-wrap pm-filter-area">
+                <div class="input-group input-group-sm" style="max-width: 200px;">
+                    <span class="input-group-text bg-light"><i class="bi bi-shop"></i></span>
+                    <select id="pm-supplier-select" class="form-select">
+                        <option value="">-- Chọn Nhà cung cấp --</option>
+                    </select>
+                </div>
+
+                <div id="pm-hotel-filter-wrap" class="input-group input-group-sm" style="max-width: 200px;">
+                    <span class="input-group-text bg-light"><i class="bi bi-geo-alt"></i></span>
+                    <select id="pm-hotel-select" class="form-select">
+                        <option value="">-- Chọn Khách sạn --</option>
+                    </select>
+                </div>
+
+                <div class="input-group input-group-sm" style="width: 90px;">
+                    <select id="pm-year-select" class="form-select">
+                        <option value="2025">2025</option>
+                        <option value="2026">2026</option>
+                        <option value="2027">2027</option>
+                    </select>
+                </div>
+
+                <div class="input-group input-group-sm" style="max-width: 300px;">
+                    <span class="input-group-text bg-light"><i class="bi bi-calendar-range"></i></span>
+                    <input type="date" id="pm-query-start" class="form-control" title="Từ ngày">
+                    <input type="date" id="pm-query-end" class="form-control" title="Đến ngày">
+                    <button id="pm-btn-query" class="btn btn-primary btn-sm" title="Truy vấn nhanh">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+            -->
+
+            <div class="col-12 col-md-auto d-flex gap-2 justify-content-end ms-auto">
+                <!-- OVERLAP: Thông tin giá nhanh
+                <div id="pm-quick-info" class="d-none d-md-flex align-items-center me-2">
+                    <span class="badge bg-warning text-dark" id="pm-min-price-badge" title="Giá bình quân thấp nhất trong giai đoạn">
+                        <i class="bi bi-lightning-fill"></i> Min: <span id="pm-min-price-val">0</span>
+                    </span>
+                </div>
+                -->
+                <button id="pm-btn-ai-import" class="btn btn-info btn-sm text-white">
+                    <i class="bi bi-robot"></i> AI
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div id="pm-main-content" class="flex-grow-1 position-relative overflow-hidden bg-light">
+        <!-- Hotel Price Matrix Container -->
+        <div id="pm-hotel-container" class="h-100 w-100">
+            <!-- Will be filled by HotelPriceManager -->
+        </div>
+
+        <!-- Service Price Table Container -->
+        <div id="pm-service-container" class="h-100 w-100 d-none">
+            <!-- Will be filled by ServicePriceController -->
+        </div>
+
+        <!-- Config Container -->
+        <div id="pm-config-container" class="h-100 w-100 d-none p-3 overflow-auto">
+            <div class="row g-3">
+                <!-- Markup Config -->
+                <div class="col-12">
+                    <div class="card shadow-sm mb-3">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                            <span class="fw-bold"><i class="bi bi-calculator me-2"></i>Cấu hình Markup (Giá bán)</span>
+                            <button class="btn btn-sm btn-light" onclick="A.PriceManager.saveMarkupConfig()">
+                                <i class="bi bi-save me-1"></i>Lưu cấu hình
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <h6 class="border-bottom pb-2 mb-3 text-primary">Khách sạn (Theo hạng sao)</h6>
+                                    <div id="pm-markup-hotel-list">
+                                        <!-- Dynamic content -->
+                                        <div class="input-group input-group-sm mb-2">
+                                            <span class="input-group-text" style="width: 100px;">3 Sao</span>
+                                            <input type="number" step="0.01" class="form-control markup-input" data-type="hotel" data-key="star_3" value="1.15">
+                                            <span class="input-group-text">x</span>
+                                        </div>
+                                        <div class="input-group input-group-sm mb-2">
+                                            <span class="input-group-text" style="width: 100px;">4 Sao</span>
+                                            <input type="number" step="0.01" class="form-control markup-input" data-type="hotel" data-key="star_4" value="1.10">
+                                            <span class="input-group-text">x</span>
+                                        </div>
+                                        <div class="input-group input-group-sm mb-2">
+                                            <span class="input-group-text" style="width: 100px;">5 Sao</span>
+                                            <input type="number" step="0.01" class="form-control markup-input" data-type="hotel" data-key="star_5" value="1.07">
+                                            <span class="input-group-text">x</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="border-bottom pb-2 mb-3 text-success">Dịch vụ (Theo loại)</h6>
+                                    <div id="pm-markup-service-list">
+                                        <!-- Dynamic content -->
+                                        <div class="input-group input-group-sm mb-2">
+                                            <span class="input-group-text" style="width: 100px;">Vé MB/Tàu</span>
+                                            <input type="number" class="form-control markup-input" data-type="service" data-key="ticket_fixed" value="50000">
+                                            <span class="input-group-text">VNĐ</span>
+                                        </div>
+                                        <div class="input-group input-group-sm mb-2">
+                                            <span class="input-group-text" style="width: 100px;">Tour</span>
+                                            <input type="number" step="0.01" class="form-control markup-input" data-type="service" data-key="tour" value="1.25">
+                                            <span class="input-group-text">x</span>
+                                        </div>
+                                        <div class="input-group input-group-sm mb-2">
+                                            <span class="input-group-text" style="width: 100px;">Xe</span>
+                                            <input type="number" class="form-control markup-input" data-type="service" data-key="car_fixed" value="100000">
+                                            <span class="input-group-text">VNĐ</span>
+                                        </div>
+                                        <div class="input-group input-group-sm mb-2">
+                                            <span class="input-group-text" style="width: 100px;">Mặc định</span>
+                                            <input type="number" step="0.01" class="form-control markup-input" data-type="service" data-key="default" value="1.10">
+                                            <span class="input-group-text">x</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light fw-bold">Loại giá (price_type)</div>
+                        <div class="card-body p-0">
+                            <div id="pm-config-price-type" class="list-group list-group-flush"></div>
+                        </div>
+                        <div class="card-footer p-2">
+                            <button class="btn btn-sm btn-outline-primary w-100" onclick="A.PriceManager.addConfigItem('price_type')">
+                                <i class="bi bi-plus-lg"></i> Thêm loại giá
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light fw-bold">Giai đoạn (price_periods)</div>
+                        <div class="card-body p-0">
+                            <div id="pm-config-price-periods" class="list-group list-group-flush"></div>
+                        </div>
+                        <div class="card-footer p-2">
+                            <button class="btn btn-sm btn-outline-primary w-100" onclick="A.PriceManager.addConfigItem('price_periods')">
+                                <i class="bi bi-plus-lg"></i> Thêm giai đoạn
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-light fw-bold">Gói giá (pkg_hotel_price)</div>
+                        <div class="card-body p-0">
+                            <div id="pm-config-pkg-hotel-price" class="list-group list-group-flush"></div>
+                        </div>
+                        <div class="card-footer p-2">
+                            <button class="btn btn-sm btn-outline-primary w-100" onclick="A.PriceManager.addConfigItem('pkg_hotel_price')">
+                                <i class="bi bi-plus-lg"></i> Thêm gói giá
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="pm-loading" class="position-absolute top-0 start-0 w-100 h-100 bg-white bg-opacity-75 d-none d-flex justify-content-center align-items-center" style="z-index: 1050;">
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status"></div>
+                <div class="mt-2 fw-bold text-primary">Đang xử lý...</div>
+            </div>
+        </div>
+    </div>
+</div>

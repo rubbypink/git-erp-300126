@@ -1,0 +1,484 @@
+<template id="tmpl-download-pdf">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</template>
+<template id="tmpl-settings-form">
+  <div class="d-flex flex-column h-100 w-auto">
+    <div class="card-header nav-container px-3 border-bottom">
+      <ul class="nav nav-tabs" id="settingTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active fw-bold small" id="tab-settings-btn" onclick="selectTab('tab-settings-content')" data-bs-target="#tab-settings-content" type="button" role="tab"><i class="fa-solid fa-cog me-2 text-success"></i>Cài Đặt</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link fw-bold small" id="tab-theme-btn" onclick="selectTab('tab-theme-content')" data-bs-target="#tab-theme-content" type="button" role="tab"><i class="fa-solid fa-palette me-2 text-primary"></i>Giao Diện & Màu Sắc</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link fw-bold small" id="tab-shortcut-btn" onclick="selectTab('tab-shortcut-content')" data-bs-target="#tab-shortcut-content" type="button" role="tab"><i class="fa-solid fa-keyboard me-2 text-danger"></i>Phím Tắt (Hotkeys)</button>
+        </li>
+      </ul>
+    </div>
+
+    <div class="tab-content p-1 scrollable-area" style="overflow-y: auto">
+      <!-- Tab Cài Đặt (Mặc định) -->
+      <div class="tab-pane fade show active" id="tab-settings-content" role="tabpanel">
+        <div class="p-3">
+          <fieldset class="border p-3 mb-3 rounded">
+            <legend class="float-none w-auto px-2 small fw-bold text-primary">Cập Nhật Dữ Liệu</legend>
+            <div class="row g-3 align-items-center mb-3">
+              <div class="col-auto">
+                <label class="form-label small fw-bold mb-0">Cập nhật Lists:</label>
+              </div>
+              <div class="col-auto">
+                <button class="btn btn-sm btn-primary" onclick="A.DB.loadMeta(APP_DATA, true)"><i class="fa-solid fa-sync me-1"></i>Run...</button>
+              </div>
+            </div>
+            <div class="row g-3 align-items-center">
+              <div class="col-auto">
+                <label class="form-label small fw-bold mb-0">Đồng bộ Collection:</label>
+              </div>
+              <div class="col-auto">
+                <select id="st-sync-collection" class="form-select form-select-sm" style="min-width: 150px">
+                  <!-- Sẽ được fill bằng JS -->
+                </select>
+              </div>
+              <div class="col-auto">
+                <button class="btn btn-sm btn-success" onclick="
+                    const col = getVal('st-sync-collection');
+                    if (col) A.DB.syncDelta(col, true);
+                    else logA('Vui lòng chọn collection', 'warning');
+                  ">
+                  <i class="fa-solid fa-cloud-download me-1"></i>Run...
+                </button>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="border p-3 rounded sales-only">
+            <legend class="float-none w-auto px-2 small fw-bold text-primary">Sales Dashboard</legend>
+            <div class="row g-3">
+              <div class="col-md-6 col-lg-3">
+                <label class="form-label small fw-bold">Bảng 1</label>
+                <select class="form-select form-select-sm st-dash-table" id="st-dash-table-1" onchange="handleDashTableChange(this)">
+                  <option value="">-- Chọn loại --</option>
+                  <option value="BK_MOI">Booking Mới</option>
+                  <option value="BK_XIN_REVIEW">Booking Xin Review</option>
+                  <option value="BK_SAP_DEN">Booking Sắp Đến</option>
+                  <option value="BK_DANG_O">Booking Đang Ở</option>
+                  <option value="BK_CHO_CODE">Booking Chờ Code</option>
+                  <option value="BK_CHO_THANH_TOAN">Book Chờ Thanh Toán</option>
+                  <option value="BK_STATS_NV">Thống Kê BK Theo NV</option>
+                </select>
+              </div>
+              <div class="col-md-6 col-lg-3">
+                <label class="form-label small fw-bold">Bảng 2</label>
+                <select class="form-select form-select-sm st-dash-table" id="st-dash-table-2" onchange="handleDashTableChange(this)">
+                  <option value="">-- Chọn loại --</option>
+                  <option value="BK_MOI">Booking Mới</option>
+                  <option value="BK_XIN_REVIEW">Booking Xin Review</option>
+                  <option value="BK_SAP_DEN">Booking Sắp Đến</option>
+                  <option value="BK_DANG_O">Booking Đang Ở</option>
+                  <option value="BK_CHO_CODE">Booking Chờ Code</option>
+                  <option value="BK_CHO_THANH_TOAN">Book Chờ Thanh Toán</option>
+                  <option value="BK_STATS_NV">Thống Kê BK Theo NV</option>
+                </select>
+              </div>
+              <div class="col-md-6 col-lg-3">
+                <label class="form-label small fw-bold">Bảng 3</label>
+                <select class="form-select form-select-sm st-dash-table" id="st-dash-table-3" onchange="handleDashTableChange(this)">
+                  <option value="">-- Chọn loại --</option>
+                  <option value="BK_MOI">Booking Mới</option>
+                  <option value="BK_XIN_REVIEW">Booking Xin Review</option>
+                  <option value="BK_SAP_DEN">Booking Sắp Đến</option>
+                  <option value="BK_DANG_O">Booking Đang Ở</option>
+                  <option value="BK_CHO_CODE">Booking Chờ Code</option>
+                  <option value="BK_CHO_THANH_TOAN">Book Chờ Thanh Toán</option>
+                  <option value="BK_STATS_NV">Thống Kê BK Theo NV</option>
+                </select>
+              </div>
+              <div class="col-md-6 col-lg-3">
+                <label class="form-label small fw-bold">Bảng 4</label>
+                <select class="form-select form-select-sm st-dash-table" id="st-dash-table-4" onchange="handleDashTableChange(this)">
+                  <option value="">-- Chọn loại --</option>
+                  <option value="BK_MOI">Booking Mới</option>
+                  <option value="BK_XIN_REVIEW">Booking Xin Review</option>
+                  <option value="BK_SAP_DEN">Booking Sắp Đến</option>
+                  <option value="BK_DANG_O">Booking Đang Ở</option>
+                  <option value="BK_CHO_CODE">Booking Chờ Code</option>
+                  <option value="BK_CHO_THANH_TOAN">Book Chờ Thanh Toán</option>
+                  <option value="BK_STATS_NV">Thống Kê BK Theo NV</option>
+                </select>
+              </div>
+            </div>
+          </fieldset>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="tab-theme-content" role="tabpanel">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="d-inline-flex fw-bold text-primary mb-1 border-bottom pb-2">1. Giao Diện & Phông Chữ</h6>
+          <button id="theme-toggle" class="btn btn-light btn-sm" onclick="toggleTheme()">
+            <i class="fa-solid fa-moon"></i>
+          </button>
+        </div>
+        <form id="themes-form" class="row border-end bg-opacity-50 pb-3">
+          <div class="col-3">
+            <label class="form-label small fw-bold">Bộ chủ đề mẫu (Theme)</label>
+
+            <select class="form-select form-select-sm fw-bold text-primary" id="st-theme-preset" onchange="applyThemePresetFromForm(this.value)">
+              <option value="light">🔵 9Trip Standard (Mặc định)</option>
+              <option value="dark">⚫ Hiện Đại (Dark/Modern)</option>
+              <option value="minimal">⚪ Tối Giản (Minimalist)</option>
+              <option value="warm">🟠 Ấm Áp (Cozy)</option>
+              <option value="custom">🔧 Tùy chỉnh (Custom)</option>
+            </select>
+
+            <div class="form-text small fst-italic">Chọn nhanh bộ màu và khoảng cách.</div>
+          </div>
+
+          <div class="col-3">
+            <label class="form-label small fw-bold">Phông chữ</label>
+
+            <select class="form-select form-select-sm" id="st-font-family">
+              <option value="'Segoe UI', sans-serif">Segoe UI (Window Standard)</option>
+
+              <option value="'Roboto', sans-serif">Roboto (Google)</option>
+
+              <option value="'Inter', sans-serif">Inter (Clean)</option>
+
+              <option value="'Merriweather', serif">Merriweather (Serif)</option>
+            </select>
+          </div>
+
+          <div class="col-3">
+            <label class="form-label small fw-bold">Cỡ chữ (px)</label>
+
+            <div class="d-flex align-items-center gap-2">
+              <input type="range" class="form-range" min="11" max="16" step="1" id="st-font-range" oninput="document.getElementById('st-font-size').value = this.value" />
+
+              <input type="number" class="form-control form-control-sm text-center fw-bold" id="st-font-size" value="13" style="width: 50px" readonly />
+            </div>
+          </div>
+
+          <div class="col-3">
+            <label class="form-label small fw-bold">Logo App</label>
+
+            <div class="d-flex align-items-center gap-2">
+              <div class="border p-1 rounded d-flex justify-content-center align-items-center" style="width: 40px; height: 40px">
+                <img id="st-logo-preview" src="" style="max-width: 100%; max-height: 100%" />
+              </div>
+
+              <input type="file" class="form-control form-control-sm" id="st-logo-upload" accept="image/*" onchange="previewLogo()" />
+            </div>
+          </div>
+        </form>
+
+        <div class="col-12 p-3 scrollable-area" style="max-height: 70vh; overflow-y: auto">
+          <h6 class="fw-bold text-success mb-3 border-bottom pb-2">2. Bảng Màu & Thành Phần (Chi tiết)</h6>
+
+          <div class="row g-2 mb-1">
+            <div class="col-12">
+              <small class="text-muted fw-bold text-uppercase">Màu Nền (Background & Header)</small>
+            </div>
+
+            <div class="col-3">
+              <label class="small">App Background</label>
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-app-bg" value="#f8f9fa" />
+
+                <input type="text" class="form-control" id="st-app-bg-text" readonly />
+              </div>
+            </div>
+
+            <div class="col-3">
+              <label class="small">Header/Footer</label>
+
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-header-bg" value="#ffffff" />
+
+                <input type="text" class="form-control" id="st-header-bg-text" readonly />
+              </div>
+            </div>
+            <div class="col-3">
+              <label class="small">Header Bảng</label>
+
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-tbl-head-bg" />
+
+                <input type="text" class="form-control" id="st-tbl-head-bg-text" readonly />
+              </div>
+            </div>
+
+            <div class="col-3">
+              <label class="small">Chữ Tiêu Đề</label>
+
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-tbl-head-text" />
+                <input type="text" class="form-control" id="st-tbl-head-text-text" readonly />
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-1">
+            <div class="col-12">
+              <small class="text-muted fw-bold text-uppercase">Màu Nút Bấm (Button)</small>
+            </div>
+
+            <div class="col-2">
+              <label class="small text-primary fw-bold">Primary</label>
+              <input type="color" class="form-control form-control-color w-100" id="st-btn-primary" />
+            </div>
+
+            <div class="col-2">
+              <label class="small text-success fw-bold">Success</label>
+              <input type="color" class="form-control form-control-color w-100" id="st-btn-success" />
+            </div>
+
+            <div class="col-2">
+              <label class="small text-danger fw-bold">Danger</label>
+              <input type="color" class="form-control form-control-color w-100" id="st-btn-danger" />
+            </div>
+
+            <div class="col-2">
+              <label class="small text-info fw-bold">Info</label>
+              <input type="color" class="form-control form-control-color w-100" id="st-btn-info" />
+            </div>
+
+            <div class="col-2">
+              <label class="small text-secondary fw-bold">Secondary</label>
+              <input type="color" class="form-control form-control-color w-100" id="st-btn-secondary" />
+            </div>
+          </div>
+
+          <div class="row g-2 mb-1">
+            <div class="col-12">
+              <small class="text-muted fw-bold text-uppercase border-top pt-2 d-block mt-2">Thanh Điều Hướng (Tabs &
+                Nav)</small>
+            </div>
+
+            <div class="col-6">
+              <label class="small fw-bold text-primary">Tab Đang chọn (Active)</label>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text small">Nền</span>
+                <input type="color" class="form-control form-control-color" id="st-tab-active-bg" />
+                <span class="input-group-text small">Chữ</span>
+                <input type="color" class="form-control form-control-color" id="st-tab-active-text" />
+              </div>
+            </div>
+
+            <div class="col-6">
+              <label class="small fw-bold text-secondary">Tab Chưa chọn</label>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text small">Nền</span>
+                <input type="color" class="form-control form-control-color" id="st-tab-inactive-bg" />
+                <span class="input-group-text small">Chữ</span>
+                <input type="color" class="form-control form-control-color" id="st-tab-inactive-text" />
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-2">
+            <div class="col-12">
+              <small class="text-muted fw-bold text-uppercase border-top pt-2 d-block mt-2">Thành phần phụ
+                (Input/Card/Btn-Light)</small>
+            </div>
+
+            <div class="col-6">
+              <label class="small">Nền an toàn (Glass BG)</label>
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-glass-bg" />
+                <input type="text" class="form-control" id="st-glass-bg-text" readonly />
+              </div>
+            </div>
+
+            <div class="col-6">
+              <label class="small">Màu chữ (Glass Text)</label>
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-glass-text" />
+                <input type="text" class="form-control" id="st-glass-text-text" readonly />
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-2 mt-2">
+            <div class="col-12">
+              <small class="text-muted fw-bold text-uppercase border-top pt-2 d-block mt-2">Màu Bổ Sung (Extra
+                Colors)</small>
+            </div>
+
+            <div class="col-6">
+              <label class="small">Text Color (Chữ Chính)</label>
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-text-color" />
+                <input type="text" class="form-control" id="st-text-color-text" readonly />
+              </div>
+            </div>
+
+            <div class="col-6">
+              <label class="small">Border Color</label>
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-border-color" />
+                <input type="text" class="form-control" id="st-border-color-text" readonly />
+              </div>
+            </div>
+
+            <div class="col-6">
+              <label class="small">Surface Color (Card/Modal)</label>
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-surface-color" />
+                <input type="text" class="form-control" id="st-surface-color-text" readonly />
+              </div>
+            </div>
+
+            <div class="col-6">
+              <label class="small">Hover Background</label>
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-hover-bg" />
+                <input type="text" class="form-control" id="st-hover-bg-text" readonly />
+              </div>
+            </div>
+
+            <div class="col-6">
+              <label class="small">Input Background</label>
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-input-bg" />
+                <input type="text" class="form-control" id="st-input-bg-text" readonly />
+              </div>
+            </div>
+
+            <div class="col-6">
+              <label class="small">Footer Background</label>
+              <div class="input-group input-group-sm">
+                <input type="color" class="form-control form-control-color" id="st-footer-bg" />
+                <input type="text" class="form-control" id="st-footer-bg-text" readonly />
+              </div>
+            </div>
+          </div>
+          <input type="hidden" id="st-spacing-scale" value="1" />
+        </div>
+      </div>
+
+      <div class="tab-pane fade d-none" id="tab-shortcut-content" role="tabpanel">
+        <div class="card shadow-sm border-0">
+          <div class="card-body">
+            <h6 class="fw-bold text-danger border-bottom pb-2 mb-3"><i class="bi bi-command me-2"></i>Cấu hình phím tắt
+            </h6>
+
+            <!-- Button Thêm Mới Shortcut -->
+            <div class="mb-3">
+              <button type="button" class="btn btn-sm btn-success" id="btn-add-shortcut" onclick="A.ShortKey.showAddShortcutForm()"><i class="fa-solid fa-plus me-2"></i>Thêm Phím Tắt
+                Mới</button>
+            </div>
+
+            <!-- Form Nhập Shortcut Mới -->
+            <div class="card card-border mb-3 d-none" id="add-shortcut-form-container">
+              <div class="card-body p-3">
+                <h6 class="fw-bold text-success mb-3"><i class="fa-solid fa-plus-circle me-2"></i>Tạo Phím Tắt Mới</h6>
+                <div class="row g-2">
+                  <div class="col-md-3 form-floating">
+                    <input type="text" class="form-control form-control-sm" id="new-sc-name" placeholder="Tên phím tắt" />
+                    <label for="new-sc-name">Tên Phím Tắt</label>
+                  </div>
+                  <div class="col-md-3 form-floating">
+                    <select class="form-select form-select-sm" id="new-sc-icon">
+                      <option value="">-- Chọn Icon --</option>
+                      <option value="fa-solid fa-floppy-disk text-primary">💾 Lưu</option>
+                      <option value="fa-solid fa-plus-circle text-success">➕ Thêm Mới</option>
+                      <option value="fa-solid fa-sync text-info">🔄 Làm Mới</option>
+                      <option value="fa-solid fa-cog text-secondary">⚙️ Cài Đặt</option>
+                      <option value="fa-solid fa-trash-can text-danger">🗑️ Xóa</option>
+                      <option value="fa-solid fa-pen text-warning">✏️ Sửa</option>
+                      <option value="fa-solid fa-eye text-info">👁️ Xem</option>
+                      <option value="fa-solid fa-search text-muted">🔍 Tìm Kiếm</option>
+                    </select>
+                    <label for="new-sc-icon">Icon</label>
+                  </div>
+                  <div class="col-md-3 form-floating">
+                    <input type="text" class="form-control form-control-sm" id="new-sc-function" placeholder="saveForm" />
+                    <label for="new-sc-function">Tên Hàm Thực Thi</label>
+                  </div>
+                  <div class="col-md-2 form-floating">
+                    <input type="text" class="form-control form-control-sm text-center fw-bold" id="new-sc-key" placeholder="Click để ghi" readonly />
+                    <label for="new-sc-key">Phím Tắt</label>
+                  </div>
+                  <div class="col-md-1 flex-center">
+                    <button type="button" class="btn btn-sm btn-primary flex-grow-1" id="btn-record-new-key" onclick="A.ShortKey.startRecordingNewKey()">
+                      <i class="fa-solid fa-keyboard"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success flex-grow-1" id="btn-save-new-shortcut" onclick="A.ShortKey.saveNewShortcut()">
+                      <i class="fa-solid fa-check"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-secondary flex-grow-1" onclick="A.ShortKey.hideAddForm()">
+                      <i class="fa-solid fa-xmark"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="alert alert-warning small py-2 mb-3">
+              <i class="fa-solid fa-triangle-exclamation me-1"></i>
+              <strong>Quy tắc:</strong> Mọi phím tắt bắt buộc phải bắt đầu bằng phím <code>Ctrl/Shift/Alt</code> + [Phím
+              chức năng].
+            </div>
+
+            <div class="list-group list-group-flush" id="shortcut-list-container"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="tmpl-price-pkg">
+  <div class="card h-100 d-flex flex-column border-0 shadow-sm">
+    <!-- Header: Mobile First - Stacked by default, Row on SM+ -->
+    <div class="card-header py-1 flex-shrink-0 bg-white border-bottom">
+    </div>
+    <div class="card-body p-0 flex-grow-1 position-relative mt-2" style="overflow: hidden;">
+      <div id="tbl-container-tab2" class="flex-grow-1 overflow-hidden d-flex flex-column">
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="tmpl-admin-dashboard">
+  <div class="container-fluid admin-wrapper">
+    <div class="admin-header-text">
+      <h2 class="fw-bold"><i class="fas fa-user-shield me-2"></i>TRUNG TÂM QUẢN TRỊ (ADMIN)</h2>
+      <p class="text-muted">Xin chào, vui lòng chọn phân hệ làm việc</p>
+    </div>
+
+    <div class="container">
+      <div class="row g-4 justify-content-center">
+        <div class="col-md-4 col-sm-12">
+          <div class="card p-5 text-center module-card card-sales" onclick="reloadSystemMode('sale')">
+            <div class="module-icon text-primary">
+              <i class="fas fa-shopping-cart"></i>
+            </div>
+            <h3 class="module-title text-primary">Sales Center</h3>
+            <p class="text-muted small">Quản lý Booking, Khách hàng & Báo giá</p>
+          </div>
+        </div>
+
+        <div class="col-md-4 col-sm-12">
+          <div class="card p-5 text-center module-card card-op" onclick="reloadSystemMode('op')">
+            <div class="module-icon text-success">
+              <i class="fas fa-map-marked-alt"></i>
+            </div>
+            <h3 class="module-title text-success">Operator Center</h3>
+            <p class="text-muted small">Điều phối Tour, Xe & Hướng dẫn viên</p>
+          </div>
+        </div>
+
+        <div class="col-md-4 col-sm-12">
+          <div class="card p-5 text-center module-card card-acc" onclick="reloadSystemMode('acc')">
+            <div class="module-icon text-warning">
+              <i class="fas fa-file-invoice-dollar"></i>
+            </div>
+            <h3 class="module-title text-warning">Accounting</h3>
+            <p class="text-muted small">Quản lý Thu chi, Công nợ & Lợi nhuận</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
