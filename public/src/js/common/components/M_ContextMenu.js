@@ -93,6 +93,7 @@ class ContextMenu {
   // ─────────────────────────────────────────────────────────────────────────
   constructor(config = {}) {
     this.#config = { ...DEFAULT_CONFIG, ...config };
+    this.autoInit = false;
   }
 
   /**

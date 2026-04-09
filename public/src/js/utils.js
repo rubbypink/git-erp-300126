@@ -300,6 +300,40 @@ function Opps(arg1, arg2, arg3, arg4) {
  * Convert array of objects to simple object format
  * Useful for form handling: Convert [{ id, name, phone }] → { id, name, phone }
  */
+/**
+ * =========================================================================
+ * 9TRIP ERP - DATA RESOLVER UTILITIES
+ * =========================================================================
+ */
+
+/**
+ * Chuyển đổi ID sang Name từ một collection trong LocalDB.
+ * @param {string} collection - Tên collection (ví dụ: 'hotels', 'suppliers')
+ * @param {string} value - ID cần chuyển đổi
+ * @param {string} targetField - Trường muốn lấy giá trị (mặc định: 'name')
+ * @returns {Promise<string>} - Tên hoặc giá trị tìm được, hoặc chính value nếu không tìm thấy
+ */
+async function resolveDisplayValue(collection, value, targetField = 'name') {
+  if (!value) return '';
+  try {
+    if (typeof DB_MANAGER === 'undefined') return value;
+    const data = await DB_MANAGER.local.get(collection, value);
+    if (data && data[targetField]) return data[targetField];
+
+    // Nếu không tìm thấy theo ID, thử tìm theo Name (để handle dữ liệu cũ hoặc nhập tay)
+    const all = await DB_MANAGER.local.getAllAsObject(collection);
+    const found = Object.values(all || {}).find((item) => item[targetField] === value || item.id === value);
+    if (found) return found[targetField] || value;
+
+    return value;
+  } catch (e) {
+    console.warn(`[resolveDisplayValue] Error resolving ${value} in ${collection}:`, e);
+    return value;
+  }
+}
+
+window.resolveDisplayValue = resolveDisplayValue;
+
 function extractFirstItem(items) {
   if (!items || !Array.isArray(items) || items.length === 0) return null;
   return items[0];

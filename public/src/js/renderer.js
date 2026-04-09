@@ -36,7 +36,7 @@ const setupMainFormUI = function (lists) {
       el.innerHTML = uniqueData.map((item) => `<option value="${item}">`).join('');
     } else {
       let uniqueData = [...new Set(dataArray)];
-      el.innerHTML = dataArray.map((item) => `<option value="${item}">`).join('');
+      el.innerHTML = uniqueData.map((item) => `<option value="${item}">`).join('');
     }
   };
 
@@ -147,7 +147,7 @@ function selectTab(targetTabId) {
         header: true,
         headerExtra: [
           `<div class="btn btn-sm btn-warning shadow-sm p-0" id="datalist-select"">
-        <select id="btn-select-datalist" data-source="A.DB.schema.getCollectionNames" class="smart-select form-select form-select-sm bg-warning rounded border-0" style="min-width: 6rem;">
+        <select id="btn-select-datalist" data-source="A.DB.schema.getCollectionNames" data-onchange="updateTableData" class="smart-select form-select form-select-sm bg-warning rounded border-0" style="min-width: 6rem;">
         </select>
       </div>`,
         ],

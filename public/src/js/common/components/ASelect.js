@@ -1,13 +1,29 @@
 /**
  * Module: ASelect (9Trip ERP Core)
- * Version: 1.4.0 (Enhanced Value/Text Fallback & Data-Val Sync)
+ * Version: 1.6.1 (Enhanced Event Handling & UI Sync)
  * Architecture: Declarative UI + Global Event Delegation + Static State Sync
+ *
+ * @class ASelect
+ * @description Thành phần Select thông minh hỗ trợ tìm kiếm, tạo mới, chỉnh sửa và đồng bộ dữ liệu.
  */
-
 export default class ASelect {
+  /** @type {Map<string, ASelect>} Lưu trữ các instance theo UID */
   static instances = new Map();
-  static fetchPromises = new Map(); // Bộ đệm để gộp các request DB trùng lặp
+  /** @type {Map<string, Promise>} Bộ đệm để gộp các request DB trùng lặp */
+  static fetchPromises = new Map();
 
+  /**
+   * @constructor
+   * @param {HTMLSelectElement} selectEl - Thẻ select gốc
+   * @param {Object} opts - Cấu hình tùy chọn
+   * @param {string|Function} [opts.source] - Nguồn dữ liệu (collection name, path, hoặc function)
+   * @param {boolean} [opts.searchable] - Cho phép tìm kiếm
+   * @param {boolean} [opts.creatable] - Cho phép tạo mới khi không tìm thấy
+   * @param {boolean} [opts.editable] - Cho phép chỉnh sửa text của option đã chọn
+   * @param {Function|string} [opts.onChange] - Callback khi thay đổi giá trị
+   * @param {Function|string} [opts.onCreate] - Callback khi tạo mới
+   * @param {Function|string} [opts.onUpdate] - Callback khi cập nhật
+   */
   constructor(selectEl, opts = {}) {
     this.autoInit = false;
     this.originalSelect = selectEl;
@@ -16,7 +32,14 @@ export default class ASelect {
     this.dataSourceStr = opts.source || selectEl.dataset.source;
     this.isSearchable = opts.searchable !== undefined ? opts.searchable : selectEl.dataset.searchable === 'true';
     this.isCreatable = opts.creatable !== undefined ? opts.creatable : selectEl.dataset.creatable === 'true';
-    this.onChangeCallback = opts.onChange || selectEl.dataset.onchange;
+    this.isEditable = opts.editable !== undefined ? opts.editable : selectEl.dataset.editable === 'true';
+
+    this.onChangeCallback = opts.onChange || selectEl.dataset.onchange || selectEl.onchange;
+    this.onCreateCallback = opts.onCreate || selectEl.dataset.oncreate || selectEl.oncreate;
+    this.onUpdateCallback = opts.onUpdate || selectEl.dataset.onupdate || selectEl.onupdate;
+
+    // Flag chống vòng lặp vô hạn khi source là function
+    this.isResolving = false;
 
     // FIX CHỦ LỰC: Chụp ngay giá trị và text khởi tạo trước khi DOM bị thay đổi
     this.initialValue = selectEl.dataset?.val || selectEl.getAttribute('data-selected-value') || selectEl.value || '';
@@ -34,6 +57,10 @@ export default class ASelect {
     this.init(opts);
   }
 
+  /**
+   * Khởi tạo component
+   * @param {Object} opts
+   */
   async init(opts) {
     try {
       this.originalSelect.setAttribute('data-smart-init', 'true');
@@ -60,6 +87,11 @@ export default class ASelect {
     }
   }
 
+  /**
+   * Kiểm tra xem source có phải là dữ liệu đồng bộ (Object/Array) có sẵn không
+   * @param {*} source
+   * @returns {Object|Array|null}
+   */
   checkSyncData(source) {
     if (typeof source === 'object' && source !== null) return source;
     if (typeof source !== 'string' || !source.trim()) return null;
@@ -77,6 +109,9 @@ export default class ASelect {
     }
   }
 
+  /**
+   * Xây dựng giao diện người dùng
+   */
   buildUI() {
     try {
       this.wrapper = document.createElement('div');
@@ -87,7 +122,7 @@ export default class ASelect {
 
       const isInTable = this.originalSelect.closest('td, th') !== null;
 
-      this.wrapper.className = `smart-select-wrapper dropdown position-relative d-inline-block ${inheritedClasses}`;
+      this.wrapper.className = `smart-select-wrapper w-100 dropdown position-relative d-inline-block ${inheritedClasses}`;
       this.wrapper.setAttribute('data-smart-id', this.uid);
 
       const dataField = this.originalSelect.getAttribute('data-field');
@@ -111,12 +146,20 @@ export default class ASelect {
 
       const textClass = this.initialText === '-- Vui lòng chọn --' ? 'text-muted' : '';
 
+      // Icon edit nếu editable
+      const editIconHTML = this.isEditable ? `<i class="bi bi-pencil-square ms-2 text-primary smart-edit-icon cursor-pointer" title="Sửa tên"></i>` : '';
+
+      // Input để sửa trực tiếp
+      const editInputHTML = this.isEditable ? `<input type="text" class="form-control form-control-sm smart-edit-input d-none" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5;">` : '';
+
       if (isInTable) {
         this.wrapper.style.minWidth = 'auto';
         this.wrapper.innerHTML = `
-            <div class="smart-toggle-btn d-flex align-items-center w-100 h-100" tabindex="0" style="cursor: pointer; user-select: none; border: none !important; background-color: transparent !important; padding: 0 !important; outline: none; min-height: 24px;">
-                <span class="smart-selected-text text-truncate d-block ${textClass}" style="max-width: 100%;">${this.initialText}</span> 
+            <div class="smart-toggle-btn d-flex align-items-center justify-content-center w-100 h-100" tabindex="0" style="cursor: pointer; user-select: none; border: none !important; background-color: transparent !important; padding: 0 !important; outline: none; min-height: 24px;">
+                <span class="smart-selected-text text-truncate d-block ${textClass} mx-auto" style="max-width: 100%;">${this.initialText}</span> 
+                ${editIconHTML}
             </div>
+            ${editInputHTML}
             <div class="dropdown-menu shadow p-0 smart-dropdown-menu" data-smart-id="${this.uid}" style="max-height: 250px; overflow-y: auto; overflow-x: hidden; z-index: 1060 !important;">
                 ${searchHTML}
                 <ul class="list-unstyled mb-0 smart-list-container"></ul>
@@ -126,8 +169,10 @@ export default class ASelect {
         this.wrapper.style.minWidth = '120px';
         this.wrapper.innerHTML = `
             <div class="form-select form-select-sm smart-toggle-btn d-flex align-items-center" tabindex="0" style="cursor: pointer; user-select: none;">
-                <span class="smart-selected-text text-truncate d-block ${textClass}" style="max-width: 95%;">${this.initialText}</span> 
+                <span class="smart-selected-text text-truncate d-block ${textClass}" style="max-width: 90%;">${this.initialText}</span> 
+                ${editIconHTML}
             </div>
+            ${editInputHTML}
             <div class="dropdown-menu shadow p-0 smart-dropdown-menu" data-smart-id="${this.uid}" style="max-height: 250px; overflow-y: auto; overflow-x: hidden; z-index: 1060 !important;">
                 ${searchHTML}
                 <ul class="list-unstyled mb-0 smart-list-container"></ul>
@@ -144,6 +189,9 @@ export default class ASelect {
     }
   }
 
+  /**
+   * Tải dữ liệu bất đồng bộ và render
+   */
   async loadAndRenderDataAsync() {
     try {
       if (this.initialText === '-- Vui lòng chọn --') this.toggleText.textContent = 'Đang tải...';
@@ -156,63 +204,127 @@ export default class ASelect {
     }
   }
 
+  /**
+   * Phân giải nguồn dữ liệu (Function, Path, hoặc Collection)
+   * @param {*} source
+   * @returns {Promise<Array>}
+   */
   async resolveDataSourceAsync(source) {
-    if (typeof source === 'function') {
-      try {
-        return (await source()) || [];
-      } catch (err) {
-        return [];
-      }
-    }
-    if (typeof source !== 'string' || !source.trim()) return [];
-
-    const sourceStr = source.trim();
+    if (this.isResolving) return [];
+    this.isResolving = true;
 
     try {
+      // 1. Nếu source là function thực thụ (truyền qua opts)
+      if (typeof source === 'function') {
+        return (await source()) || [];
+      }
+
+      if (typeof source !== 'string' || !source.trim()) return [];
+      const sourceStr = source.trim();
+
+      // 2. Nếu source là string trỏ đến function trong window (VD: MyModule.getData)
       const parts = sourceStr.split('.');
       let parent = window,
         current = window,
         found = true;
       for (let p of parts) {
-        if (current && current[p] !== undefined) {
-          parent = current;
-          current = current[p];
+        // Xử lý trường hợp path có mảng: collection[id]
+        const arrayMatch = p.match(/^(.+)\[(.+)\]$/);
+        if (arrayMatch) {
+          const coll = arrayMatch[1];
+          const id = arrayMatch[2];
+          if (current && current[coll] !== undefined) {
+            parent = current[coll];
+            current = current[coll][id];
+          } else {
+            found = false;
+            break;
+          }
         } else {
-          found = false;
-          break;
-        }
-      }
-      if (found && typeof current === 'function') return (await current.call(parent)) || [];
-    } catch (err) {}
-
-    if (ASelect.fetchPromises.has(sourceStr)) {
-      return await ASelect.fetchPromises.get(sourceStr);
-    }
-
-    const fetchTask = (async () => {
-      try {
-        let data = null;
-        if (window.A && window.A.DB && window.A.DB.local && typeof window.A.DB.local.getCollection === 'function') {
-          data = await window.A.DB.local.getCollection(sourceStr);
-        }
-        if (!data || (Array.isArray(data) && data.length === 0)) {
-          if (window.A && window.A.DB && typeof window.A.DB.getCollection === 'function') {
-            data = await window.A.DB.getCollection(sourceStr);
-            if (data && data.length > 0 && window.A.DB.local) window.A.DB.local.putBatch(sourceStr, data);
+          if (current && current[p] !== undefined) {
+            parent = current;
+            current = current[p];
+          } else {
+            found = false;
+            break;
           }
         }
-        return data || [];
-      } catch (dbError) {
-        return [];
-      } finally {
-        ASelect.fetchPromises.delete(sourceStr);
       }
-    })();
 
-    ASelect.fetchPromises.set(sourceStr, fetchTask);
-    return await fetchTask;
+      if (found && typeof current === 'function') {
+        return (await current.call(parent)) || [];
+      }
+
+      // 3. Hỗ trợ lấy dữ liệu từ path: collection.field hoặc collection[id].field
+      // Nếu found và current không phải function, có thể nó là dữ liệu trực tiếp từ path
+      if (found && current !== window && current !== undefined) {
+        if (Array.isArray(current)) return current;
+        if (typeof current === 'object' && current !== null) return current;
+      }
+
+      // 4. Xử lý lấy từ DB (Collection hoặc Path Firestore)
+      if (ASelect.fetchPromises.has(sourceStr)) {
+        return await ASelect.fetchPromises.get(sourceStr);
+      }
+
+      const fetchTask = (async () => {
+        try {
+          let data = null;
+          const db = window.A?.DB;
+          if (!db) return [];
+
+          // Phân tích path: collection.field hoặc collection[id].field
+          const pathParts = sourceStr.match(/^(.+?)(\[(.+?)\])?\.(.+)$/);
+          if (pathParts) {
+            const collection = pathParts[1];
+            const docId = pathParts[3];
+            const field = pathParts[4];
+
+            if (docId) {
+              // collection[id].field -> Lấy field từ 1 doc cụ thể
+              const doc = await db.getDoc(collection, docId);
+              data = doc ? doc[field] : null;
+            } else {
+              // collection.field -> Lấy field từ tất cả docs trong collection
+              const docs = await db.getCollection(collection);
+              data = docs ? docs.map((d) => d[field]).filter((v) => v !== undefined) : [];
+            }
+          } else {
+            // Collection đơn giản
+            if (db.local && typeof db.local.getCollection === 'function') {
+              data = await db.local.getCollection(sourceStr);
+            }
+            if (!data || (Array.isArray(data) && data.length === 0)) {
+              if (typeof db.getCollection === 'function') {
+                data = await db.getCollection(sourceStr);
+                if (data && data.length > 0 && db.local) db.local.putBatch(sourceStr, data);
+              }
+            }
+          }
+          return data || [];
+        } catch (dbError) {
+          console.error(`[ASelect] DB Error for ${sourceStr}:`, dbError);
+          return [];
+        } finally {
+          ASelect.fetchPromises.delete(sourceStr);
+        }
+      })();
+
+      ASelect.fetchPromises.set(sourceStr, fetchTask);
+      return await fetchTask;
+    } catch (err) {
+      console.error(`[ASelect] resolveDataSourceAsync Error:`, err);
+      return [];
+    } finally {
+      this.isResolving = false;
+    }
   }
 
+  /**
+   * Chuẩn hóa dữ liệu về dạng {id, text}
+   * @param {*} rawData
+   * @returns {Array}
+   */
   mapData(rawData) {
     try {
       if (!Array.isArray(rawData)) {
@@ -230,6 +342,10 @@ export default class ASelect {
     }
   }
 
+  /**
+   * Render danh sách options
+   * @param {Array} itemsToRender
+   */
   renderList(itemsToRender) {
     try {
       if (!itemsToRender.length) {
@@ -252,13 +368,12 @@ export default class ASelect {
       const valToSet = this.originalSelect.getAttribute('data-val') || this.originalSelect.getAttribute('data-selected-value') || this.initialValue;
 
       if (valToSet) {
-        // BỔ SUNG MỚI: Kiểm tra xem valToSet có khớp với ID hoặc TEXT trong data không
         const matchedItem = itemsToRender.find((i) => String(i.id) === String(valToSet) || String(i.text) === String(valToSet));
 
         if (matchedItem) {
           const realId = matchedItem.id;
           this.originalSelect.value = realId;
-          this.originalSelect.setAttribute('data-val', matchedItem.text); // YÊU CẦU 1: Lưu text vào data-val
+          this.originalSelect.setAttribute('data-val', matchedItem.text);
           this.originalSelect.setAttribute('data-selected-value', realId);
         } else if (this.initialText !== '-- Vui lòng chọn --') {
           const hiddenOpt = document.createElement('option');
@@ -269,7 +384,7 @@ export default class ASelect {
 
           this.originalSelect.appendChild(hiddenOpt);
           this.originalSelect.value = valToSet;
-          this.originalSelect.setAttribute('data-val', this.initialText); // YÊU CẦU 1: Lưu text vào data-val
+          this.originalSelect.setAttribute('data-val', this.initialText);
           this.originalSelect.setAttribute('data-selected-value', valToSet);
         }
       }
@@ -278,9 +393,13 @@ export default class ASelect {
     }
   }
 
+  /**
+   * Lắng nghe sự kiện thay đổi trên thẻ select gốc
+   */
   listenNativeEvents() {
     try {
       this.originalSelect.addEventListener('change', (e) => {
+        // Đồng bộ UI khi giá trị thay đổi (từ người dùng hoặc từ code dispatch)
         this.updateSelectedUI();
         this.triggerOnChange(e.target.value);
       });
@@ -289,37 +408,39 @@ export default class ASelect {
     }
   }
 
+  /**
+   * Kích hoạt callback onChange
+   * @param {string} value
+   */
   async triggerOnChange(value) {
     if (!this.onChangeCallback) return;
     try {
       let funcRef = this.onChangeCallback;
       if (typeof funcRef === 'string' && funcRef.trim() !== '') {
-        // Nếu chuỗi chứa các ký tự đặc trưng của một đoạn code (dấu ;, ngoặc, khoảng trắng)
-        L._(`[triggerOnChange] runFn: Chuỗi chứa các ký tự đặc trưng của một đoạn code`, funcRef);
         if (funcRef.includes(';') || funcRef.includes('(') || funcRef.match(/\s/)) {
           try {
-            // Tạo một hàm ẩn danh nhận 3 tham số từ string code của bạn
             const dynamicScript = new Function('value', 'selectEl', 'instance', funcRef);
-            return await dynamicScript(args[0], args[1], args[2]);
+            return await dynamicScript(value, this.originalSelect, this);
           } catch (err) {
-            Opps('Lỗi khi chạy script nội tuyến:', err);
+            if (window.Opps) window.Opps('Lỗi khi chạy script nội tuyến:', err);
             return null;
           }
         }
       }
       if (typeof window.runFn === 'function') {
-        L._(`[triggerOnChange] runFn: window.runFn`);
         await window.runFn(this.onChangeCallback, [value, this.originalSelect], this);
-      } else if (typeof window.runFn === 'function') {
-        await window.runFn(this, [value, this.originalSelect, this]);
       } else {
-        console.warn('[ASelect] Chưa nạp utils.js chứa hàm runFn hoặc runFn');
+        console.warn('[ASelect] Chưa nạp utils.js chứa hàm runFn');
       }
     } catch (error) {
       console.error(`[ASelect] Lỗi gọi hàm onChange:`, error);
     }
   }
 
+  /**
+   * Xử lý tìm kiếm trong danh sách
+   * @param {string} keyword
+   */
   handleSearch(keyword) {
     try {
       keyword = keyword.toLowerCase().trim();
@@ -330,7 +451,8 @@ export default class ASelect {
         const createWrapper = this.wrapper.querySelector('.smart-create-wrapper');
         const keywordSpan = this.wrapper.querySelector('.create-keyword');
 
-        const canCreate = window.COLL_MANIFEST && Array.isArray(window.COLL_MANIFEST) && window.COLL_MANIFEST.includes(this.dataSourceStr);
+        // Kiểm tra quyền tạo mới dựa trên manifest hoặc cấu trúc source
+        const canCreate = (window.COLL_MANIFEST && Array.isArray(window.COLL_MANIFEST) && window.COLL_MANIFEST.includes(this.dataSourceStr.split('.')[0])) || this.dataSourceStr.includes('.');
 
         if (keyword.length > 0 && filtered.length === 0 && canCreate) {
           createWrapper.classList.remove('d-none');
@@ -342,92 +464,216 @@ export default class ASelect {
     } catch (error) {}
   }
 
+  /**
+   * Xử lý tạo mới dữ liệu
+   * @param {string} keyword
+   */
   async handleCreateNew(keyword) {
     try {
-      const source = this.dataSourceStr;
-      const hasPermission = window.COLL_MANIFEST && Array.isArray(window.COLL_MANIFEST) && window.COLL_MANIFEST.includes(source);
+      if (!keyword) return;
 
-      if (!hasPermission) {
-        if (window.Swal) {
-          Swal.fire({
-            title: 'Giới hạn quyền hạn',
-            text: `Tài khoản của bạn không có quyền thêm dữ liệu vào mục "${source}".`,
-            icon: 'warning',
-            confirmButtonColor: '#3085d6',
-          });
+      // Ưu tiên 1: Chạy callback onCreate nếu có
+      if (this.onCreateCallback) {
+        const result = await window.runFn(this.onCreateCallback, [keyword, this.originalSelect, this], this);
+        if (result === false) return; // Callback chặn việc tiếp tục
+        if (result && typeof result === 'object') {
+          // Nếu callback trả về object mới, dùng nó luôn
+          await this.loadAndRenderDataAsync();
+          this.setValue(result.id || result.uid || keyword);
+          return;
         }
-        return;
       }
 
-      if (window.Swal) {
-        const confirm = await window.Swal.fire({
-          title: 'Xác nhận tạo mới',
-          html: `Bạn muốn thêm <b>${keyword}</b> vào danh sách <b>${source}</b>?`,
-          icon: 'question',
-          showCancelButton: true,
-          confirmButtonText: 'Đồng ý',
-          cancelButtonText: 'Hủy',
-        });
+      const source = this.dataSourceStr;
+      const db = window.A?.DB;
 
-        if (confirm.isConfirmed) {
-          if (window.A && window.A.UI && typeof window.A.UI.renderForm === 'function') {
-            const prefillData = { name: keyword, title: keyword };
-            await window.A.UI.renderForm(source, prefillData, `Thêm mới ${source}`, {});
+      // Ưu tiên 2: Chạy DB save nếu có source hợp lệ
+      if (db && typeof source === 'string' && source.trim()) {
+        const pathParts = source.match(/^(.+?)(\[(.+?)\])?\.(.+)$/);
+        let actionType = 'saveRecord';
+        let collection = source;
+        let docId = null;
+        let field = null;
+
+        if (pathParts) {
+          collection = pathParts[1];
+          docId = pathParts[3];
+          field = pathParts[4];
+          if (docId && field) actionType = 'arrayUnionField';
+        }
+
+        if (window.Swal) {
+          const confirm = await window.Swal.fire({
+            title: 'Xác nhận tạo mới',
+            html: `Bạn muốn thêm <b>${keyword}</b> vào danh sách <b>${source}</b>?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Đồng ý',
+            cancelButtonText: 'Hủy',
+          });
+
+          if (confirm.isConfirmed) {
+            try {
+              if (actionType === 'arrayUnionField') {
+                await db.arrayUnionField(collection, docId, field, keyword);
+                if (window.logA) window.logA(`Đã thêm "${keyword}" vào ${field}`, 'success');
+              } else {
+                const prefillData = { name: keyword, title: keyword };
+                if (window.A?.UI && typeof window.A.UI.renderForm === 'function') {
+                  await window.A.UI.renderForm(collection, prefillData, `Thêm mới ${collection}`, {});
+                } else {
+                  await db.saveRecord(collection, prefillData);
+                  if (window.logA) window.logA(`Đã tạo mới "${keyword}" trong ${collection}`, 'success');
+                }
+              }
+              await this.loadAndRenderDataAsync();
+              this.setValue(keyword);
+              return;
+            } catch (err) {
+              if (window.Opps) window.Opps('Lỗi khi tạo mới dữ liệu:', err);
+            }
           }
         }
       }
+
+      // Ưu tiên 3: Chỉ thêm vào UI client
+      const newItem = { id: keyword, text: keyword };
+      this.data.push(newItem);
+      this.renderList(this.data);
+      this.setValue(keyword);
     } catch (error) {
       console.error('[ASelect] Lỗi thực thi handleCreateNew:', error);
     }
   }
 
+  /**
+   * Xử lý cập nhật dữ liệu (Editable)
+   * @param {string} newText
+   */
+  async handleUpdate(newText) {
+    try {
+      const currentVal = this.originalSelect.value;
+      if (!currentVal || !newText) return;
+
+      const selectedItem = this.data.find((i) => String(i.id) === String(currentVal));
+      if (!selectedItem || selectedItem.text === newText) return;
+
+      // Ưu tiên 1: Chạy callback onUpdate nếu có
+      if (this.onUpdateCallback) {
+        const result = await window.runFn(this.onUpdateCallback, [currentVal, newText, this.originalSelect, this], this);
+        if (result === false) return;
+      }
+
+      const source = this.dataSourceStr;
+      const db = window.A?.DB;
+
+      // Ưu tiên 2: Chạy DB update nếu có source hợp lệ
+      if (db && typeof source === 'string' && source.trim()) {
+        const collection = source.split('.')[0]; // Lấy collection chính
+
+        try {
+          // Giả định update field 'name' hoặc 'title' tùy schema
+          const updateData = { name: newText, title: newText };
+          await db.updateSingle(collection, currentVal, updateData);
+          if (window.logA) window.logA(`Đã cập nhật thành "${newText}"`, 'success');
+
+          await this.loadAndRenderDataAsync();
+          return;
+        } catch (err) {
+          console.warn('[ASelect] Không thể update DB tự động, chuyển sang UI update:', err);
+        }
+      }
+
+      // Ưu tiên 3: Chỉ cập nhật UI client
+      selectedItem.text = newText;
+      this.renderList(this.data);
+      this.updateSelectedUI();
+    } catch (error) {
+      console.error('[ASelect] Lỗi thực thi handleUpdate:', error);
+    }
+  }
+
+  /**
+   * Cập nhật nguồn dữ liệu hoặc cấu hình mới cho instance
+   * @param {string|Function} newSource
+   * @param {Object} newOpts
+   */
+  async updateSource(newSource, newOpts = {}) {
+    try {
+      this.dataSourceStr = newSource || this.dataSourceStr;
+      this.opts = { ...this.opts, ...newOpts };
+
+      if (newOpts.searchable !== undefined) this.isSearchable = newOpts.searchable;
+      if (newOpts.creatable !== undefined) this.isCreatable = newOpts.creatable;
+      if (newOpts.editable !== undefined) this.isEditable = newOpts.editable;
+      if (newOpts.onChange !== undefined) this.onChangeCallback = newOpts.onChange;
+      if (newOpts.onCreate !== undefined) this.onCreateCallback = newOpts.onCreate;
+      if (newOpts.onUpdate !== undefined) this.onUpdateCallback = newOpts.onUpdate;
+
+      await this.loadAndRenderDataAsync();
+    } catch (error) {
+      console.error('[ASelect] Lỗi updateSource:', error);
+    }
+  }
+
+  /**
+   * Thiết lập giá trị cho select
+   * @param {string} val
+   */
   setValue(val) {
     try {
-      // YÊU CẦU 2: Xử lý fallback tìm theo text nếu không tìm thấy value
       const matchedItem = this.data.find((item) => String(item.id) === String(val) || String(item.text) === String(val));
       const finalVal = matchedItem ? matchedItem.id : val;
 
       this.originalSelect.value = finalVal;
-      this.originalSelect.setAttribute('data-val', matchedItem ? matchedItem.text : val); // YÊU CẦU 1
+      this.originalSelect.setAttribute('data-val', matchedItem ? matchedItem.text : val);
       this.originalSelect.setAttribute('data-selected-value', finalVal);
-      this.originalSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+      // Đồng bộ UI trước khi dispatch event để các listener nhận được UI đã cập nhật
+      this.updateSelectedUI();
+
+      // Phát ra sự kiện change chuẩn để các listener bên ngoài (như form validation) nhận biết
+      this.originalSelect.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
     } catch (error) {
       console.error('[ASelect] Lỗi set value:', error);
     }
   }
 
+  /**
+   * Cập nhật giao diện hiển thị dựa trên giá trị hiện tại
+   */
   updateSelectedUI() {
     try {
-      const val = this.originalSelect.value;
-
-      // YÊU CẦU 2: Tìm theo id, NẾU KHÔNG CÓ thì tìm tiếp theo text
+      const val = this.originalSelect.dataset.selected_value || this.originalSelect.value;
       const selectedItem = this.data.find((item) => String(item.id) === String(val) || String(item.text) === String(val));
 
       if (selectedItem) {
         this.toggleText.textContent = selectedItem.text;
         this.toggleText.classList.remove('text-muted');
 
-        // AUTO-CORRECTION: Nếu giá trị gốc đang là Text, hãy tự động sửa lại thành ID chuẩn cho thẻ select
         if (String(selectedItem.id) !== String(val)) {
           this.originalSelect.value = selectedItem.id;
           this.originalSelect.setAttribute('data-selected-value', selectedItem.id);
         }
-        this.originalSelect.setAttribute('data-val', selectedItem.text); // YÊU CẦU 1
+        this.originalSelect.setAttribute('data-val', selectedItem.text);
       } else {
         const nativeOption = this.originalSelect.querySelector(`option[value="${val}"]`);
         if (nativeOption && val !== '') {
           this.toggleText.textContent = nativeOption.textContent;
           this.toggleText.classList.remove('text-muted');
-          this.originalSelect.setAttribute('data-val', nativeOption.textContent); // YÊU CẦU 1
+          this.originalSelect.setAttribute('data-val', nativeOption.textContent);
         } else {
           this.toggleText.textContent = '-- Vui lòng chọn --';
           this.toggleText.classList.add('text-muted');
-          this.originalSelect.setAttribute('data-val', ''); // YÊU CẦU 1
+          this.originalSelect.setAttribute('data-val', '');
         }
       }
     } catch (error) {}
   }
 
+  /**
+   * Khởi tạo MutationObserver để tự động nạp ASelect cho các thẻ select mới
+   */
   static initDOMWatcher() {
     try {
       const observer = new MutationObserver((mutations) => {
@@ -445,10 +691,15 @@ export default class ASelect {
     } catch (error) {}
   }
 
+  /**
+   * Khởi tạo các sự kiện global cho dropdown
+   */
   static initGlobalEvents() {
     try {
       document.body.addEventListener('click', (e) => {
         const target = e.target;
+
+        // 1. Xử lý chọn option
         const optionEl = target.closest('.smart-option');
         if (optionEl) {
           const menu = optionEl.closest('.smart-dropdown-menu');
@@ -460,6 +711,25 @@ export default class ASelect {
           return;
         }
 
+        // 2. Xử lý click icon edit
+        const editIcon = target.closest('.smart-edit-icon');
+        if (editIcon) {
+          const wrapper = editIcon.closest('.smart-select-wrapper');
+          const instance = ASelect.instances.get(wrapper.getAttribute('data-smart-id'));
+          if (instance) {
+            const input = wrapper.querySelector('.smart-edit-input');
+            const toggleBtn = wrapper.querySelector('.smart-toggle-btn');
+
+            input.value = instance.toggleText.textContent;
+            input.classList.remove('d-none');
+            toggleBtn.classList.add('invisible');
+            setTimeout(() => input.focus(), 50);
+          }
+          e.stopPropagation();
+          return;
+        }
+
+        // 3. Xử lý toggle dropdown
         const toggleBtn = target.closest('.smart-toggle-btn');
         if (toggleBtn) {
           const wrapper = toggleBtn.closest('.smart-select-wrapper');
@@ -487,6 +757,7 @@ export default class ASelect {
           return;
         }
 
+        // 4. Xử lý nút tạo mới
         const createBtn = target.closest('.smart-create-btn');
         if (createBtn) {
           const menu = createBtn.closest('.smart-dropdown-menu');
@@ -499,8 +770,50 @@ export default class ASelect {
           return;
         }
 
+        // 5. Click ra ngoài đóng dropdown và đóng edit mode
         if (!target.closest('.smart-select-wrapper') && !target.closest('.smart-dropdown-menu')) {
           document.querySelectorAll('.smart-dropdown-menu.show').forEach((m) => m.classList.remove('show'));
+
+          // Đóng tất cả edit mode đang mở
+          document.querySelectorAll('.smart-edit-input:not(.d-none)').forEach((input) => {
+            const wrapper = input.closest('.smart-select-wrapper');
+            const toggleBtn = wrapper.querySelector('.smart-toggle-btn');
+            input.classList.add('d-none');
+            toggleBtn.classList.remove('invisible');
+          });
+        }
+      });
+
+      // Xử lý sự kiện phím cho search và edit
+      document.body.addEventListener('keydown', (e) => {
+        const target = e.target;
+
+        // Enter trong search input
+        if (target.matches('.smart-search-input') && e.key === 'Enter') {
+          const menu = target.closest('.smart-dropdown-menu');
+          const createBtn = menu.querySelector('.smart-create-btn');
+          if (createBtn && !menu.querySelector('.smart-create-wrapper').classList.contains('d-none')) {
+            createBtn.click();
+          } else {
+            const firstOption = menu.querySelector('.smart-option');
+            if (firstOption) firstOption.click();
+          }
+        }
+
+        // Enter/Esc trong edit input
+        if (target.matches('.smart-edit-input')) {
+          const wrapper = target.closest('.smart-select-wrapper');
+          const instance = ASelect.instances.get(wrapper.getAttribute('data-smart-id'));
+          const toggleBtn = wrapper.querySelector('.smart-toggle-btn');
+
+          if (e.key === 'Enter') {
+            instance.handleUpdate(target.value.trim());
+            target.classList.add('d-none');
+            toggleBtn.classList.remove('invisible');
+          } else if (e.key === 'Escape') {
+            target.classList.add('d-none');
+            toggleBtn.classList.remove('invisible');
+          }
         }
       });
 
@@ -525,6 +838,10 @@ export default class ASelect {
     } catch (error) {}
   }
 
+  /**
+   * Đồng bộ lại dữ liệu cho tất cả các instance cùng source
+   * @param {string} collectionName
+   */
   static syncData(collectionName) {
     try {
       if (!collectionName) return;
@@ -535,7 +852,6 @@ export default class ASelect {
         }
         if (instance.dataSourceStr === collectionName) {
           instance.loadAndRenderDataAsync();
-          updateCount++;
         }
       });
     } catch (error) {}

@@ -112,6 +112,13 @@ async function findBookingInLocal(id, collection = 'bookings') {
   }
 }
 
+async function updateTableData(collection, fullData) {
+  if (!collection) collection = getVal('btn-select-datalist');
+  fullData = await A.DB.local.getCollection(collection);
+  A.UI.createTable('tab-data-tbl', { colName: collection, data: fullData });
+  setVal('btn-select-datalist', collection);
+}
+
 var CURRENT_BATCH_DATA = [];
 function openBatchEdit(dataList, title) {
   CURRENT_BATCH_DATA = JSON.parse(JSON.stringify(dataList));

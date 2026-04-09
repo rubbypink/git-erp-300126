@@ -672,7 +672,7 @@ td input.form-control-sm {
 
 /* --- 5. TAB FORM (NHẬP LIỆU) --- */
 #tab-form {
-  overflow: hidden;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   height: 100%;
   padding-bottom: 0.625rem;
@@ -1056,6 +1056,17 @@ body:not(.is-acc):not(.is-admin) .acc-only {
     justify-content: start !important;
     margin: 0.15rem !important;
     padding: 0.15rem !important;
+  }
+
+  #tab-form {
+    height: 100%;
+    width: 100%;
+    flex-direction: column;
+    -webkit-overflow-scrolling: touch;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   #tab-dashboard {

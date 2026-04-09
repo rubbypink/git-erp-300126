@@ -81,9 +81,8 @@ dist/
 .env.local
 .env.production
 
-# OS
-.DS_Store
-Thumbs.db
+# Firebase Emulator Data
+firebase-data/
 
 # AI 
 memory.md

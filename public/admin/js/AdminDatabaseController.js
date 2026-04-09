@@ -21,8 +21,10 @@ export class AdminDatabaseController {
       // Lấy danh sách bảng từ Schema
       const archivedCollections = ['archived_bookings', 'archived_booking_details', 'archived_operator_entries', 'archived_transactions'];
       const collectionsMap = A.DB.schema.getCollectionNames() || {};
-      let collectionKeys = Object.keys(collectionsMap);
-      collectionKeys = [...collectionKeys, ...archivedCollections];
+      archivedCollections.forEach((key) => {
+        collectionsMap[key] = key;
+      });
+      const collectionKeys = Object.keys(collectionsMap);
 
       if (collectionKeys.length === 0) {
         this.container.innerHTML = `<div class="alert alert-warning m-4">Chưa có cấu hình Collection nào trong DBSchema!</div>`;

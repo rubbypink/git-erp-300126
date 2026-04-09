@@ -1,15 +1,18 @@
 // vite.config.js
 import { defineConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
-import { resolve } from 'path'; // Thêm dòng này để dùng được __dirname
+import { resolve } from 'path';
 
 export default defineConfig({
-  // Root là public/ - nơi chứa index.html
+  // Bối cảnh: Root là public/ để Vite tự động nhận diện index.html và các đường dẫn /src
   root: 'public',
   base: '/',
 
+  // Trỏ Vite ra ngoài 1 cấp để đọc các biến môi trường (.env) nếu có
+  envDir: '../',
+
   build: {
-    // Output ra dist/ ở project root
+    // Xuất file build ra thư mục dist ở thư mục gốc (ngang hàng với public)
     outDir: '../dist',
     emptyOutDir: true,
     assetsInlineLimit: 0,
@@ -17,8 +20,8 @@ export default defineConfig({
 
     rollupOptions: {
       input: {
+        // Đảm bảo cấu trúc Multi-page Application (MPA)
         main: resolve(__dirname, 'public/index.html'),
-        // THÊM Ở ĐÂY: Entry point riêng cho Admin
         admin: resolve(__dirname, 'public/admin/index.html'),
       },
       output: {
@@ -34,31 +37,47 @@ export default defineConfig({
     },
   },
 
-  publicDir: false,
+  publicDir: false, // Tắt publicDir mặc định vì chính thư mục root đã là public
 
   plugins: [
     viteStaticCopy({
       targets: [
-        { src: 'src/components', dest: 'src' },
-        { src: 'src/js', dest: 'src' },
-        { src: 'src/css', dest: 'src' },
-        { src: 'accountant', dest: '.' },
-        { src: 'src/images', dest: 'src' },
+        // Đảm bảo sao chép tĩnh các template HTML hoặc các file không được import trực tiếp qua JS
+        { src: 'src/components/*.html', dest: 'src/components' },
+        { src: 'src/js/*.js', dest: 'src/js' },
+        { src: 'accountant/*.css', dest: 'accountant' },
+        { src: 'admin/css/*.css', dest: 'admin/css' },
+        // Lưu ý: Không cần copy js/css nếu bạn đã import nó trong các file JS chính, Vite sẽ tự bundle.
       ],
     }),
   ],
 
-  server: {
-    port: 3000,
-    open: false,
-    cors: true,
-  },
-
   resolve: {
     alias: {
-      '@': '/src',
-      '@js': '/src/js',
-      '@components': '/src/components',
+      // TUYỆT ĐỐI KHÔNG dùng alias cho thư viện NPM (như dayjs, choices.js, sweetalert2).
+      // Chỉ dùng alias để map cấu trúc thư mục nội bộ, sử dụng resolve(__dirname, ...) để đảm bảo chính xác tuyệt đối.
+      '@': resolve(__dirname, 'public/src'),
+      '@js': resolve(__dirname, 'public/src/js'),
+      '@db': resolve(__dirname, 'public/src/js/modules/db'),
+      '@md': resolve(__dirname, 'public/src/js/modules'),
+      '@components': resolve(__dirname, 'public/src/components'),
     },
+  },
+
+  server: {
+    port: 3010,
+    host: true,
+    fs: {
+      // CHÌA KHÓA: Cho phép Vite truy cập toàn bộ thư mục gốc dự án (chứa node_modules)
+      // Không cần phải khai báo cụ thể node_modules hay public, chỉ cần __dirname (project root)
+      allow: [resolve(__dirname)],
+    },
+    open: true,
+  },
+
+  // TỐI ƯU HÓA KHI LẬP TRÌNH (Bắt buộc với ERP có Firebase)
+  // Giúp Vite gom nhóm các dependencies này lại trong 1 lần tải duy nhất lúc khởi động server
+  optimizeDeps: {
+    include: ['sweetalert2', 'dayjs', 'choices.js', 'firebase/app', 'firebase/firestore', 'firebase/auth', 'firebase/functions'],
   },
 });
