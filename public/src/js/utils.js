@@ -316,8 +316,8 @@ function Opps(arg1, arg2, arg3, arg4) {
 async function resolveDisplayValue(collection, value, targetField = 'name') {
   if (!value) return '';
   try {
-    if (typeof DB_MANAGER === 'undefined') return value;
-    const data = await DB_MANAGER.local.get(collection, value);
+    if (typeof A.DB === 'undefined') return value;
+    const data = await A.DB.local.get(collection, value);
     if (data && data[targetField]) return data[targetField];
 
     // Nếu không tìm thấy theo ID, thử tìm theo Name (để handle dữ liệu cũ hoặc nhập tay)
@@ -331,8 +331,6 @@ async function resolveDisplayValue(collection, value, targetField = 'name') {
     return value;
   }
 }
-
-window.resolveDisplayValue = resolveDisplayValue;
 
 function extractFirstItem(items) {
   if (!items || !Array.isArray(items) || items.length === 0) return null;
@@ -2998,6 +2996,80 @@ const HD = {
     });
 
     return result;
+  },
+
+  /**
+   * Helper: Lọc dữ liệu với nhiều điều kiện (Hỗ trợ cả Array và Firestore Object)
+   * @param {Array|Object} data - Dữ liệu gốc cần lọc.
+   * @param {Array} conditions - Mảng các điều kiện: [{ field: 'a', operator: '==', value: 'x' }]
+   * @param {String} logic - 'AND' (tất cả điều kiện đúng) hoặc 'OR' (chỉ cần 1 điều kiện đúng). Mặc định là 'AND'.
+   * @returns {Array|Object} - Trả về dữ liệu đã lọc (giữ nguyên định dạng đầu vào).
+   */
+  filters(data, conditions = [], logic = 'AND') {
+    try {
+      // 1. Kiểm tra tính hợp lệ của dữ liệu đầu vào
+      if (!data || conditions.length === 0) return data;
+
+      // 2. Nhận diện cấu trúc dữ liệu: Array hay Object?
+      const isObject = !Array.isArray(data) && typeof data === 'object';
+
+      // Chuẩn hóa dữ liệu về dạng mảng Entries [key, value] để dùng chung 1 vòng lặp
+      const entries = isObject ? Object.entries(data) : data.map((item, index) => [index, item]);
+
+      // 3. Hàm đánh giá từng điều kiện đơn lẻ
+      const evaluateCondition = (item, { field, operator = '==', value }) => {
+        // Hỗ trợ dot notation (vd: 'customer.name') nếu cần nâng cấp sau này, hiện tại Sư phụ dùng truy cập trực tiếp
+        const itemValue = item[field];
+
+        // Xử lý undefined/null an toàn
+        if (itemValue === undefined || itemValue === null) return false;
+
+        switch (operator) {
+          case '==':
+            return itemValue === value;
+          case '!=':
+            return itemValue !== value;
+          case '>':
+            return itemValue > value;
+          case '>=':
+            return itemValue >= value;
+          case '<':
+            return itemValue < value;
+          case '<=':
+            return itemValue <= value;
+          case 'includes': // Dành cho chuỗi hoặc mảng con
+            return Array.isArray(itemValue) ? itemValue.includes(value) : String(itemValue).toLowerCase().includes(String(value).toLowerCase());
+          case 'in': // Dành cho trường hợp value là mảng (vd: field A có nằm trong mảng [x, y, z] không)
+            return Array.isArray(value) && value.includes(itemValue);
+          default:
+            return itemValue === value;
+        }
+      };
+
+      // 4. Lặp và áp dụng logic filter
+      const filteredEntries = entries.filter(([key, item]) => {
+        if (logic === 'OR') {
+          // OR: Trả về true nếu CÓ ÍT NHẤT 1 điều kiện đúng
+          return conditions.some((cond) => evaluateCondition(item, cond));
+        }
+        // AND (Mặc định): Trả về true nếu TẤT CẢ điều kiện đều đúng
+        return conditions.every((cond) => evaluateCondition(item, cond));
+      });
+
+      // 5. Build lại dữ liệu đầu ra đúng với định dạng gốc
+      if (isObject) {
+        return filteredEntries.reduce((acc, [key, val]) => {
+          acc[key] = val;
+          return acc;
+        }, {});
+      } else {
+        return filteredEntries.map(([key, val]) => val);
+      }
+    } catch (error) {
+      console.error('❌ [Helper Error] multiFilter:', error);
+      // Fallback: Trả về dữ liệu gốc để app không bị dừng đột ngột
+      return data;
+    }
   },
 
   /**

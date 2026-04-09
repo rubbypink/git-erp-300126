@@ -823,7 +823,7 @@ class Op {
     },
   };
 
-  get Supplier() {
+  static get Supplier() {
     return SupplierPayment;
   }
 }

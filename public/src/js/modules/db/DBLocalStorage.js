@@ -88,7 +88,7 @@ class IndexedDBHelper {
   async _doInitDB() {
     try {
       // Nâng cấp version lên 8 để cập nhật index cho notification_dedup
-      this.db.version(8).stores(buildDexieSchema());
+      this.db.version(9).stores(buildDexieSchema());
       await this.db.open();
       await this._loadSyncMeta();
       return true;
@@ -449,7 +449,7 @@ class IndexedDBHelper {
 
       // 4. Phân trang & Limit
       if (offset) collection = collection.offset(offset);
-      
+
       // Nếu isSingle, ta chỉ cần lấy 1
       if (isSingle) {
         return await collection.first();

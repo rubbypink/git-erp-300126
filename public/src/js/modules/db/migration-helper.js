@@ -188,3 +188,159 @@ export async function runMigrateFieldData(collectionName, field, oldVal, newVal)
     }
   }
 }
+
+/**
+ * 9TRIP ERP - SAFE IMPORT SCRIPT (CONSOLE VERSION)
+ * --------------------------------------------------
+ * Tác dụng: Import dữ liệu JSON vào LocalDB (IndexedDB) an toàn qua File Picker.
+ * Tránh lỗi "Bad control character" khi dán nội dung lớn vào Console.
+ */
+export async function importJSONFile(filePath) {
+  // 1. Kiểm tra môi trường
+  if (!window.A || !window.A.DB || !window.A.DB.local) {
+    console.error('❌ Không tìm thấy instance A.DB.local. Hãy đảm bảo bạn đang ở trong ứng dụng 9Trip ERP.');
+    return;
+  }
+
+  const localDB = window.A.DB.local;
+
+  // 2. Tạo File Input ẩn
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.style.display = 'none';
+  document.body.appendChild(input);
+
+  // 3. Xử lý khi chọn file
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) {
+      if (document.body.contains(input)) document.body.removeChild(input);
+      return;
+    }
+
+    console.log(`📂 Đang đọc file: ${file.name} (${(file.size / 1024).toFixed(2)} KB)...`);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const rawContent = event.target.result;
+        const data = JSON.parse(rawContent);
+
+        if (typeof data !== 'object' || data === null) {
+          throw new Error('Định dạng JSON không hợp lệ (phải là Object).');
+        }
+
+        const collections = Object.keys(data);
+        console.log(`📦 Tìm thấy ${collections.length} collections trong file.`);
+
+        // Đảm bảo DB đã mở
+        await localDB.initDB();
+
+        let totalImported = 0;
+        let successCount = 0;
+
+        // 4. Thực hiện Import từng collection
+        for (const coll of collections) {
+          const docs = data[coll];
+
+          // Chỉ xử lý nếu là mảng dữ liệu
+          if (!Array.isArray(docs)) {
+            console.warn(`⚠️ Bỏ qua [${coll}]: Dữ liệu không phải là mảng.`);
+            continue;
+          }
+
+          try {
+            console.log(`⏳ Đang Import [${coll}] (${docs.length} bản ghi)...`);
+
+            // Xóa dữ liệu cũ trong bảng này
+            await localDB.clear(coll);
+
+            // Ghi dữ liệu mới (bulkPut)
+            const count = await localDB.putBatch(coll, docs);
+
+            console.log(`✅ Hoàn tất [${coll}]: ${count} bản ghi.`);
+            totalImported += count;
+            successCount++;
+          } catch (collErr) {
+            console.error(`❌ Lỗi khi import collection [${coll}]:`, collErr);
+          }
+        }
+
+        // 5. Thông báo kết quả
+        const msg = `Đã import thành công ${totalImported} bản ghi vào ${successCount}/${collections.length} collections.`;
+        console.log(`🚀 ${msg}`);
+
+        if (typeof logA === 'function') {
+          logA(msg, 'success', 'confirm', {
+            title: 'Import Hoàn Tất',
+            confirmText: 'Tải lại trang',
+            onConfirm: () => window.location.reload(),
+          });
+        } else {
+          alert(msg + '\nVui lòng tải lại trang để áp dụng thay đổi.');
+        }
+      } catch (err) {
+        console.error('❌ Lỗi xử lý file JSON:', err);
+        if (typeof logA === 'function') {
+          logA('Lỗi Import: ' + err.message, 'error');
+        } else {
+          alert('Lỗi Import: ' + err.message);
+        }
+      } finally {
+        // Dọn dẹp
+        if (document.body.contains(input)) {
+          document.body.removeChild(input);
+        }
+      }
+    };
+
+    reader.onerror = () => {
+      console.error('❌ Lỗi khi đọc file.');
+      if (document.body.contains(input)) document.body.removeChild(input);
+    };
+
+    reader.readAsText(file);
+  };
+
+  // 4. Kích hoạt hộp thoại chọn file
+  input.click();
+}
+
+/* Hàm này sẽ export tất cả dữ liệu của A.DB.local vào file JSON */
+export async function exportJSONFile() {
+  try {
+    console.log('%c🚀 [9Trip ERP] Đang Export dữ liệu từ A.DB.local...', 'color: #007bff; font-weight: bold;');
+
+    const localDB = A.DB.local;
+    const db = localDB.db;
+
+    // Đảm bảo DB đã mở
+    if (!db.isOpen()) await db.open();
+
+    const exportData = {};
+    for (const table of db.tables) {
+      const tableName = table.name;
+      // Sử dụng getAll như bạn yêu cầu hoặc toArray() của Dexie để lấy data
+      const records = typeof localDB.getAll === 'function' ? await localDB.getAll(tableName) : await table.toArray();
+
+      exportData[tableName] = records;
+      console.log(`📦 Table [%c${tableName}%c]: %c${records.length}%c bản ghi`, 'color: #e83e8c', 'color: inherit', 'color: #28a745; font-weight: bold;', 'color: inherit');
+    }
+
+    const jsonString = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `9trip_db_full_backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    console.log('%c✅ Export hoàn tất!', 'color: #28a745; font-weight: bold;');
+  } catch (error) {
+    console.error('❌ Lỗi Export:', error);
+  }
+}

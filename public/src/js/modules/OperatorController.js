@@ -38,11 +38,13 @@ export const SupplierPayment = {
                             <label class="form-label fw-bold">Giai đoạn</label>
                             <select id="swal-date-preset" class="form-select mb-2">
                                 <option value="">-- Chọn mốc thời gian --</option>
-                                <option value="Tháng 1">Tháng 1</option>
-                                <option value="Tháng 2">Tháng 2</option>
-                                <option value="Tháng 3">Tháng 3</option>
+                                <option value="Tháng Này">Tháng 1</option>
+                                <option value="Tháng Trước">Tháng 2</option>
+                                <option value="Tháng Sau">Tháng 3</option>
                                 <option value="Quý 1">Quý 1</option>
                                 <option value="Quý 2">Quý 2</option>
+                                <option value="Quý 3">Quý 1</option>
+                                <option value="Quý 4">Quý 2</option>
                                 <option value="Năm Nay">Năm Nay</option>
                                 <option value="Tất Cả">Tất Cả</option>
                                 <option value="Tùy chọn">Tùy chọn</option>

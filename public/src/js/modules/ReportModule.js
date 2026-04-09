@@ -50,6 +50,7 @@ class ReportModule {
   async _renderUI() {
     try {
       const modal = document.querySelector('at-modal-full');
+      if (!modal) return;
       const resp = await fetch('/src/components/report_dashboard.html');
       if (!resp.ok) throw new Error('Không thể tải giao diện báo cáo');
 

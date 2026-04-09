@@ -352,12 +352,6 @@ class DBManager {
 
     if (collList.length === 0) return 0;
 
-    // Loại bỏ secondary index names — không phải Firestore collection thật
-    // const indexNames = new Set(DBManager.#INDEX_CONFIG.map((c) => c.index));
-    // collList = collList.filter((c) => !indexNames.has(c));
-
-    // if (collList.length === 0) return 0;
-
     // ── Delta: mốc thời gian cho updated_at filter ────────────────────
     const lastSyncRaw = this.#localDB.getMeta('LAST_SYNC_DELTA');
     const lastSyncDate = deltaSync && lastSyncRaw ? new Date(parseInt(lastSyncRaw)) : null;
@@ -2516,29 +2510,90 @@ class DBManager {
     return snap.success ? snap.data : [];
   };
   /**
+   * Lấy danh sách (list) dữ liệu.
+   * Ưu tiên: APP_DATA -> IndexedDB -> Firestore.
    *
-   * @param {*} listName
-   * @param {*} opts
-   * @returns array/object with key base on opts. Priority local Data
+   * @param {string} listName - Tên danh sách cần lấy (vd: 'staff', 'hotels', 'suppliers' hoặc 'lists')
+   * @returns {Promise<Array|Object>} Dữ liệu danh sách
    */
-  getList = async (listName, opts = { array: false }) => {
-    const { query, collection, limit = 500, orderBy = 'created_at', field = 'id' } = opts;
-    const list = APP_DATA.lists?.[listName];
-    if (list) return list;
-    L.log(`⚠️ Không có danh sách ${listName} trong APP_DATA.lists`);
-    if (collection && typeof collection === 'string') {
-      const snap = await getDocs(collection(this.#db, collection), orderBy(orderBy, 'desc'), limit(limit));
-      let data;
-      snap.docs.map((d) => {
-        if (d.name && !opts.array) data.id = data.name;
-        else if (opts.array) data.push(d.name);
-      });
-      const cachedAppCFgObj = await this.#localDB.get('app_config', 'lists');
-      if (cachedAppCFgObj) {
-        cachedAppCFgObj[listName] = data;
-        this.#localDB.put('app_config', { current: cachedAppCFgObj });
+  getList = async (listName = 'lists', forceNew = false) => {
+    try {
+      if (!forceNew) {
+        if (listName === 'lists') {
+          if (APP_DATA.lists) return APP_DATA.lists;
+        }
+        // Bước 1: Kiểm tra trong APP_DATA.lists[listName]
+        if (APP_DATA.lists && APP_DATA.lists[listName]) {
+          return APP_DATA.lists[listName];
+        }
+
+        // Bước 2: Kiểm tra trong IndexedDB (this.#localDB)
+        // Lưu ý: app_config/lists chứa nhiều list nhỏ bên trong
+        const cachedAppCfg = await this.#localDB.get('app_config', 'lists');
+        if (listName === 'lists' && cachedAppCfg) {
+          APP_DATA.lists = cachedAppCfg;
+          return cachedAppCfg;
+        }
+        if (cachedAppCfg && cachedAppCfg[listName]) {
+          if (!APP_DATA.lists) APP_DATA.lists = {};
+          APP_DATA.lists[listName] = cachedAppCfg[listName];
+          return cachedAppCfg[listName];
+        }
       }
-      return data;
+      // Bước 3: Tải từ Firestore
+      let data;
+      if (listName === 'lists') {
+        // Tải toàn bộ app_config/lists
+        const snap = await getDoc(doc(this.#db, 'app_config', 'lists'));
+        if (snap.exists()) {
+          data = snap.data();
+          // Parse JSON strings nếu cần (giống logic trong loadMeta)
+          for (const k in data) {
+            try {
+              if (typeof data[k] === 'string' && data[k].startsWith('[')) {
+                data[k] = JSON.parse(data[k]);
+              }
+            } catch (e) {
+              /* keep original */
+            }
+          }
+        }
+      } else {
+        // Tải từ collection tương ứng và map về {id, name}
+        const snap = await this.getCollection(listName);
+        if (Array.isArray(snap)) {
+          data = snap.map((item) => ({
+            id: item.id,
+            name: item.name || item.user_name || item.full_name || item.displayName || item.id,
+          }));
+        }
+      }
+
+      if (data) {
+        // Bước 4: Đồng bộ dữ liệu xuống IndexedDB và APP_DATA
+        const currentCached = (await this.#localDB.get('app_config', 'lists')) || { id: 'lists' };
+        if (listName === 'lists') {
+          Object.assign(currentCached, data);
+        } else {
+          currentCached[listName] = data;
+        }
+
+        await this.#localDB.put('app_config', currentCached);
+
+        if (listName === 'lists') {
+          APP_DATA.lists = {};
+          Object.assign(APP_DATA.lists, data);
+        } else {
+          APP_DATA.lists[listName] = data;
+        }
+
+        return listName === 'lists' ? data : data;
+      }
+
+      return listName === 'lists' ? {} : [];
+    } catch (error) {
+      L.log(`❌ [DBManager.getList] Lỗi khi lấy danh sách ${listName}:`, error);
+      return listName === 'lists' ? {} : [];
     }
   };
 

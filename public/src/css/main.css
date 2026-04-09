@@ -971,6 +971,7 @@ body:not(.is-acc):not(.is-admin) .acc-only {
     /* touch-action: manipulation !important; */ /* Đã xóa !important */
     touch-action: manipulation;
     -webkit-overflow-scrolling: touch;
+    font-size: 0.8rem;
   }
 
   .app-container {
@@ -1065,8 +1066,7 @@ body:not(.is-acc):not(.is-admin) .acc-only {
     -webkit-overflow-scrolling: touch;
     align-items: center;
     justify-content: center;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: auto;
   }
 
   #tab-dashboard {
@@ -1084,6 +1084,10 @@ body:not(.is-acc):not(.is-admin) .acc-only {
     max-height: 38vh;
     height: unset;
     transition: max-height 0.5s ease-in-out;
+  }
+
+  #tab-dashboard tbody {
+    overflow-y: auto;
   }
 
   /* --- 2. FIX MODAL BACKDROP CLICK-THROUGH --- */
@@ -1127,12 +1131,14 @@ body:not(.is-acc):not(.is-admin) .acc-only {
     /* Giữ !important để đảm bảo tương tác trên mobile */
     touch-action: manipulation !important;
     display: inline-block; /* Stack buttons vertically if multiple */
-    margin: 0.5rem 0.25rem; /* Add vertical spacing */
+    margin: 0.4rem 0.2rem; /* Add vertical spacing */
     cursor: pointer;
     -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
     -webkit-user-select: none; /* Prevent text selection on buttons */
     -webkit-touch-callout: none; /* Disable callout on long press */
     user-select: none;
+    font-size: 0.75rem;
+    max-width: fit-content;
   }
   button:active,
   .btn:active {
@@ -1169,9 +1175,9 @@ body:not(.is-acc):not(.is-admin) .acc-only {
 
   fieldset {
     display: grid;
-    grid-template-columns: 50% 50%;
-    gap: 0.75rem;
-    padding: 0 1rem;
+    grid-template-columns: 25% 25% 25% 25%;
+    gap: 0.5rem;
+    padding: 0 0.75rem;
     margin: 0;
     border-bottom: 0.5rem solid #ccc;
     border-radius: 8px;

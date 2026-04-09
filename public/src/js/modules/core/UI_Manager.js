@@ -303,6 +303,7 @@ const UI_RENDERER = {
         opt.textContent = mappedKeys?.[key] || key;
         selectElem.appendChild(opt);
         hasOption = true;
+        if (key === 'bookings') selectElem.selectedIndex = selectElem.options.length - 1;
       }
     });
     selectElem.disabled = false;

@@ -447,7 +447,7 @@ export default class ATable {
 
               const isLong = !isHtml && displayVal.length > 50;
               const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
-              const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
+              const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip" data-bs-delay='{"show":0,"hide":150}'` : '';
               const firstCell = h === 'id' || h === 'uid';
 
               return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''} ${firstCell ? 'drag-handle' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${isHtml ? displayVal : escapeHtml(shortVal)}</td>`;
@@ -532,7 +532,7 @@ export default class ATable {
 
                 const isLong = displayVal.length > 50;
                 const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
-                const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
+                const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip" data-bs-delay='{"show":0,"hide":150}'` : '';
 
                 return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${escapeHtml(shortVal)}</td>`;
               })

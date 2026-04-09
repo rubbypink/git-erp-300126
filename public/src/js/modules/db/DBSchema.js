@@ -2382,6 +2382,10 @@ export const DB_SCHEMA = {
     return coll.fields.map((field) => field.name).filter(Boolean);
   },
 
+  isCollection: function (collectionName) {
+    return this[collectionName] !== undefined && this[collectionName].fields !== undefined;
+  },
+
   getCollectionNames: function (collectionNames) {
     if (!collectionNames || collectionNames.length === 0) {
       collectionNames = Object.keys(this).filter((key) => (typeof this[key] === 'object' && this[key].fields) || this[key].isSecondaryIndex);
@@ -2529,7 +2533,7 @@ function createFormBySchema(collectionName, formId) {
   if (readonlyFields.length > 0) {
     const collapseId = `${formId}-readonly-collapse`;
     html += `
-    <div class="readonly-section card mt-3" style="border: 1px solid #dee2e6; border-radius: 4px;">
+    <div class="readonly-section card my-3" style="border: 1px solid #dee2e6; border-radius: 4px;">
       <div class="card-header p-2" style="
         background-color: #f8f9fa;
         cursor: pointer;
@@ -2571,19 +2575,19 @@ function createFormBySchema(collectionName, formId) {
     display: flex;
     width: 100%;
     gap: 1rem;
-    padding: 0.5rem 1rem 1rem 1rem;
+    padding: 0.5rem;
     justify-content: center;
   ">
-    <button id="btn-delete-schema-form" type="button" class="btn btn-danger me-auto" data-db-action="delete">
+    <button id="btn-delete-schema-form" type="button" class="btn btn-sm btn-danger me-auto" data-db-action="delete">
       <i class="fa-solid fa-trash me-1"></i> Xóa
     </button>
-    <button id="btn-reset-schema-form" type="button" class="btn btn-secondary" data-db-action="reset">
+    <button id="btn-reset-schema-form" type="button" class="btn btn-sm btn-secondary" data-db-action="reset">
       <i class="fa-solid fa-rotate-left me-1"></i> Reset
     </button>
-    <button id="btn-save-schema-form" type="button" class="btn btn-primary" data-db-action="save">
+    <button id="btn-save-schema-form" type="button" class="btn btn-sm btn-primary" data-db-action="save">
       <i class="fa-solid fa-save me-1"></i> Save
     </button>
-    <button id="btn-load-schema-form" type="button" class="btn btn-info" data-db-action="load">
+    <button id="btn-load-schema-form" type="button" class="btn btn-sm btn-info" data-db-action="load">
       <i class="fa-solid fa-download me-1"></i> Load
     </button>
   </div>

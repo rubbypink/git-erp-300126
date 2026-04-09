@@ -452,11 +452,11 @@ export default class ErpHeaderMenu {
   _getNotificationWidgetHTML() {
     return `
             <div class="notification-widget dropdown position-relative me-2">
-                <button class="btn btn-warning btn-sm dropdown-toggle d-flex align-items-center justify-content-center position-relative shadow-sm border-0" type="button" id="notificationBellBtn" data-bs-toggle="dropdown" data-bs-target="#notificationPanel" data-bs-auto-close="true" style="width: 36px; height: 36px; border-radius: 50%;">
+                <button class="btn btn-warning btn-sm dropdown-toggle d-flex align-items-center justify-content-center position-relative shadow-sm border-0" type="button" id="notificationBellBtn" data-bs-toggle="dropdown" data-bs-auto-close="true" style="width: 36px; height: 36px; border-radius: 50%;">
                     <i class="fa-solid fa-bell text-warning" style="font-size: 1.2rem;"></i>
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger shadow-sm d-none" id="notificationBadge" style="font-size: 0.65rem; border: 2px solid white;">0</span>
                 </button>
-                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2 d-none" id="notificationPanel" style="width: 340px; max-height: 80vh; overflow: hidden; border-radius: 12px; z-index: 1050;">
+                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2" id="notificationPanel" style="width: 340px; max-height: 80vh; overflow: hidden; border-radius: 12px; z-index: 1050;">
                     <div class="px-3 py-3 border-bottom bg-light d-flex justify-content-between align-items-center">
                         <h6 class="m-0 fw-bold text-dark">Thông báo <span class="badge bg-primary ms-1" id="notificationHeaderCount">0</span></h6>
                     </div>
@@ -493,6 +493,17 @@ export default class ErpHeaderMenu {
       const menu = getE('erp-menu-container');
       const btnCustomUpdate = getE('btn-custom-update');
 
+      // ── 4. Click ngoài → đóng notification menu (Bootstrap 5 fallback)notificationPanel ──
+      const notifPanel = getE('notificationPanel');
+      const notifBtn = getE('notificationBellBtn');
+      if (notifPanel && notifPanel.classList.contains('show')) {
+        if (!notifPanel.contains(e.target) && !notifBtn.contains(e.target)) {
+          const bsDropdown = bootstrap.Dropdown.getInstance(notifBtn);
+          if (bsDropdown) bsDropdown.hide();
+          if (notifPanel) notifPanel.classList.remove('show');
+        }
+      }
+
       // ── 0. Xử lý click button Cập Nhật Tùy Chỉnh ──
       if (btnCustomUpdate && btnCustomUpdate.contains(e.target)) {
         try {
@@ -503,18 +514,11 @@ export default class ErpHeaderMenu {
         return;
       }
 
-      const notifPanel = getE('notificationPanel');
-      const notifBtn = getE('notificationBellBtn');
-      let panelContains = notifPanel.contains(e.target);
-
       // ── 1. Toggle settings menu ──
       if (trigger && trigger.contains(e.target)) {
         const isHidden = menu.classList.contains('d-none');
-
         menu.classList.toggle('d-none', !isHidden);
-
         menu.style.pointerEvents = isHidden ? 'auto' : 'none';
-        if (!panelContains) notifPanel.classList.add('d-none');
         return;
       }
 
@@ -526,7 +530,6 @@ export default class ErpHeaderMenu {
           if (el !== submenu) el.classList.remove('active');
         });
         submenu.classList.toggle('active');
-        if (isShow) notifPanel.classList.remove('show');
         return;
       }
 
@@ -537,16 +540,8 @@ export default class ErpHeaderMenu {
           menu.classList.add('d-none');
           menu.style.pointerEvents = 'none';
           menu.querySelectorAll('.erp-submenu.active').forEach((el) => el.classList.remove('active'));
-          if (!panelContains) notifPanel.classList.add('d-none');
         }
       }
-
-      // ── 4. Click ngoài → đóng notification menu (Bootstrap 5 fallback)notificationPanel ──
-
-      let btnContains = notifBtn?.contains(e.target);
-      if (notifBtn.contains(e.target)) {
-        notifPanel.classList.toggle('d-none');
-      } else if (!panelContains) notifPanel.classList.add('d-none');
     };
 
     // Dùng A.Event.on để được auto-cleanup + dedup qua _listenerRegistry.

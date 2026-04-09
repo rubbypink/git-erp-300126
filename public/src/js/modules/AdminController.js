@@ -7,9 +7,10 @@ import { getFirestore, collection, doc, getDoc, getDocs, query, limit, writeBatc
 import { getApp } from 'firebase/app';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
-import { migrationHelper, runMigrateFieldData } from './db/migration-helper.js';
+import * as AT from './db/migration-helper.js';
+window.AT = AT;
 import NavBarMenuController from '/src/js/common/components/M_NavBarResponsive.js';
-window.runMigrateFieldData = runMigrateFieldData;
+
 // =============================================================================
 // PHẦN 1: WEB COMPONENT (UPDATED RENDER LOGIC)
 // =============================================================================
@@ -454,7 +455,7 @@ class AdminController {
 
     this.isFilterMode = false;
     this.selectedCollectionIndex = null;
-    this.migration = migrationHelper;
+    this.migration = AT.migrationHelper;
     this._initialized = false;
   }
   static autoInit = false;
@@ -1163,6 +1164,7 @@ class AdminController {
 
       // hotels, suppliers: admin, op, acc
       if (['admin', 'op', 'acc'].includes(role)) {
+        options.push({ id: 'app_config.lists', name: '📚 Tất cả Danh sách' });
         options.push({ id: 'hotels', name: '🏨 Khách sạn' });
         options.push({ id: 'suppliers', name: '🏢 Nhà cung cấp' });
       }
@@ -1222,36 +1224,32 @@ class AdminController {
   }
 
   /**
-   * 9TRIP: XỬ LÝ TẠO MAP VÀ CẬP NHẬT FIRESTORE
-   * Bước 2 & 3: Tạo Map từ APP_DATA và lưu vào app_config/lists
+   * 9TRIP: XỬ LÝ TẢI DỮ LIỆU TỪ FIRESTORE VÀ LƯU VÀO LOCALDB
+   * @param {string} collectionName - Tên collection hoặc path (dạng collection.docId)
    */
   async processUpdateList(collectionName) {
     try {
       showLoading(true);
-      const data = window.APP_DATA?.[collectionName];
+      let data;
 
-      if (!data || Object.keys(data).length === 0) {
-        throw new Error(`Dữ liệu collection [${collectionName}] đang trống hoặc chưa được tải.`);
-      }
-
-      // 1. Tạo Map object (key-value)
-      const listMap = {};
-      Object.values(data).forEach((doc) => {
-        const id = doc.id || doc.uid;
-        const name = doc.name || doc.user_name || doc.displayName || doc.full_name || id;
-        if (id) {
-          listMap[id] = name;
+      if (collectionName.includes('.')) {
+        // 1. Dạng collection.docId
+        const [colName, docId] = collectionName.split('.');
+        data = await A.DB.getCollection(colName, docId);
+        if (data) {
+          data.id = docId;
+          await A.DB.local.put(colName, data);
+          logA(`✅ Đã cập nhật document [${docId}] vào localDB!`, 'success');
         }
-      });
-      L._(`[AdminController] Generated Map for ${collectionName}:`, listMap);
-
-      // 2. Cập nhật Firestore qua DBManager
-      // app_config/lists là một document, mỗi field là một collection list
-      await A.DB.updateSingle('app_config', 'lists', {
-        [collectionName]: listMap,
-      });
-
-      logA(`✅ Đã cập nhật danh sách [${collectionName}] thành công!`, 'success');
+      } else {
+        // 2. Dạng collection
+        data = await A.DB.getCollection(collectionName);
+        if (data && typeof data === 'object') {
+          const dataArray = Object.entries(data).map(([id, val]) => ({ id, ...val }));
+          await A.DB.local.putBatch(collectionName, dataArray);
+          logA(`✅ Đã cập nhật ${dataArray.length} bản ghi từ [${collectionName}] vào localDB!`, 'success');
+        }
+      }
     } catch (e) {
       console.error('[AdminController] processUpdateList error:', e);
       Opps(e.message);
@@ -1276,4 +1274,3 @@ class AdminController {
 
 const AdminConsole = new AdminController();
 export default AdminConsole;
-// window.AdminConsole = AdminConsole;

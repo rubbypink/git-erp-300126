@@ -1,6 +1,6 @@
 /**
  * Module: ASelect (9Trip ERP Core)
- * Version: 1.6.1 (Enhanced Event Handling & UI Sync)
+ * Version: 1.6.3 (Added getInstance static method)
  * Architecture: Declarative UI + Global Event Delegation + Static State Sync
  *
  * @class ASelect
@@ -23,6 +23,7 @@ export default class ASelect {
    * @param {Function|string} [opts.onChange] - Callback khi thay đổi giá trị
    * @param {Function|string} [opts.onCreate] - Callback khi tạo mới
    * @param {Function|string} [opts.onUpdate] - Callback khi cập nhật
+   * @param {Function} [opts.onReady] - Callback khi khởi tạo xong
    */
   constructor(selectEl, opts = {}) {
     this.autoInit = false;
@@ -34,9 +35,10 @@ export default class ASelect {
     this.isCreatable = opts.creatable !== undefined ? opts.creatable : selectEl.dataset.creatable === 'true';
     this.isEditable = opts.editable !== undefined ? opts.editable : selectEl.dataset.editable === 'true';
 
-    this.onChangeCallback = opts.onChange || selectEl.dataset.onchange || selectEl.onchange;
+    this.onChangeCallback = opts.onChange || selectEl.dataset.onchange;
     this.onCreateCallback = opts.onCreate || selectEl.dataset.oncreate || selectEl.oncreate;
     this.onUpdateCallback = opts.onUpdate || selectEl.dataset.onupdate || selectEl.onupdate;
+    this.onReadyCallback = opts.onReady;
 
     // Flag chống vòng lặp vô hạn khi source là function
     this.isResolving = false;
@@ -46,6 +48,17 @@ export default class ASelect {
     const initialSelectedOption = selectEl.querySelector('option:checked');
     this.initialText = initialSelectedOption && initialSelectedOption.value !== '' ? initialSelectedOption.textContent : '-- Vui lòng chọn --';
 
+    // TỐI ƯU: Tạo ngay option ẩn nếu có giá trị khởi tạo để select.value có giá trị ngay lập tức
+    if (this.initialValue && this.initialValue !== '') {
+      const tempOpt = document.createElement('option');
+      tempOpt.value = this.initialValue;
+      tempOpt.textContent = this.initialText;
+      tempOpt.selected = true;
+      tempOpt.style.display = 'none';
+      this.originalSelect.appendChild(tempOpt);
+      this.originalSelect.value = this.initialValue;
+    }
+
     this.uid = 'smart_' + Math.random().toString(36).substr(2, 9);
     this.data = [];
 
@@ -54,12 +67,14 @@ export default class ASelect {
     this.listContainer = null;
     this.toggleText = null;
 
-    this.init(opts);
+    // Gán this.ready để cho phép await từ bên ngoài
+    this.ready = this.init(opts);
   }
 
   /**
    * Khởi tạo component
    * @param {Object} opts
+   * @returns {Promise<ASelect>}
    */
   async init(opts) {
     try {
@@ -82,8 +97,20 @@ export default class ASelect {
 
       this.listenNativeEvents();
       ASelect.instances.set(this.uid, this);
+
+      // Gọi callback onReady nếu có
+      if (typeof this.onReadyCallback === 'function') {
+        try {
+          this.onReadyCallback(this);
+        } catch (e) {
+          console.error('[ASelect] Lỗi trong onReady callback:', e);
+        }
+      }
+
+      return this;
     } catch (error) {
       console.error(`[ASelect] Lỗi khởi tạo cho ${this.dataSourceStr}:`, error);
+      return this;
     }
   }
 
@@ -376,16 +403,19 @@ export default class ASelect {
           this.originalSelect.setAttribute('data-val', matchedItem.text);
           this.originalSelect.setAttribute('data-selected-value', realId);
         } else if (this.initialText !== '-- Vui lòng chọn --') {
-          const hiddenOpt = document.createElement('option');
-          hiddenOpt.value = valToSet;
-          hiddenOpt.textContent = this.initialText;
-          hiddenOpt.selected = true;
-          hiddenOpt.style.display = 'none';
+          // TỐI ƯU: Chỉ tạo option ẩn nếu giá trị hiện tại của select chưa khớp (tránh ghi đè giá trị tạm thời nếu nó đã đúng)
+          if (this.originalSelect.value !== valToSet) {
+            const hiddenOpt = document.createElement('option');
+            hiddenOpt.value = valToSet;
+            hiddenOpt.textContent = this.initialText;
+            hiddenOpt.selected = true;
+            hiddenOpt.style.display = 'none';
 
-          this.originalSelect.appendChild(hiddenOpt);
-          this.originalSelect.value = valToSet;
-          this.originalSelect.setAttribute('data-val', this.initialText);
-          this.originalSelect.setAttribute('data-selected-value', valToSet);
+            this.originalSelect.appendChild(hiddenOpt);
+            this.originalSelect.value = valToSet;
+            this.originalSelect.setAttribute('data-val', this.initialText);
+            this.originalSelect.setAttribute('data-selected-value', valToSet);
+          }
         }
       }
     } catch (error) {
@@ -632,8 +662,10 @@ export default class ASelect {
       // Đồng bộ UI trước khi dispatch event để các listener nhận được UI đã cập nhật
       this.updateSelectedUI();
 
-      // Phát ra sự kiện change chuẩn để các listener bên ngoài (như form validation) nhận biết
-      this.originalSelect.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+      // Đảm bảo UI đã đồng bộ hoàn toàn trước khi dispatch event change
+      setTimeout(() => {
+        this.originalSelect.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+      }, 0);
     } catch (error) {
       console.error('[ASelect] Lỗi set value:', error);
     }
@@ -669,6 +701,35 @@ export default class ASelect {
         }
       }
     } catch (error) {}
+  }
+
+  /**
+   * Lấy instance của ASelect từ một Element (select gốc hoặc wrapper)
+   * @static
+   * @param {HTMLElement} el - Element cần tìm instance
+   * @returns {ASelect|null}
+   */
+  static getInstance(el) {
+    if (!el) return null;
+    const uid = el.getAttribute('data-smart-id') || el.dataset.smartId;
+    if (uid) return ASelect.instances.get(uid);
+
+    // Nếu el là select gốc nhưng chưa có data-smart-id (hiếm gặp nếu đã init)
+    // Hoặc tìm trong wrapper gần nhất
+    const wrapper = el.closest('.smart-select-wrapper');
+    if (wrapper) {
+      const wUid = wrapper.getAttribute('data-smart-id');
+      return ASelect.instances.get(wUid);
+    }
+
+    // Tìm select gốc tương ứng nếu el là một phần tử con bên trong
+    const select = el.querySelector('select.smart-select') || el.closest('select.smart-select');
+    if (select) {
+      const sUid = select.getAttribute('data-smart-id');
+      return ASelect.instances.get(sUid);
+    }
+
+    return null;
   }
 
   /**

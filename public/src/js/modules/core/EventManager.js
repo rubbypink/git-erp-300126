@@ -730,22 +730,25 @@ class EventManager {
     });
 
     const handleRowClick = (e) => {
-      // if (!e || !e.target || typeof e.target.closest !== 'function' || getE('detail-tbody')?.contains(e.target)) return;
-      if (!e || !e.target || getE('detail-tbody')?.contains(e.target)) return;
+      if (!e || !e.target || typeof e.target.closest !== 'function' || getE('detail-tbody')?.contains(e.target)) return;
+
       const table = e.target.closest('table');
       if (!table) return;
-      const coll = table.dataset.collection;
-      const isOk = ['booking_details', 'operator_entries', 'bookings'].includes(coll);
-      if (!isOk) return;
+
       const tbody = table.querySelector('tbody');
       if (!tbody) return;
 
       const tr = e.target.closest('tr');
       if (!tr) return;
+      const coll = table.dataset.collection;
       const trId = tr.id || tr.dataset.item;
+
       if (!coll || !trId) return;
+
+      const isDetailEntry = ['booking_details', 'operator_entries'].includes(coll);
+
       if (typeof onGridRowClick === 'function') {
-        if (coll === 'bookings') onGridRowClick(trId, coll);
+        onGridRowClick(trId, coll);
       }
     };
 

@@ -30,7 +30,56 @@ class SalesModule {
     locations: null,
     hotels: null,
     lists: null,
+    isInitialized: false,
   };
+
+  /**
+   * Khởi tạo module và đồng bộ dữ liệu Master
+   */
+  static async init() {
+    if (this.State.isInitialized) return;
+    try {
+      L._('SalesModule: Initializing...');
+      await this.syncState();
+      if (getE('drafts-list')) this.UI.renderDraftsMenu();
+      this.State.isInitialized = true;
+      L._('SalesModule: Initialized ✅');
+    } catch (e) {
+      L.log('SalesModule.init Error:', e);
+    }
+  }
+
+  /**
+   * Đồng bộ dữ liệu từ APP_DATA hoặc LocalDB vào State
+   */
+  static async syncState(force = false) {
+    try {
+      // 1. Đồng bộ lists
+      if (!this.State.lists || force) {
+        const lists = window.APP_DATA?.lists || (await DB_MANAGER.local.get('app_config', 'lists')) || {};
+        if (Object.keys(lists).length > 0) this.State.lists = lists;
+      }
+
+      // 2. Đồng bộ hotels
+      if (!this.State.hotels || force) {
+        const hotels = window.APP_DATA?.hotels || (await DB_MANAGER.local.getCollection('hotels')) || [];
+        if (hotels.length > 0) this.State.hotels = Array.isArray(hotels) ? hotels : Object.values(hotels);
+      }
+
+      // 3. Đồng bộ locations (gọi getLocationList để cache)
+      await this.UI.getLocationList();
+
+      // 4. Đồng bộ services (nếu có)
+      if (!this.State.services || force) {
+        const services = window.APP_DATA?.lists?.services || [];
+        if (services.length > 0) this.State.services = services;
+      }
+
+      L._('SalesModule: State synced');
+    } catch (e) {
+      L.log('SalesModule.syncState Error:', e);
+    }
+  }
 
   // ─── 3. UI RENDERERS ───────────────────────────────────────────────
   static UI = {
@@ -134,8 +183,13 @@ class SalesModule {
         const isArray = Array.isArray(data);
         const dataList = isArray ? data : [data];
         const fragment = document.createDocumentFragment();
-        const lists = SalesModule.State.lists || (await A.DB.local.getList('app_config', 'lists'));
+
+        // Ưu tiên lấy lists từ State -> APP_DATA -> LocalDB
+        const lists = SalesModule.State.lists || window.APP_DATA?.lists || (await A.DB.local.get('app_config', 'lists')) || {};
+        if (!SalesModule.State.lists && Object.keys(lists).length > 0) SalesModule.State.lists = lists;
+
         const locations = SalesModule.State.locations || (await SalesModule.UI.getLocationList());
+
         const optsType = Object.values(lists.types || {})
           .map((x) => `<option value="${x}">${x}</option>`)
           .join('');
@@ -158,7 +212,7 @@ class SalesModule {
               </select>
             </td>
             <td>
-              <select data-source="SalesModule.State.locations" data-searchable="true" class="smart-select form-select form-select-sm" data-field="hotel_name" onchange="SalesModule.Logic.onLocationChange(this)">
+              <select data-source="SalesModule.State.locations" data-searchable="true" class="smart-select form-select form-select-sm" data-field="hotel_name" data-onchange="SalesModule.Logic.onLocationChange(this)">
                 <option value="">-</option>
               </select>
             </td>
@@ -195,8 +249,6 @@ class SalesModule {
           const task = (async (currentRow, currentIdx, currentData) => {
             try {
               L._(`[addDetailRow] 🚀 Task Start for Row ${currentIdx}`, { currentData });
-              // 1. Luôn update danh sách khách sạn/địa điểm trước
-              // await SalesModule.UI.updateHotelSelect(currentRow);
 
               if (currentData) {
                 const detailId = currentData.id || '';
@@ -206,7 +258,7 @@ class SalesModule {
                 // 2. Gán select
                 setVal('[data-field="service_type"]', currentData.service_type, currentRow);
                 setVal('[data-field="hotel_name"]', currentData.hotel_name, currentRow);
-                L._(`[addDetailRow] 📍 Set hotel_name: ${currentData.hotel_name}, DOM value: ${getVal('[data-field="hotel_name"]', currentRow)}`);
+                debounce(() => L._(`[addDetailRow] 📍 Set hotel_name: ${currentData.hotel_name}, DOM value: ${getVal('[data-field="hotel_name"]', currentRow)}`), 100);
 
                 // 4. Update danh sách dịch vụ (phòng hoặc dịch vụ khác)
                 await SalesModule.UI.updateServiceSelect(currentRow);
@@ -272,8 +324,8 @@ class SalesModule {
         return SalesModule.State.locations;
       }
       var uniqueLocs = [];
-      const lists = SalesModule.State?.lists || (await A.DB.local.get('app_config', 'lists')) || window.APP_DATA?.lists || {};
-      const hotelsRaw = SalesModule.State?.hotels || (await A.DB.local.getCollection('hotels')) || [];
+      const lists = SalesModule.State?.lists || window.APP_DATA?.lists || (await A.DB.local.get('app_config', 'lists')) || {};
+      const hotelsRaw = SalesModule.State?.hotels || window.APP_DATA?.hotels || (await A.DB.local.getCollection('hotels')) || [];
 
       // Đảm bảo hotels luôn là Array
       const hotels = Array.isArray(hotelsRaw) ? hotelsRaw : Object.values(hotelsRaw);
@@ -281,35 +333,36 @@ class SalesModule {
 
       if (!SalesModule.State.hotels || SalesModule.State.hotels.length === 0) {
         SalesModule.State.hotels = hotels;
-        L._(`[getLocationList] 💾 Saved hotels to State.hotels`);
       }
+
       const others = Object.values(lists.locOther || {}) || [];
       // Chuẩn hóa dữ liệu: hotels thường là object {id, name}, others có thể là string hoặc object
       const normalizedOthers = others.map((x) => (typeof x === 'string' ? { id: x, name: x } : x));
+
+      // Gộp danh sách và bảo toàn thuộc tính (đặc biệt là rooms)
       const allLocs = [...hotels, ...normalizedOthers];
-      // Loại bỏ trùng lặp dựa trên ID
       const map = new Map();
+
       for (let item of allLocs) {
+        if (!item) continue;
+
         // 1. Xử lý trường hợp item là object có key là index (0, 1, 2...)
-        // Nếu item là object và không có id/name nhưng có các key dạng số
-        if (item && typeof item === 'object' && !item.id && !item.name) {
+        if (typeof item === 'object' && !item.id && !item.name) {
           const values = Object.values(item);
           if (values.length > 0) {
-            const val = values[0]; // Lấy giá trị đầu tiên (ví dụ: "Phú Quốc")
-            item = { id: val, name: val }; // Ghi đè item thành object chuẩn
+            const val = values[0];
+            item = { id: val, name: val };
           }
         }
 
-        // 2. Xác định ID để kiểm tra trùng lặp
-        const id = item && typeof item === 'object' ? item.id : item;
+        // 2. Xác định ID
+        const id = typeof item === 'object' ? item.id : item;
+        if (!id) continue;
 
-        // 3. Kiểm tra và push vào danh sách duy nhất
-        if (id && !map.has(id)) {
+        // 3. Kiểm tra trùng lặp và bảo toàn dữ liệu
+        if (!map.has(id)) {
           map.set(id, true);
-
-          // Đảm bảo item được push vào luôn là object có id và name, và GIỮ LẠI các thuộc tính khác (như rooms)
           const finalItem = typeof item === 'object' ? { ...item, id: item.id || id, name: item.name || id } : { id: item, name: item };
-
           uniqueLocs.push(finalItem);
         }
       }
@@ -318,90 +371,78 @@ class SalesModule {
       return uniqueLocs;
     },
 
-    updateHotelSelect: async (el) => {
-      return;
-      try {
-        let uniqueLocs = [];
-        if (SalesModule.State.locations && SalesModule.State.locations.length > 0) {
-          uniqueLocs = SalesModule.State.locations;
-        } else {
-          uniqueLocs = await SalesModule.UI.getLocationList();
-        }
-
-        const tr = el.closest('tr');
-        if (!tr) return;
-        const elLoc = tr.querySelector('[data-field="hotel_name"]');
-        if (!elLoc) return;
-
-        let currentVal = getVal(elLoc);
-        elLoc.innerHTML = '<option value="">-</option>' + uniqueLocs.map((x) => `<option value="${x.id || x}">${x.name || x}</option>`).join('');
-
-        if (currentVal) setVal(elLoc, currentVal);
-      } catch (e) {
-        L.log('SalesModule.UI.updateHotelSelect Error:', e);
-      }
-    },
-
     updateServiceSelect: async (tr, el) => {
       try {
-        if (!tr) {
-          tr = el.closest('tr');
+        if (!tr) tr = getE(el).closest('tr');
+        if (!tr) return;
+
+        const type = (getVal('[data-field="service_type"]', tr) || '').trim();
+        const hotelEl = $('[data-field="hotel_name"]', tr);
+
+        const instance = ASelect.getInstance(getE(el));
+        if (instance) {
+          // 3. Đợi dữ liệu sẵn sàng (nếu cần)
+          await instance.ready;
+
+          // 4. Thao tác với instance
+          console.log('Giá trị hiện tại:', el.value);
         }
-        const type = getVal('[data-field="service_type"]', tr);
-        const loc = getVal('[data-field="hotel_name"]', tr);
-        L._(`[updateServiceSelect] 🔍 Type: ${type}, Loc: ${loc}`);
+        let loc = hotelEl ? hotelEl.value : getVal(hotelEl);
+        L._(`[updateServiceSelect] 🔍 Type: ${tr.id}, Loc: ${loc}`);
 
         const elName = $('[data-field="service_name"]', tr);
         if (!elName) return;
+
         let options = [];
-        if (type.trim() === 'Phòng') {
-          let hotelsRaw = SalesModule.State.hotels?.length > 0 ? SalesModule.State.hotels : await SalesModule.UI.getLocationList();
-          let hotels = Array.isArray(hotelsRaw) ? hotelsRaw : Object.values(hotelsRaw || {});
-          L._(`[updateServiceSelect] 🏨 Hotels in State: ${hotels.length}`);
+        if (type === 'Phòng') {
+          // Lấy danh sách khách sạn
+          let hotels = APP_DATA.hotels || (await SalesModule.UI.getLocationList());
 
-          // Chuẩn hóa loc để so sánh (trim khoảng trắng)
-          const searchLoc = String(loc || '').trim();
+          // Tìm khách sạn khớp
+          let hotelFiltered = HD.filters(
+            hotels,
+            [
+              { field: 'id', operator: '==', value: loc },
+              { field: 'name', operator: '==', value: loc },
+            ],
+            'OR'
+          );
 
-          let hotel = hotels.find((h) => {
-            const hId = String(h.id || '').trim();
-            const hName = String(h.name || '').trim();
-            return hId === searchLoc || hName === searchLoc;
-          });
-
+          // FIX 1: Bóc tách đúng lớp Object/Array để lấy Data thật
+          let hotel = Array.isArray(hotelFiltered) ? hotelFiltered[0] : Object.values(hotelFiltered || {})[0];
           L._(`[updateServiceSelect] 🎯 Found Hotel:`, hotel);
 
-          if (hotel && hotel.rooms) {
-            options = Array.isArray(hotel.rooms) ? hotel.rooms : Object.values(hotel.rooms);
+          if (hotel) {
+            options = Array.isArray(hotel.rooms) ? hotel.rooms : Object.values(hotel.rooms || {});
             L._(`[updateServiceSelect] 🛌 Rooms found: ${options.length}`);
           } else {
-            L._(`[updateServiceSelect] ⚠️ No rooms found for hotel: ${searchLoc}`, { hotel });
+            L._(`[updateServiceSelect] ⚠️ No rooms found for hotel: ${loc}`);
           }
-        } else if (SalesModule.State.services && SalesModule.State.services.length > 0) {
-          options = SalesModule.State.services.filter((r) => r[0] === type).map((r) => r[1]);
         } else {
-          const svcMatrix = Object.values(window.APP_DATA?.lists?.serviceMatrix || {}) || [];
-          options = svcMatrix.filter((r) => r[0] === type).map((r) => r[1]);
-          SalesModule.State.services = svcMatrix;
+          const services = window.APP_DATA?.lists?.services || SalesModule.State.lists?.services || {};
+          // FIX 2: Thêm || {} để an toàn tuyệt đối, tránh lỗi "Cannot convert undefined or null to object"
+          options = Object.values(services[type] || {});
         }
 
-        let currentVal = getVal('[data-field="service_name"]', tr);
-        let isId;
-        let isName;
-        elName.innerHTML =
-          '<option value="">-</option>' +
-          options
-            .map((x) => {
-              const val = x.id || x;
-              const name = x.name || x;
-              isId = x.id === currentVal || x === currentVal;
-              isName = x.name === currentVal ? x.id : null;
-              return `<option value="${val}">${name}</option>`;
-            })
-            .join('');
+        let currentVal = getVal(elName);
+        let html = `<option value="" selected disabled>-</option>`;
 
-        // 2. Nếu tìm thấy, lấy id của option đó (fallback về name hoặc chính nó) và gán vào form
-        if (isId || isName) {
-          setVal('[data-field="service_name"]', isId ? currentVal : isName, tr);
+        // Render HTML
+        html += options.map((opt) => `<option value="${opt.id || opt}">${opt.name || opt}</option>`).join('');
+        elName.innerHTML = html;
+
+        // Gán lại giá trị cũ
+        if (currentVal) {
+          // FIX 3: Tách làm 2 phép so sánh bình đẳng (Khớp ID HOẶC khớp Name)
+          const exists = options.some((opt) => String(opt.id || opt) === String(currentVal) || String(opt.name || opt) === String(currentVal));
+
+          if (exists) {
+            // Tối ưu: Dùng luôn biến elName đã query ở trên thay vì quét DOM lại lần nữa
+            setVal(elName, currentVal);
+          } else {
+            // Tối ưu UI: Reset về rỗng nếu data cũ ko còn tồn tại
+            setVal(elName, '');
+          }
         }
       } catch (e) {
         L.log('SalesModule.UI.updateServiceSelect Error:', e);
@@ -529,15 +570,14 @@ class SalesModule {
   static Logic = {
     onTypeChange: async (el, resetChildren = true) => {
       try {
-        const tbody = getE('detail-tbody');
-
-        const tr = el.closest('tr');
+        const tr = getE(el).closest('tr');
         if (!tr) return;
+        const idx = tr.dataset.row;
 
         if (resetChildren) {
           setVal('[data-field="hotel_name"]', '', tr);
           await SalesModule.UI.updateServiceSelect(tr);
-          SalesModule.Logic.autoFillRowData(idx);
+          if (idx) SalesModule.Logic.autoFillRowData(idx);
         } else {
           await SalesModule.UI.updateServiceSelect(tr);
         }
@@ -547,9 +587,12 @@ class SalesModule {
     },
     onLocationChange: async (el, resetName = true) => {
       try {
-        const tr = el.closest('tr');
-        L._(`[onLocationChange] 🔍 Location: ${getVal('[data-field="hotel_name"]', tr)} - el ${getVal(el)}`);
+        const tr = getE(el)?.closest('tr');
         if (!tr) return;
+
+        const loc = getVal('[data-field="hotel_name"]', tr);
+        L._(`[onLocationChange] 🔍 Location: ${loc}`);
+
         const type = getVal('[data-field="service_type"]', tr);
         if (type === 'Phòng') {
           await SalesModule.UI.updateServiceSelect(tr, el);
@@ -1919,9 +1962,9 @@ class SalesModule {
 // ─── EXPOSE TO GLOBAL FOR HTML COMPATIBILITY ────────────────────────
 window.SalesModule = SalesModule;
 
-// Tự động render menu nháp khi module được load (nếu DOM đã sẵn sàng)
+// Tự động khởi tạo module khi DOM sẵn sàng
 document.addEventListener('DOMContentLoaded', () => {
-  if (getE('drafts-list')) SalesModule.UI.renderDraftsMenu();
+  SalesModule.init();
 });
 
 export default SalesModule;
