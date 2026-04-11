@@ -372,14 +372,42 @@ function formatMoney(n) {
 }
 
 function escapeHtml(s) {
+  if (typeof s !== 'string') return String(s ?? '');
+
   const map = {
-    '&': '&' + 'amp;',
-    '<': '&' + 'lt;',
-    '>': '&' + 'gt;',
-    '"': '&' + 'quot;',
-    "'": '&' + '#39;',
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
   };
-  return String(s ?? '').replace(/[&<>"']/g, (m) => map[m]);
+
+  return s.replace(/[&<>"']/g, (m) => {
+    if (m === '&') {
+      // Nếu đã là thực thể HTML chuẩn thì bỏ qua, không mã hóa nữa
+      if (/^&([a-z0-9]+|#[0-9]+|#x[a-f0-9]+);/i.test(s.substring(s.indexOf(m)))) {
+        return m;
+      }
+    }
+    return map[m];
+  });
+}
+
+/**
+ * Giải mã HTML Entities về chuỗi nguyên bản (dùng trước khi thực thi JS động)
+ */
+function unescapeHtml(s) {
+  if (typeof s !== 'string') return String(s ?? '');
+
+  const map = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+  };
+
+  return s.replace(/&(amp|lt|gt|quot|#39);/g, (m) => map[m]);
 }
 
 // --- DOM FUNCTIONS ---
@@ -828,6 +856,7 @@ export const Format = {
   formatNumber,
   formatMoney,
   escapeHtml,
+  unescapeHtml,
 };
 
 export const DOM = {

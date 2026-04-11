@@ -108,8 +108,6 @@ export default class ATable {
         this._autoDetectColName(normalizedData);
       }
 
-      await this._handleSpecialColName();
-
       // Luôn resolve lại field configs khi init để đảm bảo header mới nhất
       this.state.fieldConfigs = {};
       this.state.hiddenFields = {};
@@ -144,10 +142,10 @@ export default class ATable {
     // Nếu chưa có layout chính thì tạo mới
     if (!wrapper) {
       this._renderMainLayout();
+      this._renderHeaderMenu();
     }
 
     // Luôn render lại header menu để cập nhật dropdown field ẩn
-    this._renderHeaderMenu();
 
     // Luôn làm mới nội dung bảng và phân trang khi gọi render()
     this.refresh();
@@ -166,62 +164,6 @@ export default class ATable {
         debounce((e) => this.filter(e.target.value), 500)
       );
     }
-
-    /*
-    wrapper.addEventListener('click', (e) => {
-      const target = e.target;
-
-      const sortTh = target.closest('[data-sort-field]');
-      if (sortTh) {
-        this.sort(sortTh.dataset.sortField);
-        return;
-      }
-
-      const pageLink = target.closest('.at-page-link');
-      if (pageLink) {
-        e.preventDefault();
-        this.goToPage(parseInt(pageLink.dataset.page));
-        return;
-      }
-
-      const groupHeader = target.closest('.at-group-header');
-      if (groupHeader) {
-        this._toggleGroup(groupHeader);
-        return;
-      }
-
-      if (target.closest('.at-download-excel')) {
-        this.download('excel');
-        return;
-      }
-
-      if (target.closest('.at-download-pdf')) {
-        this.download('pdf');
-        return;
-      }
-
-      if (target.closest('.at-reload-data')) {
-        this.updateData(this.state.fullData);
-        return;
-      }
-
-      if (target.closest('.at-zoom-in')) {
-        this.zoom(1);
-        return;
-      }
-
-      if (target.closest('.at-zoom-out')) {
-        this.zoom(-1);
-        return;
-      }
-
-      // Xử lý nút Áp dụng ẩn/hiện cột
-      if (target.closest('.at-apply-fields')) {
-        this.applyFieldVisibility();
-        return;
-      }
-    });
-    */
 
     // Code mới: Bổ sung xử lý sự kiện click vào icon xem object
     wrapper.addEventListener('click', (e) => {
@@ -576,28 +518,6 @@ export default class ATable {
                 return this._renderEditableCell(h, val, config);
               }
 
-              /*
-              const isHtml = config.type === 'html' || config.html === true;
-              let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
-
-              if (config.dataSource && val) {
-                const sourceData = this._getDataSource(config.dataSource);
-                if (sourceData) {
-                  const matched = sourceData.find((i) => String(i.id || i.uid || i.value) === String(val));
-                  if (matched) {
-                    displayVal = matched.displayName || matched.name || matched.title || matched.user_name || matched.text || matched.full_name || displayVal;
-                  }
-                }
-              }
-
-              const isLong = !isHtml && displayVal.length > 50;
-              const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
-              const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
-              const firstCell = h === 'id' || h === 'uid';
-
-              return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''} ${firstCell ? 'drag-handle' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${isHtml ? displayVal : escapeHtml(shortVal)}</td>`;
-              */
-
               // Code mới: Xử lý hiển thị dữ liệu dạng object
               const isHtml = config.type === 'html' || config.html === true;
 
@@ -609,11 +529,15 @@ export default class ATable {
               let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
 
               if (config.dataSource && val) {
-                const sourceData = this._getDataSource(config.dataSource);
+                let sourceData = null;
+                this._getDataSource(config.dataSource).then((data) => {
+                  sourceData = data;
+                  L._(`[ATable] _renderObjectCell - sourceData: ${sourceData[0]}`);
+                });
                 if (sourceData) {
                   const matched = sourceData.find((i) => String(i.id || i.uid || i.value) === String(val));
                   if (matched) {
-                    displayVal = matched.displayName || matched.name || matched.title || matched.user_name || matched.text || matched.full_name || displayVal;
+                    displayVal = matched.displayName || matched.name || matched.value || matched.title || matched.user_name || matched.text || matched.full_name || displayVal;
                   }
                 }
               }
@@ -684,26 +608,6 @@ export default class ATable {
                   return this._renderEditableCell(h, val, config);
                 }
 
-                /*
-                let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
-
-                if (config.dataSource && val) {
-                  const sourceData = this._getDataSource(config.dataSource);
-                  if (sourceData) {
-                    const matched = sourceData.find((i) => String(i.id || i.uid || i.value) === String(val));
-                    if (matched) {
-                      displayVal = matched.displayName || matched.name || matched.title || matched.user_name || matched.text || matched.full_name || displayVal;
-                    }
-                  }
-                }
-
-                const isLong = displayVal.length > 50;
-                const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
-                const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
-
-                return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${escapeHtml(shortVal)}</td>`;
-                */
-
                 // Code mới: Xử lý hiển thị dữ liệu dạng object trong grouped rows
                 if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
                   return this._renderObjectCell(val, config, h);
@@ -712,7 +616,11 @@ export default class ATable {
                 let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
 
                 if (config.dataSource && val) {
-                  const sourceData = this._getDataSource(config.dataSource);
+                  let sourceData = null;
+                  this._getDataSource(config.dataSource).then((data) => {
+                    sourceData = data;
+                    L._(`[ATable] _renderObjectCell - sourceData: ${sourceData[0]}`);
+                  });
                   if (sourceData) {
                     const matched = sourceData.find((i) => String(i.id || i.uid || i.value) === String(val));
                     if (matched) {
@@ -769,23 +677,50 @@ export default class ATable {
     return `<td class="p-0">${inputHtml}</td>`;
   }
 
-  _getDataSource(source) {
+  async _getDataSource(source) {
     if (!source) return null;
+    let codeStr = unescapeHtml(source);
+    L._(`[ATable] _getDataSource: ${codeStr}`);
     try {
-      if (window.A?.DB?.local?.getCollection) {
-        const data = window.A.DB.local.getCollection(source);
+      if (A?.DB?.schema.isCollection(codeStr)) {
+        const data = await A.DB.local.getCollection(codeStr);
         if (data) return Array.isArray(data) ? data : Object.values(data);
-      }
-      const parts = source.split('.');
-      let current = window;
-      for (const part of parts) {
-        if (current && current[part] !== undefined) current = current[part];
-        else {
-          current = null;
-          break;
+      } else {
+        // TH2: Chuỗi là Code Nội Tuyến (Inline Code)
+        // Dấu hiệu nhận biết: Có chứa dấu phẩy, khoảng trắng, hoặc ngoặc
+        if (codeStr.includes(';') || codeStr.includes('(') || codeStr.includes(' ')) {
+          // Sử dụng hàm Function nội hàm để wrap logic.
+          // Hỗ trợ truyền cứng 3 biến hay dùng ở các Form/Select
+          const dynamicScript = new Function('value', 'selectEl', 'instance', codeStr);
+          return await dynamicScript(safeArgs[0], safeArgs[1], safeArgs[2]);
+        }
+
+        // TH3: Chuỗi là Đường Dẫn Hàm (Object Path) - VD: 'App.Sales.tinhTien'
+        const parts = codeStr.split('.');
+        let current = window; // Bắt đầu quét từ Window (Global)
+        let context = window; // Context mặc định là Window
+
+        for (let i = 0; i < parts.length; i++) {
+          if (current[parts[i]] !== undefined) {
+            // Ghi nhận context là object cha (phần tử đứng ngay trước hàm cuối cùng)
+            if (i < parts.length - 1) {
+              context = current[parts[i]];
+            }
+            current = current[parts[i]];
+          } else {
+            console.warn(`[runFn] Lỗi: Không tìm thấy đường dẫn hàm "${codeStr}"`);
+            return null;
+          }
+        }
+
+        // Sau khi phân giải, kiểm tra xem nó có đích thị là function không
+        if (typeof current === 'function') {
+          // Gọi hàm và áp dụng (apply) đúng ngữ cảnh context đã tìm được
+          return await current.apply(context, safeArgs);
+        } else {
+          return Array.isArray(current) ? current : Object.values(current);
         }
       }
-      if (current) return Array.isArray(current) ? current : Object.values(current);
     } catch (e) {
       console.warn(`[ATable] _getDataSource error for ${source}:`, e);
     }
@@ -870,26 +805,13 @@ export default class ATable {
     }
   }
 
-  async _handleSpecialColName() {
-    let { colName } = this.options;
-    if (colName && colName.includes('_by_')) {
-      this.state.currentColName = colName;
-      const schemaConfig = DB_SCHEMA[colName];
-      if (schemaConfig) {
-        this.options.groupBy = true;
-        this.state.groupByField = schemaConfig.groupBy;
-        this.options.colName = colName.split('_by_')[0];
-        this.state.isSecondary = true;
-        this.state.fullData = await A.DB.local.getCollection(this.options.colName);
-      }
-    }
-  }
   _initResizer() {
     const resizer = new TableResizeManager(`tbl-${this.containerId}`);
     resizer.init();
   }
 
   _initSortable() {
+    if (this.state.draggable) this.state.draggable.destroy();
     this.state.draggable = new Sortable(`${this.containerId}-tbody`, {
       handleSelector: '.drag-handle',
       stateBtn: `tbl-${this.containerId}-header-drag`,

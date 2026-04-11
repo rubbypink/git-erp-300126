@@ -477,7 +477,7 @@ const UI_RENDERER = {
           header: true,
           headerExtra: [
             `<div class="btn btn-sm btn-warning shadow-sm p-0" id="datalist-select"">
-        <select id="btn-select-datalist" data-createtable="${CURRENT_USER.role === 'admin' ? 'true' : 'false'}" data-source="A.UI.initBtnSelectDataList"  data-onchange="A.UI.updateTableData" class="smart-select form-select form-select-sm bg-warning rounded border-0" style="min-width: 6rem;">
+        <select id="btn-select-datalist" data-creatable="${CURRENT_USER.role === 'admin' ? 'true' : 'false'}" data-source="A.UI.initBtnSelectDataList"  data-onchange="A.UI.updateTableData();" class="smart-select form-select form-select-sm bg-warning rounded border-0" style="min-width: 6rem;">
         </select>
       </div>`,
           ],
@@ -515,96 +515,6 @@ const UI_RENDERER = {
       document.dispatchEvent(new CustomEvent('tabchange', { detail: { tabId: targetTabId } }));
     }, 100);
   },
-
-  // =========================================================================
-  // 4. DATA TABLE RENDERING LOGIC (Object-based + Array-based support)
-  // renderGrid: function (dataList, table) {
-  //   let nohide = table?.id === 'tbl-container-tab2';
-  //   if (!table) table = getE('tbl-container-tab2');
-  //   if (!table) return;
-  //   const tbody = table.querySelector('tbody'),
-  //     header = table.querySelector('thead');
-  //   if (!tbody || !header) return;
-  //   tbody.innerHTML = '';
-  //   header.innerHTML = '';
-
-  //   if (!GRID_COLS?.length) {
-  //     header.innerHTML = '<th>Không có cấu hình cột</th>';
-  //   } else {
-  //     header.innerHTML = '<th style="width:50px" class="text-center">#</th>' + GRID_COLS.map((c) => `<th class="${nohide ? '' : c.hidden ? 'd-none' : 'text-center'}" data-field="${c.key}">${c.t}</th>`).join('');
-  //   }
-
-  //   if (!dataList?.length) {
-  //     tbody.innerHTML = `<tr><td colspan="${(GRID_COLS?.length || 0) + 1}" class="text-center p-4 text-muted fst-italic">Không có dữ liệu hiển thị</td></tr>`;
-  //     return;
-  //   }
-
-  //   const docFrag = document.createDocumentFragment();
-  //   dataList.forEach((row, idx) => {
-  //     const tr = document.createElement('tr');
-  //     tr.className = 'align-middle';
-  //     let stt = typeof GRID_STATE !== 'undefined' ? (GRID_STATE.pagination.currentPage - 1) * GRID_STATE.pagination.limit + idx + 1 : idx + 1;
-  //     let html = `<td class="text-center fw-bold text-secondary">${stt}</td>`;
-  //     html += GRID_COLS.map((col) => {
-  //       let val = row[col.i];
-  //       if (val === undefined || val === null) val = '';
-  //       if (col.fmt === 'money' && typeof formatNumber === 'function') val = formatNumber(val);
-  //       if (col.fmt === 'date' && typeof formatDateVN === 'function') val = formatDateVN(val);
-  //       return `<td class="${col.align}${nohide ? '' : col.hidden ? ' d-none' : ''}">${val}</td>`;
-  //     }).join('');
-  //     tr.innerHTML = html;
-  //     tr.style.cursor = 'pointer';
-  //     let rowId = typeof row === 'object' && !Array.isArray(row) ? row.id || row.booking_id : row[0];
-  //     if (Array.isArray(row) && (CURRENT_TABLE_KEY === 'booking_details' || CURRENT_TABLE_KEY === 'operator_entries')) rowId = row[1];
-  //     tr.id = rowId;
-  //     tr.dataset.item = rowId;
-  //     tr.onmouseover = function () {
-  //       this.classList.add('table-active');
-  //     };
-  //     tr.onmouseout = function () {
-  //       this.classList.remove('table-active');
-  //     };
-  //     docFrag.appendChild(tr);
-  //   });
-  //   tbody.appendChild(docFrag);
-  //   table.dataset.collection = CURRENT_TABLE_KEY;
-  //   // calculateSummary(dataList);
-  // },
-
-  // renderTableByKey: function (key, tblId) {
-  //   CURRENT_TABLE_KEY = key;
-  //   GRID_STATE.currentTable = key;
-  //   const table = tblId ? getE(tblId) : getE('tbl-container-tab2');
-  //   if (!table) return;
-  //   const tblEl = table.querySelector('table');
-  //   if (tblEl) tblEl.dataset.collection = key;
-  //   const tbody = table.querySelector('tbody');
-  //   if (tbody) tbody.innerHTML = '<tr><td colspan="100%" class="text-center p-3">Đang tải...</td></tr>';
-  //   try {
-  //     GRID_STATE.sourceData = APP_DATA[key];
-  //     GRID_STATE.filter = { keyword: '', column: '', dateFrom: '', dateTo: '' };
-  //     GRID_STATE.sort = { column: '', dir: 'desc' };
-  //     if (!GRID_STATE.sourceData?.length) {
-  //       if (tbody) tbody.innerHTML = `<tr><td colspan="${(GRID_COLS?.length || 0) + 1}" class="text-center p-4 text-muted">Không có dữ liệu</td></tr>`;
-
-  //       return;
-  //     }
-  //     const schemaDef = A.DB.schema[key];
-  //     if (schemaDef?.isSecondaryIndex) {
-  //       this.generateGridColsFromObject(schemaDef.source ?? key);
-  //     } else {
-  //       this.generateGridColsFromObject(key);
-  //     }
-  //     this.renderGrid(key);
-
-  //     if (typeof TableResizeManager !== 'undefined')
-  //       try {
-  //         new TableResizeManager('grid-table').init();
-  //       } catch (_) {}
-  //   } catch (e) {
-  //     Opps(`Lỗi hiển thị bảng [${key}]: ${e.message}`);
-  //   }
-  // },
 
   generateGridColsFromObject: function (collectionName) {
     const headerObj = A.DB.schema.createHeaderFromFields(collectionName);
@@ -778,9 +688,10 @@ const UI_RENDERER = {
     }
   },
 
-  updateTableData: async function (collection, fullData) {
-    if (!collection) collection = getVal('btn-select-datalist');
-    fullData = APP_DATA[collection] || (await A.DB.local.getCollection(collection));
+  updateTableData: async function () {
+    const collection = getVal('btn-select-datalist');
+    L._(`[UI_RENDERER] updateTableData: ${collection}`);
+    const fullData = APP_DATA?.[collection] || (await A.DB.local.getCollection(collection));
     A.UI.createTable('tab-data-tbl', { colName: collection, data: fullData });
   },
 

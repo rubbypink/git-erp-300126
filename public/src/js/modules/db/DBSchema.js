@@ -191,7 +191,7 @@ export const DB_SCHEMA = {
         attrs: [],
         class: '',
         options: ['TM', 'CK CN', 'CK CT', 'Công Nợ', 'Thẻ tín dụng'],
-        dataSource: 'lists.payment',
+        dataSource: 'APP_DATA.lists.payment',
       },
       {
         index: 12,
@@ -227,7 +227,7 @@ export const DB_SCHEMA = {
         tag: 'select',
         attrs: [],
         class: '',
-        dataSource: 'lists.staff',
+        dataSource: 'APP_DATA.lists.staff',
       },
       {
         index: 15,
@@ -240,7 +240,7 @@ export const DB_SCHEMA = {
         class: 'fw-bold bg-warning bg-opacity-25',
         options: ['Đặt Lịch', 'Xác Nhận', 'Thanh Toán', 'Xong BK', 'Hủy'],
         initial: 'Đặt Lịch',
-        dataSource: 'lists.status',
+        dataSource: 'APP_DATA.lists.status',
       },
       {
         index: 16,
@@ -326,7 +326,7 @@ export const DB_SCHEMA = {
         attrs: [],
         class: 'd-type',
         options: ['Phòng', 'Vé MB', 'Vé Tàu', 'Ăn'],
-        dataSource: 'lists.types',
+        dataSource: 'APP_DATA.lists.types',
         validation: {
           required: true,
         },
@@ -346,7 +346,7 @@ export const DB_SCHEMA = {
         validation: {
           required: true,
         },
-        dataSource: 'hotelLocations',
+        dataSource: 'hotels',
         description: 'Extracted from lists.hotelMatrix[col0] + lists.locOther',
         event: {
           change: 'SalesModule.UI.updateServiceSelect',
@@ -364,7 +364,7 @@ export const DB_SCHEMA = {
         validation: {
           required: true,
         },
-        dataSource: 'serviceNames',
+        dataSource: 'APP_DATA.lists.services',
         dependsOn: ['service_type', 'hotel_name'],
         description: 'Depends on service_type and hotel_name - if Phòng: use hotelMatrix[hotel].slice(2), else use serviceMatrix',
       },
@@ -1827,7 +1827,7 @@ export const DB_SCHEMA = {
             tag: 'select',
             attrs: ['required'],
             class: '',
-            dataSource: 'pkg_hotel_price',
+            dataSource: 'APP_DATA.lists.rates_pkg',
             description: 'Mã gói giá - VD: base, contract (Firestore: info.ratePkg)',
             validation: { required: true },
           },
@@ -2021,7 +2021,7 @@ export const DB_SCHEMA = {
         class: '',
         description: 'Firestore: items[]. Chỉnh qua component at-tbl-service-price.',
         itemSchema: {
-          type: { displayName: 'Loại DV', type: 'select', dataSource: 'lists.types' },
+          type: { displayName: 'Loại DV', type: 'select', dataSource: 'APP_DATA.lists.types' },
           name: { displayName: 'Tên DV', type: 'text' },
           from: { displayName: 'Từ ngày', type: 'text', placeholder: 'DD/MM' },
           to: { displayName: 'Đến ngày', type: 'text', placeholder: 'DD/MM' },

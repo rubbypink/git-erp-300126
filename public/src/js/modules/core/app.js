@@ -829,6 +829,21 @@ class Application {
 
         // 3. Gán CURRENT_USER + xử lý role masking
         const userProfile = docSnap.data();
+        // ─── THÊM ĐOẠN NÀY: CHẶN RENDER FRONTEND NẾU LÀ ADMIN APP ───
+        if (window.location.pathname.startsWith('/admin')) {
+          // Xóa thẻ Login (nếu nó đang hiển thị)
+          const launcher = document.getElementById('app-launcher');
+          if (launcher) launcher.remove();
+          this._ensureModalExists();
+          this.#state.user = userProfile;
+          window.CURRENT_USER = userProfile;
+          const moduleManager = new MODULELOADER(this, this.#config.disabledModules);
+          this.#moduleManager = moduleManager;
+          this.#modules['Event'].init();
+          // Báo cho admin_app.js biết là Auth đã xử lý xong
+          this.#state.isReady = true;
+          return; // Dừng ngay, không chạy tiếp các logic vẽ UI bên dưới
+        }
 
         if ((userProfile.role === 'admin' || userProfile.level >= 50) && typeof applyModeFromUrl === 'function' && applyModeFromUrl()) return;
         this.#state.user = userProfile;
@@ -869,16 +884,6 @@ class Application {
         this.#moduleManager = moduleManager;
         this.#config.saveLoad = true;
 
-        // ─── THÊM ĐOẠN NÀY: CHẶN RENDER FRONTEND NẾU LÀ ADMIN APP ───
-        if (window.location.pathname.startsWith('/admin')) {
-          // Xóa thẻ Login (nếu nó đang hiển thị)
-          const launcher = document.getElementById('app-launcher');
-          if (launcher) launcher.remove();
-          this._ensureModalExists();
-          // Báo cho admin_app.js biết là Auth đã xử lý xong
-          this.#state.isReady = true;
-          return; // Dừng ngay, không chạy tiếp các logic vẽ UI bên dưới
-        }
         CURRENT_USER = this.#state.user;
         CR_COLLECTION = (typeof ROLE_DATA !== 'undefined' ? ROLE_DATA[CURRENT_USER.role] : '') || '';
 

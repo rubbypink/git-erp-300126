@@ -115,27 +115,25 @@ export default class ASelect {
         });
       }
 
-      // Đảm bảo onchange/oninput trên thẻ gốc hoạt động bình thường
-      A.Event.on(
-        this.el,
-        'change',
-        (e) => {
-          // if (this.state === 'UPGRADED') this.syncUI();
-          L._(`ASelect.change event: call triggerCallback`);
+      // Lắng nghe sự kiện change từ Element gốc
+      this.el.addEventListener('change', (e) => {
+        // Bỏ qua nếu đây là event do chính setValue() bắn ra (tránh loop & can thiệp sai)
+        if (e._isInternal) {
           this.triggerCallback('onChange', this.el.value);
-        },
-        true
-      );
+          return;
+        }
 
-      A.Event.on(
-        this.el,
-        'input',
-        (e) => {
-          this.triggerCallback('onInput', this.el.value);
-        },
+        // Cứu cánh: Nếu module js bên ngoài gán giá trị bằng DOM thuần (jQuery/vanilla) thay vì dùng helper
+        if (this.state === 'UPGRADED' && String(this.el.dataset.val) !== String(this.el.value)) {
+          this.setValue(this.el.value, false);
+        }
 
-        true
-      );
+        this.triggerCallback('onChange', this.el.value);
+      });
+
+      this.el.addEventListener('input', (e) => {
+        this.triggerCallback('onInput', this.el.value);
+      });
     } catch (e) {
       if (typeof L !== 'undefined' && L._) L._(`ASelect.initBase Error`, e, 'error');
     }
@@ -200,13 +198,9 @@ export default class ASelect {
       if (typeof src === 'string') {
         const originalSrc = src;
         src = src.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
-        if (src !== originalSrc && typeof L !== 'undefined' && L._) {
-          L._(`ASelect.loadData - Cleaned source: "${originalSrc}" -> "${src}"`);
-        }
       }
 
       const cacheKey = typeof src === 'string' ? src : null;
-      if (typeof L !== 'undefined' && L._) L._(`ASelect.loadData - Processing source:`, { src, cacheKey });
 
       // 2. Kiểm tra Cache RAM trước khi tiến hành Fetch
       if (cacheKey && ASelect.mapCache.has(cacheKey)) {
@@ -270,7 +264,7 @@ export default class ASelect {
 
       // 4. Đồng bộ hóa dữ liệu chuẩn cho toàn bộ hệ thống
       this.data = this.mapData(result);
-      if (typeof L !== 'undefined' && L._) L._(`ASelect.loadData - Result for ${cacheKey}:`, { count: this.data.length });
+      // if (typeof L !== 'undefined' && L._) L._(`ASelect.loadData - Result for ${cacheKey}:`, { count: this.data.length });
 
       // 5. Lưu vào Cache RAM cho 99 instance khác dùng chung
       if (cacheKey) {
@@ -474,6 +468,7 @@ export default class ASelect {
 
         const option = target.closest('.smart-option');
         if (option) {
+          console.log(`[ASelect Debug - 0] Người dùng CLICK vào option: "${option.dataset.value}" - Chữ: "${option.textContent}"`);
           this.setValue(option.dataset.value);
           this.closeDropdown();
           return;
@@ -680,96 +675,108 @@ export default class ASelect {
       this._scrollRef = null;
     }
   }
-  syncUI() {
-    if (!this.wrapper) return;
-
-    let currentVal = this.el.dataset.val || this.el.value;
-    L._(`ASelect.syncUI - ${this.el.dataset.field}`, { currentVal });
-    if (currentVal !== undefined) {
-      const options = Array.from(this.el.options);
-      let targetIdx = options.findIndex((opt) => String(opt.value) === String(currentVal));
-
-      if (targetIdx === -1) {
-        targetIdx = options.findIndex((opt) => opt.text === currentVal);
-        if (targetIdx !== -1) {
-          const foundVal = options[targetIdx].value;
-          L._(`ASelect.syncUI change lần 2 - ${this.el.dataset.field}`, { foundVal, currentVal });
-          this.el.value = foundVal;
-          this.el.dataset.val = foundVal;
-          currentVal = foundVal;
-        }
-      }
-
-      if (targetIdx !== -1 && this.el.selectedIndex !== targetIdx) {
-        this.el.selectedIndex = targetIdx;
-      }
-    }
-
-    const text = this.el.options[this.el.selectedIndex]?.text || '-- Chọn --';
-    const textEl = this.wrapper.querySelector('.smart-selected-text');
-    if (textEl && textEl.textContent !== text) textEl.innerHTML = escapeHtml(text);
-
-    if (this.dropdown) {
-      this.dropdown.querySelectorAll('.smart-option').forEach((opt) => {
-        opt.classList.toggle('active', String(opt.dataset.val) === String(currentVal));
-      });
-    }
-    L._(`ASelect.syncUI - getVal = ${getVal(this.uid)}`);
-  }
-
   /**
-   * Gán giá trị thông minh
-   * @param {string} rawVal - Giá trị cần gán
-   * @param {boolean} [forceTrigger=true] - Có trigger event hay không
+   * Gán giá trị thông minh (Bản Debug & Self-Healing)
    */
   setValue(rawVal, forceTrigger = true) {
     try {
-      const val = rawVal === null || rawVal === undefined ? '' : String(rawVal);
-      let dataVal = this.el.dataset.val;
-      L._(`ASelect.setValue - ${this.uid}: data-val = ${dataVal}, value = ${this.el.value}`, { val, forceTrigger });
-
-      // Đảm bảo data-val luôn được cập nhật đồng bộ với value
-      this.el.value = val;
-      if (dataVal !== val) {
-        L._(`ASelect.setValue - có khác biệt: data-val update`, { val, dataVal });
-        this.el.setAttribute('data-val', val);
+      // [BẢO VỆ]: Kiểm tra xem thẻ Select gốc còn tồn tại trên HTML không?
+      // Nếu updateTableData đã xóa thẻ này đi, mà dropdown vẫn còn nổi lên -> Đây là Ghost Element
+      if (!document.body.contains(this.el)) {
+        console.warn(`[ASelect Debug - LỖI GHOST DOM] Thẻ select gốc (${this.uid}) đã bị xóa khỏi HTML. Tiến hành dọn dẹp RAM...`);
+        this.destroy();
+        return;
       }
 
+      let val = rawVal === null || rawVal === undefined ? '' : String(rawVal).trim();
+      console.log(`[ASelect Debug - 1] Nhận lệnh setValue: "${val}". forceTrigger: ${forceTrigger}`);
+
+      if (String(this.el.value) === val && String(this.el.dataset.val) === val) {
+        console.log(`[ASelect Debug - 2] Giá trị không đổi ("${val}"), ngắt lệnh để chống Loop.`);
+        return;
+      }
+
+      this.el.dataset.val = val;
+
       if (this.state !== 'UPGRADED') {
+        console.log(`[ASelect Debug - 3] Đưa vào Queue vì UI chưa Upgraded.`);
         this.actionQueue.push(() => this.setValue(val, forceTrigger));
         return;
       }
 
-      let optionExists = Array.from(this.el.options).some((opt) => String(opt.value) === val);
+      let options = Array.from(this.el.options);
+      let targetIdx = options.findIndex((opt) => String(opt.value) === val);
+      console.log(`[ASelect Debug - 4] Tìm thấy Option trong thẻ gốc ở vị trí index: ${targetIdx}`);
 
-      if (!optionExists && val !== '') {
-        const found = this.data.find((d) => String(d.id) === val);
-        if (found) {
-          const newOpt = new Option(found.text, found.id);
-          this.el.add(newOpt);
+      // Auto-correction
+      if (targetIdx === -1 && val !== '') {
+        targetIdx = options.findIndex((opt) => opt.text === val);
+        if (targetIdx !== -1) {
+          val = options[targetIdx].value;
+          this.el.dataset.val = val;
         } else {
-          // Nếu không tìm thấy trong data, nhưng vẫn muốn set (có thể là text)
-          const newOpt = new Option(val, val);
+          console.log(`[ASelect Debug - 4.1] Không tìm thấy Option, tự động tạo option mới: "${val}"`);
+          const found = this.data.find((d) => String(d.id) === val);
+          const newOpt = new Option(found ? found.text : val, val);
           this.el.add(newOpt);
+          options = Array.from(this.el.options);
+          targetIdx = options.length - 1;
         }
       }
 
-      // Re-assign để chắc chắn element nhận giá trị sau khi add option
-      // this.el.value = val;
+      // CHỐT DOM
+      this.el.value = val;
+      options.forEach((opt, idx) => {
+        if (idx === targetIdx) {
+          opt.setAttribute('selected', 'selected');
+          opt.selected = true;
+        } else {
+          opt.removeAttribute('selected');
+          opt.selected = false;
+        }
+      });
+      if (targetIdx !== -1) this.el.selectedIndex = targetIdx;
+
+      console.log(`[ASelect Debug - 5] Đã gán xong Native DOM. el.value check lại: "${this.el.value}"`);
+
+      this.syncUI();
 
       if (forceTrigger) {
-        this.el.dispatchEvent(new Event('change', { bubbles: true }));
-        this.el.dispatchEvent(new Event('input', { bubbles: true }));
+        console.log(`[ASelect Debug - 6] Bắn Event 'change' ra ngoài cho hệ thống.`);
+        const changeEvt = new Event('change', { bubbles: true });
+        changeEvt._isInternal = true;
+        this.el.dispatchEvent(changeEvt);
+
+        const inputEvt = new Event('input', { bubbles: true });
+        inputEvt._isInternal = true;
+        this.el.dispatchEvent(inputEvt);
       }
-      L._(`ASelect.setValue - call SyncUI`);
-      this.syncUI();
     } catch (e) {
-      if (typeof L !== 'undefined' && L._) L._(`ASelect.setValue Error`, e, 'error');
+      console.error(`[ASelect Debug - ERROR] Lỗi trong setValue:`, e);
     }
   }
 
+  syncUI() {
+    if (!this.wrapper) return;
+    const currentVal = String(this.el.dataset.val || this.el.value || '');
+    const text = this.el.options[this.el.selectedIndex]?.text || '-- Chọn --';
+
+    const textEl = this.wrapper.querySelector('.smart-selected-text');
+    if (textEl && textEl.textContent !== text) {
+      textEl.innerHTML = typeof escapeHtml === 'function' ? escapeHtml(text) : text;
+    }
+
+    if (this.dropdown) {
+      this.dropdown.querySelectorAll('.smart-option').forEach((opt) => {
+        // Đảm bảo dùng đúng dataset.value map với thuộc tính data-value trong HTML
+        opt.classList.toggle('active', String(opt.dataset.value) === currentVal);
+      });
+    }
+    console.log(`[ASelect Debug - 7] Đã syncUI hiển thị chữ: "${text}"`);
+  }
+
   async triggerCallback(type, value) {
-    const cb = this[type];
+    const cb = unescapeHtml(this[type]);
     if (!cb) return;
     try {
       L._(`ASelect.triggerCallback - ${type}`);
@@ -824,7 +831,7 @@ export default class ASelect {
     }
 
     const startTime = performance.now();
-    const frameBudget = 16; // 16ms budget cho mỗi frame (60fps)
+    const frameBudget = 32; // 16ms budget cho mỗi frame (60fps)
 
     while (ASelect.upgradeQueue.length > 0 && performance.now() - startTime < frameBudget) {
       const inst = ASelect.upgradeQueue.shift();
@@ -866,16 +873,21 @@ export default class ASelect {
 
         if (mutation.type === 'attributes' && (mutation.attributeName === 'data-val' || mutation.attributeName === 'value')) {
           if (inst && typeof inst.setValue === 'function') {
-            const newVal = target.getAttribute(mutation.attributeName);
-            // Chỉ sync nếu giá trị thực sự khác để tránh loop
-            // Ép kiểu String để so sánh chính xác
-            if (String(inst.el.value) !== String(newVal) || String(inst.el.dataset.val) !== String(newVal)) {
-              inst.setValue(newVal, false); // false để không trigger ngược lại event
+            const newVal = String(target.getAttribute(mutation.attributeName) || '').trim();
+
+            // Lấy giá trị hiện tại của Element để so sánh
+            const currentVal = String(inst.el.value || '');
+            const currentDataVal = String(inst.el.dataset.val || '');
+
+            // CHỈ GỌI SETVALUE KHI: Giá trị mới thực sự khác với trạng thái hiện tại.
+            // Điều này giúp "hấp thụ" các thay đổi do chính nội bộ ASelect gây ra, tránh vòng lặp.
+            if (newVal !== currentVal || newVal !== currentDataVal) {
+              // L._(`[Observer] External change detected via ${mutation.attributeName} -> ${newVal}`);
+              inst.setValue(newVal, false); // false: Đã là bên ngoài đổi thì không bắn event change ngược lại nữa
             }
           }
           continue;
         }
-
         if (mutation.type === 'childList' && target.tagName === 'SELECT' && target.classList.contains('smart-select')) {
           if (inst && !inst._isUpgrading) {
             inst.data = inst.mapData(Array.from(target.options).map((opt) => ({ id: opt.value, text: opt.text })));
@@ -895,6 +907,31 @@ export default class ASelect {
                 const selects = node.querySelectorAll('select.smart-select:not([data-smart-init])');
                 if (selects.length) selects.forEach((s) => new ASelect(s));
               }
+            }
+          });
+        }
+        // [GARBAGE COLLECTOR]: Dọn dẹp Dropdown lơ lửng khi Table bị re-render / xóa
+        if (mutation.removedNodes.length) {
+          mutation.removedNodes.forEach((node) => {
+            if (node.nodeType === 1) {
+              // 1 = Element Node
+              let wrappers = [];
+              if (node.matches?.('.smart-select-wrapper')) {
+                wrappers.push(node);
+              }
+              if (node.querySelectorAll) {
+                wrappers = [...wrappers, ...Array.from(node.querySelectorAll('.smart-select-wrapper'))];
+              }
+
+              // Nếu wrapper bị xóa khỏi DOM, lập tức destroy Instance để dọn rác và ẩn Dropdown
+              wrappers.forEach((w) => {
+                const uid = w.dataset.smartId;
+                const inst = ASelect.instances.get(uid);
+                if (inst) {
+                  console.log(`[ASelect GC] Tự động dọn dẹp instance ${uid} do bảng chứa nó bị re-render.`);
+                  inst.destroy();
+                }
+              });
             }
           });
         }

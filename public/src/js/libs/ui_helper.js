@@ -695,12 +695,6 @@ class Sortable {
       this.container = typeof containerSelector === 'string' ? getE(containerSelector) : containerSelector;
       if (!this.container) return;
       this.containerId = this.container.id;
-      // ✅ KIỂM SOÁT ZOMBIE INSTANCE:
-      // Nếu DOM này đã có 1 Sortable đang chạy, tự động tiêu diệt nó trước khi tạo mới
-      if (Sortable.registry.has(this.containerId)) {
-        console.warn(`Sortable: Đã tồn tại instance cho container này. Đang auto-destroy bản cũ để giải phóng RAM...`);
-        Sortable.registry.get(this.containerId).destroy();
-      }
 
       // ✅ TỐI ƯU OVERLOAD PARAMETERS:
       // Nếu tham số thứ 2 là một Object (không phải null, không phải Array, không phải Function)
@@ -779,7 +773,12 @@ class Sortable {
 
   enable() {
     if (this.isEnabled) return;
-
+    // ✅ KIỂM SOÁT ZOMBIE INSTANCE:
+    // Nếu DOM này đã có 1 Sortable đang chạy, tự động tiêu diệt nó trước khi tạo mới
+    if (Sortable.registry.has(this.containerId)) {
+      console.warn(`Sortable: Đã tồn tại instance cho container này. Đang auto-destroy bản cũ để giải phóng RAM...`);
+      Sortable.registry.get(this.containerId).destroy();
+    }
     this.isEnabled = true;
 
     // ✅ Đồng bộ UI: Đảm bảo checkbox hiện ON
@@ -873,7 +872,7 @@ class Sortable {
       }
 
       // Xóa khỏi sổ đăng ký
-      Sortable.registry.delete(this.container);
+      Sortable.registry.delete(this.containerId);
 
       // Ép rác (Garbage Collector friendly)
       this.container = null;
