@@ -9,10 +9,12 @@
 // =====================================================================
 import Swal from 'sweetalert2';
 window.Swal = Swal; // Expose globally for legacy plain scripts (utils.js, logA, etc.)
+
 import L from '@js/common/logger.js';
 import SYS from '@js/libs/sys_helper.js';
 import UI_DASH from '@js/common/ui_dashboard.js';
 import UI_MANAGER from '@js/modules/core/UI_Manager.js';
+import '@js/components/custom_tag.js';
 window.UI_DASH = UI_DASH;
 window.SYS = SYS;
 window.L = L;
@@ -32,14 +34,15 @@ async function resolveDisplayValue(collection, value, targetField = 'name') {
   if (!value) return '';
   try {
     if (typeof A === 'undefined' || typeof A.DB === 'undefined') return value;
-    const data = await A.DB.local.get(collection, value);
-    if (data && data[targetField]) return data[targetField];
-
+    if (value) {
+      const data = await A.DB.local.get(collection, value);
+      if (data && data[targetField]) return data[targetField];
+    }
     const all = await DB_MANAGER.local.getAllAsObject(collection);
-    const found = Object.values(all || {}).find((item) => item[targetField] === value || item.id === value);
-    if (found) return found[targetField] || value;
-
-    return value;
+    const found = Object.values(all || {}).map((item) => {
+      return { id: item.id || item.uid || item.value, name: item.name || item.displayName || item.full_name || item.user_name || item.title || item.full_name || String(item.id) };
+    });
+    return found;
   } catch (e) {
     console.warn(`[resolveDisplayValue] Error resolving ${value} in ${collection}:`, e);
     return value;
@@ -56,8 +59,8 @@ function normalizeList(list) {
   if (Array.isArray(list)) return list;
   if (typeof list === 'object' && list !== null) {
     return Object.entries(list).map(([key, value]) => {
-      if (typeof value === 'object' && value !== null) {
-        return { id: key, ...value };
+      if (typeof value === 'object' && Object.values(value).length > 0) {
+        return Object.values(value);
       }
       return { id: key, name: value };
     });

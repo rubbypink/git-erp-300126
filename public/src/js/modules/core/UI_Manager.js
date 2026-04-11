@@ -1,6 +1,7 @@
 import { createFormBySchema, loadFormDataSchema, DB_SCHEMA } from '/src/js/modules/db/DBSchema.js';
 import PriceImportAI from '../prices/M_ImportPriceAI.js';
 import ATable from './ATable.js';
+
 var _htmlCache = {};
 const UI_RENDERER = {
   renderedTemplates: {},
@@ -469,19 +470,21 @@ const UI_RENDERER = {
         break;
       case 'tab-data-tbl':
         if (getE('tbl-tab-data-tbl')) break;
+
         this.createTable('tab-data-tbl', {
           colName: 'bookings',
           data: APP_DATA['bookings'] || [],
           header: true,
           headerExtra: [
             `<div class="btn btn-sm btn-warning shadow-sm p-0" id="datalist-select"">
-        <select id="btn-select-datalist" data-creatable="${CURRENT_USER.role === 'admin' ? 'true' : 'false'}" data-source="A.UI.initBtnSelectDataList"  data-onchange="A.UI.updateTableData" class="smart-select form-select form-select-sm bg-warning rounded border-0" style="min-width: 6rem;">
+        <select id="btn-select-datalist" data-createtable="${CURRENT_USER.role === 'admin' ? 'true' : 'false'}" data-source="A.UI.initBtnSelectDataList"  data-onchange="A.UI.updateTableData" class="smart-select form-select form-select-sm bg-warning rounded border-0" style="min-width: 6rem;">
         </select>
       </div>`,
           ],
           contextMenu: false,
           draggable: true,
           pageSize: 50,
+          zoom: true,
           sorter: true,
           title: `DANH SÁCH DATA`,
           footer: true,
@@ -766,6 +769,9 @@ const UI_RENDERER = {
 
   createTable: function (containerId, opts = {}) {
     try {
+      if (CURRENT_USER.role === 'admin') {
+        opts.hiddenField = true;
+      }
       const table = new ATable(containerId, opts);
     } catch (error) {
       Opps(`[UI_RENDERER] createTable lỗi: ${error.message}`, error);
@@ -1322,7 +1328,7 @@ const UI_HELP = {
   },
 
   addDynamicCSS: function (cssCode, styleId = 'app-dynamic-styles') {
-    let styleTag = getE(styleId);
+    let styleTag = document.getElementById(styleId);
     if (!styleTag) {
       styleTag = document.createElement('style');
       styleTag.id = styleId;

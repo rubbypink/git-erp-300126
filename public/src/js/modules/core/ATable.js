@@ -4,7 +4,7 @@
  * Kế thừa và tối ưu hóa từ UI_RENDERER.createTable.
  *
  * @author 9Trip Tech Lead
- * @version 3.0.1
+ * @version 3.0.3
  */
 
 import { DB_SCHEMA } from '../db/DBSchema.js';
@@ -19,10 +19,10 @@ export default class ATable {
       const existing = ATable.instances.get(containerId);
       existing.options = { ...existing.options, ...options };
 
-      if (options.headerExtra && options.headerExtra !== 'false') {
+      if (options.headerExtra && String(options.headerExtra) !== 'false') {
         existing.state.headerExtra = Array.isArray(options.headerExtra) ? options.headerExtra : [options.headerExtra];
       } else if (existing.options.headerExtra) {
-        existing.state.headerExtra = [$('.at-header-extra', existing.container).innerHTML];
+        existing.state.headerExtra = [$('.at-header-extra', existing.container)?.innerHTML];
       }
 
       if (existing.options.data) {
@@ -34,6 +34,7 @@ export default class ATable {
 
     this.containerId = containerId;
     this.container = getE(containerId);
+
     this.options = {
       mode: 'replace',
       colName: '',
@@ -53,6 +54,7 @@ export default class ATable {
       title: '',
       onCellChange: null,
       data: null,
+      hiddenField: false, // Mặc định không hiển thị field ẩn
       ...options,
     };
 
@@ -63,6 +65,8 @@ export default class ATable {
       groupByField: this.options.groupByField || null,
       currentPage: 1,
       fieldConfigs: {},
+      hiddenFields: {}, // Khởi tạo state.hiddenFields
+      allFieldsOrder: [], // Lưu thứ tự gốc của các cột
       isSecondary: false,
       currentColName: '',
       zoomLevel: 1,
@@ -71,6 +75,9 @@ export default class ATable {
 
     if (!this.container) {
       console.warn(`[ATable] Container #${containerId} not found`);
+    }
+    if (CURRENT_USER && CURRENT_USER?.role === 'admin') {
+      this.options.editable = true;
     }
 
     // Đăng ký instance vào registry
@@ -101,11 +108,12 @@ export default class ATable {
         this._autoDetectColName(normalizedData);
       }
 
-      // Xử lý colName đặc biệt (_by_)
       await this._handleSpecialColName();
 
       // Luôn resolve lại field configs khi init để đảm bảo header mới nhất
       this.state.fieldConfigs = {};
+      this.state.hiddenFields = {};
+      this.state.allFieldsOrder = []; // Reset thứ tự cột
       this._resolveFieldConfigs();
 
       // 3. Render
@@ -136,13 +144,177 @@ export default class ATable {
     // Nếu chưa có layout chính thì tạo mới
     if (!wrapper) {
       this._renderMainLayout();
-      this._renderHeaderMenu();
     }
+
+    // Luôn render lại header menu để cập nhật dropdown field ẩn
+    this._renderHeaderMenu();
 
     // Luôn làm mới nội dung bảng và phân trang khi gọi render()
     this.refresh();
 
     this._attachEvents();
+  }
+
+  _attachEvents() {
+    const wrapper = this.container.querySelector('.table-container-wrapper');
+    if (!wrapper || wrapper.dataset.eventsAttached) return;
+
+    const searchInput = wrapper.querySelector('.at-search-input');
+    if (searchInput) {
+      searchInput.addEventListener(
+        'input',
+        debounce((e) => this.filter(e.target.value), 500)
+      );
+    }
+
+    /*
+    wrapper.addEventListener('click', (e) => {
+      const target = e.target;
+
+      const sortTh = target.closest('[data-sort-field]');
+      if (sortTh) {
+        this.sort(sortTh.dataset.sortField);
+        return;
+      }
+
+      const pageLink = target.closest('.at-page-link');
+      if (pageLink) {
+        e.preventDefault();
+        this.goToPage(parseInt(pageLink.dataset.page));
+        return;
+      }
+
+      const groupHeader = target.closest('.at-group-header');
+      if (groupHeader) {
+        this._toggleGroup(groupHeader);
+        return;
+      }
+
+      if (target.closest('.at-download-excel')) {
+        this.download('excel');
+        return;
+      }
+
+      if (target.closest('.at-download-pdf')) {
+        this.download('pdf');
+        return;
+      }
+
+      if (target.closest('.at-reload-data')) {
+        this.updateData(this.state.fullData);
+        return;
+      }
+
+      if (target.closest('.at-zoom-in')) {
+        this.zoom(1);
+        return;
+      }
+
+      if (target.closest('.at-zoom-out')) {
+        this.zoom(-1);
+        return;
+      }
+
+      // Xử lý nút Áp dụng ẩn/hiện cột
+      if (target.closest('.at-apply-fields')) {
+        this.applyFieldVisibility();
+        return;
+      }
+    });
+    */
+
+    // Code mới: Bổ sung xử lý sự kiện click vào icon xem object
+    wrapper.addEventListener('click', (e) => {
+      const target = e.target;
+
+      const sortTh = target.closest('[data-sort-field]');
+      if (sortTh) {
+        this.sort(sortTh.dataset.sortField);
+        return;
+      }
+
+      const pageLink = target.closest('.at-page-link');
+      if (pageLink) {
+        e.preventDefault();
+        this.goToPage(parseInt(pageLink.dataset.page));
+        return;
+      }
+
+      const groupHeader = target.closest('.at-group-header');
+      if (groupHeader) {
+        this._toggleGroup(groupHeader);
+        return;
+      }
+
+      if (target.closest('.at-download-excel')) {
+        this.download('excel');
+        return;
+      }
+
+      if (target.closest('.at-download-pdf')) {
+        this.download('pdf');
+        return;
+      }
+
+      if (target.closest('.at-reload-data')) {
+        this.updateData(this.state.fullData);
+        return;
+      }
+
+      if (target.closest('.at-zoom-in')) {
+        this.zoom(1);
+        return;
+      }
+
+      if (target.closest('.at-zoom-out')) {
+        this.zoom(-1);
+        return;
+      }
+
+      // Xử lý nút Áp dụng ẩn/hiện cột
+      if (target.closest('.at-apply-fields')) {
+        this.applyFieldVisibility();
+        return;
+      }
+
+      // Xử lý click xem chi tiết object
+      const viewObjBtn = target.closest('.at-view-object');
+      if (viewObjBtn) {
+        try {
+          const valStr = viewObjBtn.dataset.val;
+          const val = JSON.parse(decodeURIComponent(valStr));
+          this._showObjectPopup(val);
+        } catch (err) {
+          console.error('[ATable] Parse object error:', err);
+        }
+        return;
+      }
+    });
+
+    A.Event.on(
+      wrapper,
+      'change',
+      (e) => {
+        const target = e.target;
+
+        if (target.classList.contains('at-group-by')) {
+          this.groupBy(target.value);
+          return;
+        }
+
+        if (target.classList.contains('at-cell-edit')) {
+          const tr = target.closest('tr');
+          const itemId = tr.dataset.item;
+          const field = target.dataset.field;
+          const newVal = target.value;
+          this._handleCellChange(itemId, field, newVal);
+          return;
+        }
+      },
+      true,
+      true
+    );
+    wrapper.dataset.eventsAttached = 'true';
   }
 
   /**
@@ -177,8 +349,8 @@ export default class ATable {
   }
 
   _renderGroupByBtn(update = false) {
-    const { fieldConfigs, groupByField } = this.state;
-    const headers = Object.keys(fieldConfigs);
+    const { fieldConfigs, groupByField, allFieldsOrder } = this.state;
+    const headers = allFieldsOrder.filter((h) => fieldConfigs[h]);
     const html = `
     <div class="group-by-box btn btn-sm btn-warning shadow-sm p-0" style="min-width: 6rem;">
       <select class="form-select form-select-sm bg-warning rounded border-0 at-group-by">
@@ -188,7 +360,10 @@ export default class ATable {
     </div>`;
     if (update) {
       const headerMenuEl = getE(`${this.containerId}-header-menu`);
-      headerMenuEl.querySelector('.group-by-select').innerHTML = html;
+      if (headerMenuEl) {
+        const groupBySelect = headerMenuEl.querySelector('.group-by-select');
+        if (groupBySelect) groupBySelect.innerHTML = html;
+      }
       return;
     }
     return html;
@@ -203,7 +378,6 @@ export default class ATable {
 
     const { colName, groupBy, title, zoom, download } = this.options;
     const { fieldConfigs, groupByField, headerExtra } = this.state;
-    const headers = Object.keys(fieldConfigs);
 
     let groupByHtml = '';
     if (groupBy) {
@@ -256,6 +430,9 @@ export default class ATable {
     }
     let draggableHtml = `<div class="d-flex align-items-center gap-2" id="tbl-${this.containerId}-header-drag"></div>`;
 
+    // Render dropdown chọn field ẩn
+    const hiddenFieldsDropdownHtml = this._renderHiddenFieldsDropdown();
+
     headerMenuEl.innerHTML = `
       <div id="tbl-${this.containerId}-header" class="table-header-actions d-flex align-items-center mb-1 gap-3 p-2" style="z-index: 5;">
         <h6 class="mb-0 fw-bold text-primary text-uppercase me-auto">${title || (colName ? window.A?.Lang?.t(colName) : '')}</h6>
@@ -269,7 +446,55 @@ export default class ATable {
         ${zoomHtml}
         ${downloadHtml}
         ${draggableHtml}
+        ${hiddenFieldsDropdownHtml}
         ${extraHtml}
+      </div>`;
+  }
+
+  /**
+   * Trả về HTML cho một dropdown menu chứa danh sách các checkbox để ẩn/hiện field
+   */
+  _renderHiddenFieldsDropdown() {
+    const { fieldConfigs, hiddenFields, allFieldsOrder } = this.state;
+    const allFields = { ...fieldConfigs, ...hiddenFields };
+    const fieldNames = allFieldsOrder;
+
+    if (fieldNames.length === 0) return '';
+
+    const itemsHtml = fieldNames
+      .map((name) => {
+        const config = allFields[name];
+        if (!config) return '';
+        const label = config.displayName || window.A?.Lang?.t(name) || name.replace(/_/g, ' ');
+        const isVisible = !!fieldConfigs[name];
+        return `
+        <li>
+          <div class="dropdown-item py-1" style="z-index: 9;">
+            <div class="form-check w-100">
+              <input class="form-check-input at-field-checkbox" type="checkbox" value="${name}" id="chk-${this.containerId}-${name}" ${isVisible ? 'checked' : ''}>
+              <label class="form-check-label flex-grow-1 cursor-pointer" for="chk-${this.containerId}-${name}">
+                ${label}
+              </label>
+            </div>
+          </div>
+        </li>`;
+      })
+      .join('');
+
+    return `
+      <div class="dropdown btn-group at-fields-dropdown">
+        <button class="btn btn-sm btn-light border shadow-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
+          <i class="fas fa-columns"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 bg-light fs-2" style="overflow: hidden; min-width: 200px; max-height: 400px; overflow-y: auto;">
+          <li class="dropdown-header sticky-top py-1 fw-bold border-bottom mb-1 d-flex justify-content-between align-items-center" style="z-index: 10;">
+            <span class="small">Hiển thị cột</span>
+            <button class="btn btn-xs btn-primary at-apply-fields" title="Áp dụng thay đổi">
+              <i class="fas fa-check"></i> Áp dụng
+            </button>
+          </li>
+          ${itemsHtml}
+        </ul>
       </div>`;
   }
 
@@ -281,9 +506,9 @@ export default class ATable {
     if (!contentArea) return;
 
     const { style, footer } = this.options;
-    const { filteredData, currentPage, fieldConfigs } = this.state;
+    const { filteredData, currentPage, fieldConfigs, allFieldsOrder } = this.state;
     const pageSize = this.options.pageSize || 25;
-    const headers = Object.keys(fieldConfigs);
+    const headers = allFieldsOrder.filter((h) => fieldConfigs[h]);
 
     const start = (currentPage - 1) * pageSize;
     const displayItems = filteredData.slice(start, start + pageSize);
@@ -307,69 +532,6 @@ export default class ATable {
     this._renderGroupByBtn(true);
     this._initResizer();
     this._initTooltips();
-  }
-
-  /**
-   * Làm mới toàn bộ nội dung bảng và phân trang
-   */
-  refresh() {
-    this._renderTableContent();
-    this.updatePagination();
-  }
-
-  /**
-   * Cập nhật riêng phần Body của bảng
-   */
-  updateBody() {
-    const tbody = getE(`${this.containerId}-tbody`);
-    if (!tbody) return;
-
-    const { fieldConfigs, filteredData, currentPage } = this.state;
-    const pageSize = this.options.pageSize || 25;
-    const headers = Object.keys(fieldConfigs);
-    const start = (currentPage - 1) * pageSize;
-    const displayItems = filteredData.slice(start, start + pageSize);
-
-    tbody.innerHTML = this._renderTableRows(displayItems, headers);
-    this._initTooltips();
-  }
-
-  /**
-   * Cập nhật riêng phần Footer của bảng
-   */
-  updateFooter() {
-    const tfoot = getE(`${this.containerId}-tfoot`);
-    if (!tfoot || !this.options.footer) return;
-
-    const { fieldConfigs, filteredData } = this.state;
-    const headers = Object.keys(fieldConfigs);
-
-    tfoot.innerHTML = this._renderTableFooter(filteredData, headers);
-  }
-
-  /**
-   * Cập nhật riêng phần phân trang
-   */
-  updatePagination() {
-    const paginationArea = getE(`${this.containerId}-pagination-area`);
-    if (!paginationArea) return;
-
-    const { filteredData, currentPage } = this.state;
-    const pageSize = this.options.pageSize || 25;
-
-    paginationArea.innerHTML = this._renderPagination(filteredData.length, pageSize, currentPage);
-  }
-
-  /**
-   * Cập nhật headerExtra và render lại menu
-   */
-  updateHeaderExtra(newExtra) {
-    try {
-      this.state.headerExtra = Array.isArray(newExtra) ? newExtra : newExtra ? [newExtra] : [];
-      this._renderHeaderMenu();
-    } catch (error) {
-      console.error('[ATable] updateHeaderExtra error:', error);
-    }
   }
 
   _renderTableHead(headers) {
@@ -414,7 +576,36 @@ export default class ATable {
                 return this._renderEditableCell(h, val, config);
               }
 
+              /*
               const isHtml = config.type === 'html' || config.html === true;
+              let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+
+              if (config.dataSource && val) {
+                const sourceData = this._getDataSource(config.dataSource);
+                if (sourceData) {
+                  const matched = sourceData.find((i) => String(i.id || i.uid || i.value) === String(val));
+                  if (matched) {
+                    displayVal = matched.displayName || matched.name || matched.title || matched.user_name || matched.text || matched.full_name || displayVal;
+                  }
+                }
+              }
+
+              const isLong = !isHtml && displayVal.length > 50;
+              const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
+              const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
+              const firstCell = h === 'id' || h === 'uid';
+
+              return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''} ${firstCell ? 'drag-handle' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${isHtml ? displayVal : escapeHtml(shortVal)}</td>`;
+              */
+
+              // Code mới: Xử lý hiển thị dữ liệu dạng object
+              const isHtml = config.type === 'html' || config.html === true;
+
+              // Nếu là object và không phải null
+              if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+                return this._renderObjectCell(val, config, h);
+              }
+
               let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
 
               if (config.dataSource && val) {
@@ -438,89 +629,6 @@ export default class ATable {
         </tr>`;
       })
       .join('');
-  }
-
-  _renderGroupedRows(items, headers) {
-    const { groupByField, fieldConfigs } = this.state;
-    const { editable, colName } = this.options;
-    const aggregate = DB_SCHEMA[colName]?.aggregate || {};
-    const sumFields = aggregate.sum || [];
-
-    const groups = {};
-    items.forEach((item) => {
-      const groupVal = item[groupByField] !== undefined && item[groupByField] !== null ? String(item[groupByField]) : 'Khác';
-      if (!groups[groupVal]) groups[groupVal] = [];
-      groups[groupVal].push(item);
-    });
-
-    let html = '';
-
-    Object.entries(groups).forEach(([groupName, groupItems]) => {
-      const displayGroupName = fieldConfigs[groupByField]?.type === 'date' ? formatDateVN(groupName) : groupName;
-
-      const groupSums = {};
-      sumFields.forEach((f) => {
-        groupSums[f] = groupItems.reduce((acc, item) => {
-          const val = typeof getNum === 'function' ? getNum(item[f]) : parseFloat(String(item[f] || '0').replace(/[^0-9.-]+/g, '')) || 0;
-          return acc + val;
-        }, 0);
-      });
-
-      html += `
-        <tr class="table-info fw-bold text-start at-group-header" style="cursor:pointer">
-          ${headers
-            .map((h, index) => {
-              let content = '';
-              if (index === 0) {
-                content = `<i class="fas fa-chevron-down me-2 group-icon"></i> ${displayGroupName} (${groupItems.length} dòng)`;
-              } else if (sumFields.includes(h)) {
-                content = formatNumber(groupSums[h]);
-              }
-              return `<td class="ps-3">${content}</td>`;
-            })
-            .join('')}
-        </tr>`;
-
-      groupItems.forEach((item) => {
-        const itemId = item.id || item.uid || '';
-        const itemAttr = itemId ? `data-item="${itemId}"` : '';
-        html += `
-          <tr ${itemAttr}>
-            ${headers
-              .map((h) => {
-                let val = item[h] !== undefined && item[h] !== null ? item[h] : '';
-                const config = fieldConfigs[h] || {};
-                if (config.type === 'date' && val) val = formatDateVN(val);
-                if (config.class?.split(' ').includes('number') && val) val = formatNumber(val);
-
-                if (editable && config.editable !== false) {
-                  return this._renderEditableCell(h, val, config);
-                }
-
-                let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
-
-                if (config.dataSource && val) {
-                  const sourceData = this._getDataSource(config.dataSource);
-                  if (sourceData) {
-                    const matched = sourceData.find((i) => String(i.id || i.uid || i.value) === String(val));
-                    if (matched) {
-                      displayVal = matched.displayName || matched.name || matched.title || matched.user_name || matched.text || matched.full_name || displayVal;
-                    }
-                  }
-                }
-
-                const isLong = displayVal.length > 50;
-                const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
-                const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
-
-                return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${escapeHtml(shortVal)}</td>`;
-              })
-              .join('')}
-          </tr>`;
-      });
-    });
-
-    return html;
   }
 
   _renderGroupedRows(items, headers) {
@@ -574,6 +682,31 @@ export default class ATable {
 
                 if (editable && config.editable !== false) {
                   return this._renderEditableCell(h, val, config);
+                }
+
+                /*
+                let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+
+                if (config.dataSource && val) {
+                  const sourceData = this._getDataSource(config.dataSource);
+                  if (sourceData) {
+                    const matched = sourceData.find((i) => String(i.id || i.uid || i.value) === String(val));
+                    if (matched) {
+                      displayVal = matched.displayName || matched.name || matched.title || matched.user_name || matched.text || matched.full_name || displayVal;
+                    }
+                  }
+                }
+
+                const isLong = displayVal.length > 50;
+                const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
+                const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
+
+                return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${escapeHtml(shortVal)}</td>`;
+                */
+
+                // Code mới: Xử lý hiển thị dữ liệu dạng object trong grouped rows
+                if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+                  return this._renderObjectCell(val, config, h);
                 }
 
                 let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
@@ -722,92 +855,35 @@ export default class ATable {
       </div>`;
   }
 
-  _attachEvents() {
-    const wrapper = this.container.querySelector('.table-container-wrapper');
-    if (!wrapper || wrapper.dataset.eventsAttached) return;
-
-    const searchInput = wrapper.querySelector('.at-search-input');
-    if (searchInput) {
-      searchInput.addEventListener(
-        'input',
-        debounce((e) => this.filter(e.target.value), 500)
-      );
+  _autoDetectColName(data) {
+    const collections = window.A?.getConfig?.('consts/collections') || Object.keys(DB_SCHEMA);
+    const rElement = $('[data-collection]', getE(this.containerId));
+    if (rElement) {
+      this.options.colName = rElement.dataset.collection;
     }
-
-    wrapper.addEventListener('click', (e) => {
-      const target = e.target;
-
-      const sortTh = target.closest('[data-sort-field]');
-      if (sortTh) {
-        this.sort(sortTh.dataset.sortField);
-        return;
-      }
-
-      const pageLink = target.closest('.at-page-link');
-      if (pageLink) {
-        e.preventDefault();
-        this.goToPage(parseInt(pageLink.dataset.page));
-        return;
-      }
-
-      const groupHeader = target.closest('.at-group-header');
-      if (groupHeader) {
-        this._toggleGroup(groupHeader);
-        return;
-      }
-
-      if (target.closest('.at-download-excel')) {
-        this.download('excel');
-        return;
-      }
-
-      if (target.closest('.at-download-pdf')) {
-        this.download('pdf');
-        return;
-      }
-
-      if (target.closest('.at-reload-data')) {
-        this.updateData(this.state.fullData);
-        return;
-      }
-
-      if (target.closest('.at-zoom-in')) {
-        this.zoom(1);
-        return;
-      }
-
-      if (target.closest('.at-zoom-out')) {
-        this.zoom(-1);
-        return;
-      }
-    });
-
-    A.Event.on(
-      wrapper,
-      'change',
-      (e) => {
-        const target = e.target;
-
-        if (target.classList.contains('at-group-by')) {
-          this.groupBy(target.value);
-          return;
-        }
-
-        if (target.classList.contains('at-cell-edit')) {
-          const tr = target.closest('tr');
-          const itemId = tr.dataset.item;
-          const field = target.dataset.field;
-          const newVal = target.value;
-          this._handleCellChange(itemId, field, newVal);
-          return;
-        }
-      },
-      true
-    );
-
-    wrapper.dataset.eventsAttached = 'true';
+    if (!this.options.colName) {
+      const foundCol = collections.find((col) => this.containerId.toLowerCase().includes(col.toLowerCase()));
+      if (foundCol) this.options.colName = foundCol;
+    }
+    if (this.options.colName) {
+      this.state.currentColName = this.options.colName;
+    }
   }
 
+  async _handleSpecialColName() {
+    let { colName } = this.options;
+    if (colName && colName.includes('_by_')) {
+      this.state.currentColName = colName;
+      const schemaConfig = DB_SCHEMA[colName];
+      if (schemaConfig) {
+        this.options.groupBy = true;
+        this.state.groupByField = schemaConfig.groupBy;
+        this.options.colName = colName.split('_by_')[0];
+        this.state.isSecondary = true;
+        this.state.fullData = await A.DB.local.getCollection(this.options.colName);
+      }
+    }
+  }
   _initResizer() {
     const resizer = new TableResizeManager(`tbl-${this.containerId}`);
     resizer.init();
@@ -821,10 +897,102 @@ export default class ATable {
   }
 
   _initTooltips() {
+    /*
     if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
       const tooltipTriggerList = [].slice.call(this.container.querySelectorAll('[data-bs-toggle="tooltip"]'));
       tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
+      });
+    }
+    */
+
+    // Code mới: Bổ sung option { html: true } khi khởi tạo bootstrap.Tooltip
+    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+      const tooltipTriggerList = [].slice.call(this.container.querySelectorAll('[data-bs-toggle="tooltip"]'));
+      tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl, { html: true });
+      });
+    }
+  }
+
+  _handleCellChange(itemId, field, value) {
+    const item = this.state.fullData.find((i) => (i.id || i.uid) === itemId);
+    if (item) {
+      item[field] = value;
+      if (this.options.onCellChange) {
+        this.options.onCellChange(itemId, field, value, item);
+      }
+    }
+  }
+
+  _toggleGroup(headerRow) {
+    let next = headerRow.nextElementSibling;
+    const icon = headerRow.querySelector('.group-icon');
+    let isHiding = false;
+
+    if (next && !next.classList.contains('at-group-header')) {
+      isHiding = !next.classList.contains('d-none');
+    }
+
+    while (next && !next.classList.contains('at-group-header')) {
+      next.classList.toggle('d-none', isHiding);
+      next = next.nextElementSibling;
+    }
+
+    if (icon) {
+      icon.className = isHiding ? 'fas fa-chevron-right me-2 group-icon' : 'fas fa-chevron-down me-2 group-icon';
+    }
+  }
+
+  _resolveFieldConfigs() {
+    if (Object.keys(this.state.fieldConfigs).length > 0) return;
+
+    const { colName, hiddenField } = this.options;
+    if (colName && DB_SCHEMA[colName]) {
+      const schema = DB_SCHEMA[colName];
+      const fields = schema.fields || [];
+      fields.forEach((f) => {
+        const isHiddenInSchema = f.class === 'd-none' || f.type === 'hidden';
+
+        // Lưu thứ tự gốc
+        this.state.allFieldsOrder.push(f.name);
+
+        if (hiddenField === true) {
+          // Nếu hiddenField là true: Bỏ qua kiểm tra d-none/hidden, đưa tất cả vào fieldConfigs
+          this.state.fieldConfigs[f.name] = f;
+        } else if (Array.isArray(hiddenField)) {
+          // Nếu hiddenField là mảng: Các field có tên trong mảng đưa vào hiddenFields, còn lại vào fieldConfigs
+          if (hiddenField.includes(f.name)) {
+            this.state.hiddenFields[f.name] = f;
+          } else {
+            this.state.fieldConfigs[f.name] = f;
+          }
+        } else {
+          // Mặc định: d-none/hidden vào hiddenFields, còn lại vào fieldConfigs
+          if (isHiddenInSchema) {
+            this.state.hiddenFields[f.name] = f;
+          } else {
+            this.state.fieldConfigs[f.name] = f;
+          }
+        }
+      });
+    } else if (this.state.fullData.length > 0) {
+      const allKeys = new Set();
+      this.state.fullData.forEach((item) => {
+        if (item && typeof item === 'object') {
+          Object.keys(item).forEach((key) => allKeys.add(key));
+        }
+      });
+      allKeys.forEach((key) => {
+        // Lưu thứ tự gốc
+        this.state.allFieldsOrder.push(key);
+
+        const config = { name: key, displayName: A.Lang?.t(key) || key.replace(/_/g, ' ') };
+        if (Array.isArray(hiddenField) && hiddenField.includes(key)) {
+          this.state.hiddenFields[key] = config;
+        } else {
+          this.state.fieldConfigs[key] = config;
+        }
       });
     }
   }
@@ -900,39 +1068,141 @@ export default class ATable {
     }
   }
 
-  _handleCellChange(itemId, field, value) {
-    const item = this.state.fullData.find((i) => (i.id || i.uid) === itemId);
-    if (item) {
-      item[field] = value;
-      if (this.options.onCellChange) {
-        this.options.onCellChange(itemId, field, value, item);
-      }
+  /**
+   * Làm mới toàn bộ nội dung bảng và phân trang
+   */
+  refresh() {
+    this._renderTableContent();
+    this.updatePagination();
+  }
+
+  /**
+   * Cập nhật riêng phần Body của bảng
+   */
+  updateBody() {
+    const tbody = getE(`${this.containerId}-tbody`);
+    if (!tbody) return;
+
+    const { fieldConfigs, filteredData, currentPage, allFieldsOrder } = this.state;
+    const pageSize = this.options.pageSize || 25;
+    const headers = allFieldsOrder.filter((h) => fieldConfigs[h]);
+    const start = (currentPage - 1) * pageSize;
+    const displayItems = filteredData.slice(start, start + pageSize);
+
+    tbody.innerHTML = this._renderTableRows(displayItems, headers);
+    this._initTooltips();
+  }
+
+  /**
+   * Cập nhật riêng phần Footer của bảng
+   */
+  updateFooter() {
+    const tfoot = getE(`${this.containerId}-tfoot`);
+    if (!tfoot || !this.options.footer) return;
+
+    const { fieldConfigs, filteredData, allFieldsOrder } = this.state;
+    const headers = allFieldsOrder.filter((h) => fieldConfigs[h]);
+
+    tfoot.innerHTML = this._renderTableFooter(filteredData, headers);
+  }
+
+  /**
+   * Cập nhật riêng phần phân trang
+   */
+  updatePagination() {
+    const paginationArea = getE(`${this.containerId}-pagination-area`);
+    if (!paginationArea) return;
+
+    const { filteredData, currentPage } = this.state;
+    const pageSize = this.options.pageSize || 25;
+
+    paginationArea.innerHTML = this._renderPagination(filteredData.length, pageSize, currentPage);
+  }
+
+  /**
+   * Cập nhật headerExtra và render lại menu
+   */
+  updateHeaderExtra(newExtra) {
+    try {
+      this.state.headerExtra = Array.isArray(newExtra) ? newExtra : newExtra ? [newExtra] : [];
+      this._renderHeaderMenu();
+    } catch (error) {
+      console.error('[ATable] updateHeaderExtra error:', error);
     }
   }
 
-  _toggleGroup(headerRow) {
-    let next = headerRow.nextElementSibling;
-    const icon = headerRow.querySelector('.group-icon');
-    let isHiding = false;
+  /**
+   * Áp dụng trạng thái ẩn/hiện cột hàng loạt từ các checkbox trong dropdown
+   */
+  applyFieldVisibility() {
+    try {
+      const dropdown = this.container.querySelector('.at-fields-dropdown');
+      if (!dropdown) return;
 
-    if (next && !next.classList.contains('at-group-header')) {
-      isHiding = !next.classList.contains('d-none');
-    }
+      const checkboxes = dropdown.querySelectorAll('.at-field-checkbox');
+      const updates = [];
 
-    while (next && !next.classList.contains('at-group-header')) {
-      next.classList.toggle('d-none', isHiding);
-      next = next.nextElementSibling;
-    }
+      checkboxes.forEach((chk) => {
+        updates.push({
+          name: chk.value,
+          visible: chk.checked,
+        });
+      });
 
-    if (icon) {
-      icon.className = isHiding ? 'fas fa-chevron-right me-2 group-icon' : 'fas fa-chevron-down me-2 group-icon';
+      // Cập nhật state hàng loạt
+      updates.forEach((upd) => {
+        const { name, visible } = upd;
+        if (visible) {
+          if (this.state.hiddenFields[name]) {
+            this.state.fieldConfigs[name] = this.state.hiddenFields[name];
+            delete this.state.hiddenFields[name];
+          }
+        } else {
+          if (this.state.fieldConfigs[name]) {
+            this.state.hiddenFields[name] = this.state.fieldConfigs[name];
+            delete this.state.fieldConfigs[name];
+          }
+        }
+      });
+
+      // Render lại bảng
+      this.render();
+      L._('Đã cập nhật hiển thị cột', 'success');
+    } catch (error) {
+      console.error('[ATable] applyFieldVisibility error:', error);
     }
   }
+
+  /**
+   * Chuyển đổi trạng thái ẩn/hiện của một field (Giữ lại để tương thích ngược hoặc dùng lẻ)
+   */
+  // toggleField(fieldName, isVisible) {
+  //   try {
+  //     if (isVisible) {
+  //       // Chuyển từ hiddenFields sang fieldConfigs
+  //       if (this.state.hiddenFields[fieldName]) {
+  //         this.state.fieldConfigs[fieldName] = this.state.hiddenFields[fieldName];
+  //         delete this.state.hiddenFields[fieldName];
+  //       }
+  //     } else {
+  //       // Chuyển từ fieldConfigs sang hiddenFields
+  //       if (this.state.fieldConfigs[fieldName]) {
+  //         this.state.hiddenFields[fieldName] = this.state.fieldConfigs[fieldName];
+  //         delete this.state.fieldConfigs[fieldName];
+  //       }
+  //     }
+  //
+  //     // Render lại bảng để cập nhật giao diện
+  //     this.render();
+  //   } catch (error) {
+  //     console.error('[ATable] toggleField error:', error);
+  //   }
+  // }
 
   async download(type = 'excel') {
     try {
       const { colName, title } = this.options;
-      const { filteredData, fieldConfigs } = this.state;
+      const { filteredData, fieldConfigs, allFieldsOrder } = this.state;
 
       if (!filteredData.length) {
         return logA('Không có dữ liệu để xuất!', 'warning');
@@ -983,7 +1253,7 @@ export default class ATable {
         }
       }
 
-      const headers = Object.keys(fieldConfigs).length > 0 ? Object.keys(fieldConfigs) : Object.keys(dataToProcess[0] || {});
+      const headers = allFieldsOrder.filter((h) => fieldConfigs[h]);
 
       const exportData = dataToProcess.map((row) => {
         const rowObj = {};
@@ -1081,67 +1351,103 @@ export default class ATable {
     this.init(this.options.data, this.options.colName);
   }
 
-  _autoDetectColName(data) {
-    const collections = window.A?.getConfig?.('consts/collections') || Object.keys(DB_SCHEMA);
-    const rElement = $('[data-collection]', getE(this.containerId));
-    if (rElement) {
-      this.options.colName = rElement.dataset.collection;
-    }
-    if (!this.options.colName) {
-      const foundCol = collections.find((col) => this.containerId.toLowerCase().includes(col.toLowerCase()));
-      if (foundCol) this.options.colName = foundCol;
-    }
-    if (this.options.colName) {
-      this.state.currentColName = this.options.colName;
-    }
-  }
-
-  async _handleSpecialColName() {
-    let { colName } = this.options;
-    if (colName && colName.includes('_by_')) {
-      this.state.currentColName = colName;
-      const schemaConfig = DB_SCHEMA[colName];
-      if (schemaConfig) {
-        this.options.groupBy = true;
-        this.state.groupByField = schemaConfig.groupBy;
-        this.options.colName = colName.split('_by_')[0];
-        this.state.isSecondary = true;
-        this.state.fullData = await A.DB.local.getCollection(this.options.colName);
-      }
-    }
-  }
-
-  _resolveFieldConfigs() {
-    if (Object.keys(this.state.fieldConfigs).length > 0) return;
-
-    const { colName } = this.options;
-    if (colName && DB_SCHEMA[colName]) {
-      const schema = DB_SCHEMA[colName];
-      const fields = schema.fields || [];
-      fields.forEach((f) => {
-        if (f.class !== 'd-none' && f.type !== 'hidden') {
-          this.state.fieldConfigs[f.name] = f;
-        }
-      });
-    } else if (this.state.fullData.length > 0) {
-      const allKeys = new Set();
-      this.state.fullData.forEach((item) => {
-        if (item && typeof item === 'object') {
-          Object.keys(item).forEach((key) => allKeys.add(key));
-        }
-      });
-      allKeys.forEach((key) => {
-        this.state.fieldConfigs[key] = { name: key, displayName: A.Lang?.t(key) || key.replace(/_/g, ' ') };
-      });
-    }
-  }
-
   destroy() {
     if (this.containerId) {
       ATable.instances.delete(this.containerId);
     }
     if (this.container) {
       this.container.innerHTML = '';
+    }
+  }
+
+  /**
+   * Helper: Render ô chứa dữ liệu dạng object
+   */
+  _renderObjectCell(val, config, field) {
+    try {
+      const tableHtml = this._objectToTableHtml(val);
+      const valStr = encodeURIComponent(JSON.stringify(val));
+      const tooltipAttr = `data-bs-toggle="tooltip" data-bs-placement="top" title='${tableHtml.replace(/'/g, '&apos;')}'`;
+
+      return `
+        <td data-field="${field}" class="at-object-cell">
+          <div class="d-flex align-items-center justify-content-center gap-2">
+            <span class="badge bg-light text-primary border cursor-help" ${tooltipAttr}>
+              <i class="fas fa-cube me-1"></i> Object
+            </span>
+            <button class="btn btn-xs btn-outline-primary at-view-object" data-val="${valStr}" title="Xem chi tiết">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+        </td>`;
+    } catch (err) {
+      console.error('[ATable] _renderObjectCell error:', err);
+      return `<td data-field="${field}">Error</td>`;
+    }
+  }
+
+  /**
+   * Helper: Chuyển đổi object thành HTML table đơn giản cho tooltip
+   */
+  _objectToTableHtml(obj) {
+    if (!obj || typeof obj !== 'object') return String(obj);
+    try {
+      let rows = '';
+      Object.entries(obj).forEach(([key, val]) => {
+        let displayVal = val;
+        if (typeof val === 'object' && val !== null) {
+          displayVal = Array.isArray(val) ? `Array(${val.length})` : '{...}';
+        }
+        rows += `
+          <tr>
+            <td class="text-start fw-bold pe-2" style="font-size: 10px; color: #666;">${key}:</td>
+            <td class="text-start" style="font-size: 10px;">${escapeHtml(String(displayVal))}</td>
+          </tr>`;
+      });
+      return `<table class="table table-sm table-borderless mb-0 text-white">${rows}</table>`;
+    } catch (err) {
+      return 'Error rendering object';
+    }
+  }
+
+  /**
+   * Helper: Hiển thị popup chi tiết object
+   */
+  _showObjectPopup(val) {
+    try {
+      if (!window.A?.Modal) {
+        console.warn('[ATable] window.A.Modal not found');
+        alert(JSON.stringify(val, null, 2));
+        return;
+      }
+
+      let rows = '';
+      Object.entries(val).forEach(([key, value]) => {
+        let displayValue = value;
+        if (typeof value === 'object' && value !== null) {
+          displayValue = `<pre class="mb-0 bg-light p-2 rounded" style="font-size: 11px;">${JSON.stringify(value, null, 2)}</pre>`;
+        } else {
+          displayValue = `<span class="fw-medium">${escapeHtml(String(value))}</span>`;
+        }
+
+        rows += `
+          <tr>
+            <th class="bg-light w-30" style="width: 150px;">${key}</th>
+            <td>${displayValue}</td>
+          </tr>`;
+      });
+
+      const html = `
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle mb-0">
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+
+      A.Modal.render(html, 'Chi tiết dữ liệu', { size: 'modal-sm', footer: false });
+      A.Modal.show();
+    } catch (err) {
+      console.error('[ATable] _showObjectPopup error:', err);
     }
   }
 }

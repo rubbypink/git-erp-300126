@@ -46,6 +46,7 @@ export default defineConfig({
         { src: 'src/components/*.html', dest: 'src/components' },
         { src: 'src/accountant/*.*', dest: 'src/accountant' },
         { src: 'admin/css/*.css', dest: 'src/css' },
+        { src: 'src/images/*.*', dest: 'src/images' },
         // Lưu ý: Không cần copy js/css nếu bạn đã import nó trong các file JS chính, Vite sẽ tự bundle.
       ],
     }),

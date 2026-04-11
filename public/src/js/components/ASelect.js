@@ -77,6 +77,10 @@ export default class ASelect {
       this.searchInput = null;
 
       ASelect.stats.activeInstances++;
+      if (CURRENT_USER.role === 'admin') {
+        this.opts.isCreatable = true;
+        this.opts.isEditable = true;
+      }
 
       // BƯỚC 1: Khởi tạo Base Render (Cực nhanh)
       this.initBase();
@@ -112,15 +116,26 @@ export default class ASelect {
       }
 
       // Đảm bảo onchange/oninput trên thẻ gốc hoạt động bình thường
-      this.el.addEventListener('change', (e) => {
-        // if (this.state === 'UPGRADED') this.syncUI();
-        // L._(`ASelect.change event: call SyncUI`);
-        this.triggerCallback('onChange', this.el.value);
-      });
+      A.Event.on(
+        this.el,
+        'change',
+        (e) => {
+          // if (this.state === 'UPGRADED') this.syncUI();
+          L._(`ASelect.change event: call triggerCallback`);
+          this.triggerCallback('onChange', this.el.value);
+        },
+        true
+      );
 
-      this.el.addEventListener('input', (e) => {
-        this.triggerCallback('onInput', this.el.value);
-      });
+      A.Event.on(
+        this.el,
+        'input',
+        (e) => {
+          this.triggerCallback('onInput', this.el.value);
+        },
+
+        true
+      );
     } catch (e) {
       if (typeof L !== 'undefined' && L._) L._(`ASelect.initBase Error`, e, 'error');
     }
@@ -148,90 +163,116 @@ export default class ASelect {
   }
 
   /**
-   * Nạp dữ liệu với Deduplication (fetchPromises)
+   * Helper: Phân giải đường dẫn string thành object/function từ window
+   * [TẠI SAO CẦN]: Xử lý chuẩn context (this) cho các hàm nằm sâu trong object/class.
+   * Tránh lỗi thực thi MyClass.myMethod() mà bị mất biến 'this' của MyClass.
+   */
+  _resolveWindowPath(path) {
+    if (!path) return null;
+
+    // Ưu tiên check nhanh ở global level
+    if (window[path] !== undefined) {
+      return { value: window[path], context: window };
+    }
+
+    const parts = path.split('.');
+    let current = window;
+    let context = window; // Lưu trữ parent object để bind 'this'
+
+    for (let i = 0; i < parts.length; i++) {
+      if (current === null || current === undefined) return null;
+      if (i === parts.length - 1) context = current; // Node cha ngay trước node cuối
+      current = current[parts[i]];
+    }
+
+    return current !== undefined ? { value: current, context: context } : null;
+  }
+
+  /**
+   * Nạp dữ liệu với Deduplication và String Resolution chuẩn hóa
    */
   async loadData() {
     try {
       let src = this.source;
       if (!src) return;
 
-      // 1. Làm sạch data-source (loại bỏ ký tự lạ, khoảng trắng thừa)
+      // 1. Làm sạch data-source (Loại bỏ ký tự lạ, khoảng trắng thừa)
       if (typeof src === 'string') {
         const originalSrc = src;
-        // Loại bỏ ký tự điều khiển và khoảng trắng thừa
         src = src.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
-        if (src !== originalSrc) {
+        if (src !== originalSrc && typeof L !== 'undefined' && L._) {
           L._(`ASelect.loadData - Cleaned source: "${originalSrc}" -> "${src}"`);
         }
       }
 
       const cacheKey = typeof src === 'string' ? src : null;
-      L._(`ASelect.loadData - Processing source:`, { src, cacheKey });
+      if (typeof L !== 'undefined' && L._) L._(`ASelect.loadData - Processing source:`, { src, cacheKey });
 
-      // TRƯỚC KHI FETCH: Check xem RAM đã có data chuẩn (đã map) chưa
+      // 2. Kiểm tra Cache RAM trước khi tiến hành Fetch
       if (cacheKey && ASelect.mapCache.has(cacheKey)) {
         this.data = ASelect.mapCache.get(cacheKey);
-        L._(`ASelect.loadData - Cache hit for: ${cacheKey}`);
         return;
       }
-
       if (cacheKey && ASelect.fetchPromises.has(cacheKey)) {
         const raw = await ASelect.fetchPromises.get(cacheKey);
-        this.data = this.mapData(raw);
+        this.data = this.mapData(raw); // Vẫn phải map vì Promise lưu raw data
         return;
       }
 
+      // 3. Logic Fetch Data - Đã sắp xếp lại thứ tự tối ưu
       const fetchPromise = (async () => {
         let raw = null;
+
         if (typeof src === 'function') {
-          raw = await src();
+          // TH1: Direct Function
+          raw = await src(this.el, this);
+        } else if (Array.isArray(src) || typeof src === 'object') {
+          // TH2: Trực tiếp là Object / Array
+          raw = src;
         } else if (typeof src === 'string') {
+          // TH3: Là String -> Cần phân giải
           const s = src;
-          if (s.includes('.')) {
-            if (typeof SYS.runFn === 'function') {
-              L._(`ASelect.loadData - RunFn: ${s}`);
-              raw = await SYS.runFn(s, [this.el, this]);
-              if (raw) return raw;
-            }
-            let parts = s.split('.');
-            let current = window;
-            for (let part of parts) {
-              if (current && current[part] !== undefined) {
-                current = current[part];
+
+          // [Ưu tiên 1]: DB Schema System (Truy vấn database trực tiếp của ERP)
+          if (window.A?.DB?.schema?.isCollection?.(s)) {
+            raw = await window.A.DB.local.getCollection(s);
+          } else {
+            // [Ưu tiên 2]: Phân giải object/hàm toàn cục hoặc lồng sâu (đã bao gồm chấm & không chấm)
+            const resolved = this._resolveWindowPath(s);
+
+            if (resolved && resolved.value !== undefined) {
+              const { value, context } = resolved;
+
+              if (typeof value === 'function') {
+                // [QUAN TRỌNG]: .call(context) để giữ nguyên 'this' của parent
+                raw = await value.call(context, this.el, this);
               } else {
-                current = null;
-                break;
+                raw = value; // Nó là array hoặc object dữ liệu
               }
             }
-            if (current) {
-              raw = current;
+            // [Fallback 1]: Tính năng chạy hàm hệ thống Custom (đang chờ định nghĩa động)
+            else if (typeof window.SYS?.runFn === 'function') {
+              raw = await window.SYS.runFn(s, [this.el, this]);
             }
-          } else if (window.A?.DB && window.A.DB.schema.isCollection(s)) {
-            raw = await window.A.DB.local.getCollection(s);
-          } else if (window[s] !== undefined) {
-            // [BẢN VÁ]: Không có dấu chấm nhưng CÓ TỒN TẠI ở Global Window (Hàm hoặc Biến tĩnh)
-            if (typeof window[s] === 'function') {
-              raw = await window[s](this.el, this);
-            } else {
-              raw = window[s];
+            // [Fallback 2]: Hàm chuẩn hóa chuỗi list thô
+            else if (typeof window.normalizeList === 'function') {
+              raw = window.normalizeList(s);
             }
-          } else {
-            raw = typeof normalizeList === 'function' ? normalizeList(s) : [];
           }
-        } else if (src && typeof src === 'object') {
-          raw = src;
         }
-        L._(`ASelect.loadData - Fetched data:`, { src, raw });
         return raw;
       })();
 
+      // Đưa vào danh sách Promise đang chờ xử lý
       if (cacheKey) ASelect.fetchPromises.set(cacheKey, fetchPromise);
 
       const result = await fetchPromise;
-      this.data = this.mapData(result);
-      L._(`ASelect.loadData - Result for ${cacheKey}:`, { count: this.data.length });
 
-      // SAU KHI MAP XONG: Lưu thẳng vào RAM để 99 instance khác ăn ké
+      // 4. Đồng bộ hóa dữ liệu chuẩn cho toàn bộ hệ thống
+      this.data = this.mapData(result);
+      if (typeof L !== 'undefined' && L._) L._(`ASelect.loadData - Result for ${cacheKey}:`, { count: this.data.length });
+
+      // 5. Lưu vào Cache RAM cho 99 instance khác dùng chung
       if (cacheKey) {
         ASelect.mapCache.set(cacheKey, this.data);
         setTimeout(() => ASelect.fetchPromises.delete(cacheKey), 1000);
@@ -241,31 +282,59 @@ export default class ASelect {
     }
   }
 
+  /**
+   * Đồng bộ mọi cấu trúc dữ liệu thô về một mảng phẳng chuẩn mực: [{ id, text, _original }]
+   */
   mapData(raw) {
     try {
       if (!raw) return [];
+      let normalized = [];
+
       if (typeof raw === 'object' && !Array.isArray(raw)) {
-        return Object.entries(raw).map(([key, value]) => {
+        // Source là Object Dictionary (Map)
+        normalized = Object.entries(raw).map(([key, value]) => {
           if (value && typeof value === 'object') {
-            const id = value.id || value.uid || value.value || key;
-            const text = value.name || value.displayName || value.full_name || value.text || value.title || String(id);
-            return { id: String(id), text: String(text) };
+            const id = value.id ?? value.uid ?? value.value ?? key;
+            const text = value.name ?? value.displayName ?? value.full_name ?? value.user_name ?? value.text ?? String(id);
+            return { id: String(id), text: String(text), _original: value };
           }
-          return { id: String(key), text: String(value) };
+          return { id: String(key), text: String(value), _original: value };
         });
+      } else if (Array.isArray(raw)) {
+        // Source là Array
+        normalized = raw
+          .map((item) => {
+            if (item === null || item === undefined) return null;
+
+            // Dạng [['id1', 'text1'], ['id2', 'text2']]
+            if (Array.isArray(item)) {
+              return {
+                id: String(item[0] ?? ''),
+                text: String(item[1] ?? item[0] ?? ''),
+                _original: item,
+              };
+            }
+            // Dạng Object chuẩn
+            if (typeof item === 'object') {
+              const id = item.id ?? item.uid ?? item.value ?? '';
+              const text = item.name ?? item.displayName ?? item.full_name ?? item.user_name ?? item.text ?? String(id);
+              return { id: String(id), text: String(text), _original: item };
+            }
+            // Dạng String/Number thuần túy
+            return { id: String(item), text: String(item), _original: item };
+          })
+          .filter(Boolean); // Lọc bỏ các giá trị null
       }
-      if (Array.isArray(raw)) {
-        return raw.map((item) => {
-          if (item === null || item === undefined) return { id: '', text: '' };
-          if (typeof item !== 'object') return { id: String(item), text: String(item) };
-          if (Array.isArray(item)) return { id: String(item[0] ?? ''), text: String(item[1] ?? item[0]) };
-          const id = item.id || item.uid || item.value || '';
-          const text = item.name || item.displayName || item.full_name || item.text || item.title || String(id);
-          return { id: String(id), text: String(text) };
-        });
-      }
-      return [];
+
+      // Xóa trùng lặp (Deduplication) để tránh lỗi render 2 thẻ <option> cùng value
+      const uniqueMap = new Map();
+      normalized.forEach((item) => {
+        if (item.id !== undefined && item.id !== null) uniqueMap.set(item.id, item);
+      });
+
+      return Array.from(uniqueMap.values());
     } catch (e) {
+      if (typeof L !== 'undefined' && L._) L._(`ASelect.mapData Error`, e, 'error');
       return [];
     }
   }
@@ -295,7 +364,7 @@ export default class ASelect {
     }
 
     let html = '<option value="">-- Chọn --</option>';
-    this.data.forEach((item) => {
+    Object.values(this.data).forEach((item) => {
       const selected = String(item.id) === String(currentVal) ? 'selected' : '';
       html += `<option value="${item.id}" ${selected}>${escapeHtml(item.text)}</option>`;
     });
@@ -327,7 +396,7 @@ export default class ASelect {
 
       const selectedText = this.el.options[this.el.selectedIndex]?.text || '-- Chọn --';
       // 2. Loại bỏ icon mũi tên mặc định bằng cách thêm style background-image: none
-      const toggleClass = isInTable ? 'border-0 p-0 bg-transparent h-100' : 'form-select form-select-sm';
+      const toggleClass = isInTable ? 'border-0 p-0 bg-transparent h-100' : 'form-select form-select-sm bg-warning border-0 rounded-2';
       const inlineStyle = (isInTable ? 'min-height: 31px;' : '') + ' background-image: none; padding-right: 0.75rem;';
 
       this.wrapper.innerHTML += `
@@ -338,7 +407,7 @@ export default class ASelect {
 
       this.dropdown = document.createElement('div');
       this.dropdown.className = 'dropdown-menu shadow p-0 smart-dropdown-menu';
-      this.dropdown.style.cssText = 'max-height: 300px; overflow-y: auto; z-index: 2000; position: fixed; display: none; width: 250px;';
+      this.dropdown.style.cssText = 'max-height: 50vh; overflow: hidden; overflow-y: auto; z-index: 2000; position: fixed; display: none; min-width:120px; width: fit-content; max-width: 250px;';
       this.dropdown.setAttribute('data-smart-id', this.uid);
 
       this.renderDropdownContent();
@@ -576,7 +645,7 @@ export default class ASelect {
           this.closeDropdown();
         }
       };
-      document.addEventListener('click', this._outsideClickRef);
+      A.Event.on(document.body, 'click', this._outsideClickRef);
 
       // Lắng nghe sự kiện scroll để tự động đóng (tránh dropdown trôi lơ lửng)
       this._scrollRef = (e) => {
@@ -584,7 +653,7 @@ export default class ASelect {
           this.closeDropdown();
         }
       };
-      window.addEventListener('scroll', this._scrollRef, { capture: true, passive: true });
+      A.Event.on(document.body, 'scroll', this._scrollRef, { capture: true, passive: true });
 
       if (typeof L !== 'undefined' && L._) {
         L._(`ASelect.openDropdown - ${this.el.dataset.field || this.uid}`, { top, left });
@@ -703,9 +772,10 @@ export default class ASelect {
     const cb = this[type];
     if (!cb) return;
     try {
+      L._(`ASelect.triggerCallback - ${type}`);
       const finalValue = value !== undefined ? value : this.el.dataset.val || this.el.value;
       if (typeof SYS.runFn === 'function') {
-        await SYS.runFn(cb, [finalValue, this.el, this], this);
+        await SYS.runFn(cb, [this.el, this]);
       }
     } catch (e) {
       if (typeof L !== 'undefined' && L._) L._(`[ASelect] Lỗi gọi hàm ${type}:`, e, 'error');

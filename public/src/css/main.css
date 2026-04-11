@@ -119,21 +119,25 @@ textarea[readonly],
   border: none;
 }
 
+/* [9TRIP-UPDATE] Fieldset Optimization: Đảm bảo con nằm gọn trong border và responsive */
 fieldset {
   display: grid;
   grid-template-columns: repeat(var(--row-items, 4), 1fr);
   gap: 0.75rem;
-  padding: 0 1rem;
-  margin: 0 1rem;
-  border: 0.5rem solid #ccc;
+  padding: 1rem; /* Tăng padding để con không sát border */
+  margin: 1rem;
+  border: 1px solid var(--border-color); /* Giảm độ dày border cho tinh tế */
   border-radius: 8px;
   align-items: start;
   align-content: start;
   grid-auto-flow: row;
+  overflow: hidden; /* Đảm bảo con không tràn border */
+  min-width: 0; /* Fix grid overflow */
 }
 
 fieldset > * {
   width: 100%;
+  max-width: 100%; /* Chống tràn */
 }
 
 legend {
@@ -302,32 +306,70 @@ select.form-select {
   box-shadow: 0 0 0 0.2rem rgba(124, 58, 237, 0.1);
 }
 
-/* --- BUTTON STYLING --- */
-.btn {
+/* [9TRIP-UPDATE] Button Optimization: Đồng bộ kích thước, giới hạn max-width/height, ellipsis cho text dài */
+.btn,
+.btn-sm {
   transition: all 0.2s ease;
+  font-size: 0.85rem;
   font-weight: 500;
   text-align: center;
-  /* line-clamp: 2; */ /* line-clamp không hoạt động trực tiếp trên button mà không có display: -webkit-box */
-  touch-action: manipulation; /* ✅ Allow but block double-tap zoom */
-  pointer-events: auto; /* ✅ Ensure button is clickable */
+  touch-action: manipulation;
+  pointer-events: auto;
   border-radius: 0.5rem;
+
+  /* Đồng bộ kích thước và xử lý text dài */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 8rem; /* Giới hạn chiều rộng tối đa */
+  height: 2.2rem; /* Chiều cao cố định cho .btn */
+  padding: 0.5rem 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* --- TABLE STYLING --- */
+.btn-sm {
+  height: 1.8rem; /* Chiều cao cố định cho .btn-sm */
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  max-width: 8rem;
+}
+
+/* [9TRIP-UPDATE] Table Optimization: Hợp nhất quy tắc, scroll 2 chiều cho tbody, mobile responsive */
 table {
+  width: 100%;
+  border-collapse: collapse;
   background-color: var(--surface-color);
   color: var(--text-color);
-  border-color: var(--border-color);
+  border: 1px solid var(--tbl-border);
+  justify-content: center;
+  align-items: center;
 }
 
 thead {
   background-color: var(--tbl-head-bg);
   color: var(--tbl-head-text);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* Cho phép tbody scroll 2 chiều */
+tbody {
+  overflow: auto; /* Scroll cả 2 chiều */
+  /* width: 100%; */
+}
+
+/* Đảm bảo tr, th, td hiển thị đúng khi tbody là block */
+table thead,
+table tbody tr {
+  width: 100%;
 }
 
 tbody tr {
   background-color: var(--tbl-row-bg);
-  border-color: var(--tbl-border);
+  border-bottom: 1px solid var(--tbl-border);
   transition: background-color 0.2s ease;
 }
 
@@ -335,9 +377,17 @@ tbody tr:hover {
   background-color: var(--tbl-row-hover);
 }
 
-tbody td {
-  border-color: var(--tbl-border);
+th,
+td {
   padding: 0.25rem;
+  text-align: center;
+  border-right: 1px solid var(--tbl-border);
+  vertical-align: middle;
+}
+
+td:last-child,
+th:last-child {
+  border-right: none;
 }
 
 /* --- MODAL & OVERLAY --- */
@@ -494,6 +544,7 @@ body {
   grid-column: 1 / -1;
   flex: 1 1 auto;
   overflow: hidden;
+  overflow-y: auto;
   position: relative;
   padding: 0 0.25rem 3rem 0.25rem;
   display: flex;
@@ -752,7 +803,8 @@ body.dark-theme .chrome-trigger-btn:focus {
 /* TỐI ƯU CHO RESIZABLE MODAL */
 
 /* Ép phần body tự động giãn nở (flex-grow: 1) lấp đầy khoảng trống */
-.modal-content > .modal-body {
+/* .modal-content > .modal-body { */
+.modal-content {
   /* Giữ !important để đè style mặc định của Bootstrap modal-body */
   flex: 1 1 auto !important;
   overflow-y: auto; /* Tự động hiện thanh cuộn nếu bạn thu nhỏ quá */
@@ -946,18 +998,10 @@ body:not(.is-acc):not(.is-admin) .acc-only {
 }
 
 @media screen and (max-width: 1200px) {
+  /* [9TRIP-UPDATE] Fieldset Responsive: Giảm số cột trên màn hình trung bình */
   fieldset {
-    display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
-    padding: 0 1rem;
-    margin: 0;
-    border-bottom: 0.5rem solid #ccc;
-    border-radius: 8px;
-    background-color: #f9f9f9;
-    align-items: start;
-    align-content: start;
-    grid-auto-flow: row;
+    margin: 0.5rem;
   }
 }
 /* =========================================================================
@@ -1129,21 +1173,27 @@ body:not(.is-acc):not(.is-admin) .acc-only {
     margin: 0.15rem;
   }
 
+  /* [9TRIP-UPDATE] Mobile Button: Tối ưu kích thước và tap target */
   button,
   .btn,
   .btn-sm {
     /* Giữ !important để đảm bảo tương tác trên mobile */
     touch-action: manipulation !important;
-    display: inline-block; /* Stack buttons vertically if multiple */
-    margin: 0.4rem 0.2rem; /* Add vertical spacing */
+    display: inline-flex;
+    margin: 0.25rem;
     cursor: pointer;
-    -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
-    -webkit-user-select: none; /* Prevent text selection on buttons */
-    -webkit-touch-callout: none; /* Disable callout on long press */
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
     user-select: none;
     font-size: 0.75rem;
-    max-width: fit-content;
+    max-width: 100%; /* Cho phép full width trên mobile nếu cần */
+    height: 3rem; /* Tăng chiều cao cho dễ tap trên mobile */
   }
+
+  .btn-sm {
+    height: 2.2rem;
+  }
+
   button:active,
   .btn:active {
     transform: scale(0.98);
@@ -1177,22 +1227,23 @@ body:not(.is-acc):not(.is-admin) .acc-only {
     width: auto;
   }
 
+  /* [9TRIP-UPDATE] Mobile Fieldset: Chuyển sang 1-2 cột tùy nội dung */
   fieldset {
-    display: grid;
-    grid-template-columns: 25% 25% 25% 25%;
+    grid-template-columns: repeat(2, 1fr);
     gap: 0.5rem;
-    padding: 0 0.75rem;
-    margin: 0;
-    border-bottom: 0.5rem solid #ccc;
-    border-radius: 8px;
-    background-color: #f9f9f9;
-    align-items: start;
-    align-content: start;
-    grid-auto-flow: row;
+    padding: 0.75rem;
+    margin: 0.25rem;
   }
 
   fieldset > * {
     width: 100%;
+  }
+
+  /* [9TRIP-UPDATE] Mobile Table: Đảm bảo scroll ngang mượt mà */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* ── AUTO-HIDE HEADER/FOOTER ON SCROLL ── */

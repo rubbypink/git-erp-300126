@@ -1434,7 +1434,7 @@ class MODULELOADER {
       sale: ['SalesModule'],
       acc_thenice: [],
     };
-    this.forAllModules = ['TourPrice', 'CalculatorWidget', 'ThemeManager', 'Lang', 'NotificationManager', 'CostManager', 'ShortKey', 'BookingOverview', 'Router'];
+    this.forAllModules = ['TourPrice', 'CalculatorWidget', 'ThemeManager', 'Lang', 'NotificationManager', 'CostManager', 'ShortKey', 'BookingOverview', 'Router', 'ReportModule'];
     this.commonModules = ['Lang', 'ThemeManager', 'StateProxy'];
     this.uiModules = ['OffcanvasMenu', 'ModalFull'];
     this.asyncModules = ['TourPrice', 'ReportModule', 'CalculatorWidget', 'ServicePriceController', 'CostManager', 'ShortKey', 'BookingOverview', 'PriceManager', 'ContextMenu'];

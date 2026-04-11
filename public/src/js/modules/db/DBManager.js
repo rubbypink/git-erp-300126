@@ -74,29 +74,17 @@ class DBManager {
   // Key = collection name, value = cách lấy booking_id từ data/APP_DATA
   static #HISTORY_COLLS = new Set(['bookings', 'booking_details', 'transactions']);
 
-  // ─── Cấu hình secondary indexes ──────────────────────────────────────
-  // Khai báo tập trung — dễ thêm index mới sau này
-  // static #INDEX_CONFIG = [
-  //   { index:     source: 'booking_details', groupBy: 'booking_id', sumBy: 'total' },
-  //   { index: 'operator_entries_by_booking', source: 'operator_entries', groupBy: 'booking_id', sumBy: 'total_cost' },
-  //   { index: 'operator_entries_by_supplier', source: 'operator_entries', groupBy: 'supplier', sumBy: 'total_cost' },
-  //   { index: 'operator_entries_by_month', source: 'operator_entries', groupBy: 'check_in', sumBy: 'total_cost' },
-  //   { index:     source: 'transactions', groupBy: 'booking_id', sumBy: 'amount' },
-  //   { index: 'transactions_by_fund', source: 'transactions', groupBy: 'fund_source', sumBy: 'amount' },
-  //   { index: 'transactions_by_month', source: 'transactions', groupBy: 'transaction_date', sumBy: 'amount' },
-  // ];
-
   /**
    * Mapping role → danh sách collections được phép truy cập.
    * Nguồn chân lý DUY NHẤT — dùng trong loadAllData, syncDelta, và role-change pruning.
    * Thêm / sửa role mới chỉ cần cập nhật ở đây.
    */
   static #ROLE_COLL_MAP = {
-    sale: ['bookings', 'booking_details', 'customers', 'transactions', 'fund_accounts', 'tour_prices'],
+    sale: ['bookings', 'booking_details', 'customers', 'transactions', 'fund_accounts', 'tour_prices', 'hotel_price_schedules', 'service_price_schedules'],
     op: ['bookings', 'operator_entries', 'suppliers', 'hotels', 'hotel_price_schedules', 'service_price_schedules', 'transactions', 'fund_accounts', 'customers', 'tour_prices'],
     acc: ['transactions', 'suppliers', 'fund_accounts', 'bookings', 'operator_entries'],
     acc_thenice: ['transactions_thenice', 'fund_accounts_thenice'],
-    admin: ['bookings', 'booking_details', 'customers', 'operator_entries', 'transactions', 'suppliers', 'fund_accounts', 'transactions_thenice', 'fund_accounts_thenice', 'users', 'tour_prices'],
+    admin: ['bookings', 'booking_details', 'customers', 'operator_entries', 'transactions', 'suppliers', 'fund_accounts', 'transactions_thenice', 'fund_accounts_thenice', 'users', 'tour_prices', 'hotel_price_schedules', 'service_price_schedules'],
   };
 
   /**
@@ -137,19 +125,6 @@ class DBManager {
   async #bootInit() {
     this.#db = getFirestore(getApp());
     this.#functions = getFunctions(getApp(), 'asia-southeast1');
-
-    // THÊM ĐOẠN NÀY: Tự động trỏ vào Emulator nếu chạy trên localhost
-    // if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    //   try {
-    //     const { connectFirestoreEmulator } = await import('firebase/firestore');
-    //     const { connectFunctionsEmulator } = await import('firebase/functions');
-    //     connectFirestoreEmulator(this.#db, '127.0.0.1', 8080);
-    //     connectFunctionsEmulator(this.#functions, '127.0.0.1', 5001);
-    //     console.log('🔥 [DBManager] Đã kết nối Firestore & Functions Emulator!');
-    //   } catch (err) {
-    //     console.warn('⚠️ [DBManager] Lỗi kết nối Emulator:', err);
-    //   }
-    // }
 
     // Khởi tạo IndexedDB song song với Firestore
     await this.#localDB.initDB().catch((e) => L.log('⚠️ IndexedDB initDB thất bại:', e));

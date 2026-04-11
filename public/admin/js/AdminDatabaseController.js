@@ -59,10 +59,13 @@ export class AdminDatabaseController {
                         ${collectionKeys.map((key) => `<option value="${key}">${collectionsMap[key]}</option>`).join('')}
                     </select>
                 </div>
-                <button id="btn-admin-add-record" class="btn btn-primary shadow-sm fw-bold px-3">
+                <button id="btn-admin-force-new" class="btn btn-sm btn-warning border shadow-sm">
+                <i class="fa-solid fa-refresh"></i>Server Load
+                </button>
+                <button id="btn-admin-add-record" class="btn btn-sm btn-primary shadow-sm fw-bold px-3">
                     <i class="fa-solid fa-plus me-1"></i> Thêm mới
                 </button>
-                <button id="btn-admin-refresh" class="btn btn-light border shadow-sm">
+                <button id="btn-admin-refresh" class="btn btn-sm btn-light border shadow-sm">
                     <i class="fa-solid fa-rotate"></i>
                 </button>
             </div>
@@ -86,6 +89,9 @@ export class AdminDatabaseController {
 
       document.getElementById('btn-admin-add-record').addEventListener('click', () => {
         A.UI?.renderForm(this.currentCollection);
+      });
+      document.getElementById('btn-admin-force-new').addEventListener('click', () => {
+        this.loadTableData(true);
       });
 
       document.getElementById('btn-admin-refresh').addEventListener('click', () => {
@@ -113,21 +119,11 @@ export class AdminDatabaseController {
   async loadTableData(forceNew = false) {
     const tableContainer = document.getElementById('admin-atable-container');
     if (!tableContainer) return;
-
-    tableContainer.innerHTML = `
-        <div class="d-flex flex-column align-items-center justify-content-center py-5">
-            <div class="spinner-border text-primary mb-3" role="status"></div>
-            <div class="text-muted small fw-medium">Đang tải dữ liệu [${this.currentCollection}]...</div>
-        </div>
-    `;
-
     try {
       // Lấy dữ liệu từ DBManager (Firestore -> IndexedDB -> Local)
       let dataArray = [];
       if (forceNew) dataArray = await A.DB.getCollection(this.currentCollection);
       else await A.DB.local.getCollection(this.currentCollection);
-      tableContainer.innerHTML = ''; // Clear loader
-
       // Cấu hình ATable tối ưu cho Admin
       this.aTableInstance = new ATable('admin-atable-container', {
         data: dataArray,
@@ -136,11 +132,15 @@ export class AdminDatabaseController {
         pageSize: 50,
         sorter: true,
         header: true,
+        draggable: true,
+        contextMenu: true,
         groupBy: true,
         footer: true,
         search: true,
         zoom: true,
+        style: 'danger',
         editable: true,
+        fs: 0.7,
       });
     } catch (error) {
       console.error(`[Admin DB] Load Error (${this.currentCollection}):`, error);
