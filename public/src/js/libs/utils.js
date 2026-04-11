@@ -13,7 +13,6 @@ import L from '@js/common/logger.js';
 import SYS from '@js/libs/sys_helper.js';
 import UI_DASH from '@js/common/ui_dashboard.js';
 import UI_MANAGER from '@js/modules/core/UI_Manager.js';
-window.logA = UI_MANAGER.HELP.logA;
 window.UI_DASH = UI_DASH;
 window.SYS = SYS;
 window.L = L;

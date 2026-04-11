@@ -779,7 +779,7 @@ class SalesModule {
         if (!bkId) return logA('Vui lòng cung cấp mã Booking nguồn!', 'warning');
 
         let sourceDetails = null;
-        const allDetails = window.APP_DATA?.booking_details_by_booking || {};
+        const allDetails = HD.group((APP_DATA.booking_details, 'booking_id'));
         sourceDetails = allDetails[bkId];
 
         // Nếu không tìm thấy trong local, thử tìm trong archived_bookings & archived_booking_details
@@ -1397,7 +1397,7 @@ class SalesModule {
         if (!bookingId) bookingId = getVal('BK_ID');
         if (!bookingId) return logA('Không có mã Booking!', 'warning');
 
-        const res = typeof findBookingInLocal === 'function' ? findBookingInLocal(bookingId) : null;
+        const res = typeof findBookingInLocal === 'function' ? await findBookingInLocal(bookingId) : null;
         if (res?.success) {
           SalesModule.State.currentBookingData = res;
           const formEl = getE('tmpl-confirmation-modal');

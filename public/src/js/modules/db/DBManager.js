@@ -77,11 +77,11 @@ class DBManager {
   // ─── Cấu hình secondary indexes ──────────────────────────────────────
   // Khai báo tập trung — dễ thêm index mới sau này
   // static #INDEX_CONFIG = [
-  //   { index: 'booking_details_by_booking', source: 'booking_details', groupBy: 'booking_id', sumBy: 'total' },
+  //   { index:     source: 'booking_details', groupBy: 'booking_id', sumBy: 'total' },
   //   { index: 'operator_entries_by_booking', source: 'operator_entries', groupBy: 'booking_id', sumBy: 'total_cost' },
   //   { index: 'operator_entries_by_supplier', source: 'operator_entries', groupBy: 'supplier', sumBy: 'total_cost' },
   //   { index: 'operator_entries_by_month', source: 'operator_entries', groupBy: 'check_in', sumBy: 'total_cost' },
-  //   { index: 'transactions_by_booking', source: 'transactions', groupBy: 'booking_id', sumBy: 'amount' },
+  //   { index:     source: 'transactions', groupBy: 'booking_id', sumBy: 'amount' },
   //   { index: 'transactions_by_fund', source: 'transactions', groupBy: 'fund_source', sumBy: 'amount' },
   //   { index: 'transactions_by_month', source: 'transactions', groupBy: 'transaction_date', sumBy: 'amount' },
   // ];
@@ -92,11 +92,11 @@ class DBManager {
    * Thêm / sửa role mới chỉ cần cập nhật ở đây.
    */
   static #ROLE_COLL_MAP = {
-    sale: ['bookings', 'booking_details', 'booking_details_by_booking', 'customers', 'transactions', 'transactions_by_booking', 'fund_accounts', 'tour_prices'],
-    op: ['bookings', 'operator_entries', 'operator_entries_by_supplier', 'suppliers', 'hotels', 'hotel_price_schedules', 'service_price_schedules', 'transactions', 'transactions_by_booking', 'fund_accounts', 'customers', 'tour_prices'],
-    acc: ['transactions', 'suppliers', 'fund_accounts', 'bookings', 'operator_entries', 'operator_entries_by_booking', 'transactions_by_booking', 'transactions_by_month'],
+    sale: ['bookings', 'booking_details', 'customers', 'transactions', 'fund_accounts', 'tour_prices'],
+    op: ['bookings', 'operator_entries', 'suppliers', 'hotels', 'hotel_price_schedules', 'service_price_schedules', 'transactions', 'fund_accounts', 'customers', 'tour_prices'],
+    acc: ['transactions', 'suppliers', 'fund_accounts', 'bookings', 'operator_entries'],
     acc_thenice: ['transactions_thenice', 'fund_accounts_thenice'],
-    admin: ['bookings', 'booking_details', 'booking_details_by_booking', 'customers', 'operator_entries', 'operator_entries_by_booking', 'transactions', 'transactions_by_booking', 'suppliers', 'fund_accounts', 'transactions_thenice', 'fund_accounts_thenice', 'users', 'tour_prices'],
+    admin: ['bookings', 'booking_details', 'customers', 'operator_entries', 'transactions', 'suppliers', 'fund_accounts', 'transactions_thenice', 'fund_accounts_thenice', 'users', 'tour_prices'],
   };
 
   /**
@@ -3198,6 +3198,10 @@ class DBManager {
         text: error.message || 'Có lỗi xảy ra khi kết nối máy chủ.',
       });
     }
+  }
+
+  roleCollections(role) {
+    return DBManager.#ROLE_COLL_MAP[role] ? DBManager.#ROLE_COLL_MAP[role] : ['bookings', 'booking_details', 'operator_entries', 'customers', 'transactions'];
   }
 }
 

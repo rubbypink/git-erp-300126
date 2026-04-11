@@ -694,6 +694,13 @@ class Sortable {
       // Khởi tạo container
       this.container = typeof containerSelector === 'string' ? getE(containerSelector) : containerSelector;
       if (!this.container) return;
+      this.containerId = this.container.id;
+      // ✅ KIỂM SOÁT ZOMBIE INSTANCE:
+      // Nếu DOM này đã có 1 Sortable đang chạy, tự động tiêu diệt nó trước khi tạo mới
+      if (Sortable.registry.has(this.containerId)) {
+        console.warn(`Sortable: Đã tồn tại instance cho container này. Đang auto-destroy bản cũ để giải phóng RAM...`);
+        Sortable.registry.get(this.containerId).destroy();
+      }
 
       // ✅ TỐI ƯU OVERLOAD PARAMETERS:
       // Nếu tham số thứ 2 là một Object (không phải null, không phải Array, không phải Function)
@@ -725,6 +732,7 @@ class Sortable {
       this._setupStateToggle();
 
       this.enable();
+      Sortable.registry.set(this.containerId, this);
     } catch (error) {
       console.error(`Sortable: Lỗi khởi tạo`, error);
     }
@@ -735,7 +743,6 @@ class Sortable {
    */
   _setupStateToggle() {
     if (!this.opts.stateBtn) return;
-
     const btnContainer = typeof this.opts.stateBtn === 'string' ? getE(this.opts.stateBtn) : this.opts.stateBtn;
     if (!btnContainer) return;
 
@@ -743,17 +750,14 @@ class Sortable {
     const uniqueId = 'drag-toggle-' + Math.random().toString(36).substr(2, 9);
 
     // Render UI chuẩn Bootstrap 5
-    btnContainer.insertAdjacentHTML(
-      'beforeend',
-      `
+    btnContainer.innerHTML = `
             <div class="form-check form-switch d-flex align-items-center mb-0 sortable-toggle-wrapper">
                 <input class="form-check-input me-2 shadow-none" type="checkbox" id="${uniqueId}" style="cursor: pointer;">
                 <label class="form-check-label user-select-none" for="${uniqueId}" style="cursor: pointer; font-size: 0.9rem; font-weight: 500;">
                     <i class="bi bi-arrows-move me-1"></i>Sắp xếp
                 </label>
             </div>
-        `
-    );
+        `;
 
     this.stateCheckbox = btnContainer.querySelector('.form-check-input');
 
@@ -776,12 +780,6 @@ class Sortable {
   enable() {
     if (this.isEnabled) return;
 
-    // ✅ KIỂM SOÁT ZOMBIE INSTANCE:
-    // Nếu DOM này đã có 1 Sortable đang chạy, tự động tiêu diệt nó trước khi tạo mới
-    if (Sortable.registry.has(this.container)) {
-      console.warn(`Sortable: Đã tồn tại instance cho container này. Đang auto-destroy bản cũ để giải phóng RAM...`);
-      Sortable.registry.get(this.container).destroy();
-    }
     this.isEnabled = true;
 
     // ✅ Đồng bộ UI: Đảm bảo checkbox hiện ON

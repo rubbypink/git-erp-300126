@@ -29,7 +29,7 @@ const BookingOverviewController = (function () {
     sale: {
       role: 'sale',
       collection: 'booking_details',
-      dataKey: 'booking_details_by_booking',
+      dataKey: 'booking_details',
       displayFields: ['id', 'service_type', 'hotel_name', 'service_name', 'check_in', 'check_out', 'nights', 'quantity', 'unit_price', 'child_qty', 'child_price', 'surcharge', 'discount', 'total', 'ref_code', 'note'],
       totalField: 'total',
       summaryTotalField: 'total',
@@ -190,11 +190,11 @@ const BookingOverviewController = (function () {
 
     const custId = _bookingData.customer_id;
     _customerData = custId ? data.customers?.[custId] || null : null;
-
+    const bkDetails = HD.group((APP_DATA.booking_details, 'booking_id'));
     // 1. Lấy dữ liệu chi tiết dịch vụ theo Strategy
-    const detailsMap = data[_currentStrategy.dataKey]?.[bookingId];
+    const detailsMap = bkDetails[bookingId];
     _detailsData = Array.isArray(detailsMap) ? detailsMap : detailsMap ? Object.values(detailsMap) : [];
-
+    const transData = HD.group((APP_DATA.transactions, 'booking_id'));
     // 2. Fix Role-Based Transaction Mapping & Payment Table Logic
     // - Sale/Admin: transactions map tới bookings.id
     // - OP: transactions map tới operator_entries.id
@@ -204,7 +204,7 @@ const BookingOverviewController = (function () {
 
       // Gom tất cả transactions của từng entry
       entryIds.forEach((eid) => {
-        const txns = data.transactions_by_booking?.[eid];
+        const txns = transData[eid];
         if (txns) {
           const txnList = Array.isArray(txns) ? txns : Object.values(txns);
           allOpTxns = allOpTxns.concat(txnList);

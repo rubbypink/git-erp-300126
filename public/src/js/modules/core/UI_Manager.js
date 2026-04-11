@@ -65,7 +65,7 @@ const UI_RENDERER = {
     } catch (error) {
       L._('🔥 Lỗi Render Layout: ' + error.message, 'danger');
     } finally {
-      showLoading(false);
+      this.showLoading(false);
     }
   },
 
@@ -276,7 +276,7 @@ const UI_RENDERER = {
         await newActionFunc(e);
       } catch (err) {
         Opps('Lỗi hàm bindBtnEvent: ', err);
-        logA('Có lỗi xảy ra: ' + err.message);
+        UI_HELP.logA('Có lỗi xảy ra: ' + err.message);
       } finally {
         // Mở lại nút sau khi xong (hoặc tùy logic đóng modal của bạn)
         btn.disabled = false;
@@ -288,7 +288,7 @@ const UI_RENDERER = {
     L._('Đã gán sự kiện mới cho Btn Save Modal.');
   },
 
-  initBtnSelectDataList: function (data) {
+  initBtnSelectDataList: async function (data) {
     const selectElem = getE('btn-select-datalist');
     if (!data) data = APP_DATA;
     if (!selectElem) return;
@@ -297,17 +297,22 @@ const UI_RENDERER = {
     const userRole = CURRENT_USER?.role || 'sale',
       allowedCollections = COLL_MANIFEST?.[userRole] || [],
       mappedKeys = A.DB.schema.getCollectionNames();
+    // allowedCollections.forEach((key) => {
+    //   if (data[key] && Object.values(data[key]).length > 0) {
+    //     const opt = document.createElement('option');
+    //     opt.value = key;
+    //     opt.textContent = mappedKeys?.[key] || key;
+    //     selectElem.appendChild(opt);
+    //     hasOption = true;
+    //     if (key === 'bookings') selectElem.selectedIndex = selectElem.options.length - 1;
+    //   }
+    // });
+    // selectElem.disabled = false;
+    let options = {};
     allowedCollections.forEach((key) => {
-      if (data[key] && Object.values(data[key]).length > 0) {
-        const opt = document.createElement('option');
-        opt.value = key;
-        opt.textContent = mappedKeys?.[key] || key;
-        selectElem.appendChild(opt);
-        hasOption = true;
-        if (key === 'bookings') selectElem.selectedIndex = selectElem.options.length - 1;
-      }
+      options[key] = mappedKeys?.[key] || key;
     });
-    selectElem.disabled = false;
+    return options;
   },
 
   initTableResizer: function (tableId) {
@@ -466,11 +471,11 @@ const UI_RENDERER = {
         if (getE('tbl-tab-data-tbl')) break;
         this.createTable('tab-data-tbl', {
           colName: 'bookings',
-          data: APP_DATA['bookings'],
+          data: APP_DATA['bookings'] || [],
           header: true,
           headerExtra: [
             `<div class="btn btn-sm btn-warning shadow-sm p-0" id="datalist-select"">
-        <select id="btn-select-datalist" data-onchange="updateTableData" class="smart-select form-select form-select-sm bg-warning rounded border-0" style="min-width: 6rem;">
+        <select id="btn-select-datalist" data-creatable="${CURRENT_USER.role === 'admin' ? 'true' : 'false'}" data-source="A.UI.initBtnSelectDataList"  data-onchange="A.UI.updateTableData" class="smart-select form-select form-select-sm bg-warning rounded border-0" style="min-width: 6rem;">
         </select>
       </div>`,
           ],
@@ -483,7 +488,7 @@ const UI_RENDERER = {
           groupBy: true,
           fs: 0.7,
         });
-        this.initBtnSelectDataList();
+        // this.initBtnSelectDataList();
         break;
       case 'tab-price-pkg':
         if (A.PriceManager) {
@@ -510,93 +515,93 @@ const UI_RENDERER = {
 
   // =========================================================================
   // 4. DATA TABLE RENDERING LOGIC (Object-based + Array-based support)
-  renderGrid: function (dataList, table) {
-    let nohide = table?.id === 'tbl-container-tab2';
-    if (!table) table = getE('tbl-container-tab2');
-    if (!table) return;
-    const tbody = table.querySelector('tbody'),
-      header = table.querySelector('thead');
-    if (!tbody || !header) return;
-    tbody.innerHTML = '';
-    header.innerHTML = '';
+  // renderGrid: function (dataList, table) {
+  //   let nohide = table?.id === 'tbl-container-tab2';
+  //   if (!table) table = getE('tbl-container-tab2');
+  //   if (!table) return;
+  //   const tbody = table.querySelector('tbody'),
+  //     header = table.querySelector('thead');
+  //   if (!tbody || !header) return;
+  //   tbody.innerHTML = '';
+  //   header.innerHTML = '';
 
-    if (!GRID_COLS?.length) {
-      header.innerHTML = '<th>Không có cấu hình cột</th>';
-    } else {
-      header.innerHTML = '<th style="width:50px" class="text-center">#</th>' + GRID_COLS.map((c) => `<th class="${nohide ? '' : c.hidden ? 'd-none' : 'text-center'}" data-field="${c.key}">${c.t}</th>`).join('');
-    }
+  //   if (!GRID_COLS?.length) {
+  //     header.innerHTML = '<th>Không có cấu hình cột</th>';
+  //   } else {
+  //     header.innerHTML = '<th style="width:50px" class="text-center">#</th>' + GRID_COLS.map((c) => `<th class="${nohide ? '' : c.hidden ? 'd-none' : 'text-center'}" data-field="${c.key}">${c.t}</th>`).join('');
+  //   }
 
-    if (!dataList?.length) {
-      tbody.innerHTML = `<tr><td colspan="${(GRID_COLS?.length || 0) + 1}" class="text-center p-4 text-muted fst-italic">Không có dữ liệu hiển thị</td></tr>`;
-      return;
-    }
+  //   if (!dataList?.length) {
+  //     tbody.innerHTML = `<tr><td colspan="${(GRID_COLS?.length || 0) + 1}" class="text-center p-4 text-muted fst-italic">Không có dữ liệu hiển thị</td></tr>`;
+  //     return;
+  //   }
 
-    const docFrag = document.createDocumentFragment();
-    dataList.forEach((row, idx) => {
-      const tr = document.createElement('tr');
-      tr.className = 'align-middle';
-      let stt = typeof GRID_STATE !== 'undefined' ? (GRID_STATE.pagination.currentPage - 1) * GRID_STATE.pagination.limit + idx + 1 : idx + 1;
-      let html = `<td class="text-center fw-bold text-secondary">${stt}</td>`;
-      html += GRID_COLS.map((col) => {
-        let val = row[col.i];
-        if (val === undefined || val === null) val = '';
-        if (col.fmt === 'money' && typeof formatNumber === 'function') val = formatNumber(val);
-        if (col.fmt === 'date' && typeof formatDateVN === 'function') val = formatDateVN(val);
-        return `<td class="${col.align}${nohide ? '' : col.hidden ? ' d-none' : ''}">${val}</td>`;
-      }).join('');
-      tr.innerHTML = html;
-      tr.style.cursor = 'pointer';
-      let rowId = typeof row === 'object' && !Array.isArray(row) ? row.id || row.booking_id : row[0];
-      if (Array.isArray(row) && (CURRENT_TABLE_KEY === 'booking_details' || CURRENT_TABLE_KEY === 'operator_entries')) rowId = row[1];
-      tr.id = rowId;
-      tr.dataset.item = rowId;
-      tr.onmouseover = function () {
-        this.classList.add('table-active');
-      };
-      tr.onmouseout = function () {
-        this.classList.remove('table-active');
-      };
-      docFrag.appendChild(tr);
-    });
-    tbody.appendChild(docFrag);
-    table.dataset.collection = CURRENT_TABLE_KEY;
-    // calculateSummary(dataList);
-  },
+  //   const docFrag = document.createDocumentFragment();
+  //   dataList.forEach((row, idx) => {
+  //     const tr = document.createElement('tr');
+  //     tr.className = 'align-middle';
+  //     let stt = typeof GRID_STATE !== 'undefined' ? (GRID_STATE.pagination.currentPage - 1) * GRID_STATE.pagination.limit + idx + 1 : idx + 1;
+  //     let html = `<td class="text-center fw-bold text-secondary">${stt}</td>`;
+  //     html += GRID_COLS.map((col) => {
+  //       let val = row[col.i];
+  //       if (val === undefined || val === null) val = '';
+  //       if (col.fmt === 'money' && typeof formatNumber === 'function') val = formatNumber(val);
+  //       if (col.fmt === 'date' && typeof formatDateVN === 'function') val = formatDateVN(val);
+  //       return `<td class="${col.align}${nohide ? '' : col.hidden ? ' d-none' : ''}">${val}</td>`;
+  //     }).join('');
+  //     tr.innerHTML = html;
+  //     tr.style.cursor = 'pointer';
+  //     let rowId = typeof row === 'object' && !Array.isArray(row) ? row.id || row.booking_id : row[0];
+  //     if (Array.isArray(row) && (CURRENT_TABLE_KEY === 'booking_details' || CURRENT_TABLE_KEY === 'operator_entries')) rowId = row[1];
+  //     tr.id = rowId;
+  //     tr.dataset.item = rowId;
+  //     tr.onmouseover = function () {
+  //       this.classList.add('table-active');
+  //     };
+  //     tr.onmouseout = function () {
+  //       this.classList.remove('table-active');
+  //     };
+  //     docFrag.appendChild(tr);
+  //   });
+  //   tbody.appendChild(docFrag);
+  //   table.dataset.collection = CURRENT_TABLE_KEY;
+  //   // calculateSummary(dataList);
+  // },
 
-  renderTableByKey: function (key, tblId) {
-    CURRENT_TABLE_KEY = key;
-    GRID_STATE.currentTable = key;
-    const table = tblId ? getE(tblId) : getE('tbl-container-tab2');
-    if (!table) return;
-    const tblEl = table.querySelector('table');
-    if (tblEl) tblEl.dataset.collection = key;
-    const tbody = table.querySelector('tbody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="100%" class="text-center p-3">Đang tải...</td></tr>';
-    try {
-      GRID_STATE.sourceData = APP_DATA[key];
-      GRID_STATE.filter = { keyword: '', column: '', dateFrom: '', dateTo: '' };
-      GRID_STATE.sort = { column: '', dir: 'desc' };
-      if (!GRID_STATE.sourceData?.length) {
-        if (tbody) tbody.innerHTML = `<tr><td colspan="${(GRID_COLS?.length || 0) + 1}" class="text-center p-4 text-muted">Không có dữ liệu</td></tr>`;
+  // renderTableByKey: function (key, tblId) {
+  //   CURRENT_TABLE_KEY = key;
+  //   GRID_STATE.currentTable = key;
+  //   const table = tblId ? getE(tblId) : getE('tbl-container-tab2');
+  //   if (!table) return;
+  //   const tblEl = table.querySelector('table');
+  //   if (tblEl) tblEl.dataset.collection = key;
+  //   const tbody = table.querySelector('tbody');
+  //   if (tbody) tbody.innerHTML = '<tr><td colspan="100%" class="text-center p-3">Đang tải...</td></tr>';
+  //   try {
+  //     GRID_STATE.sourceData = APP_DATA[key];
+  //     GRID_STATE.filter = { keyword: '', column: '', dateFrom: '', dateTo: '' };
+  //     GRID_STATE.sort = { column: '', dir: 'desc' };
+  //     if (!GRID_STATE.sourceData?.length) {
+  //       if (tbody) tbody.innerHTML = `<tr><td colspan="${(GRID_COLS?.length || 0) + 1}" class="text-center p-4 text-muted">Không có dữ liệu</td></tr>`;
 
-        return;
-      }
-      const schemaDef = A.DB.schema[key];
-      if (schemaDef?.isSecondaryIndex) {
-        this.generateGridColsFromObject(schemaDef.source ?? key);
-      } else {
-        this.generateGridColsFromObject(key);
-      }
-      // refreshGridPipeline(true);
+  //       return;
+  //     }
+  //     const schemaDef = A.DB.schema[key];
+  //     if (schemaDef?.isSecondaryIndex) {
+  //       this.generateGridColsFromObject(schemaDef.source ?? key);
+  //     } else {
+  //       this.generateGridColsFromObject(key);
+  //     }
+  //     this.renderGrid(key);
 
-      if (typeof TableResizeManager !== 'undefined')
-        try {
-          new TableResizeManager('grid-table').init();
-        } catch (_) {}
-    } catch (e) {
-      Opps(`Lỗi hiển thị bảng [${key}]: ${e.message}`);
-    }
-  },
+  //     if (typeof TableResizeManager !== 'undefined')
+  //       try {
+  //         new TableResizeManager('grid-table').init();
+  //       } catch (_) {}
+  //   } catch (e) {
+  //     Opps(`Lỗi hiển thị bảng [${key}]: ${e.message}`);
+  //   }
+  // },
 
   generateGridColsFromObject: function (collectionName) {
     const headerObj = A.DB.schema.createHeaderFromFields(collectionName);
@@ -765,6 +770,12 @@ const UI_RENDERER = {
     } catch (error) {
       Opps(`[UI_RENDERER] createTable lỗi: ${error.message}`, error);
     }
+  },
+
+  updateTableData: async function (collection, fullData) {
+    if (!collection) collection = getVal('btn-select-datalist');
+    fullData = APP_DATA[collection] || (await A.DB.local.getCollection(collection));
+    A.UI.createTable('tab-data-tbl', { colName: collection, data: fullData });
   },
 
   toggleFullScreen: function () {
@@ -980,7 +991,7 @@ const UI_HELP = {
    * @param {string}               message            Nội dung (hỗ trợ HTML và \n).
    * @param {string}               [type='info']      'info'|'success'|'warning'|'error'|'danger'
    * @param {Function|string|null} [modeOrCallback]   Chế độ hoặc OK callback (xem trên).
-   * @param {Function|Object|*}    [rest[0]]          Deny callback (nếu là Function → 3-button) HOẶC
+   * @param {Function|Object|*}    rest[0]        Deny callback (nếu là Function → 3-button) HOẶC object tùy chọn Swal (confirm/alert mode).
    *                                                  object tùy chọn Swal (confirm/alert mode).
    *                                                  Object hỗ trợ: `onConfirm`, `onDeny`, `onCancel` (alias).
    * @returns {void|Promise<boolean>}  toast → void;  alert → Promise<void>;
@@ -1198,7 +1209,7 @@ const UI_HELP = {
     };
   },
   showAlert: function (message, type = 'info', title = 'Thông Báo', options = {}) {
-    return this.logA(message, type, 'alert', title ? { title, ...options } : options);
+    return UI_HELP.logA(message, type, 'alert', title ? { title, ...options } : options);
   },
 
   showConfirm: function (message, okFnOrOpts, denyFn, opts = {}) {
@@ -1208,7 +1219,7 @@ const UI_HELP = {
     } else {
       finalOpts = { ...okFnOrOpts };
     }
-    return this.logA(message, 'warning', 'confirm', finalOpts);
+    return UI_HELP.logA(message, 'warning', 'confirm', finalOpts);
   },
 
   /**
@@ -1321,13 +1332,13 @@ const UI_HELP = {
   },
 };
 UI_RENDERER.HELP = UI_HELP;
-
 window.showLoading = UI_RENDERER.showLoading;
+window.logA = UI_HELP.logA;
 window.setBtnLoading = UI_RENDERER.setBtnLoading;
 window.toggleTemplate = UI_RENDERER.toggleTemplate;
 window.showAlert = UI_HELP.showAlert;
 window.showConfirm = UI_HELP.showConfirm;
 window.loadHtmlFile = UI_HELP.loadHtmlFile;
 window.addDynamicCSS = UI_HELP.addDynamicCSS;
-
+export const { logA, showAlert, showConfirm, loadHtmlFile, addDynamicCSS } = UI_HELP;
 export default UI_RENDERER;

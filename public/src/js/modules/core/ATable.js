@@ -4,7 +4,7 @@
  * Kế thừa và tối ưu hóa từ UI_RENDERER.createTable.
  *
  * @author 9Trip Tech Lead
- * @version 2.5.0
+ * @version 3.0.1
  */
 
 import { DB_SCHEMA } from '../db/DBSchema.js';
@@ -17,14 +17,18 @@ export default class ATable {
     // 1. Kiểm tra instance đã tồn tại chưa
     if (ATable.instances.has(containerId)) {
       const existing = ATable.instances.get(containerId);
-      // Cập nhật options mới nếu cần (tùy chọn)
       existing.options = { ...existing.options, ...options };
+
+      if (options.headerExtra && options.headerExtra !== 'false') {
+        existing.state.headerExtra = Array.isArray(options.headerExtra) ? options.headerExtra : [options.headerExtra];
+      } else if (existing.options.headerExtra) {
+        existing.state.headerExtra = [$('.at-header-extra', existing.container).innerHTML];
+      }
 
       if (existing.options.data) {
         return existing.init(existing.options.data);
       }
 
-      // QUAN TRỌNG: Trả về instance cũ để ngăn việc tạo object mới hoàn toàn logic bên dưới
       return existing;
     }
 
@@ -44,8 +48,8 @@ export default class ATable {
       draggable: false,
       download: false,
       contextMenu: false,
-      zoom: false, // Mặc định không zoom
-      style: 'auto', // Mặc định auto (bootstrap default)
+      zoom: false,
+      style: 'auto',
       title: '',
       onCellChange: null,
       data: null,
@@ -61,7 +65,8 @@ export default class ATable {
       fieldConfigs: {},
       isSecondary: false,
       currentColName: '',
-      zoomLevel: 1, // 100%
+      zoomLevel: 1,
+      headerExtra: Array.isArray(this.options.headerExtra) ? this.options.headerExtra : this.options.headerExtra ? [this.options.headerExtra] : [],
     };
 
     if (!this.container) {
@@ -77,65 +82,36 @@ export default class ATable {
   }
 
   /**
-   * Khởi tạo và render bảng lần đầu hoặc khi cập nhật cấu trúc mới
+   * Khởi tạo và cập nhật dữ liệu cho bảng
    */
   async init(data = [], colName = null) {
     try {
-      // 1. Chuẩn hóa dữ liệu (Hỗ trợ Firestore Collection Object hoặc Array)
+      // 1. Chuẩn hóa dữ liệu
       const normalizedData = Array.isArray(data) ? data : typeof Object.values(data)[0] === 'object' ? Object.values(data) : [data];
-      const newColName = colName || this.options.colName;
 
-      // 2. Kiểm tra cấu trúc dữ liệu có thay đổi không
-      let isStructureChanged = false;
-      if (newColName !== this.options.colName) {
-        isStructureChanged = true;
-      } else {
-        const currentKeys = Object.keys(this.state.fieldConfigs);
-        if (currentKeys.length === 0) {
-          isStructureChanged = true;
-        } else {
-          const firstItem = normalizedData[0];
-          if (firstItem && typeof firstItem === 'object') {
-            const newKeys = Object.keys(firstItem);
-            // So sánh số lượng keys và từng key
-            if (newKeys.length !== currentKeys.length || !newKeys.every((k) => currentKeys.includes(k))) {
-              isStructureChanged = true;
-            }
-          } else if (normalizedData.length === 0 && currentKeys.length > 0) {
-            // Nếu data mới rỗng nhưng cũ có config, coi như không đổi để giữ header (hoặc tùy logic)
-            // Ở đây ta giữ nguyên logic cũ: nếu data rỗng thì không nhất thiết phải reset config nếu colName không đổi
-          }
-        }
-      }
-      if (isStructureChanged) {
-        // Reset trạng thái cấu trúc và phân trang
-        this.state.fieldConfigs = {};
-        this.state.currentPage = 1;
-        this.state.sort = { field: null, dir: 'asc' };
-        this.state.isSecondary = false;
+      if (colName) this.options.colName = colName;
 
-        if (colName) this.options.colName = colName;
-        // Tự động nhận diện colName nếu không có
-        if (!this.options.colName) {
-          this._autoDetectColName(normalizedData);
-        }
-        // Xử lý colName đặc biệt (_by_)
-        await this._handleSpecialColName();
-        this.state.fullData = normalizedData;
-        this.state.filteredData = [...this.state.fullData];
-        this._resolveFieldConfigs();
+      // 2. Cập nhật trạng thái
+      this.state.fullData = normalizedData;
+      this.state.filteredData = [...this.state.fullData];
+      this.state.currentPage = 1;
 
-        // Render toàn bộ
-        this.render(false);
-      } else {
-        // Cấu trúc trùng khớp hoàn toàn
-        this.state.fullData = normalizedData;
-        this.state.filteredData = [...this.state.fullData];
-        // Render update, bỏ qua header update
-        this.render(true, true);
+      // Tự động nhận diện colName nếu không có
+      if (!this.options.colName) {
+        this._autoDetectColName(normalizedData);
       }
 
-      // 3. Đăng ký ContextMenu nếu cần
+      // Xử lý colName đặc biệt (_by_)
+      await this._handleSpecialColName();
+
+      // Luôn resolve lại field configs khi init để đảm bảo header mới nhất
+      this.state.fieldConfigs = {};
+      this._resolveFieldConfigs();
+
+      // 3. Render
+      this.render();
+
+      // 4. Đăng ký các plugin bổ trợ
       if (this.options.contextMenu && window.A?.ContextMenu) {
         window.A.ContextMenu.register(`#tbl-${this.containerId} .grid-body`, { useGlobal: true });
       }
@@ -145,187 +121,97 @@ export default class ATable {
 
       return this;
     } catch (error) {
-      Opps('[ATable] init error:', error);
-    }
-  }
-
-  _autoDetectColName(data) {
-    const collections = window.A?.getConfig?.('consts/collections') || Object.keys(DB_SCHEMA);
-    const rElement = $('[data-collection]', getE(this.containerId));
-    if (rElement) {
-      this.options.colName = rElement.dataset.collection;
-    }
-    // Nếu vẫn không thấy, thử tìm trong containerId
-    if (!this.options.colName) {
-      const foundCol = collections.find((col) => this.containerId.toLowerCase().includes(col.toLowerCase()));
-      if (foundCol) this.options.colName = foundCol;
-    }
-    if (this.options.colName) {
-      this.state.currentColName = this.options.colName;
-      L._(`[ATable] Tự động nhận diện colName: ${this.options.colName}`, 'info');
-    }
-  }
-
-  async _handleSpecialColName() {
-    let { colName } = this.options;
-    if (colName && colName.includes('_by_')) {
-      this.state.currentColName = colName;
-      const schemaConfig = DB_SCHEMA[colName];
-      if (schemaConfig) {
-        this.options.groupBy = true;
-        this.state.groupByField = schemaConfig.groupBy;
-        // Cập nhật colName loại bỏ phần _by_...
-        this.options.colName = colName.split('_by_')[0];
-        this.state.isSecondary = true;
-        this.state.fullData = await A.DB.local.getCollection(this.options.colName);
-      }
-    }
-  }
-
-  _resolveFieldConfigs() {
-    // Nếu đã có config (và không bị reset bởi init), giữ nguyên để tránh tính toán lại khi render thường
-    if (Object.keys(this.state.fieldConfigs).length > 0) return;
-
-    const { colName } = this.options;
-    if (colName && DB_SCHEMA[colName]) {
-      const schema = DB_SCHEMA[colName];
-      const fields = schema.fields || [];
-      fields.forEach((f) => {
-        if (f.class !== 'd-none' && f.type !== 'hidden') {
-          this.state.fieldConfigs[f.name] = f;
-        }
-      });
-    } else if (this.state.fullData.length > 0) {
-      // Thu thập tất cả các keys duy nhất từ toàn bộ items
-      const allKeys = new Set();
-      this.state.fullData.forEach((item) => {
-        if (item && typeof item === 'object') {
-          Object.keys(item).forEach((key) => allKeys.add(key));
-        }
-      });
-      allKeys.forEach((key) => {
-        this.state.fieldConfigs[key] = { name: key, displayName: A.Lang?.t(key) || key.replace(/_/g, ' ') };
-      });
+      console.error('[ATable] init error:', error);
     }
   }
 
   /**
-   * Render bảng.
-   * @param {boolean} isUpdate Nếu true, chỉ render lại phần dữ liệu (thead, tbody, tfoot, pagination), giữ nguyên header menu.
-   * @param {boolean} skipHeaderUpdate Nếu true, bỏ qua việc cập nhật thead.
+   * Hàm render chính - Điều phối việc vẽ giao diện
    */
-  render(isUpdate = false, skipHeaderUpdate = false) {
+  render() {
     if (!this.container) return;
 
-    const { fs, header, footer, mode, style } = this.options;
-    const { filteredData, currentPage, fieldConfigs, zoomLevel } = this.state;
-    const pageSize = this.options.pageSize || window.A?.getConfig?.('table_page_size') || 25;
-    const headers = Object.keys(fieldConfigs);
-
-    const start = (currentPage - 1) * pageSize;
-    const displayItems = filteredData.slice(start, start + pageSize);
-
-    // Tối ưu: Nếu là update và đã có wrapper, chỉ cập nhật các phần thay đổi
     const wrapper = this.container.querySelector('.table-container-wrapper');
-    if (isUpdate && wrapper) {
-      try {
-        // 1. Cập nhật thead (để đổi icon sort hoặc cấu trúc cột)
-        if (!skipHeaderUpdate) {
-          const thead = wrapper.querySelector('thead');
-          if (thead) thead.innerHTML = `<tr>${this._renderTableHead(headers)}</tr>`;
-        }
 
-        // 2. Cập nhật tbody
-        const tbody = wrapper.querySelector(`#${this.containerId}-tbody`);
-        if (tbody) tbody.innerHTML = this._renderTableRows(displayItems, headers);
-
-        // 3. Cập nhật tfoot
-        if (footer) {
-          const tfoot = wrapper.querySelector(`#${this.containerId}-tfoot`);
-          if (tfoot) tfoot.innerHTML = this._renderTableFooter(filteredData, headers);
-        }
-
-        // 4. Cập nhật pagination
-        const pagination = wrapper.querySelector(`#${this.containerId}-pagination`);
-        if (pagination) pagination.innerHTML = this._renderPagination(filteredData.length, pageSize, currentPage);
-
-        this._initResizer();
-        this._initTooltips();
-        return;
-      } catch (e) {
-        console.warn('[ATable] Partial update failed, falling back to full render', e);
-      }
+    // Nếu chưa có layout chính thì tạo mới
+    if (!wrapper) {
+      this._renderMainLayout();
+      this._renderHeaderMenu();
     }
 
-    // Render toàn bộ (Lần đầu hoặc khi isUpdate = false)
+    // Luôn làm mới nội dung bảng và phân trang khi gọi render()
+    this.refresh();
+
+    this._attachEvents();
+  }
+
+  /**
+   * Tạo khung layout chính cho bảng
+   */
+  _renderMainLayout() {
+    const { fs, mode } = this.options;
     let fsStyle = '';
     if (fs) {
       const fsValue = parseFloat(fs);
       fsStyle = `font-size: ${fsValue < 5 ? fsValue + 'rem' : fsValue + 'px'};`;
     }
 
-    const tableId = `tbl-${this.containerId}`;
-    const collectionAttr = this.options.colName ? `data-collection="${this.options.colName}"` : '';
-
-    let headerHtml = '';
-    if (header) {
-      headerHtml = this._buildHeaderHtml(headers);
-    }
-
-    // Xử lý bootstrap style
-    let tableClass = 'table table-sm table-hover table-bordered text-center align-middle mb-0 w-100';
-    if (style && style !== 'auto') {
-      tableClass += ` table-${style}`;
-    }
-
-    let tableHtml = `
+    const layoutHtml = `
       <div class="d-flex flex-column h-100 w-100 table-container-wrapper" style="${fsStyle}">
-        ${headerHtml}
-        <div class="table-responsive w-100 at-table-container" style="overflow: auto; position: relative; transform: scale(${zoomLevel}); transform-origin: top left;">
-          <table class="${tableClass}" id="${tableId}" ${collectionAttr}>
-            <thead class="table-secondary text-nowrap sticky-top border-bottom" style="z-index: 3; top: 0;">
-              <tr>${this._renderTableHead(headers)}</tr>
-            </thead>
-            <tbody class="grid-body text-nowrap" id="${this.containerId}-tbody">
-              ${this._renderTableRows(displayItems, headers)}
-            </tbody>
-            ${footer ? `<tfoot class="table-light fw-bold border-top-2 sticky-bottom" id="${this.containerId}-tfoot" style="z-index: 2; bottom: 0;">${this._renderTableFooter(filteredData, headers)}</tfoot>` : ''}
-          </table>
+        <div id="${this.containerId}-header-menu" class="table-header-actions-wrapper" style="z-index: 5;"></div>
+        <div id="${this.containerId}-content-area" class="table-responsive w-100 at-table-container flex-grow-1" style="overflow: auto; position: relative;">
+          <!-- Table will be rendered here -->
         </div>
-        <div id="${this.containerId}-pagination" class="flex-shrink-0 bg-white border-top pb-1">
-          ${this._renderPagination(filteredData.length, pageSize, currentPage)}
+        <div id="${this.containerId}-pagination-area" class="flex-shrink-0 bg-white border-top pb-1">
+          <!-- Pagination will be rendered here -->
         </div>
       </div>`;
 
     if (mode === 'replace') {
-      this.container.innerHTML = tableHtml;
+      this.container.innerHTML = layoutHtml;
     } else if (mode === 'prepend') {
-      this.container.insertAdjacentHTML('afterbegin', tableHtml);
+      this.container.insertAdjacentHTML('afterbegin', layoutHtml);
     } else {
-      this.container.insertAdjacentHTML('beforeend', tableHtml);
+      this.container.insertAdjacentHTML('beforeend', layoutHtml);
     }
-
-    this._attachEvents();
-    this._initResizer();
-    this._initTooltips();
   }
 
-  _buildHeaderHtml(headers) {
-    const { colName, groupBy, title, headerExtra, zoom } = this.options;
+  _renderGroupByBtn(update = false) {
     const { fieldConfigs, groupByField } = this.state;
+    const headers = Object.keys(fieldConfigs);
+    const html = `
+    <div class="group-by-box btn btn-sm btn-warning shadow-sm p-0" style="min-width: 6rem;">
+      <select class="form-select form-select-sm bg-warning rounded border-0 at-group-by">
+        <option value="">-- Gom nhóm --</option>
+        ${headers.map((h) => `<option value="${h}" ${groupByField === h ? 'selected' : ''}>${fieldConfigs[h].displayName || h}</option>`).join('')}
+      </select>
+    </div>`;
+    if (update) {
+      const headerMenuEl = getE(`${this.containerId}-header-menu`);
+      headerMenuEl.querySelector('.group-by-select').innerHTML = html;
+      return;
+    }
+    return html;
+  }
+
+  /**
+   * Render thanh công cụ phía trên bảng (Title, Search, Buttons, Extra)
+   */
+  _renderHeaderMenu() {
+    const headerMenuEl = getE(`${this.containerId}-header-menu`);
+    if (!headerMenuEl || !this.options.header) return;
+
+    const { colName, groupBy, title, zoom, download } = this.options;
+    const { fieldConfigs, groupByField, headerExtra } = this.state;
+    const headers = Object.keys(fieldConfigs);
 
     let groupByHtml = '';
     if (groupBy) {
-      groupByHtml = `
-        <div class="group-by-box btn btn-sm btn-warning shadow-sm p-0" style="min-width: 6rem;">
-          <select class="form-select form-select-sm bg-warning rounded border-0 at-group-by">
-            <option value="">-- Gom nhóm --</option>
-            ${headers.map((h) => `<option value="${h}" ${groupByField === h ? 'selected' : ''}>${fieldConfigs[h].displayName || h}</option>`).join('')}
-          </select>
-        </div>`;
+      groupByHtml = this._renderGroupByBtn();
     }
+
     let downloadHtml = '';
-    if (this.options.download) {
+    if (download) {
       downloadHtml = `
       <div class="dropdown d-none d-md-block at-download-group">
           <button class="btn btn-warning btn-sm dropdown-toggle shadow-sm" type="button" data-bs-toggle="dropdown" style="min-width: 6rem;">
@@ -339,7 +225,6 @@ export default class ATable {
       </div>`;
     }
 
-    // Zoom UI
     let zoomHtml = '';
     if (zoom) {
       zoomHtml = `
@@ -349,44 +234,142 @@ export default class ATable {
         </div>`;
     }
 
-    // Xử lý headerExtra: Chèn lần lượt các item vào đầu header
     let extraHtml = '';
     if (Array.isArray(headerExtra) && headerExtra.length > 0) {
-      extraHtml = headerExtra
+      const content = headerExtra
         .map((item) => {
-          try {
-            if (typeof item === 'string') {
-              // Kiểm tra xem có phải ID của template không
-              const el = document.getElementById(item);
-              if (el && el.tagName === 'TEMPLATE') {
-                return el.innerHTML;
-              }
-              return item; // HTML string
-            } else if (item instanceof HTMLElement) {
-              return item.outerHTML;
-            }
-          } catch (e) {
-            console.warn('[ATable] headerExtra item error:', e);
+          if (typeof item === 'string') {
+            // Nếu là ID của template
+            const el = document.getElementById(item);
+            if (el && el.tagName === 'TEMPLATE') return el.innerHTML;
+            // Nếu là chuỗi HTML
+            return item;
           }
+          // Nếu là HTMLElement
+          if (item instanceof HTMLElement) return item.outerHTML;
           return '';
         })
         .join('');
+      extraHtml = `<div class="at-header-extra d-flex align-items-center gap-2">${content}</div>`;
+    } else {
+      extraHtml = `<div class="at-header-extra d-flex align-items-center gap-2"></div>`;
     }
+    let draggableHtml = `<div class="d-flex align-items-center gap-2" id="tbl-${this.containerId}-header-drag"></div>`;
 
-    return `
-      <div id="tbl-${this.containerId}-header" class="table-header-actions d-flex align-items-center mb-1 gap-3">
+    headerMenuEl.innerHTML = `
+      <div id="tbl-${this.containerId}-header" class="table-header-actions d-flex align-items-center mb-1 gap-3 p-2" style="z-index: 5;">
         <h6 class="mb-0 fw-bold text-primary text-uppercase me-auto">${title || (colName ? window.A?.Lang?.t(colName) : '')}</h6>
-        <div class="search-box flex-grow-1" style="max-width: 200px; border-color: var(--bs-border-color) !important;">
-          <div class="input-group input-group-sm bg-white rounded overflow-hidden shadow-sm border" style="border-color: var(--bs-border-color) !important;">
+        <div class="search-box flex-grow-1" style="max-width: 200px;">
+          <div class="input-group input-group-sm bg-white rounded overflow-hidden shadow-sm border">
             <span class="input-group-text border-0"><i class="fas fa-search text-muted"></i></span>
             <input type="text" class="form-control bg-light border-0 ps-0 at-search-input" placeholder="Tìm kiếm nhanh..." style="box-shadow: none;">
           </div>
         </div>
+        <div class="group-by-select">${groupByHtml}</div>
         ${zoomHtml}
-        ${groupByHtml}
         ${downloadHtml}
+        ${draggableHtml}
         ${extraHtml}
       </div>`;
+  }
+
+  /**
+   * Render nội dung bảng (thead, tbody, tfoot)
+   */
+  _renderTableContent() {
+    const contentArea = getE(`${this.containerId}-content-area`);
+    if (!contentArea) return;
+
+    const { style, footer } = this.options;
+    const { filteredData, currentPage, fieldConfigs } = this.state;
+    const pageSize = this.options.pageSize || 25;
+    const headers = Object.keys(fieldConfigs);
+
+    const start = (currentPage - 1) * pageSize;
+    const displayItems = filteredData.slice(start, start + pageSize);
+
+    let tableClass = 'table table-sm table-hover table-bordered text-center align-middle mb-0 w-100';
+    if (style && style !== 'auto') tableClass += ` table-${style}`;
+
+    const tableId = `tbl-${this.containerId}`;
+    const collectionAttr = this.options.colName ? `data-collection="${this.options.colName}"` : '';
+
+    contentArea.innerHTML = `
+      <table class="${tableClass}" id="${tableId}" ${collectionAttr} style="transform: scale(${this.state.zoomLevel}); transform-origin: top left;">
+        <thead class="table-secondary text-nowrap sticky-top border-bottom" style="z-index: 3; top: 0;">
+          <tr>${this._renderTableHead(headers)}</tr>
+        </thead>
+        <tbody class="grid-body text-nowrap" id="${this.containerId}-tbody">
+          ${this._renderTableRows(displayItems, headers)}
+        </tbody>
+        ${footer ? `<tfoot class="table-light fw-bold border-top-2 sticky-bottom" id="${this.containerId}-tfoot" style="z-index: 2; bottom: 0;">${this._renderTableFooter(filteredData, headers)}</tfoot>` : ''}
+      </table>`;
+    this._renderGroupByBtn(true);
+    this._initResizer();
+    this._initTooltips();
+  }
+
+  /**
+   * Làm mới toàn bộ nội dung bảng và phân trang
+   */
+  refresh() {
+    this._renderTableContent();
+    this.updatePagination();
+  }
+
+  /**
+   * Cập nhật riêng phần Body của bảng
+   */
+  updateBody() {
+    const tbody = getE(`${this.containerId}-tbody`);
+    if (!tbody) return;
+
+    const { fieldConfigs, filteredData, currentPage } = this.state;
+    const pageSize = this.options.pageSize || 25;
+    const headers = Object.keys(fieldConfigs);
+    const start = (currentPage - 1) * pageSize;
+    const displayItems = filteredData.slice(start, start + pageSize);
+
+    tbody.innerHTML = this._renderTableRows(displayItems, headers);
+    this._initTooltips();
+  }
+
+  /**
+   * Cập nhật riêng phần Footer của bảng
+   */
+  updateFooter() {
+    const tfoot = getE(`${this.containerId}-tfoot`);
+    if (!tfoot || !this.options.footer) return;
+
+    const { fieldConfigs, filteredData } = this.state;
+    const headers = Object.keys(fieldConfigs);
+
+    tfoot.innerHTML = this._renderTableFooter(filteredData, headers);
+  }
+
+  /**
+   * Cập nhật riêng phần phân trang
+   */
+  updatePagination() {
+    const paginationArea = getE(`${this.containerId}-pagination-area`);
+    if (!paginationArea) return;
+
+    const { filteredData, currentPage } = this.state;
+    const pageSize = this.options.pageSize || 25;
+
+    paginationArea.innerHTML = this._renderPagination(filteredData.length, pageSize, currentPage);
+  }
+
+  /**
+   * Cập nhật headerExtra và render lại menu
+   */
+  updateHeaderExtra(newExtra) {
+    try {
+      this.state.headerExtra = Array.isArray(newExtra) ? newExtra : newExtra ? [newExtra] : [];
+      this._renderHeaderMenu();
+    } catch (error) {
+      console.error('[ATable] updateHeaderExtra error:', error);
+    }
   }
 
   _renderTableHead(headers) {
@@ -434,7 +417,6 @@ export default class ATable {
               const isHtml = config.type === 'html' || config.html === true;
               let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
 
-              // Xử lý tra cứu tên từ dataSource cho cell không editable
               if (config.dataSource && val) {
                 const sourceData = this._getDataSource(config.dataSource);
                 if (sourceData) {
@@ -447,7 +429,7 @@ export default class ATable {
 
               const isLong = !isHtml && displayVal.length > 50;
               const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
-              const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip" data-bs-delay='{"show":0,"hide":150}'` : '';
+              const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
               const firstCell = h === 'id' || h === 'uid';
 
               return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''} ${firstCell ? 'drag-handle' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${isHtml ? displayVal : escapeHtml(shortVal)}</td>`;
@@ -476,7 +458,6 @@ export default class ATable {
     Object.entries(groups).forEach(([groupName, groupItems]) => {
       const displayGroupName = fieldConfigs[groupByField]?.type === 'date' ? formatDateVN(groupName) : groupName;
 
-      // Tính toán tổng cho group header
       const groupSums = {};
       sumFields.forEach((f) => {
         groupSums[f] = groupItems.reduce((acc, item) => {
@@ -485,7 +466,6 @@ export default class ATable {
         }, 0);
       });
 
-      // Render Group Header Row (Sử dụng nhiều <td> thay vì colspan)
       html += `
         <tr class="table-info fw-bold text-start at-group-header" style="cursor:pointer">
           ${headers
@@ -519,7 +499,6 @@ export default class ATable {
 
                 let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
 
-                // Xử lý tra cứu tên từ dataSource cho cell không editable
                 if (config.dataSource && val) {
                   const sourceData = this._getDataSource(config.dataSource);
                   if (sourceData) {
@@ -532,7 +511,7 @@ export default class ATable {
 
                 const isLong = displayVal.length > 50;
                 const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
-                const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip" data-bs-delay='{"show":0,"hide":150}'` : '';
+                const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
 
                 return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${escapeHtml(shortVal)}</td>`;
               })
@@ -544,9 +523,85 @@ export default class ATable {
     return html;
   }
 
-  /**
-   * Render ô có thể chỉnh sửa dựa trên cấu hình DBSchema
-   */
+  _renderGroupedRows(items, headers) {
+    const { groupByField, fieldConfigs } = this.state;
+    const { editable, colName } = this.options;
+    const aggregate = DB_SCHEMA[colName]?.aggregate || {};
+    const sumFields = aggregate.sum || [];
+
+    const groups = HD.group(items, groupByField);
+
+    let html = '';
+
+    Object.entries(groups).forEach(([groupName, groupItemObj]) => {
+      let groupItems = Object.values(groupItemObj);
+      const displayGroupName = fieldConfigs[groupByField]?.type === 'date' ? formatDateVN(groupName) : groupName;
+
+      const groupSums = {};
+      sumFields.forEach((f) => {
+        groupSums[f] = groupItems.reduce((acc, item) => {
+          const val = typeof getNum === 'function' ? getNum(item[f]) : parseFloat(String(item[f] || '0').replace(/[^0-9.-]+/g, '')) || 0;
+          return acc + val;
+        }, 0);
+      });
+
+      html += `
+        <tr class="table-info fw-bold text-start at-group-header" style="cursor:pointer">
+          ${headers
+            .map((h, index) => {
+              let content = '';
+              if (index === 0) {
+                content = `<i class="fas fa-chevron-down me-2 group-icon"></i> ${displayGroupName} (${groupItems.length} dòng)`;
+              } else if (sumFields.includes(h)) {
+                content = formatNumber(groupSums[h]);
+              }
+              return `<td class="ps-3">${content}</td>`;
+            })
+            .join('')}
+        </tr>`;
+
+      groupItems.forEach((item) => {
+        const itemId = item.id || item.uid || '';
+        const itemAttr = itemId ? `data-item="${itemId}"` : '';
+        html += `
+          <tr ${itemAttr}>
+            ${headers
+              .map((h) => {
+                let val = item[h] !== undefined && item[h] !== null ? item[h] : '';
+                const config = fieldConfigs[h] || {};
+                if (config.type === 'date' && val) val = formatDateVN(val);
+                if (config.class?.split(' ').includes('number') && val) val = formatNumber(val);
+
+                if (editable && config.editable !== false) {
+                  return this._renderEditableCell(h, val, config);
+                }
+
+                let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+
+                if (config.dataSource && val) {
+                  const sourceData = this._getDataSource(config.dataSource);
+                  if (sourceData) {
+                    const matched = sourceData.find((i) => String(i.id || i.uid || i.value) === String(val));
+                    if (matched) {
+                      displayVal = matched.displayName || matched.name || matched.title || matched.user_name || matched.text || matched.full_name || displayVal;
+                    }
+                  }
+                }
+
+                const isLong = displayVal.length > 50;
+                const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
+                const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
+
+                return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${escapeHtml(shortVal)}</td>`;
+              })
+              .join('')}
+          </tr>`;
+      });
+    });
+
+    return html;
+  }
+
   _renderEditableCell(field, val, config) {
     const tag = config.tag || 'input';
     const type = config.type || 'text';
@@ -566,7 +621,6 @@ export default class ATable {
       const selectAttrs = `${attrs} data-source="${dataSource}" data-searchable="${searchable}" data-creatable="${creatable}" data-val="${val}"`.trim();
 
       if (isSmart) {
-        // ASelect sẽ tự load options từ dataSource
         inputHtml = `<select class="${fullClass} ${smartClass}" data-field="${field}" ${selectAttrs}></select>`;
       } else {
         const options = config.options || [];
@@ -589,7 +643,6 @@ export default class ATable {
         const data = window.A.DB.local.getCollection(source);
         if (data) return Array.isArray(data) ? data : Object.values(data);
       }
-      // 3. Thử phân giải đường dẫn chuỗi (VD: 'consts.status')
       const parts = source.split('.');
       let current = window;
       for (const part of parts) {
@@ -673,7 +726,6 @@ export default class ATable {
     const wrapper = this.container.querySelector('.table-container-wrapper');
     if (!wrapper || wrapper.dataset.eventsAttached) return;
 
-    // 1. Search (Input event - dùng debounce)
     const searchInput = wrapper.querySelector('.at-search-input');
     if (searchInput) {
       searchInput.addEventListener(
@@ -682,18 +734,15 @@ export default class ATable {
       );
     }
 
-    // 2. Event Delegation cho Click Events
     wrapper.addEventListener('click', (e) => {
       const target = e.target;
 
-      // Sort
       const sortTh = target.closest('[data-sort-field]');
       if (sortTh) {
         this.sort(sortTh.dataset.sortField);
         return;
       }
 
-      // Pagination
       const pageLink = target.closest('.at-page-link');
       if (pageLink) {
         e.preventDefault();
@@ -701,66 +750,61 @@ export default class ATable {
         return;
       }
 
-      // Toggle Group
       const groupHeader = target.closest('.at-group-header');
       if (groupHeader) {
         this._toggleGroup(groupHeader);
         return;
       }
 
-      // Download Excel
       if (target.closest('.at-download-excel')) {
         this.download('excel');
         return;
       }
 
-      // Download PDF
       if (target.closest('.at-download-pdf')) {
         this.download('pdf');
         return;
       }
 
-      // Reload
       if (target.closest('.at-reload-data')) {
         this.updateData(this.state.fullData);
         return;
       }
 
-      // Zoom In
       if (target.closest('.at-zoom-in')) {
         this.zoom(1);
         return;
       }
 
-      // Zoom Out
       if (target.closest('.at-zoom-out')) {
         this.zoom(-1);
         return;
       }
     });
 
-    // 3. Event Delegation cho Change Events
-    wrapper.addEventListener('change', (e) => {
-      const target = e.target;
+    A.Event.on(
+      wrapper,
+      'change',
+      (e) => {
+        const target = e.target;
 
-      // Group By
-      if (target.classList.contains('at-group-by')) {
-        this.groupBy(target.value);
-        return;
-      }
+        if (target.classList.contains('at-group-by')) {
+          this.groupBy(target.value);
+          return;
+        }
 
-      // Editable Cells
-      if (target.classList.contains('at-cell-edit')) {
-        const tr = target.closest('tr');
-        const itemId = tr.dataset.item;
-        const field = target.dataset.field;
-        const newVal = target.value;
-        this._handleCellChange(itemId, field, newVal);
-        return;
-      }
-    });
+        if (target.classList.contains('at-cell-edit')) {
+          const tr = target.closest('tr');
+          const itemId = tr.dataset.item;
+          const field = target.dataset.field;
+          const newVal = target.value;
+          this._handleCellChange(itemId, field, newVal);
+          return;
+        }
+      },
+      true
+    );
 
-    // Đánh dấu đã gắn event để tránh gắn trùng lặp
     wrapper.dataset.eventsAttached = 'true';
   }
 
@@ -772,7 +816,7 @@ export default class ATable {
   _initSortable() {
     this.state.draggable = new Sortable(`${this.containerId}-tbody`, {
       handleSelector: '.drag-handle',
-      stateBtn: `tbl-${this.containerId}-header`,
+      stateBtn: `tbl-${this.containerId}-header-drag`,
     });
   }
 
@@ -798,7 +842,7 @@ export default class ATable {
       );
     }
     this.state.currentPage = 1;
-    this.render(true);
+    this.refresh();
   }
 
   sort(field) {
@@ -806,8 +850,8 @@ export default class ATable {
     const dir = sort.field === field && sort.dir === 'asc' ? 'desc' : 'asc';
     this.state.sort = { field, dir };
 
-    if (A?.UI?.A.UI.stableSort) {
-      this.state.filteredData = A.UI.A.UI.stableSort(filteredData, this.options.colName, { column: field, dir: dir });
+    if (A?.UI?.stableSort) {
+      this.state.filteredData = A.UI.stableSort(filteredData, this.options.colName, { column: field, dir: dir });
     } else {
       this.state.filteredData = [...filteredData].sort((a, b) => {
         let valA = a[field] ?? '';
@@ -821,12 +865,12 @@ export default class ATable {
       });
     }
 
-    this.render(true);
+    this.refresh();
   }
 
   groupBy(field) {
     this.state.groupByField = field || null;
-    this.render(true);
+    this.refresh();
   }
 
   goToPage(page) {
@@ -837,32 +881,22 @@ export default class ATable {
     if (page > totalPages) page = totalPages;
 
     this.state.currentPage = page;
-    this.render(true);
+    this.refresh();
   }
 
-  /**
-   * Xử lý zoom bảng
-   * @param {number} direction 1: Phóng to, -1: Thu nhỏ
-   */
   zoom(direction) {
-    const step = 0.1; // 10%
+    const step = 0.1;
     let newLevel = this.state.zoomLevel + direction * step;
 
-    // Giới hạn zoom từ 0.5 đến 2.0
     if (newLevel < 0.5) newLevel = 0.5;
     if (newLevel > 2.0) newLevel = 2.0;
 
     this.state.zoomLevel = parseFloat(newLevel.toFixed(1));
 
-    const tableContainer = this.container.querySelector('.at-table-container');
-    if (tableContainer) {
-      tableContainer.style.transform = `scale(${this.state.zoomLevel})`;
-      tableContainer.style.transformOrigin = 'top left';
-
-      // Điều chỉnh chiều rộng container để tránh bị cắt khi zoom out hoặc tràn khi zoom in
-      // Lưu ý: transform scale không thay đổi layout space của element gốc,
-      // nên ta có thể cần điều chỉnh width/height nếu cần thiết.
-      // Ở đây ta giữ đơn giản bằng cách dùng transform.
+    const table = this.container.querySelector(`#tbl-${this.containerId}`);
+    if (table) {
+      table.style.transform = `scale(${this.state.zoomLevel})`;
+      table.style.transformOrigin = 'top left';
     }
   }
 
@@ -905,9 +939,9 @@ export default class ATable {
       }
 
       if (type === 'excel') {
-        await SYS.loadLibraryAsync('xlsx');
+        await loadLibraryAsync('xlsx');
       } else {
-        await SYS.loadLibraryAsync('html2pdf');
+        await loadLibraryAsync('html2pdf');
       }
 
       const viewType = colName || 'export';
@@ -1005,9 +1039,7 @@ export default class ATable {
         `;
         tempDiv.innerHTML = tableHtml;
 
-        if (window.A?.Modal) {
-          window.A.Modal.show(tempDiv, 'Xuất file PDF');
-        }
+        if (window.A?.Modal) window.A.Modal.show(tempDiv, 'Xuất file PDF');
 
         const opt = {
           margin: [10, 10, 10, 10],
@@ -1018,15 +1050,12 @@ export default class ATable {
         };
 
         await html2pdf().set(opt).from(tempDiv).save();
-
-        if (window.A?.Modal) {
-          window.A.Modal.hide();
-        }
+        if (window.A?.Modal) window.A.Modal.hide();
       }
 
       L._(`Đã xuất file ${type} thành công: ${fileName}`, 'success');
     } catch (err) {
-      Opps('[ATable] download error:', err);
+      console.error('[ATable] download error:', err);
     } finally {
       showLoading(false);
     }
@@ -1042,10 +1071,71 @@ export default class ATable {
   getData() {
     return this.state.fullData;
   }
+  updateOptions(options = {}) {
+    let existingExtra;
+    if (!options.headerExtra) {
+      existingExtra = this.container.querySelector('.at-header-extra')?.innerHTML;
+      this.state.headerExtra = [existingExtra];
+    }
+    this.options = { ...this.options, ...options };
+    this.init(this.options.data, this.options.colName);
+  }
 
-  /**
-   * Hủy instance và dọn dẹp registry
-   */
+  _autoDetectColName(data) {
+    const collections = window.A?.getConfig?.('consts/collections') || Object.keys(DB_SCHEMA);
+    const rElement = $('[data-collection]', getE(this.containerId));
+    if (rElement) {
+      this.options.colName = rElement.dataset.collection;
+    }
+    if (!this.options.colName) {
+      const foundCol = collections.find((col) => this.containerId.toLowerCase().includes(col.toLowerCase()));
+      if (foundCol) this.options.colName = foundCol;
+    }
+    if (this.options.colName) {
+      this.state.currentColName = this.options.colName;
+    }
+  }
+
+  async _handleSpecialColName() {
+    let { colName } = this.options;
+    if (colName && colName.includes('_by_')) {
+      this.state.currentColName = colName;
+      const schemaConfig = DB_SCHEMA[colName];
+      if (schemaConfig) {
+        this.options.groupBy = true;
+        this.state.groupByField = schemaConfig.groupBy;
+        this.options.colName = colName.split('_by_')[0];
+        this.state.isSecondary = true;
+        this.state.fullData = await A.DB.local.getCollection(this.options.colName);
+      }
+    }
+  }
+
+  _resolveFieldConfigs() {
+    if (Object.keys(this.state.fieldConfigs).length > 0) return;
+
+    const { colName } = this.options;
+    if (colName && DB_SCHEMA[colName]) {
+      const schema = DB_SCHEMA[colName];
+      const fields = schema.fields || [];
+      fields.forEach((f) => {
+        if (f.class !== 'd-none' && f.type !== 'hidden') {
+          this.state.fieldConfigs[f.name] = f;
+        }
+      });
+    } else if (this.state.fullData.length > 0) {
+      const allKeys = new Set();
+      this.state.fullData.forEach((item) => {
+        if (item && typeof item === 'object') {
+          Object.keys(item).forEach((key) => allKeys.add(key));
+        }
+      });
+      allKeys.forEach((key) => {
+        this.state.fieldConfigs[key] = { name: key, displayName: A.Lang?.t(key) || key.replace(/_/g, ' ') };
+      });
+    }
+  }
+
   destroy() {
     if (this.containerId) {
       ATable.instances.delete(this.containerId);

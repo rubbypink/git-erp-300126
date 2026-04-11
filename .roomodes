@@ -9,7 +9,7 @@ customModes:
 
   You strictly follow the latest Google GenAI SDK patterns and avoid deprecated libraries. You provide comprehensive guidance on all aspects of the Gemini API including text generation, multimodal AI, structured outputs, function calling, image/video generation, and Google Search grounding.
   whenToUse: |
-  Use this mode when developing applications that integrate with Google's Gemini API, implementing AI-powered features using the Google GenAI SDK, building chatbots or conversational AI, working with multimodal AI (text, images, video), or migrating from legacy Google AI libraries to the current SDK.
+  Use this mode when developing applications that integrate with Google's Gemini API, implementing AI-powered features using the Google GenAI SDK building chatbots or conversational AI, working with multimodal AI (text, images, video), or migrating from legacy Google AI libraries to the current SDK.
   description: Build applications with Google's GenAI SDK and Gemini API
   groups:
   - read
@@ -76,8 +76,8 @@ customModes:
   client = genai.Client()
 
   response = client.models.generate_content(
-      model="gemini-2.5-flash",
-      contents="Explain how AI works"
+  model="gemini-2.5-flash",
+  contents="Explain how AI works"
   )
   print(response.text)
   ```
@@ -105,8 +105,8 @@ customModes:
   image = Image.open(img_path)
 
   response = client.models.generate_content(
-    model='gemini-2.5-flash',
-    contents=[image, "explain that image"],
+  model='gemini-2.5-flash',
+  contents=[image, "explain that image"],
   )
 
   print(response.text) # The output often is markdown
@@ -118,17 +118,17 @@ customModes:
   from google.genai import types
 
   with open('path/to/small-sample.jpg', 'rb') as f:
-      image_bytes = f.read()
+    image_bytes = f.read()
 
   response = client.models.generate_content(
-    model='gemini-2.5-flash',
-    contents=[
-      types.Part.from_bytes(
-        data=image_bytes,
-        mime_type='image/jpeg',
-      ),
-      'Caption this image.'
-    ]
+  model='gemini-2.5-flash',
+  contents=[
+    types.Part.from_bytes(
+    data=image_bytes,
+    mime_type='image/jpeg',
+    ),
+    'Caption this image.'
+  ]
   )
 
   print(response.text)
@@ -140,8 +140,8 @@ customModes:
   f = client.files.upload(file=img_path)
 
   response = client.models.generate_content(
-      model='gemini-2.5-flash',
-      contents=[f, "can you describe this image?"]
+    model='gemini-2.5-flash',
+    contents=[f, "can you describe this image?"]
   )
   ```
 
@@ -165,13 +165,13 @@ customModes:
   client = genai.Client()
 
   client.models.generate_content(
-    model='gemini-2.5-flash',
-    contents="What is AI?",
-    config=types.GenerateContentConfig(
-      thinking_config=types.ThinkingConfig(
-        thinking_budget=0
-      )
+  model='gemini-2.5-flash',
+  contents="What is AI?",
+  config=types.GenerateContentConfig(
+    thinking_config=types.ThinkingConfig(
+    thinking_budget=0
     )
+  )
   )
   ```
 
@@ -190,12 +190,12 @@ customModes:
   client = genai.Client()
 
   config = types.GenerateContentConfig(
-      system_instruction="You are a pirate",
+    system_instruction="You are a pirate",
   )
 
   response = client.models.generate_content(
-      model='gemini-2.5-flash',
-      config=config,
+    model='gemini-2.5-flash',
+    config=config,
   )
 
   print(response.text)
@@ -218,16 +218,16 @@ customModes:
 
   img = Image.open("/path/to/img")
   response = client.models.generate_content(
-      model="gemini-2.0-flash",
-      contents=['Do these look store-bought or homemade?', img],
-      config=types.GenerateContentConfig(
-        safety_settings=[
-          types.SafetySetting(
-              category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-              threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
-          ),
-        ]
-      )
+    model="gemini-2.0-flash",
+    contents=['Do these look store-bought or homemade?', img],
+    config=types.GenerateContentConfig(
+    safety_settings=[
+      types.SafetySetting(
+        category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+      ),
+    ]
+    )
   )
 
   print(response.text)
@@ -243,11 +243,11 @@ customModes:
   client = genai.Client()
 
   response = client.models.generate_content_stream(
-      model="gemini-2.5-flash",
-      contents=["Explain how AI works"]
+    model="gemini-2.5-flash",
+    contents=["Explain how AI works"]
   )
   for chunk in response:
-      print(chunk.text, end="")
+    print(chunk.text, end="")
   ```
 
   ### Chat
@@ -267,8 +267,8 @@ customModes:
   print(response.text)
 
   for message in chat.get_history():
-      print(f'role - {message.role}',end=": ")
-      print(message.parts[0].text)
+    print(f'role - {message.role}',end=": ")
+    print(message.parts[0].text)
   ```
 
   ### Structured outputs
@@ -284,19 +284,19 @@ customModes:
 
   # Define the desired output structure using Pydantic
   class Recipe(BaseModel):
-      recipe_name: str
-      description: str
-      ingredients: list[str]
-      steps: list[str]
+    recipe_name: str
+    description: str
+    ingredients: list[str]
+    steps: list[str]
 
   # Request the model to populate the schema
   response = client.models.generate_content(
-      model='gemini-2.5-flash',
-      contents="Provide a classic recipe for chocolate chip cookies.",
-      config=types.GenerateContentConfig(
-          response_mime_type="application/json",
-          response_schema=Recipe,
-      ),
+    model='gemini-2.5-flash',
+    contents="Provide a classic recipe for chocolate chip cookies.",
+    config=types.GenerateContentConfig(
+      response_mime_type="application/json",
+      response_schema=Recipe,
+    ),
   )
 
   # The response.text will be a valid JSON string matching the Recipe schema
@@ -315,29 +315,29 @@ customModes:
 
   # Define a function that the model can call (to access external information)
   def get_current_weather(city: str) -> str:
-      """Returns the current weather in a given city. For this example, it's hardcoded."""
-      if "boston" in city.lower():
-          return "The weather in Boston is 15°C and sunny."
-      else:
-          return f"Weather data for {city} is not available."
+    """Returns the current weather in a given city. For this example, it's hardcoded."""
+    if "boston" in city.lower():
+      return "The weather in Boston is 15°C and sunny."
+    else:
+      return f"Weather data for {city} is not available."
 
   # Make the function available to the model as a tool
   response = client.models.generate_content(
-    model='gemini-2.5-flash',
-    contents="What is the weather like in Boston?",
-    config=types.GenerateContentConfig(
-        tools=[get_current_weather]
-    ),
+  model='gemini-2.5-flash',
+  contents="What is the weather like in Boston?",
+  config=types.GenerateContentConfig(
+    tools=[get_current_weather]
+  ),
   )
   # The model may respond with a request to call the function
   if response.function_calls:
-      print("Function calls requested by the model:")
-      for function_call in response.function_calls:
-          print(f"- Function: {function_call.name}")
-          print(f"- Args: {dict(function_call.args)}")
+    print("Function calls requested by the model:")
+    for function_call in response.function_calls:
+      print(f"- Function: {function_call.name}")
+      print(f"- Args: {dict(function_call.args)}")
   else:
-      print("The model responded directly:")
-      print(response.text)
+    print("The model responded directly:")
+    print(response.text)
   ```
 
   ### Generate Images
@@ -352,18 +352,18 @@ customModes:
   client = genai.Client()
 
   result = client.models.generate_images(
-      model='imagen-3.0-generate-002',
-      prompt="Image of a cat",
-      config=dict(
-          number_of_images=1, # 1 to 4
-          output_mime_type="image/jpeg",
-          person_generation="ALLOW_ADULT" # 'ALLOW_ALL' (but not in Europe/Mena), 'DONT_ALLOW' or 'ALLOW_ADULT'
-          aspect_ratio="1:1" # "1:1", "3:4", "4:3", "9:16", or "16:9"
-      )
+    model='imagen-3.0-generate-002',
+    prompt="Image of a cat",
+    config=dict(
+      number_of_images=1, # 1 to 4
+      output_mime_type="image/jpeg",
+      person_generation="ALLOW_ADULT" # 'ALLOW_ALL' (but not in Europe/Mena), 'DONT_ALLOW' or 'ALLOW_ADULT'
+      aspect_ratio="1:1" # "1:1", "3:4", "4:3", "9:16", or "16:9"
+    )
   )
 
   for generated_image in result.generated_images:
-     image = Image.open(BytesIO(generated_image.image.image_bytes))
+   image = Image.open(BytesIO(generated_image.image.image_bytes))
   ```
 
   ### Generate Videos
@@ -381,24 +381,24 @@ customModes:
   PIL_image = Image.open("path/to/image.png") # Optional
 
   operation = client.models.generate_videos(
-      model="veo-2.0-generate-001",
-      prompt="Panning wide shot of a calico kitten sleeping in the sunshine",
-      image = PIL_image,
-      config=types.GenerateVideosConfig(
-          person_generation="dont_allow",  # "dont_allow" or "allow_adult"
-          aspect_ratio="16:9",  # "16:9" or "9:16"
-          number_of_videos=1, # supported value is 1-4, use 1 by default
-          duration_seconds=8, # supported value is 5-8
-      ),
+    model="veo-2.0-generate-001",
+    prompt="Panning wide shot of a calico kitten sleeping in the sunshine",
+    image = PIL_image,
+    config=types.GenerateVideosConfig(
+      person_generation="dont_allow",  # "dont_allow" or "allow_adult"
+      aspect_ratio="16:9",  # "16:9" or "9:16"
+      number_of_videos=1, # supported value is 1-4, use 1 by default
+      duration_seconds=8, # supported value is 5-8
+    ),
   )
 
   while not operation.done:
-      time.sleep(20)
-      operation = client.operations.get(operation)
+    time.sleep(20)
+    operation = client.operations.get(operation)
 
   for n, generated_video in enumerate(operation.response.generated_videos):
-      client.files.download(file=generated_video.video) # just file=, no need for path= as it doesn't save yet
-      generated_video.video.save(f"video{n}.mp4")  # saves the video
+    client.files.download(file=generated_video.video) # just file=, no need for path= as it doesn't save yet
+    generated_video.video.save(f"video{n}.mp4")  # saves the video
   ```
 
   ### Search Grounding
@@ -411,9 +411,9 @@ customModes:
   client = genai.Client()
 
   response = client.models.generate_content(
-      model='gemini-2.5-flash',
-      contents='What was the score of the latest Olympique Lyonais' game?',
-      config={"tools": [{"google_search": {}}]},
+    model='gemini-2.5-flash',
+    contents='What was the score of the latest Olympique Lyonais' game?',
+    config={"tools": [{"google_search": {}}]},
   )
 
   # Response
@@ -438,8 +438,8 @@ customModes:
   client = genai.Client()
 
   response = client.models.generate_content(
-      model="gemini-2.5-flash",
-      contents="How does AI work?"
+    model="gemini-2.5-flash",
+    contents="How does AI work?"
   )
   print(response.text)
   ```
@@ -453,10 +453,10 @@ customModes:
   client = genai.Client()
 
   response = client.models.generate_content(
-      model="gemini-2.5-flash",
-      contents=[
-        types.Content(role="user", parts=[types.Part.from_text(text="How does AI work?")]),
-      ]
+    model="gemini-2.5-flash",
+    contents=[
+    types.Content(role="user", parts=[types.Part.from_text(text="How does AI work?")]),
+    ]
   )
   print(response.text)
   ```
@@ -501,19 +501,3 @@ customModes:
   whenToUse: Use this mode when you need to write, modify, or refactor code. Ideal for implementing features, fixing bugs, creating new files, or making code improvements across any programming language or framework.
   description: Chế độ thực thi code ERP chuyên sâu. Sử dụng Gemini Sonnet bản latest để triển khai logic phức tạp, refactor code và đảm bảo tính ổn định cao nhất.
   customInstructions: |-
-
-  # 9 TRIP PROTOCOL
-
-  Bạn là thực thể thực thi của 9Trip Tech Lead. Trong chế độ này:
-  1. Khi yêu cầu là xây dựng code module mới, LUÔN đọc `public/src/js/libs/utils.js` và `public/src/js/modules/DBSchema.js` trước khi triển khai logic mới.
-  2. Code phải đạt chuẩn "Enterprise-Grade": Sạch, dễ bảo trì, và có comment giải thích luồng dữ liệu bằng tiếng Việt.
-  3. Khi sửa code, TUYỆT ĐỐI không xóa các đoạn code cũ đang hoạt động ổn định nếu không có yêu cầu.
-  4. Ưu tiên sử dụng `DBManager.js` để tương tác database.
-  5. Luôn phản hồi đi thẳng vào giải pháp kỹ thuật
-  6. Nếu một file quá lớn (trên 1000 dòng), hãy chỉ đọc đoạn code cần thiết thay vì dùng read_file toàn bộ nội dung.
-     groups:
-  - read
-  - edit
-  - command
-  - mcp
-    source: project

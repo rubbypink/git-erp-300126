@@ -14,6 +14,18 @@ export class AdminDatabaseController {
     this.currentCollection = '';
     this.aTableInstance = null;
     this.Modal = A.Modal;
+    this.tbConfig = {
+      colName: this.currentCollection,
+      title: A.Lang?.t(this.currentCollection) || this.currentCollection,
+      pageSize: 50,
+      sorter: true,
+      header: true,
+      groupBy: true,
+      footer: true,
+      search: true,
+      zoom: true,
+      editable: true,
+    };
   }
 
   async render() {
@@ -69,7 +81,7 @@ export class AdminDatabaseController {
         if (!this.aTableInstance) return this.loadTableData();
         let dataArray = await A.DB.local.getCollection(this.currentCollection);
         if (!dataArray) dataArray = await A.DB.getCollection(this.currentCollection);
-        await this.aTableInstance?.init(dataArray);
+        await new ATable('admin-atable-container', { ...this.tbConfig, data: dataArray });
       });
 
       document.getElementById('btn-admin-add-record').addEventListener('click', () => {
@@ -98,7 +110,7 @@ export class AdminDatabaseController {
     }
   }
 
-  async loadTableData() {
+  async loadTableData(forceNew = false) {
     const tableContainer = document.getElementById('admin-atable-container');
     if (!tableContainer) return;
 
@@ -111,9 +123,9 @@ export class AdminDatabaseController {
 
     try {
       // Lấy dữ liệu từ DBManager (Firestore -> IndexedDB -> Local)
-      let dataArray = await A.DB.local.getCollection(this.currentCollection);
-      if (!dataArray) dataArray = await A.DB.getCollection(this.currentCollection);
-
+      let dataArray = [];
+      if (forceNew) dataArray = await A.DB.getCollection(this.currentCollection);
+      else await A.DB.local.getCollection(this.currentCollection);
       tableContainer.innerHTML = ''; // Clear loader
 
       // Cấu hình ATable tối ưu cho Admin
@@ -124,6 +136,7 @@ export class AdminDatabaseController {
         pageSize: 50,
         sorter: true,
         header: true,
+        groupBy: true,
         footer: true,
         search: true,
         zoom: true,

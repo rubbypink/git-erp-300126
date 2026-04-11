@@ -108,12 +108,6 @@ export default class LogicBase {
     }
   }
 
-  static async updateTableData(collection, fullData) {
-    if (!collection) collection = getVal('btn-select-datalist');
-    fullData = APP_DATA[collection] || (await A.DB.local.getCollection(collection));
-    A.UI.createTable('tab-data-tbl', { colName: collection, data: fullData });
-  }
-
   static openBatchEdit(dataList, title) {
     LogicBase.CURRENT_BATCH_DATA = JSON.parse(JSON.stringify(dataList));
     A.UI.activateTab('tab-form');
@@ -541,7 +535,6 @@ window.SORT_STATE = LogicBase.SORT_STATE;
 window.handleDashClick = LogicBase.handleDashClick;
 window.copyRow = LogicBase.copyRow;
 window.findBookingInLocal = LogicBase.findBookingInLocal;
-window.updateTableData = LogicBase.updateTableData;
 window.openBatchEdit = LogicBase.openBatchEdit;
 window.refreshForm = LogicBase.refreshForm;
 window.reverseDetailsRows = LogicBase.reverseDetailsRows;

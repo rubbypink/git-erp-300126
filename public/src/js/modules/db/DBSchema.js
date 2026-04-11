@@ -508,7 +508,7 @@ export const DB_SCHEMA = {
       },
     ],
     aggregate: {
-      sum: ['total', 'quantity', 'child_qty', 'discount', 'surcharge'],
+      sum: ['total', 'quantity', 'child_qty', 'surcharge'],
       unique: ['id', 'hotel_name', 'service_name'],
     },
     index: ['booking_id', 'start_date', 'service_name', 'service_type'],
@@ -2153,67 +2153,6 @@ export const DB_SCHEMA = {
     ],
     index: ['id'],
   },
-
-  // booking_details_by_booking: {
-  //   displayNameEng: 'Booking Details (by Booking)',
-  //   displayName: 'Chi tiết DV (theo Booking)',
-  //   isSecondaryIndex: true,
-  //   source: 'booking_details',
-  //   groupBy: 'booking_id',
-  //   description: 'Secondary index của booking_details, nhóm theo booking_id. ' + 'APP_DATA.booking_details_by_booking[bookingId] → BookingDetail[]',
-  // },
-
-  // operator_entries_by_booking: {
-  //   displayNameEng: 'Operator Entries (by Booking)',
-  //   displayName: 'Chi phí Giá Vốn (theo Booking)',
-  //   isSecondaryIndex: true,
-  //   source: 'operator_entries',
-  //   groupBy: 'booking_id',
-  //   description: 'Secondary index của operator_entries, nhóm theo booking_id. ' + 'APP_DATA.operator_entries_by_booking[bookingId] → OperatorEntry[]',
-  // },
-  // operator_entries_by_supplier: {
-  //   displayNameEng: 'Operator Entries (by Supplier)',
-  //   displayName: 'Chi phí Giá Vốn (theo Nhà Cung Cấp)',
-  //   isSecondaryIndex: true,
-  //   source: 'operator_entries',
-  //   groupBy: 'supplier',
-  //   description: 'Secondary index của operator_entries, nhóm theo supplier. ' + 'APP_DATA.operator_entries_by_supplier[supplier] → OperatorEntry[]',
-  // },
-  // operator_entries_by_month: {
-  //   displayNameEng: 'Operator Entries (by Month)',
-  //   displayName: 'Chi phí Giá Vốn (theo Tháng)',
-  //   isSecondaryIndex: true,
-  //   source: 'operator_entries',
-  //   groupBy: 'check_in',
-  //   description: 'Secondary index của operator_entries, nhóm theo month. ' + 'APP_DATA.operator_entries_by_month[month] → OperatorEntry[]',
-  // },
-
-  // transactions_by_booking: {
-  //   displayNameEng: 'Transactions (by Booking)',
-  //   displayName: 'Giao dịch (theo Booking)',
-  //   isSecondaryIndex: true,
-  //   source: 'transactions',
-  //   groupBy: 'booking_id',
-  //   description: 'Secondary index của transactions, nhóm theo booking_id. ' + 'APP_DATA.transactions_by_booking[bookingId] → Transaction[]',
-  // },
-
-  // transactions_by_month: {
-  //   displayNameEng: 'Transactions (by Month)',
-  //   displayName: 'Giao dịch (theo Tháng)',
-  //   isSecondaryIndex: true,
-  //   source: 'transactions',
-  //   groupBy: 'transaction_date',
-  //   description: 'Secondary index của transactions, nhóm theo month. ' + 'APP_DATA.transactions_by_month[month] → Transaction[]',
-  // },
-
-  // transactions_by_fund: {
-  //   displayNameEng: 'Transactions (by Fund)',
-  //   displayName: 'Giao dịch (theo Quỹ)',
-  //   isSecondaryIndex: true,
-  //   source: 'transactions',
-  //   groupBy: 'fund_source',
-  //   description: 'Secondary index của transactions, nhóm theo fund_source. ' + 'APP_DATA.transactions_by_fund[fundAccountId] → Transaction[]',
-  // },
 
   // =========================================================================
   // VIRTUAL COLLECTIONS FOR REPORTS

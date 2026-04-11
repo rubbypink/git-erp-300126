@@ -3,7 +3,7 @@
 // ===================================================================
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
-
+import { logA, showConfirm, showAlert } from '/src/js/modules/core/UI_Manager.js';
 // NOTE: NotificationManager is accessed via window.NotificationManager (loaded by main app bundle)
 import SalesModule from '/src/js/modules/M_SalesModule.js';
 import { getNewData, migrateBookingTransactions, auditTransactionsChecking } from './accountant_logic.js';
@@ -132,7 +132,7 @@ class AccountantController {
     try {
       let userRole = CURRENT_USER && CURRENT_USER.role ? CURRENT_USER.role : 'acc';
       if (userRole === 'admin') {
-        if (typeof window.showConfirm === 'function') {
+        if (typeof showConfirm === 'function') {
           showConfirm(
             "Bạn đang đăng nhập với quyền admin. Bạn có muốn xem dữ liệu của The Nice Hotel không? (Chọn 'Cancel' để xem dữ liệu 9 Trip ERP)",
             () => {
@@ -294,7 +294,7 @@ class AccountantController {
       const endDate = promt('📅 Ngày chốt số dư từ ngày... (định dạng dd/mm/yyyy) - Để trống: Chọn ngày hiện tại', new Date().toISOString().split('T')[0]);
       if (!endDate) return;
 
-      window.logA('Đang xử lý chốt số dư...', 'info', 'toast');
+      logA('Đang xử lý chốt số dư...', 'info', 'toast');
 
       // Gọi Cloud Function (Modular SDK)
       const functions = getFunctions(getApp(), 'asia-southeast1');
@@ -303,7 +303,7 @@ class AccountantController {
 
       if (result.data && result.data.success && result.data.newBalance) {
         const newBalance = result.data.newBalance;
-        window.logA(`✅ Chốt thành công! Số dư mới: ${formatCurrency(newBalance)}`, 'success');
+        logA(`✅ Chốt thành công! Số dư mới: ${formatCurrency(newBalance)}`, 'success');
 
         // 1. Cập nhật APP_DATA
         if (A.DB) {
@@ -758,8 +758,8 @@ class AccountantController {
     const amount = parseFloat(amountShow);
     if (!data.fund_source) data.fund_source = container.querySelector('[data-field="fund_source"]').value;
     // 1. Validate
-    if (!amount || amount <= 0) return window.logA('Số tiền không hợp lệ', 'warning', 'alert');
-    if (!data.fund_source && !isEdit) return window.logA('Chưa chọn quỹ', 'warning', 'alert');
+    if (!amount || amount <= 0) return logA('Số tiền không hợp lệ', 'warning', 'alert');
+    if (!data.fund_source && !isEdit) return logA('Chưa chọn quỹ', 'warning', 'alert');
 
     // --- 2. XỬ LÝ BOOKING ID (Quan trọng) ---
     // Đọc từ APP_DATA thay vì gọi Firestore trực tiếp — data đã có trong bộ nhớ
@@ -837,7 +837,7 @@ class AccountantController {
         } else this.refreshData();
       }
       A.Modal.hide();
-      window.logA('✅ Lưu thành công!', 'success');
+      logA('✅ Lưu thành công!', 'success');
     } catch (e) {
       console.error(e);
       Opps('❌ Lỗi: ' + e.message);

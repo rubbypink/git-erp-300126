@@ -1,6 +1,6 @@
 /**
  * Module: ASelect (9Trip ERP Core)
- * Version: 2.9.1 (Enterprise-Grade - Optimized Batch Rendering & Double-Init Protection)
+ * Version: 2.9.2 (Enterprise-Grade - Optimized Batch Rendering & Double-Init Protection)
  * Tech Lead: 9Trip ERP Core Architect
  *
  * @class ASelect
@@ -72,6 +72,7 @@ export default class ASelect {
       // UI Elements
       this.wrapper = null;
       this.toggleBtn = null;
+      this.toogleState = null;
       this.dropdown = null;
       this.searchInput = null;
 
@@ -93,7 +94,7 @@ export default class ASelect {
    */
   async initBase() {
     try {
-      this.el.id = this.uid;
+      this.el.setAttribute('data-smart-id', this.uid);
       ASelect.instances.set(this.uid, this);
 
       // Fast-path Sync: Nếu dữ liệu có sẵn trong RAM
@@ -151,14 +152,26 @@ export default class ASelect {
    */
   async loadData() {
     try {
-      const src = this.source;
+      let src = this.source;
       if (!src) return;
 
+      // 1. Làm sạch data-source (loại bỏ ký tự lạ, khoảng trắng thừa)
+      if (typeof src === 'string') {
+        const originalSrc = src;
+        // Loại bỏ ký tự điều khiển và khoảng trắng thừa
+        src = src.replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
+        if (src !== originalSrc) {
+          L._(`ASelect.loadData - Cleaned source: "${originalSrc}" -> "${src}"`);
+        }
+      }
+
       const cacheKey = typeof src === 'string' ? src : null;
+      L._(`ASelect.loadData - Processing source:`, { src, cacheKey });
 
       // TRƯỚC KHI FETCH: Check xem RAM đã có data chuẩn (đã map) chưa
       if (cacheKey && ASelect.mapCache.has(cacheKey)) {
         this.data = ASelect.mapCache.get(cacheKey);
+        L._(`ASelect.loadData - Cache hit for: ${cacheKey}`);
         return;
       }
 
@@ -169,12 +182,17 @@ export default class ASelect {
       }
 
       const fetchPromise = (async () => {
-        let raw = [];
+        let raw = null;
         if (typeof src === 'function') {
           raw = await src();
         } else if (typeof src === 'string') {
-          const s = src.trim();
+          const s = src;
           if (s.includes('.')) {
+            if (typeof SYS.runFn === 'function') {
+              L._(`ASelect.loadData - RunFn: ${s}`);
+              raw = await SYS.runFn(s, [this.el, this]);
+              if (raw) return raw;
+            }
             let parts = s.split('.');
             let current = window;
             for (let part of parts) {
@@ -187,27 +205,23 @@ export default class ASelect {
             }
             if (current) {
               raw = current;
-            } else if (typeof SYS.runFn === 'function') {
-              raw = await SYS.runFn(s, [this.el, this]);
             }
           } else if (window.A?.DB && window.A.DB.schema.isCollection(s)) {
             raw = await window.A.DB.local.getCollection(s);
+          } else if (window[s] !== undefined) {
+            // [BẢN VÁ]: Không có dấu chấm nhưng CÓ TỒN TẠI ở Global Window (Hàm hoặc Biến tĩnh)
+            if (typeof window[s] === 'function') {
+              raw = await window[s](this.el, this);
+            } else {
+              raw = window[s];
+            }
           } else {
             raw = typeof normalizeList === 'function' ? normalizeList(s) : [];
-          }
-        }
-        // 2. [BẢN VÁ]: Không có dấu chấm nhưng CÓ TỒN TẠI ở Global Window (Hàm hoặc Biến tĩnh)
-        else if (window[s] !== undefined) {
-          if (typeof window[s] === 'function') {
-            // Nếu là hàm: Thực thi hàm và lấy kết quả
-            raw = await window[s](this.el, this);
-          } else {
-            // Nếu là biến tĩnh (VD: mảng LIST_COUNTRIES): Lấy luôn giá trị
-            raw = window[s];
           }
         } else if (src && typeof src === 'object') {
           raw = src;
         }
+        L._(`ASelect.loadData - Fetched data:`, { src, raw });
         return raw;
       })();
 
@@ -215,6 +229,7 @@ export default class ASelect {
 
       const result = await fetchPromise;
       this.data = this.mapData(result);
+      L._(`ASelect.loadData - Result for ${cacheKey}:`, { count: this.data.length });
 
       // SAU KHI MAP XONG: Lưu thẳng vào RAM để 99 instance khác ăn ké
       if (cacheKey) {
@@ -282,7 +297,7 @@ export default class ASelect {
     let html = '<option value="">-- Chọn --</option>';
     this.data.forEach((item) => {
       const selected = String(item.id) === String(currentVal) ? 'selected' : '';
-      html += `<option value="${item.id}" ${selected}>${item.text}</option>`;
+      html += `<option value="${item.id}" ${selected}>${escapeHtml(item.text)}</option>`;
     });
     this.el.innerHTML = html;
 
@@ -311,11 +326,13 @@ export default class ASelect {
       this.wrapper.appendChild(this.el);
 
       const selectedText = this.el.options[this.el.selectedIndex]?.text || '-- Chọn --';
+      // 2. Loại bỏ icon mũi tên mặc định bằng cách thêm style background-image: none
       const toggleClass = isInTable ? 'border-0 p-0 bg-transparent h-100' : 'form-select form-select-sm';
+      const inlineStyle = (isInTable ? 'min-height: 31px;' : '') + ' background-image: none; padding-right: 0.75rem;';
 
       this.wrapper.innerHTML += `
-        <div class="${toggleClass} smart-toggle-btn cursor-pointer d-flex align-items-center" tabindex="0" style="${isInTable ? 'min-height: 31px;' : ''}">
-          <span class="smart-selected-text text-truncate w-100">${selectedText}</span>
+        <div class="${toggleClass} smart-toggle-btn cursor-pointer d-flex align-items-center" tabindex="0" style="${inlineStyle}">
+          <span class="smart-selected-text text-truncate w-100">${escapeHtml(selectedText)}</span>
         </div>
       `;
 
@@ -355,7 +372,7 @@ export default class ASelect {
           : ''
       }
       <ul class="list-unstyled mb-0 smart-list-container">
-        ${this.data.map((item) => `<li class="dropdown-item cursor-pointer smart-option" data-value="${item.id}">${item.text}</li>`).join('')}
+        ${this.data.map((item) => `<li class="dropdown-item cursor-pointer smart-option" data-value="${item.id}">${escapeHtml(item.text)}</li>`).join('')}
       </ul>
       ${
         this.isCreatable
@@ -377,7 +394,8 @@ export default class ASelect {
         const toggle = e.target.closest('.smart-toggle-btn');
         if (toggle) {
           e.stopPropagation();
-          this.openDropdown();
+          if (!this.toogleState) this.openDropdown();
+          else this.closeDropdown();
         }
       });
 
@@ -488,61 +506,98 @@ export default class ASelect {
   }
 
   openDropdown() {
-    if (!this.dropdown) return;
+    try {
+      if (!this.dropdown) return;
+      this.toogleState = true;
 
-    document.querySelectorAll('.smart-dropdown-menu').forEach((m) => {
-      if (m !== this.dropdown) m.style.display = 'none';
-    });
-
-    if (!this.dropdown.parentNode) document.body.appendChild(this.dropdown);
-
-    const rect = this.toggleBtn.getBoundingClientRect();
-    const dropdownWidth = Math.max(rect.width, 200);
-
-    this.dropdown.style.width = `${dropdownWidth}px`;
-    this.dropdown.style.display = 'block';
-
-    let top = rect.bottom + window.scrollY;
-    let left = rect.left + window.scrollX;
-
-    const dropdownHeight = this.dropdown.offsetHeight;
-    if (top + dropdownHeight > window.innerHeight + window.scrollY) {
-      top = rect.top + window.scrollY - dropdownHeight;
-    }
-
-    this.dropdown.style.top = `${top}px`;
-    this.dropdown.style.left = `${left}px`;
-
-    if (this.searchInput) {
-      this.searchInput.value = '';
-      setTimeout(() => this.searchInput.focus(), 10);
-      this.dropdown.querySelectorAll('.smart-option').forEach((opt) => {
-        opt.classList.remove('d-none');
-        opt.classList.remove('highlight');
+      // Đóng các dropdown khác đang mở
+      document.querySelectorAll('.smart-dropdown-menu').forEach((m) => {
+        if (m !== this.dropdown) m.style.display = 'none';
       });
+
+      if (!this.dropdown.parentNode) document.body.appendChild(this.dropdown);
+
+      const rect = this.toggleBtn.getBoundingClientRect();
+      const dropdownWidth = Math.max(rect.width, 200);
+
+      // Thiết lập chiều cao và hiển thị tạm thời để tính toán kích thước thực tế
+      this.dropdown.style.width = `${dropdownWidth}px`;
+      this.dropdown.style.display = 'block';
+      this.dropdown.style.visibility = 'hidden';
+
+      const dropdownHeight = this.dropdown.offsetHeight;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      let top = rect.bottom + window.scrollY;
+      let left = rect.left + window.scrollX;
+
+      // 1. Xử lý cạnh dưới (Bottom) - Logic Drop-up thông minh
+      const spaceBelow = viewportHeight - rect.bottom;
+      const spaceAbove = rect.top;
+
+      if (dropdownHeight > spaceBelow && spaceAbove > spaceBelow) {
+        // Hiển thị phía trên nếu phía dưới không đủ chỗ và phía trên có nhiều không gian hơn
+        top = rect.top + window.scrollY - dropdownHeight;
+        // Đảm bảo không tràn lên trên đỉnh màn hình (viewport top)
+        if (top < window.scrollY) top = window.scrollY;
+      } else {
+        // Hiển thị phía dưới, nhưng đảm bảo không tràn khỏi cạnh dưới màn hình
+        if (top + dropdownHeight > viewportHeight + window.scrollY) {
+          top = Math.max(window.scrollY, viewportHeight + window.scrollY - dropdownHeight);
+        }
+      }
+
+      // 2. Xử lý cạnh phải (Right) - Căn lề phải nếu bị tràn
+      if (rect.left + dropdownWidth > viewportWidth) {
+        left = rect.right + window.scrollX - dropdownWidth;
+      }
+
+      // Đảm bảo không tràn khỏi cạnh trái màn hình
+      if (left < window.scrollX) left = window.scrollX;
+
+      // Áp dụng vị trí cuối cùng và hiển thị
+      this.dropdown.style.top = `${top}px`;
+      this.dropdown.style.left = `${left}px`;
+      this.dropdown.style.visibility = 'visible';
+
+      if (this.searchInput) {
+        this.searchInput.value = '';
+        setTimeout(() => this.searchInput.focus(), 10);
+        this.dropdown.querySelectorAll('.smart-option').forEach((opt) => {
+          opt.classList.remove('d-none');
+          opt.classList.remove('highlight');
+        });
+      }
+
+      // Xử lý click bên ngoài để đóng
+      this._outsideClickRef = (e) => {
+        if (!this.wrapper.contains(e.target) && !this.dropdown.contains(e.target)) {
+          this.closeDropdown();
+        }
+      };
+      document.addEventListener('click', this._outsideClickRef);
+
+      // Lắng nghe sự kiện scroll để tự động đóng (tránh dropdown trôi lơ lửng)
+      this._scrollRef = (e) => {
+        if (!this.dropdown.contains(e.target)) {
+          this.closeDropdown();
+        }
+      };
+      window.addEventListener('scroll', this._scrollRef, { capture: true, passive: true });
+
+      if (typeof L !== 'undefined' && L._) {
+        L._(`ASelect.openDropdown - ${this.el.dataset.field || this.uid}`, { top, left });
+      }
+
+      this.syncUI();
+    } catch (e) {
+      if (typeof L !== 'undefined' && L._) L._(`ASelect.openDropdown Error`, e, 'error');
     }
-
-    this._outsideClickRef = (e) => {
-      if (!this.wrapper.contains(e.target) && !this.dropdown.contains(e.target)) {
-        this.closeDropdown();
-      }
-    };
-    document.addEventListener('click', this._outsideClickRef);
-    L._(`ASelect.openDropdown - ${this.el.dataset.field}`, { top, left });
-    this.syncUI();
-    this.dropdown.style.top = `${top}px`;
-    this.dropdown.style.left = `${left}px`;
-
-    // Lắng nghe sự kiện scroll để auto-close dropdown
-    this._scrollRef = (e) => {
-      // Tránh việc scroll bên trong chính dropdown gây đóng
-      if (!this.dropdown.contains(e.target)) {
-        this.closeDropdown();
-      }
-    };
   }
 
   closeDropdown() {
+    this.toogleState = false;
     if (this.dropdown) this.dropdown.style.display = 'none';
 
     if (this._outsideClickRef) {
@@ -565,16 +620,16 @@ export default class ASelect {
       const options = Array.from(this.el.options);
       let targetIdx = options.findIndex((opt) => String(opt.value) === String(currentVal));
 
-      // if (targetIdx === -1) {
-      //   targetIdx = options.findIndex((opt) => opt.text === currentVal);
-      //   if (targetIdx !== -1) {
-      //     L._(`ASelect.syncUI change lần 2 - ${this.el.dataset.field}`, { foundVal, currentVal });
-      //     const foundVal = options[targetIdx].value;
-      //     this.el.value = foundVal;
-      //     this.el.dataset.val = foundVal;
-      //     currentVal = foundVal;
-      //   }
-      // }
+      if (targetIdx === -1) {
+        targetIdx = options.findIndex((opt) => opt.text === currentVal);
+        if (targetIdx !== -1) {
+          const foundVal = options[targetIdx].value;
+          L._(`ASelect.syncUI change lần 2 - ${this.el.dataset.field}`, { foundVal, currentVal });
+          this.el.value = foundVal;
+          this.el.dataset.val = foundVal;
+          currentVal = foundVal;
+        }
+      }
 
       if (targetIdx !== -1 && this.el.selectedIndex !== targetIdx) {
         this.el.selectedIndex = targetIdx;
@@ -583,7 +638,7 @@ export default class ASelect {
 
     const text = this.el.options[this.el.selectedIndex]?.text || '-- Chọn --';
     const textEl = this.wrapper.querySelector('.smart-selected-text');
-    if (textEl && textEl.textContent !== text) textEl.textContent = text;
+    if (textEl && textEl.textContent !== text) textEl.innerHTML = escapeHtml(text);
 
     if (this.dropdown) {
       this.dropdown.querySelectorAll('.smart-option').forEach((opt) => {
@@ -605,7 +660,7 @@ export default class ASelect {
       L._(`ASelect.setValue - ${this.uid}: data-val = ${dataVal}, value = ${this.el.value}`, { val, forceTrigger });
 
       // Đảm bảo data-val luôn được cập nhật đồng bộ với value
-      getE(this.uid).value = val;
+      this.el.value = val;
       if (dataVal !== val) {
         L._(`ASelect.setValue - có khác biệt: data-val update`, { val, dataVal });
         this.el.setAttribute('data-val', val);
@@ -717,7 +772,7 @@ export default class ASelect {
 
   static getInstance(el) {
     if (!el) return null;
-    const uid = el.id || el.dataset.smartId || el.closest('.smart-select-wrapper')?.dataset.smartId || el.closest('.smart-dropdown-menu')?.dataset.smartId;
+    const uid = el.dataset.smartId || el.closest('.smart-select-wrapper')?.dataset.smartId || el.closest('.smart-dropdown-menu')?.dataset.smartId;
     return ASelect.instances.get(uid) || null;
   }
 
@@ -784,7 +839,7 @@ export default class ASelect {
     });
 
     scan();
-    console.log('[ASelect] DOM Watcher initialized (v2.9.1 - Optimized Batch Rendering)', ASelect.stats);
+    console.log('[ASelect] DOM Watcher initialized (v2.9.2 - Optimized Batch Rendering)', ASelect.stats);
   }
 }
 

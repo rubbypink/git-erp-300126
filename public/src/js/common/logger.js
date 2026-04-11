@@ -167,7 +167,11 @@ const L = {
    * HÀM QUAN TRỌNG: Render giao diện log khi cần thiết
    * @param {string} targetId - ID của thẻ HTML (ví dụ 'log-viewer')
    */
-  showUI: function (targetId = 'main-content') {
+  showUI: function (targetId = null) {
+    if (!targetId) {
+      A.Modal.render(null, 'Cấu hình Log', { size: 'modal-lg', footer: false });
+      targetId = 'dynamic-modal-body';
+    }
     const container = document.getElementById(targetId);
     if (!container) return;
 
@@ -219,6 +223,7 @@ const L = {
       </div>
     `;
     container.innerHTML = html;
+    A.Modal.show();
   },
 
   clear: function () {
