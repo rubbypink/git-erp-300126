@@ -12,7 +12,7 @@
 import { getFirestore, collection, doc, getDocs, query, orderBy, limit, startAfter, serverTimestamp } from 'firebase/firestore';
 import { getApp } from 'firebase/app';
 
-import NotificationPanelRenderer from '/src/js/common/components/NotificationPanel.js';
+import NotificationPanelRenderer from '/src/js//components/NotificationPanel.js';
 
 /**
  * 9TRIP NOTIFICATION MANAGER - VERSION 1.0

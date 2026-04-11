@@ -9,7 +9,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 
 import * as AT from './db/migration-helper.js';
 window.AT = AT;
-import NavBarMenuController from '/src/js/common/components/M_NavBarResponsive.js';
+import NavBarMenuController from '/src/js//components/M_NavBarResponsive.js';
 
 // =============================================================================
 // PHẦN 1: WEB COMPONENT (UPDATED RENDER LOGIC)
@@ -860,7 +860,7 @@ class AdminController {
         title: 'Cấu Hình Hệ Thống',
         iconHtml: '<i class="fa-solid fa-palette me-2 text-primary"></i>',
         customClass: 'fw-bold small', // Các class thêm cho thẻ button
-        onClickAttr: "selectTab('tab-adm-app-config')", // Hàm onclick cũ
+        onClickAttr: "A.UI.selectTab('tab-adm-app-config')", // Hàm onclick cũ
         isDefault: true, // Tab kích hoạt đầu tiên
       },
       {
@@ -869,7 +869,7 @@ class AdminController {
         title: 'Quản Lý Database',
         iconHtml: '<i class="fa-solid fa-keyboard me-2 text-danger"></i>',
         customClass: 'fw-bold small',
-        onClickAttr: "selectTab('tab-adm-database-control')",
+        onClickAttr: "A.UI.selectTab('tab-adm-database-control')",
       },
       {
         id: 'tab-users-btn',
@@ -878,7 +878,7 @@ class AdminController {
         iconHtml: '<i class="fa-solid fa-users me-2 text-success"></i>',
         customClass: 'fw-bold small',
         liClass: 'admin-only', // Phân quyền ẩn hiện tab (Gắn vào thẻ <li>)
-        onClickAttr: "selectTab('tab-adm-users')",
+        onClickAttr: "A.UI.selectTab('tab-adm-users')",
       },
     ];
     new NavBarMenuController('settings-navbar-container', settingsTabConfig);

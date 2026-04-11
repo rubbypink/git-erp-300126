@@ -113,7 +113,8 @@ class AccountantController {
   _waitForDom() {
     // Kiểm tra 1 element đặc trưng, ví dụ filterPeriod
     const checkEl = document.getElementById('acc-filter-period');
-    if (checkEl) {
+    const checkMdl = document.getElementById('acc-modal-form');
+    if (checkEl || checkMdl) {
       this._start();
     } else {
       // Thử lại sau 100ms (tối đa 10 lần)
@@ -214,7 +215,7 @@ class AccountantController {
     // Luôn fetch mới nhất để đảm bảo tính đúng đắn của kế toán
     // loadCollections viết thẳng vào APP_DATA và trả về số docs đã tải
     L._(`Fetching data for ${collectionName}...`);
-    if (window.A && window.A.DB) await window.A.DB.loadCollections(collectionName, { forceNew: true });
+    if (window.A && window.A.DB) return await window.A.DB.local.getCollection(collectionName);
     return Object.values(APP_DATA?.[collectionName] ?? {});
   }
 
@@ -293,7 +294,7 @@ class AccountantController {
       const endDate = promt('📅 Ngày chốt số dư từ ngày... (định dạng dd/mm/yyyy) - Để trống: Chọn ngày hiện tại', new Date().toISOString().split('T')[0]);
       if (!endDate) return;
 
-      logA('Đang xử lý chốt số dư...', 'info', 'toast');
+      window.logA('Đang xử lý chốt số dư...', 'info', 'toast');
 
       // Gọi Cloud Function (Modular SDK)
       const functions = getFunctions(getApp(), 'asia-southeast1');
@@ -302,7 +303,7 @@ class AccountantController {
 
       if (result.data && result.data.success && result.data.newBalance) {
         const newBalance = result.data.newBalance;
-        logA(`✅ Chốt thành công! Số dư mới: ${formatCurrency(newBalance)}`, 'success');
+        window.logA(`✅ Chốt thành công! Số dư mới: ${formatCurrency(newBalance)}`, 'success');
 
         // 1. Cập nhật APP_DATA
         if (A.DB) {
@@ -713,7 +714,7 @@ class AccountantController {
             </div>
         `;
 
-    A.Modal.show(html, title);
+    A.Modal.render(html, title);
 
     // Format money input
     const inpMoney = document.getElementById('inp-amount-show');
@@ -726,6 +727,7 @@ class AccountantController {
 
     A.Modal.setSaveHandler(() => this.handleSaveTransaction(mode, isEdit, existingData?.id), 'Lưu Giao Dịch');
     A.Modal.setResetHandler(() => this.deleteTransaction(existingData?.id), 'Xóa Giao Dịch');
+    A.Modal.show();
   }
 
   async deleteTransaction(id) {
@@ -750,14 +752,14 @@ class AccountantController {
     const container = document.getElementById('acc-modal-form');
     const inputs = container.querySelectorAll('[data-field]');
     const data = {};
-    inputs.forEach((i) => (data[i.dataset.field] = i.value.trim()));
+    inputs.forEach((i) => (data[i.dataset.field] = getVal(i)));
 
-    const amountShow = document.getElementById('inp-amount-show').value.replace(/\./g, '');
+    const amountShow = getVal('inp-amount-show');
     const amount = parseFloat(amountShow);
-
+    if (!data.fund_source) data.fund_source = container.querySelector('[data-field="fund_source"]').value;
     // 1. Validate
-    if (!amount || amount <= 0) return logA('Số tiền không hợp lệ', 'warning', 'alert');
-    if (!data.fund_source && !isEdit) return logA('Chưa chọn quỹ', 'warning', 'alert');
+    if (!amount || amount <= 0) return window.logA('Số tiền không hợp lệ', 'warning', 'alert');
+    if (!data.fund_source && !isEdit) return window.logA('Chưa chọn quỹ', 'warning', 'alert');
 
     // --- 2. XỬ LÝ BOOKING ID (Quan trọng) ---
     // Đọc từ APP_DATA thay vì gọi Firestore trực tiếp — data đã có trong bộ nhớ
@@ -834,9 +836,8 @@ class AccountantController {
           SalesModule.DB.updateDeposit();
         } else this.refreshData();
       }
-
       A.Modal.hide();
-      logA('✅ Lưu thành công!', 'success');
+      window.logA('✅ Lưu thành công!', 'success');
     } catch (e) {
       console.error(e);
       Opps('❌ Lỗi: ' + e.message);

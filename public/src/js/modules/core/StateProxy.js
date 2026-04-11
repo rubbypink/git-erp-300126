@@ -189,7 +189,7 @@ const StateProxy = (() => {
       // 3. Luôn chuyển con trỏ lên cuối stack để chặn redo nhưng vẫn undo được các bước cũ
       _historyPointer = _historyStack.length;
 
-      if (typeof L !== 'undefined') L._(`[StateProxy] History pushed. Pointer: ${_historyPointer}/${_historyStack.length}`);
+      if (typeof L !== 'undefined') L._(`[StateProxy] History pushed. Pointer: ${Object.entries(_historyStack)}`);
     } catch (err) {
       if (typeof L !== 'undefined') L.log(err, 'StateProxy._pushRing');
     }

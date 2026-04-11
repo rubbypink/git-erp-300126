@@ -750,7 +750,7 @@ const BookingOverviewController = (function () {
       if (parentId === 'booking_details' || parentId === 'operator_entries') {
         A.UI.renderForm(parentId, dataId);
       } else {
-        const module = await import('/accountant/controller_accountant.js');
+        const module = await import('@acc/controller_accountant.js');
         const AccountantCtrl = module?.default || window.AccountantCtrl;
         if (AccountantCtrl) {
           const type = window.CURRENT_USER?.role === 'op' ? 'OUT' : 'IN';
@@ -807,8 +807,8 @@ const BookingOverviewController = (function () {
         }
         break;
       case 'create-contract':
-        if (typeof runFnByRole === 'function') {
-          runFnByRole(loadBookingToUI, 'UI', _bookingData, _customerData, _detailsData);
+        if (typeof SYS.runFnByRole === 'function') {
+          SYS.runFnByRole(loadBookingToUI, 'UI', _bookingData, _customerData, _detailsData);
           await SalesModule.Logic.createContract();
         }
         break;
@@ -951,7 +951,7 @@ const BookingOverviewController = (function () {
 
   async function _openTransactionForm() {
     try {
-      const mod = await import('/accountant/controller_accountant.js');
+      const mod = await import('@acc/controller_accountant.js');
       const AccountantCtrl = mod.default || window.AccountantCtrl;
       if (AccountantCtrl?.openTransactionModal) {
         const type = window.CURRENT_USER?.role === 'op' ? 'OUT' : 'IN';

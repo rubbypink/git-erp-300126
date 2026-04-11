@@ -1,11 +1,11 @@
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, limit, orderBy, writeBatch, runTransaction, serverTimestamp, increment, arrayUnion, onSnapshot } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getApp } from 'firebase/app';
-
+import { initializeApp, getApp, getApps } from 'firebase/app';
 import { DB_SCHEMA } from './DBSchema.js';
 import localDB from './DBLocalStorage.js';
-
+import HD from '@js/libs/db_helper.js';
+window.HD = HD;
 /**
  * DB MANAGER - FIRESTORE MODULAR VERSION (v9+)
  * ─────────────────────────────────────────────────────────────────────────
@@ -137,6 +137,19 @@ class DBManager {
   async #bootInit() {
     this.#db = getFirestore(getApp());
     this.#functions = getFunctions(getApp(), 'asia-southeast1');
+
+    // THÊM ĐOẠN NÀY: Tự động trỏ vào Emulator nếu chạy trên localhost
+    // if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    //   try {
+    //     const { connectFirestoreEmulator } = await import('firebase/firestore');
+    //     const { connectFunctionsEmulator } = await import('firebase/functions');
+    //     connectFirestoreEmulator(this.#db, '127.0.0.1', 8080);
+    //     connectFunctionsEmulator(this.#functions, '127.0.0.1', 5001);
+    //     console.log('🔥 [DBManager] Đã kết nối Firestore & Functions Emulator!');
+    //   } catch (err) {
+    //     console.warn('⚠️ [DBManager] Lỗi kết nối Emulator:', err);
+    //   }
+    // }
 
     // Khởi tạo IndexedDB song song với Firestore
     await this.#localDB.initDB().catch((e) => L.log('⚠️ IndexedDB initDB thất bại:', e));
@@ -351,6 +364,12 @@ class DBManager {
     }
 
     if (collList.length === 0) return 0;
+
+    // Loại bỏ secondary index names — không phải Firestore collection thật
+    // const indexNames = new Set(DBManager.#INDEX_CONFIG.map((c) => c.index));
+    // collList = collList.filter((c) => !indexNames.has(c));
+
+    // if (collList.length === 0) return 0;
 
     // ── Delta: mốc thời gian cho updated_at filter ────────────────────
     const lastSyncRaw = this.#localDB.getMeta('LAST_SYNC_DELTA');
@@ -615,9 +634,6 @@ class DBManager {
         }
       }
 
-      if (window.ASelect) {
-        window.ASelect.syncData(collName);
-      }
       if (this.#debug) L._('[Gatekeeper] Synced data Done', items);
       // Tùy chọn: Phát event báo hiệu UI cập nhật (Ví dụ: Balance vừa đổi)
       // window.dispatchEvent(new CustomEvent('erp-data-synced', { detail: { items } }));
@@ -2510,90 +2526,29 @@ class DBManager {
     return snap.success ? snap.data : [];
   };
   /**
-   * Lấy danh sách (list) dữ liệu.
-   * Ưu tiên: APP_DATA -> IndexedDB -> Firestore.
    *
-   * @param {string} listName - Tên danh sách cần lấy (vd: 'staff', 'hotels', 'suppliers' hoặc 'lists')
-   * @returns {Promise<Array|Object>} Dữ liệu danh sách
+   * @param {*} listName
+   * @param {*} opts
+   * @returns array/object with key base on opts. Priority local Data
    */
-  getList = async (listName = 'lists', forceNew = false) => {
-    try {
-      if (!forceNew) {
-        if (listName === 'lists') {
-          if (APP_DATA.lists) return APP_DATA.lists;
-        }
-        // Bước 1: Kiểm tra trong APP_DATA.lists[listName]
-        if (APP_DATA.lists && APP_DATA.lists[listName]) {
-          return APP_DATA.lists[listName];
-        }
-
-        // Bước 2: Kiểm tra trong IndexedDB (this.#localDB)
-        // Lưu ý: app_config/lists chứa nhiều list nhỏ bên trong
-        const cachedAppCfg = await this.#localDB.get('app_config', 'lists');
-        if (listName === 'lists' && cachedAppCfg) {
-          APP_DATA.lists = cachedAppCfg;
-          return cachedAppCfg;
-        }
-        if (cachedAppCfg && cachedAppCfg[listName]) {
-          if (!APP_DATA.lists) APP_DATA.lists = {};
-          APP_DATA.lists[listName] = cachedAppCfg[listName];
-          return cachedAppCfg[listName];
-        }
-      }
-      // Bước 3: Tải từ Firestore
+  getList = async (listName, opts = { array: false }) => {
+    const { query, collection, limit = 500, orderBy = 'created_at', field = 'id' } = opts;
+    const list = APP_DATA.lists?.[listName];
+    if (list) return list;
+    L.log(`⚠️ Không có danh sách ${listName} trong APP_DATA.lists`);
+    if (collection && typeof collection === 'string') {
+      const snap = await getDocs(collection(this.#db, collection), orderBy(orderBy, 'desc'), limit(limit));
       let data;
-      if (listName === 'lists') {
-        // Tải toàn bộ app_config/lists
-        const snap = await getDoc(doc(this.#db, 'app_config', 'lists'));
-        if (snap.exists()) {
-          data = snap.data();
-          // Parse JSON strings nếu cần (giống logic trong loadMeta)
-          for (const k in data) {
-            try {
-              if (typeof data[k] === 'string' && data[k].startsWith('[')) {
-                data[k] = JSON.parse(data[k]);
-              }
-            } catch (e) {
-              /* keep original */
-            }
-          }
-        }
-      } else {
-        // Tải từ collection tương ứng và map về {id, name}
-        const snap = await this.getCollection(listName);
-        if (Array.isArray(snap)) {
-          data = snap.map((item) => ({
-            id: item.id,
-            name: item.name || item.user_name || item.full_name || item.displayName || item.id,
-          }));
-        }
+      snap.docs.map((d) => {
+        if (d.name && !opts.array) data.id = data.name;
+        else if (opts.array) data.push(d.name);
+      });
+      const cachedAppCFgObj = await this.#localDB.get('app_config', 'lists');
+      if (cachedAppCFgObj) {
+        cachedAppCFgObj[listName] = data;
+        this.#localDB.put('app_config', { current: cachedAppCFgObj });
       }
-
-      if (data) {
-        // Bước 4: Đồng bộ dữ liệu xuống IndexedDB và APP_DATA
-        const currentCached = (await this.#localDB.get('app_config', 'lists')) || { id: 'lists' };
-        if (listName === 'lists') {
-          Object.assign(currentCached, data);
-        } else {
-          currentCached[listName] = data;
-        }
-
-        await this.#localDB.put('app_config', currentCached);
-
-        if (listName === 'lists') {
-          APP_DATA.lists = {};
-          Object.assign(APP_DATA.lists, data);
-        } else {
-          APP_DATA.lists[listName] = data;
-        }
-
-        return listName === 'lists' ? data : data;
-      }
-
-      return listName === 'lists' ? {} : [];
-    } catch (error) {
-      L.log(`❌ [DBManager.getList] Lỗi khi lấy danh sách ${listName}:`, error);
-      return listName === 'lists' ? {} : [];
+      return data;
     }
   };
 
@@ -2927,6 +2882,26 @@ class DBManager {
     }
   };
 
+  runTransaction = async (collectionName, transactionFunction) => {
+    if (!this.#db) {
+      console.error('❌ DB chưa init');
+      return null;
+    }
+    L._(`🔍 Run Transaction on ${collectionName}`);
+    try {
+      const result = await this.#firestoreCRUD(collectionName, 'transaction', null, null, { transactionFn: transactionFunction });
+      if (result.success) L._(`🔍 Run Transaction on ${collectionName}: Thành công!`);
+      else L._(`🔍 Run Transaction on ${collectionName}: Lỗi: ${result.message}`);
+      return result;
+    } catch (error) {
+      console.error(`❌ Lỗi: ${error.message}`);
+      return { success: false, count: 0, message: `❌ Lỗi: ${error.message}` };
+    } finally {
+      showLoading(false);
+    }
+    return null;
+  };
+
   // ─── Queries ──────────────────────────────────────────────────────────
 
   runQuery = async (collectionName, fieldName, operator, value, fieldOrder = null, lim = null) => {
@@ -3226,8 +3201,110 @@ class DBManager {
   }
 }
 
+// class DataMigration {
+//   constructor() {
+//     this.db = DBManager.db || getFirestore(getApp());
+//   }
+
+//   /**
+//    * Migrate a single collection from local storage to server (emulator)
+//    * @param {string} collectionName
+//    * @returns {Promise<{success: number, failed: number, total: number}>}
+//    */
+//   async migrateCollection(collectionName) {
+//     const stats = { success: 0, failed: 0, total: 0 };
+//     if (!this.db) {
+//       this.db = DBManager.db || getFirestore(getApp());
+//     }
+
+//     try {
+//       if (typeof L !== 'undefined') L._(`Bắt đầu migration collection: ${collectionName}`, null, 'info');
+//       else console.log(`[${this.context}] Bắt đầu migration collection: ${collectionName}`);
+
+//       // 1. Đọc dữ liệu từ Local Storage (IndexedDB) thông qua DBManager.local
+//       // Giả sử DB_MANAGER đã được khởi tạo và có thuộc tính local (DBLocalStorage)
+//       const dataMap = await DB_MANAGER.local.getAllAsObject(collectionName);
+//       const items = Object.values(dataMap || {});
+//       stats.total = items.length;
+
+//       if (stats.total === 0) {
+//         const msg = `Collection ${collectionName} không có dữ liệu trong local storage.`;
+//         if (typeof L !== 'undefined') L._(msg, null, 'warning');
+//         else console.warn(`[${this.context}] ${msg}`);
+//         return stats;
+//       }
+
+//       // 2. Tạo collection firestore giả lập trước khi up data nếu cần thiết
+//       // Trong Firestore, collection được tạo tự động khi có document đầu tiên.
+//       // Tuy nhiên, ta có thể đảm bảo bằng cách ghi một doc dummy nếu cần,
+//       // nhưng ở đây ta sẽ dùng batchSave để đẩy data lên.
+
+//       // 3. Dùng DBManager.batchSave để lưu vào emulator/server
+//       // batchSave nhận mảng các object và tự xử lý chunking (450 items/batch)
+//       const res = await DB_MANAGER.batchSave(collectionName, items);
+
+//       if (res.success) {
+//         stats.success = res.count;
+//         stats.failed = stats.total - res.count;
+//       } else {
+//         stats.failed = stats.total;
+//       }
+
+//       const resultMsg = `Hoàn thành ${collectionName}: Thành công ${stats.success}/${stats.total}, Thất bại ${stats.failed}`;
+//       if (typeof L !== 'undefined') L._(resultMsg, stats.success === stats.total ? 'success' : 'warning');
+//       else console.log(`[${this.context}] ${resultMsg}`);
+//     } catch (error) {
+//       if (typeof Opps === 'function') Opps(`Lỗi nghiêm trọng khi migrate collection ${collectionName}`, error);
+//       else console.error(`[${this.context}] Lỗi migrate collection ${collectionName}:`, error);
+//     }
+
+//     return stats;
+//   }
+
+//   /**
+//    * Migrate multiple collections
+//    * @param {string[]} collections
+//    */
+//   async migrateAll(collections = []) {
+//     if (!this.db) {
+//       this.db = DBManager.db || getFirestore(getApp());
+//     }
+//     if (!Array.isArray(collections) || collections.length === 0) {
+//       if (typeof L !== 'undefined') L._('Danh sách collection trống', null, 'warning');
+//       return;
+//     }
+
+//     if (typeof L !== 'undefined') L._(`Bắt đầu migrate ${collections.length} collections...`, null, 'info');
+
+//     const overallStats = { success: 0, failed: 0, totalDocs: 0 };
+
+//     for (const colName of collections) {
+//       const res = await this.migrateCollection(colName);
+//       overallStats.totalDocs += res.total;
+//       overallStats.success += res.success;
+//       overallStats.failed += res.failed;
+//     }
+
+//     const finalMsg = `TỔNG KẾT MIGRATION: Đã xử lý ${overallStats.totalDocs} tài liệu. Thành công: ${overallStats.success}, Thất bại: ${overallStats.failed}`;
+//     if (typeof logA === 'function') {
+//       logA(finalMsg, overallStats.failed === 0 ? 'success' : 'warning', 'alert');
+//     } else {
+//       alert(finalMsg);
+//     }
+//   }
+// }
+
 // ─── Singleton Export ─────────────────────────────────────────────────────
 // Tự động khởi chạy khi import — chờ auth ready rồi mới init Firestore.
 // Để override config: thay `new DBManager()` bằng `new DBManager({ persistence: false, ... })`
 const DB_MANAGER = new DBManager();
+// Export instance mặc định
+
+// async function handleMigration() {
+//   const migrator = new DataMigration();
+//   const collections = ['bookings', 'booking_details', 'operator_entries', 'customers', 'users', 'app_config', 'hotels', 'hotel_price_schedules', 'service_price_schedules', 'fund_accounts', 'transactions', 'suppliers', 'notifications', 'tour_prices'];
+//   await migrator.migrateAll(collections);
+// }
+// window.handleMigration = handleMigration;
+
 export default DB_MANAGER;

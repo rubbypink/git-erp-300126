@@ -29,6 +29,7 @@ class ReportModule {
    */
   init() {
     try {
+      if (this._initialized) return;
       L._('🚀 Report Module Init...');
       if (typeof Chart === 'undefined') {
         const script = document.createElement('script');

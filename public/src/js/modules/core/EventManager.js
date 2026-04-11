@@ -496,7 +496,7 @@ class EventManager {
       '#BK_Start',
       'change',
       (e, target) => {
-        if (typeof runFnByRole === 'function') runFnByRole('autoSetOrCalcDate', 'Logic', target.value, 'BK_PayDue');
+        if (typeof SYS.runFnByRole === 'function') SYS.runFnByRole('autoSetOrCalcDate', 'Logic', target.value, 'BK_PayDue');
         const startDate = new Date(target.value);
         const endDate = new Date(getVal('BK_End'));
         if (startDate && endDate && endDate < startDate) {
@@ -520,11 +520,11 @@ class EventManager {
       '#tab-form-btn-new-deposit',
       'click',
       async (e) => {
-        const module = await import('/accountant/controller_accountant.js');
+        const module = await import('@acc/controller_accountant.js');
         if (module && module.default) {
           const AccountantCtrl = module.default;
           await AccountantCtrl.openTransactionModal('IN');
-          setVal('inp-amount-show', getVal('BK_Deposit') * 1000);
+          setVal('inp-amount-show', getVal('BK_Balance') * 1000);
           const inpBkId = $("[data-field='booking_id']", getE('dynamic-modal-body'));
           if (inpBkId) {
             setVal(inpBkId, getVal('BK_ID'));
@@ -554,12 +554,12 @@ class EventManager {
         target._debounceTimer = setTimeout(() => {
           setNum(target, target.value);
           const tr = target.closest('tr');
-          if (tr && typeof runFnByRole === 'function') {
+          if (tr && typeof SYS.runFnByRole === 'function') {
             if (!window.CURRENT_CTX_ROW) {
               window.CURRENT_CTX_ROW = tr;
             }
             const rowId = tr.dataset.row || tr.id.replace('row-', '');
-            runFnByRole('calcRow', 'Logic', rowId);
+            SYS.runFnByRole('calcRow', 'Logic', rowId);
           }
           delete target._debounceTimer;
         }, debounceMs);
@@ -642,8 +642,8 @@ class EventManager {
           if (!nextTr) {
             if (typeof copyRow === 'function') {
               copyRow();
-            } else if (typeof runFnByRole === 'function') {
-              runFnByRole('addDetailRow', 'UI');
+            } else if (typeof SYS.runFnByRole === 'function') {
+              SYS.runFnByRole('addDetailRow', 'UI');
             }
             nextTr = document.querySelector('#detail-tbody')?.lastElementChild;
           }

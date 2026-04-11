@@ -66,7 +66,7 @@ class NavBarMenuController {
         const isActive = tab.id === defaultTab.id;
         const liClass = tab.liClass ? tab.liClass : ''; // Ví dụ: 'admin-only'
         const btnClass = tab.customClass ? tab.customClass : ''; // Ví dụ: 'fw-bold small'
-        const onClickAttr = tab.onClickAttr ? `onclick="${tab.onClickAttr}"` : ''; // Ví dụ: onclick="selectTab('...')"
+        const onClickAttr = tab.onClickAttr ? `onclick="${tab.onClickAttr}"` : ''; // Ví dụ: onclick="A.UI.selectTab('...')"
         const iconHtml = tab.iconHtml ? tab.iconHtml : '';
 
         html += `

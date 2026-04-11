@@ -806,8 +806,8 @@ export default class ATable {
     const dir = sort.field === field && sort.dir === 'asc' ? 'desc' : 'asc';
     this.state.sort = { field, dir };
 
-    if (A?.UI?.stableSort) {
-      this.state.filteredData = A.UI.stableSort(filteredData, this.options.colName, { column: field, dir: dir });
+    if (A?.UI?.A.UI.stableSort) {
+      this.state.filteredData = A.UI.A.UI.stableSort(filteredData, this.options.colName, { column: field, dir: dir });
     } else {
       this.state.filteredData = [...filteredData].sort((a, b) => {
         let valA = a[field] ?? '';
@@ -905,9 +905,9 @@ export default class ATable {
       }
 
       if (type === 'excel') {
-        await loadLibraryAsync('xlsx');
+        await SYS.loadLibraryAsync('xlsx');
       } else {
-        await loadLibraryAsync('html2pdf');
+        await SYS.loadLibraryAsync('html2pdf');
       }
 
       const viewType = colName || 'export';

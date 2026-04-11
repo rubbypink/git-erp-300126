@@ -630,6 +630,10 @@ td input.form-control-sm {
   transition: max-height 0.5s ease-in-out; /* <== Hiệu ứng chuyển đổi mượt mà */
 }
 
+#tab-form tbody {
+  overflow-y: auto;
+}
+
 /* --- 4. TAB Quản Lý Giá --- */
 #tab-price-pkg {
   height: 100%;
@@ -1296,6 +1300,9 @@ tr:has(.is-dirty) {
 .tab-content[data-rtm-dir='backward'] .tab-pane.active {
   animation: rtmSlideFromLeft 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
+#tbl-booking-form tbody {
+  overflow: auto;
+}
 
 [data-collection] tbody,
 #tbl-booking-form tbody,
@@ -1315,7 +1322,7 @@ html {
 .context-menu .dropdown-item,
 .ctx-submenu-children .dropdown-item {
   padding: 0.5rem 1rem;
-  font-size: 0.88rem;
+  font-size: 0.75rem;
   min-height: 40px;
   display: flex;
   align-items: center;

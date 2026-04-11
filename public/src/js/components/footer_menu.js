@@ -613,7 +613,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
         iconClass: 'fa-solid fa-plus-circle',
         btnClass: 'btn-primary sales-only',
         callback: () => {
-          if (typeof activateTab === 'function') activateTab('tab-form');
+          if (typeof A.UI.activateTab === 'function') A.UI.activateTab('tab-form');
           refreshForm();
         },
         attributes: { 'data-bs-target': '#tab-form', 'data-ontabs': '1 3 4' },
@@ -680,7 +680,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
             label: 'Save Booking',
             btnClass: 'btn-light',
             callback: () => {
-              if (typeof runFnByRole === 'function') runFnByRole('saveForm', 'DB', false);
+              if (typeof SYS.runFnByRole === 'function') SYS.runFnByRole('saveForm', 'DB', false);
             },
             attributes: { 'data-ontabs': '2' },
           },
@@ -690,7 +690,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
             btnClass: 'btn-light',
             callback: () => {
               const bkId = getVal('BK_ID');
-              if (typeof runFnByRole === 'function') bkId ? runFnByRole('saveForm', 'DB', true) : runFnByRole('saveForm', 'DB', false);
+              if (typeof SYS.runFnByRole === 'function') bkId ? SYS.runFnByRole('saveForm', 'DB', true) : SYS.runFnByRole('saveForm', 'DB', false);
             },
             attributes: { 'data-ontabs': '2' },
           },
@@ -703,7 +703,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
         iconClass: 'fa-solid fa-check-double',
         btnClass: 'btn-warning fw-bold d-none line-clamp-2',
         callback: () => {
-          if (typeof runFnByRole === 'function') runFnByRole('saveBatchDetails', 'DB');
+          if (typeof SYS.runFnByRole === 'function') SYS.runFnByRole('saveBatchDetails', 'DB');
         },
         attributes: { 'data-ontabs': '' },
       },

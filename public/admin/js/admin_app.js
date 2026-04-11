@@ -25,7 +25,7 @@ class AdminRouter {
   init() {
     window.addEventListener('hashchange', () => this.handleRoute());
     this.renderMenu();
-    
+
     if (!window.location.hash) {
       window.location.hash = '#dashboard';
     } else {
@@ -40,7 +40,7 @@ class AdminRouter {
     let html = '';
     // Grouping menu (ví dụ)
     html += `<div class="menu-group">Hệ thống</div>`;
-    
+
     for (const [key, route] of Object.entries(this.routes)) {
       html += `
         <a class="nav-link" href="#${key}" data-route="${key}">

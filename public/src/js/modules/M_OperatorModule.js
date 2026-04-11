@@ -44,7 +44,7 @@ class Op {
         // 1. Kiểm tra form đã tồn tại chưa, nếu chưa thì chuyển tab và đợi
         if (!getE('main-form')) {
           L._('Op.UI.loadBookingToUI: Form not found, activating tab...');
-          activateTab('tab-form');
+          A.UI.activateTab('tab-form');
           // Đợi template render xong (microtask)
           setTimeout(() => Op.UI.loadBookingToUI(bkData, detailsData), 100);
           return;

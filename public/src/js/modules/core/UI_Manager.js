@@ -1,12 +1,13 @@
 import { createFormBySchema, loadFormDataSchema, DB_SCHEMA } from '/src/js/modules/db/DBSchema.js';
 import PriceImportAI from '../prices/M_ImportPriceAI.js';
 import ATable from './ATable.js';
-
+var _htmlCache = {};
 const UI_RENDERER = {
   renderedTemplates: {},
   currentSaveHandler: null,
   COMPONENT_PATH: '/src/components/',
   htmlCache: {},
+  // ✅ Cache để tránh fetch lặp lại
 
   // Render Dashboard & Load Data
   init: async function (moduleManager) {
@@ -224,10 +225,10 @@ const UI_RENDERER = {
     // Ví dụ: Tạo Datepicker, Gán sự kiện click nút update...
     if (tabId === 'tab-dashboard') {
       // Setup tháng, ngày lọc... (Cần chạy ngay để user thấy form lọc)
-      if (typeof initDashboard === 'function') initDashboard();
+      if (typeof UI_DASH.initDashboard === 'function') UI_DASH.initDashboard();
     }
     if (tabId === 'tab-form') {
-      setupMainFormUI(APP_DATA.lists);
+      this.setupMainFormUI(APP_DATA.lists);
       this.initTableResizer('detail-tbody');
     }
     // if (tabId === 'tab-price-pkg') {
@@ -323,6 +324,312 @@ const UI_RENDERER = {
       }, 300);
     }
     this._debouncedResizer(tableId);
+  },
+  isSetupTabForm: false,
+  setupMainFormUI: function (lists) {
+    if (this.isSetupTabForm) {
+      L._('Đã SetupTabForm - Pass!');
+      return;
+    }
+    L._('setupMainFormUI running');
+
+    if (!lists) return;
+
+    const fillSelect = (elmId, dataArray) => {
+      const el = getE(elmId);
+      if (!el) return;
+      el.innerHTML = '<option value="">--Chọn--</option>';
+      if (!Array.isArray(dataArray) && typeof dataArray === 'object') {
+        dataArray = Object.entries(dataArray).map(([key, value]) => ({ id: key, name: value }));
+      }
+      if (Array.isArray(dataArray)) {
+        dataArray.forEach((item) => {
+          let opt = document.createElement('option');
+          opt.value = item.name ? item.name : item.id || item;
+          opt.text = item.name ? item.name : item;
+          el.appendChild(opt);
+        });
+      }
+    };
+    const fillDataList = (elmId, dataArray) => {
+      const el = getE(elmId);
+      if (!el) return;
+      if (typeof dataArray === 'object') {
+        let uniqueData = [...new Set(Object.values(dataArray))];
+        el.innerHTML = uniqueData.map((item) => `<option value="${item}">`).join('');
+      } else {
+        let uniqueData = [...new Set(dataArray)];
+        el.innerHTML = uniqueData.map((item) => `<option value="${item}">`).join('');
+      }
+    };
+
+    fillSelect('BK_Staff', lists.staff);
+    fillSelect('Cust_Source', lists.source);
+    fillSelect('BK_PayType', lists.payment);
+    fillDataList('list-tours', lists.tours);
+
+    const customers = Object.values(APP_DATA.customers ?? {});
+    if (customers.length > 0) {
+      let phones = [];
+      let names = [];
+      if (typeof customers[0] === 'object' && !Array.isArray(customers[0])) {
+        phones = customers.map((r) => r.phone).filter(Boolean);
+        names = customers.map((r) => r.full_name).filter(Boolean);
+      } else {
+        const validCustomers = customers.filter((r) => r && r.length > 2);
+        phones = validCustomers.map((r) => r[1]).filter(Boolean);
+        names = validCustomers.map((r) => r[2]).filter(Boolean);
+      }
+      fillDataList('list-cust-phones', phones.slice(0, 500));
+      fillDataList('list-cust-names', names.slice(0, 500));
+    }
+
+    const tblBookingForm = getE('tbl-booking-form');
+    if (tblBookingForm) {
+      const thead = tblBookingForm.querySelector('thead');
+      if (thead) {
+        const collectionName = CURRENT_USER && CURRENT_USER.role === 'op' ? 'operator_entries' : 'booking_details';
+        const headerHtml = this.renderHeaderHtml(collectionName);
+        if (headerHtml) thead.innerHTML = headerHtml;
+      }
+    }
+    this.isSetupTabForm = true;
+  },
+
+  // =========================================================================
+  // 3. TAB & CONTEXT HELPERS
+  // =========================================================================
+
+  activateTab: function (targetTabId) {
+    this.selectTab(targetTabId);
+    this.toggleContextUI(targetTabId);
+  },
+
+  toggleContextUI: function (targetTabIdOrIndex) {
+    try {
+      const activeTabIndex = isNaN(Number(targetTabIdOrIndex)) ? TAB_INDEX_BY_ID[String(targetTabIdOrIndex)] : Number(targetTabIdOrIndex);
+      const els = document.querySelectorAll('[data-ontabs]');
+      if (!activeTabIndex) {
+        els.forEach((el) => el.classList.add('d-none'));
+        return;
+      }
+      els.forEach((el) => {
+        const allowedTabs = (el.dataset.ontabs || '').trim().split(/\s+/).filter(Boolean).map(Number) || el.dataset.ontabs === targetTabIdOrIndex;
+        el.classList.toggle('d-none', !allowedTabs.includes(activeTabIndex));
+      });
+
+      if (activeTabIndex === TAB_INDEX_BY_ID['tab-form']) {
+        CURRENT_TABLE_KEY = 'bookings';
+        if (typeof setMany === 'function' && typeof getVal === 'function') {
+          if (getE('BK_Start') === '' || getVal('BK_Date') === '') {
+            setMany(['BK_Date', 'BK_Start', 'BK_End'], new Date());
+            setVal('BK_Staff', CURRENT_USER.uid);
+          }
+        }
+      } else if (activeTabIndex === TAB_INDEX_BY_ID['tab-dashboard']) {
+        A.Event?.trigger('btn-dash-update', 'click');
+      }
+    } catch (e) {
+      Opps('Lỗi trong toggleContextUI: ', e);
+    }
+  },
+
+  selectTab: function (targetTabId) {
+    this.lazyLoad(targetTabId);
+    const navBtn = document.querySelector(`button[data-bs-target="#${targetTabId}"]`) || document.querySelector(`.nav-link[data-bs-target="#${targetTabId}"]`);
+    if (navBtn) bootstrap.Tab.getOrCreateInstance(navBtn).show();
+    const tabEl = getE(targetTabId);
+    switch (targetTabId) {
+      case 'tab-theme-content':
+        setClass($(targetTabId), 'd-none', false);
+        setClass($('#tab-shortcut-content'), 'd-none', true);
+        A.Modal.setSaveHandler(saveThemeSettings, 'Áp Dụng Theme');
+        A.Modal.setResetHandler(THEME_MANAGER.resetToDefault, 'Đặt Lại');
+        break;
+      case 'tab-shortcut-content':
+        setClass($(targetTabId), 'd-none', false);
+        setClass($('#tab-theme-content'), 'd-none', true);
+        A.ShortKey.renderSettingsForm();
+        A.Modal.setFooter(false);
+        break;
+      case 'tab-adm-users':
+        setClass($(targetTabId), 'd-none', false);
+        A.AdminConsole.modal.setFooter(true);
+        A.AdminConsole.modal.setSaveHandler(A.AdminConsole?.saveUser, 'Lưu User');
+        A.AdminConsole.modal.setResetHandler(() => {
+          getE('users-form').reset();
+          getE('form-created-at').valueAsDate = new Date();
+        }, 'Nhập Lại');
+        A.AdminConsole.loadUsersData();
+        break;
+      case 'tab-data-tbl':
+        if (getE('tbl-tab-data-tbl')) break;
+        this.createTable('tab-data-tbl', {
+          colName: 'bookings',
+          data: APP_DATA['bookings'],
+          header: true,
+          headerExtra: [
+            `<div class="btn btn-sm btn-warning shadow-sm p-0" id="datalist-select"">
+        <select id="btn-select-datalist" data-onchange="updateTableData" class="smart-select form-select form-select-sm bg-warning rounded border-0" style="min-width: 6rem;">
+        </select>
+      </div>`,
+          ],
+          contextMenu: false,
+          draggable: true,
+          pageSize: 50,
+          sorter: true,
+          title: `DANH SÁCH DATA`,
+          footer: true,
+          groupBy: true,
+          fs: 0.7,
+        });
+        this.initBtnSelectDataList();
+        break;
+      case 'tab-price-pkg':
+        if (A.PriceManager) {
+          A.PriceManager.init('tab-price-pkg');
+        }
+        break;
+      case 'tab-tour-price':
+        if (A.TourPrice) {
+          A.TourPrice.init();
+        }
+        break;
+      case 'tab-adm-app-config':
+        A.AdminConsole.modal.setFooter(false);
+        break;
+      default:
+        setClass($(targetTabId), 'd-none', false);
+    }
+    setTimeout(() => {
+      const input = tabEl?.querySelector('input:not([disabled]):not([readonly]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]):not([readonly])');
+      if (input && input.offsetParent !== null) input.focus();
+      document.dispatchEvent(new CustomEvent('tabchange', { detail: { tabId: targetTabId } }));
+    }, 100);
+  },
+
+  // =========================================================================
+  // 4. DATA TABLE RENDERING LOGIC (Object-based + Array-based support)
+  renderGrid: function (dataList, table) {
+    let nohide = table?.id === 'tbl-container-tab2';
+    if (!table) table = getE('tbl-container-tab2');
+    if (!table) return;
+    const tbody = table.querySelector('tbody'),
+      header = table.querySelector('thead');
+    if (!tbody || !header) return;
+    tbody.innerHTML = '';
+    header.innerHTML = '';
+
+    if (!GRID_COLS?.length) {
+      header.innerHTML = '<th>Không có cấu hình cột</th>';
+    } else {
+      header.innerHTML = '<th style="width:50px" class="text-center">#</th>' + GRID_COLS.map((c) => `<th class="${nohide ? '' : c.hidden ? 'd-none' : 'text-center'}" data-field="${c.key}">${c.t}</th>`).join('');
+    }
+
+    if (!dataList?.length) {
+      tbody.innerHTML = `<tr><td colspan="${(GRID_COLS?.length || 0) + 1}" class="text-center p-4 text-muted fst-italic">Không có dữ liệu hiển thị</td></tr>`;
+      return;
+    }
+
+    const docFrag = document.createDocumentFragment();
+    dataList.forEach((row, idx) => {
+      const tr = document.createElement('tr');
+      tr.className = 'align-middle';
+      let stt = typeof GRID_STATE !== 'undefined' ? (GRID_STATE.pagination.currentPage - 1) * GRID_STATE.pagination.limit + idx + 1 : idx + 1;
+      let html = `<td class="text-center fw-bold text-secondary">${stt}</td>`;
+      html += GRID_COLS.map((col) => {
+        let val = row[col.i];
+        if (val === undefined || val === null) val = '';
+        if (col.fmt === 'money' && typeof formatNumber === 'function') val = formatNumber(val);
+        if (col.fmt === 'date' && typeof formatDateVN === 'function') val = formatDateVN(val);
+        return `<td class="${col.align}${nohide ? '' : col.hidden ? ' d-none' : ''}">${val}</td>`;
+      }).join('');
+      tr.innerHTML = html;
+      tr.style.cursor = 'pointer';
+      let rowId = typeof row === 'object' && !Array.isArray(row) ? row.id || row.booking_id : row[0];
+      if (Array.isArray(row) && (CURRENT_TABLE_KEY === 'booking_details' || CURRENT_TABLE_KEY === 'operator_entries')) rowId = row[1];
+      tr.id = rowId;
+      tr.dataset.item = rowId;
+      tr.onmouseover = function () {
+        this.classList.add('table-active');
+      };
+      tr.onmouseout = function () {
+        this.classList.remove('table-active');
+      };
+      docFrag.appendChild(tr);
+    });
+    tbody.appendChild(docFrag);
+    table.dataset.collection = CURRENT_TABLE_KEY;
+    // calculateSummary(dataList);
+  },
+
+  renderTableByKey: function (key, tblId) {
+    CURRENT_TABLE_KEY = key;
+    GRID_STATE.currentTable = key;
+    const table = tblId ? getE(tblId) : getE('tbl-container-tab2');
+    if (!table) return;
+    const tblEl = table.querySelector('table');
+    if (tblEl) tblEl.dataset.collection = key;
+    const tbody = table.querySelector('tbody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="100%" class="text-center p-3">Đang tải...</td></tr>';
+    try {
+      GRID_STATE.sourceData = APP_DATA[key];
+      GRID_STATE.filter = { keyword: '', column: '', dateFrom: '', dateTo: '' };
+      GRID_STATE.sort = { column: '', dir: 'desc' };
+      if (!GRID_STATE.sourceData?.length) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="${(GRID_COLS?.length || 0) + 1}" class="text-center p-4 text-muted">Không có dữ liệu</td></tr>`;
+
+        return;
+      }
+      const schemaDef = A.DB.schema[key];
+      if (schemaDef?.isSecondaryIndex) {
+        this.generateGridColsFromObject(schemaDef.source ?? key);
+      } else {
+        this.generateGridColsFromObject(key);
+      }
+      // refreshGridPipeline(true);
+
+      if (typeof TableResizeManager !== 'undefined')
+        try {
+          new TableResizeManager('grid-table').init();
+        } catch (_) {}
+    } catch (e) {
+      Opps(`Lỗi hiển thị bảng [${key}]: ${e.message}`);
+    }
+  },
+
+  generateGridColsFromObject: function (collectionName) {
+    const headerObj = A.DB.schema.createHeaderFromFields(collectionName);
+    if (!headerObj || typeof headerObj !== 'object') {
+      GRID_COLS = [];
+      return;
+    }
+    const FORMAT_KEYWORDS = {
+      date: ['ngày', 'hạn', 'date', 'dob', 'checkin', 'checkout', 'deadline', 'start', 'end'],
+      money: ['tiền', 'giá', 'cọc', 'thu', 'chi', 'total', 'amount', 'price', 'deposit', 'revenue', 'cost', 'profit', 'balance'],
+    };
+    const matches = (text, type) =>
+      String(text)
+        .toLowerCase()
+        .split(' ')
+        .some((word) => FORMAT_KEYWORDS[type].some((key) => word.includes(key)));
+    const translate = (t) => (A.Lang ? A.Lang.t(t) : t);
+
+    GRID_COLS = Object.entries(headerObj).map(([fieldName, fieldValue], index) => {
+      const vnTitle = fieldValue || translate(fieldName);
+      let format = matches(vnTitle, 'date') || matches(fieldName, 'date') ? 'date' : matches(vnTitle, 'money') || matches(fieldName, 'money') ? 'money' : 'text';
+      let res = { i: fieldName, key: fieldName, t: vnTitle, fmt: format, align: format === 'money' ? 'text-end' : 'text-center' };
+      if (TABLE_HIDDEN_FIELDS[collectionName]?.includes(fieldName)) res.hidden = true;
+      return res;
+    });
+  },
+
+  renderHeaderHtml: function (collectionName) {
+    this.generateGridColsFromObject(collectionName);
+    if (GRID_COLS?.length > 0) {
+      return '<th style="width:50px" class="text-center">#</th>' + GRID_COLS.map((col) => `<th class="${col.hidden ? 'd-none ' : 'text-center'}" data-field="${col.key}">${col.t}</th>`).join('');
+    }
+    return '<th>Không có cấu hình cột</th>';
   },
 
   stableSort: function (data, currentTable, sort) {
@@ -460,450 +767,567 @@ const UI_RENDERER = {
     }
   },
 
-  // iniGroupByOps: function (containerId) {
-  //   if (containerId) {
-  //     const select = getE('group-by-tab-data-tbl');
-  //     if (!select) return;
-  //     select.innerHTML = '';
-  //     const headers = STATE_TABLE?.['tab-data-tbl'].fieldConfigs;
-  //     const optDefault = document.createElement('option');
-  //     optDefault.value = '';
-  //     optDefault.textContent = '-- Group --';
-  //     select.appendChild(optDefault);
-  //     select.options[0].selected = true;
-  //     Object.values(headers).forEach((col) => {
-  //       const opt = document.createElement('option');
-  //       opt.value = col.name;
-  //       opt.textContent = col.displayName;
-  //       select.appendChild(opt);
-  //       // if (col.name === 'booking_id') {
-  //       //   select.selectedIndex = select.options.length - 1;
-  //       //   select.dispatchEvent(new Event('change'));
-  //       // }
-  //     });
-  //   }
-  // },
+  toggleFullScreen: function () {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        Opps(`Lỗi khi bật Fullscreen: ${err.message}`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  },
+  /**
+   * 9 TRIP ERP HELPER: ELASTIC ELEMENT
+   * Chức năng: Ép element co lại để luôn nằm trong Viewport, tự sinh scroll nội bộ.
+   * @param {string|HTMLElement} target - ID hoặc Element cần xử lý
+   * @param {number} padding - Khoảng cách an toàn đáy (mặc định 20px cho Mobile)
+   */
+  fitToViewport: function (target, padding = 20) {
+    try {
+      const el = typeof target === 'string' ? document.getElementById(target) : target;
+      if (!el) return;
 
-  // /**
-  //  * Render các dòng dữ liệu cho bảng
-  //  * @private
-  //  */
-  // _renderTableRows: function (items, headers, fieldConfigs = {}, containerId = '') {
-  //   const tblData = containerId ? window.STATE_TABLE?.[containerId] : null;
-  //   const groupByField = tblData?.groupByField;
+      // --- BƯỚC 1: FIT SIZE (Giữ nguyên logic Resize tối ưu) ---
+      const vH = window.innerHeight || document.documentElement.clientHeight;
+      const vW = window.innerWidth || document.documentElement.clientWidth;
 
-  //   if (groupByField) {
-  //     return this._renderGroupedRows(items, headers, fieldConfigs, groupByField);
-  //   }
+      // Reset để đo kích thước thực
+      el.style.maxHeight = 'none';
+      el.style.maxWidth = 'none';
 
-  //   return items
-  //     .map((item) => {
-  //       const itemId = item.id || item.uid || '';
-  //       const itemAttr = itemId ? `data-item="${itemId}"` : '';
-  //       return `
-  //       <tr ${itemAttr}>
-  //         ${headers
-  //           .map((h) => {
-  //             let val = item[h] !== undefined && item[h] !== null ? item[h] : '';
-  //             const config = fieldConfigs[h] || {};
+      // Lấy kích thước hiện tại
+      let rect = el.getBoundingClientRect();
 
-  //             // Format dữ liệu dựa trên type trong schema
-  //             if (config.type === 'date' && val) val = formatDateVN(val);
-  //             if (config.class?.split(' ').includes('number') && val) val = formatNumber(val);
+      // Xử lý quá khổ chiều cao
+      if (rect.height > vH - padding * 2) {
+        el.style.maxHeight = `${vH - padding * 2}px`;
+        el.style.overflowY = 'auto';
+      }
 
-  //             const displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
-  //             const isLong = displayVal.length > 50;
-  //             const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
-  //             const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
+      // Xử lý quá khổ chiều rộng
+      if (rect.width > vW - padding * 2) {
+        el.style.maxWidth = `${vW - padding * 2}px`;
+        el.style.overflowX = 'auto';
+      }
 
-  //             return `<td data-field="${h}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${escapeHtml(shortVal)}</td>`;
-  //           })
-  //           .join('')}
-  //       </tr>`;
-  //     })
-  //     .join('');
-  // },
+      // Đo lại sau khi resize
+      rect = el.getBoundingClientRect();
 
-  // /**
-  //  * Render các dòng dữ liệu đã được gom nhóm
-  //  * @private
-  //  */
-  // _renderGroupedRows: function (items, headers, fieldConfigs, groupByField) {
-  //   const groups = {};
-  //   items.forEach((item) => {
-  //     const groupVal = item[groupByField] !== undefined && item[groupByField] !== null ? String(item[groupByField]) : 'Khác';
-  //     if (!groups[groupVal]) groups[groupVal] = [];
-  //     groups[groupVal].push(item);
-  //   });
+      // --- BƯỚC 2: TÍNH TOÁN ĐỘ LỆCH (DELTA CALCULATION) ---
 
-  //   let html = '';
-  //   const colSpan = headers.length;
+      let deltaX = 0;
+      let deltaY = 0;
 
-  //   Object.entries(groups).forEach(([groupName, groupItems]) => {
-  //     // Render Group Header
-  //     const displayGroupName = fieldConfigs[groupByField]?.type === 'date' ? formatDateVN(groupName) : groupName;
-  //     html += `
-  //       <tr class="table-info fw-bold text-start" style="cursor:pointer" onclick="A.UI.toggleGroup(this)">
-  //         <td colspan="${colSpan}" class="ps-3">
-  //           <i class="fas fa-chevron-down me-2 group-icon"></i> ${displayGroupName} (${groupItems.length} dòng)
-  //         </td>
-  //       </tr>`;
+      // Kiểm tra trục dọc (Y)
+      if (rect.top < padding) {
+        // Lệch lên trên -> Cần dịch xuống
+        deltaY = padding - rect.top;
+      } else if (rect.bottom > vH - padding) {
+        // Lệch xuống dưới -> Cần dịch lên (số âm)
+        deltaY = vH - padding - rect.bottom;
+      }
 
-  //     // Render Group Items
-  //     groupItems.forEach((item) => {
-  //       const itemId = item.id || item.uid || '';
-  //       const itemAttr = itemId ? `data-item="${itemId}"` : '';
-  //       html += `
-  //         <tr ${itemAttr}>
-  //           ${headers
-  //             .map((h) => {
-  //               let val = item[h] !== undefined && item[h] !== null ? item[h] : '';
-  //               const config = fieldConfigs[h] || {};
+      // Kiểm tra trục ngang (X)
+      if (rect.left < padding) {
+        // Lệch sang trái -> Cần dịch phải
+        deltaX = padding - rect.left;
+      } else if (rect.right > vW - padding) {
+        // Lệch sang phải -> Cần dịch trái
+        deltaX = vW - padding - rect.right;
+      }
 
-  //               if (config.type === 'date' && val) val = formatDateVN(val);
-  //               if (config.class?.split(' ').includes('number') && val) val = formatNumber(val);
+      // Nếu không lệch gì cả thì thoát
+      if (deltaX === 0 && deltaY === 0) return;
 
-  //               const displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
-  //               const isLong = displayVal.length > 50;
-  //               const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
-  //               const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
+      L._(`9 Trip UI: Điều chỉnh vị trí element. X: ${deltaX}, Y: ${deltaY}`);
 
-  //               return `<td data-field="${h}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${escapeHtml(shortVal)}</td>`;
-  //             })
-  //             .join('')}
-  //         </tr>`;
-  //     });
-  //   });
+      // --- BƯỚC 3: DI CHUYỂN ELEMENT (APPLY MOVEMENT) ---
 
-  //   return html;
-  // },
-  // /**
-  //  * Ẩn/Hiện các dòng trong một nhóm
-  //  */
-  // toggleGroup: function (headerRow) {
-  //   let next = headerRow.nextElementSibling;
-  //   const icon = headerRow.querySelector('.group-icon');
-  //   let isHiding = false;
+      const computedStyle = window.getComputedStyle(el);
+      const position = computedStyle.position;
 
-  //   // Kiểm tra trạng thái của dòng đầu tiên để quyết định ẩn hay hiện
-  //   if (next && !next.classList.contains('table-info')) {
-  //     isHiding = !next.classList.contains('d-none');
-  //   }
+      if (position === 'fixed' || position === 'absolute') {
+        // Trường hợp 1: Element có định vị (Modal, Tooltip, Dropdown)
+        // Ta cộng độ lệch vào tọa độ hiện tại
 
-  //   while (next && !next.classList.contains('table-info')) {
-  //     if (isHiding) next.classList.add('d-none');
-  //     else next.classList.remove('d-none');
-  //     next = next.nextElementSibling;
-  //   }
+        // Lấy giá trị top/left hiện tại (lưu ý trường hợp 'auto')
+        const currentTop = parseFloat(computedStyle.top) || 0;
+        const currentLeft = parseFloat(computedStyle.left) || 0;
 
-  //   if (icon) {
-  //     icon.className = isHiding ? 'fas fa-chevron-right me-2 group-icon' : 'fas fa-chevron-down me-2 group-icon';
-  //   }
-  // },
+        el.style.top = `${currentTop + deltaY}px`;
+        el.style.left = `${currentLeft + deltaX}px`;
 
-  // /**
-  //  * Render Footer cho bảng dựa trên aggregate config
-  //  * @private
-  //  */
-  // _renderTableFooter: function (items, headers, fieldConfigs, colName) {
-  //   const aggregate = DB_SCHEMA[colName]?.aggregate || {};
-  //   const sumFields = aggregate.sum || [];
-  //   const uniqueFields = aggregate.unique || [];
+        // Xóa bottom/right để tránh xung đột CSS
+        el.style.bottom = 'auto';
+        el.style.right = 'auto';
+      } else {
+        // Trường hợp 2: Element tĩnh (Static)
+        // Dùng Transform để dịch chuyển hình ảnh mà không làm vỡ layout xung quanh
+        // Lưu ý: Cách này chỉ dịch chuyển hình ảnh hiển thị (Visual), vị trí DOM vẫn giữ nguyên.
 
-  //   return `
-  //     <tr>
-  //       ${headers
-  //         .map((h) => {
-  //           let result = '';
-  //           if (sumFields.includes(h)) {
-  //             const total = items.reduce((acc, item) => {
-  //               const val = typeof getNum === 'function' ? getNum(item[h]) : parseFloat(String(item[h] || '0').replace(/[^0-9.-]+/g, '')) || 0;
-  //               return acc + val;
-  //             }, 0);
-  //             result = `<div class="small text-muted">Tổng:</div><div class="text-primary">${formatNumber(total)}</div>`;
-  //           } else if (uniqueFields.includes(h)) {
-  //             const uniqueCount = new Set(items.map((item) => item[h]).filter((v) => v !== undefined && v !== null && v !== '')).size;
-  //             result = `<div class="small text-muted"></div><div class="text-success">${uniqueCount}</div>`;
-  //           }
-  //           return `<td class="bg-light sticky-bottom" style="bottom: 0; z-index: 2;">${result}</td>`;
-  //         })
-  //         .join('')}
-  //     </tr>`;
-  // },
+        // Lấy giá trị transform hiện tại (nếu có)
+        const currentTransform = new WebKitCSSMatrix(computedStyle.transform);
+        const currentX = currentTransform.m41;
+        const currentY = currentTransform.m42;
 
-  // /**
-  //  * Render thanh phân trang
-  //  * @private
-  //  */
-  // _renderPagination: function (containerId, totalItems, pageSize, currentPage) {
-  //   const totalPages = Math.ceil(totalItems / pageSize) || 1;
-  //   const startIdx = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  //   const endIdx = Math.min(currentPage * pageSize, totalItems);
+        el.style.transform = `translate3d(${currentX + deltaX}px, ${currentY + deltaY}px, 0)`;
+      }
+    } catch (error) {
+      console.error('9 Trip Critical Error [moveElementIntoView]:', error);
+    }
+  },
 
-  //   let pagesHtml = '';
-  //   // Hiển thị tối đa 5 nút trang xung quanh trang hiện tại
-  //   let startPage = Math.max(1, currentPage - 2);
-  //   let endPage = Math.min(totalPages, startPage + 4);
-  //   if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+  showLoading: function (show, text = 'Loading...') {
+    let el = getE('loading-overlay');
+    if (!el) {
+      if (!show) return;
+      el = document.createElement('div');
+      el.id = 'loading-overlay';
+      el.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.8);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+      el.innerHTML = `<div class="spinner-border text-warning" role="status" style="width: 2.5rem; height: 2.5rem;"></div><div id="loading-text" class="mt-3 fw-bold text-primary small">${text}</div>`;
+      document.body.appendChild(el);
+    }
+    const textEl = getE('loading-text');
+    if (textEl) textEl.innerText = text;
+    el.style.display = show ? 'flex' : 'none';
+  },
 
-  //   for (let i = startPage; i <= endPage; i++) {
-  //     pagesHtml += `
-  //       <li class="page-item ${i === currentPage ? 'active' : ''}">
-  //         <a class="page-link" ${currentPage === 1 ? 'disabled' : ''} href="javascript:void(0)" onclick="A.UI.changeTablePage('${containerId}', ${i})">${i}</a>
-  //       </li>`;
-  //   }
+  setBtnLoading: function (btnSelector, isLoading, loadingText = 'Đang lưu...') {
+    const btn = typeof btnSelector === 'string' ? getE(btnSelector) : btnSelector;
+    if (!btn) {
+      warn('setBtnLoading', `Button not found:`, btnSelector);
+      return;
+    }
 
-  //   return `
-  //     <div class="d-flex justify-content-between align-items-center mt-0 px-2">
-  //       <small class="text-muted">Hiển thị ${startIdx}-${endIdx} / ${totalItems} dòng</small>
-  //       <nav aria-label="Table pagination">
-  //         <ul class="pagination pagination-sm mb-0">
-  //           <li class="page-item ${currentPage === 1 ? 'd-none' : ''}">
-  //             <a class="page-link" href="javascript:void(0)" onclick="A.UI.changeTablePage('${containerId}', ${currentPage - 1})">Trước</a>
-  //           </li>
-  //           ${pagesHtml}
-  //           <li class="page-item ${currentPage === totalPages || totalPages === 1 ? 'd-none' : ''}">
-  //             <a class="page-link" href="javascript:void(0)" onclick="A.UI.changeTablePage('${containerId}', ${currentPage + 1})">Sau</a>
-  //           </li>
-  //         </ul>
-  //       </nav>
-  //     </div>`;
-  // },
+    if (isLoading) {
+      if (!btn.dataset.original) btn.dataset.original = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner-border spinner-border-sm text-danger me-2" role="status" aria-hidden="true"></span>${loadingText}`;
+    } else {
+      btn.disabled = false;
+      if (btn.dataset.original) btn.innerHTML = btn.dataset.original;
+    }
+  },
 
-  // /**
-  //  * Chuyển trang cho bảng
-  //  * @param {string} containerId
-  //  * @param {number} page
-  //  */
-  // changeTablePage: function (containerId, page) {
-  //   const tblData = window.STATE_TABLE?.[containerId];
-  //   if (!tblData) return;
+  /**
+   * Chuyển đổi trạng thái của một Element giữa DOM và Template.
+   * - Nếu Element đang hiển thị: Bọc nó vào <template> (Ẩn khỏi DOM).
+   * - Nếu Element đang trong <template>: Đưa nó trở lại DOM.
+   * @param {string} targetId - ID của element cần toggle (không phải ID của template).
+   * @returns {HTMLElement|null} - Trả về Element nếu vừa unwrap, hoặc null nếu vừa wrap.
+   */
+  toggleTemplate: function (targetId) {
+    try {
+      const tmplId = 'tmpl-' + targetId;
 
-  //   const { filteredData, opts, fieldConfigs: cachedConfigs } = tblData;
-  //   const pageSize = opts.pageSize || A.getConfig('table_page_size') || 25;
-  //   const totalItems = filteredData.length;
-  //   const totalPages = Math.ceil(totalItems / pageSize) || 1;
+      // Trường hợp 1: Element đang "Sống" trên DOM -> Cần đưa vào Template
+      const activeElement = getE(targetId);
+      if (!activeElement) {
+        L._(`⚠️ Element #${targetId} không tồn tại trên DOM. Kiểm tra lại ID hoặc trạng thái hiện tại.`);
+        return null;
+      }
 
-  //   if (page < 1 || !page) page = 1;
-  //   if (page > totalPages && totalPages > 0) page = totalPages;
+      if (activeElement && activeElement.tagName.toLowerCase() !== 'template') {
+        // 1. Tạo thẻ template
+        const template = document.createElement('template');
+        template.id = tmplId;
+        const htmlString = activeElement.outerHTML; // Lấy HTML của element (bao gồm chính nó)
 
-  //   // 1. Xác định Headers và Configs (Ưu tiên dùng cache từ state)
-  //   let fieldConfigs = cachedConfigs;
-  //   let headers = [];
+        // 2. Chèn template vào ngay trước element để giữ vị trí
+        activeElement.parentNode.insertBefore(template, activeElement);
 
-  //   if (!fieldConfigs || Object.keys(fieldConfigs).length === 0) {
-  //     fieldConfigs = {};
-  //     const colName = opts.colName;
-  //     if (colName && DB_SCHEMA[colName]) {
-  //       console.log('[DEBUG] changeTablePage colName:', colName);
-  //       console.log('[DEBUG] changeTablePage fields:', DB_SCHEMA[colName].fields);
-  //       headers = DB_SCHEMA[colName].fields.filter((f) => f.class !== 'd-none' && f.type !== 'hidden').map((f) => f.name);
-  //       const schemaFields = DB_SCHEMA[colName].fields || [];
-  //       headers = schemaFields.filter((f) => f.class !== 'd-none' && f.type !== 'hidden').map((f) => f.name);
-  //       schemaFields.forEach((f) => {
-  //         fieldConfigs[f.name] = f;
-  //       });
-  //     } else {
-  //       const allKeys = new Set();
-  //       filteredData.forEach((item) => {
-  //         if (item && typeof item === 'object') {
-  //           Object.keys(item).forEach((key) => allKeys.add(key));
-  //         }
-  //       });
-  //       headers = Array.from(allKeys);
-  //     }
-  //     tblData.fieldConfigs = fieldConfigs; // Cập nhật ngược lại cache
-  //   } else {
-  //     // Nếu đã có fieldConfigs, lấy headers từ schema nếu có để đảm bảo thứ tự
-  //     const colName = opts.colName;
-  //     if (colName && DB_SCHEMA[colName]) {
-  //       headers = DB_SCHEMA[colName].fields.filter((f) => f.class !== 'd-none' && f.type !== 'hidden').map((f) => f.name);
-  //     } else {
-  //       headers = Object.keys(fieldConfigs);
-  //     }
-  //   }
+        // 3. Chuyển element vào trong template content
+        // Lưu ý: appendChild sẽ di chuyển node từ DOM vào Fragment
+        template.content.appendChild(activeElement);
 
-  //   // 2. Cắt dữ liệu cho trang hiện tại
-  //   const start = (page - 1) * pageSize;
-  //   const displayItems = filteredData.slice(start, start + pageSize);
+        L._(`[Utils] Đã ẩn element #${targetId} vào template #${tmplId}`);
+        return htmlString;
+      }
 
-  //   // 3. Cập nhật DOM
-  //   const tbody = getE(`${containerId}-tbody`);
-  //   const paginContainer = getE(`${containerId}-pagination`);
+      // Trường hợp 2: Element đang "Ngủ" trong Template -> Cần đánh thức dậy
+      const templateElement = getE(tmplId);
 
-  //   if (tbody) tbody.innerHTML = this._renderTableRows(displayItems, headers, fieldConfigs, containerId);
-  //   if (paginContainer) paginContainer.innerHTML = this._renderPagination(containerId, totalItems, pageSize, page);
+      if (templateElement) {
+        // 1. Lấy nội dung từ template (DocumentFragment)
+        const content = templateElement.content;
 
-  //   // 3.1. Re-init TableResizeManager với Debounce
-  //   this.initTableResizer(`tbl-${containerId}`);
-  //   // 4. Re-init tooltips nếu có dùng Bootstrap Tooltip
-  //   if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
-  //     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-  //     tooltipTriggerList.map(function (tooltipTriggerEl) {
-  //       return new bootstrap.Tooltip(tooltipTriggerEl);
-  //     });
-  //   }
-  // },
+        // Tìm lại element gốc bên trong để return
+        const originalElement = content.querySelector('#' + targetId) || content.firstElementChild;
 
-  // /**
-  //  * Cập nhật dữ liệu cho bảng hiện có (Tối ưu render nhanh nhất)
-  //  * @param {string} containerId
-  //  * @param {Object|Array} newData
-  //  * @param {Object} newOpts
-  //  */
-  // updateTable: function (containerId, newData, newOpts = {}) {
-  //   return this.createTable(containerId, newData, { ...newOpts, mode: 'replace' });
-  // },
+        // 2. Đưa nội dung ra ngoài (chèn vào chỗ của thẻ template)
+        templateElement.parentNode.insertBefore(content, templateElement);
 
-  // downloadData: async function (type = 'excel') {
-  //   try {
-  //     // showLoading(true, `Đang chuẩn bị xuất file ${type}...`);
-  //     // 1. Kiểm tra và load thư viện cần thiết
-  //     if (type === 'excel') {
-  //       await loadLibraryAsync('xlsx');
-  //     } else {
-  //       await loadLibraryAsync('jspdf');
-  //       await loadLibraryAsync('autotable');
-  //     }
+        // 3. Xóa thẻ template đi (vì element đã ra ngoài rồi)
+        templateElement.remove();
 
-  //     const tblData = window.STATE_TABLE?.['tab-data-tbl'];
-  //     const data = tblData?.filteredData || [];
-  //     // showLoading(false);
-  //     if (!data.length) {
-  //       return logA('Không có dữ liệu để xuất!', 'warning');
-  //     }
+        L._(`[Utils] Đã khôi phục element #${targetId} từ template`);
+        return originalElement;
+      }
 
-  //     const selectEl = getE('btn-select-datalist');
-  //     let viewType = selectEl ? selectEl.value : 'bookings',
-  //       viewText = selectEl ? selectEl.options[selectEl.selectedIndex].text : 'Export';
-
-  //     const now = new Date(),
-  //       dateStr = `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getFullYear()).slice(2)}`;
-  //     let fileName = `${viewText}_${dateStr}`,
-  //       dataToProcess = [...data];
-
-  //     // 2. Logic lọc VAT (Chỉ áp dụng cho một số collection nhất định)
-  //     if (['bookings', 'booking_details', 'operator_entries'].includes(viewType)) {
-  //       const isConfirmed = await showConfirm(`Lọc danh sách xuất Hóa Đơn cho bảng [${viewText}]?`);
-
-  //       if (isConfirmed) {
-  //         const vatKeywords = ['ck ct', 'đã xuất', 'vat', 'chờ xuất'];
-  //         const isVat = (val) =>
-  //           vatKeywords.some((k) =>
-  //             String(val || '')
-  //               .toLowerCase()
-  //               .includes(k)
-  //           );
-
-  //         if (viewType === 'bookings') {
-  //           dataToProcess = dataToProcess.filter((row) => isVat(row.payment_type));
-  //         } else {
-  //           // Đối với chi tiết, cần check pay_type của booking cha
-  //           const bookingsrc = typeof APP_DATA !== 'undefined' ? Object.values(APP_DATA.bookings || {}) : [];
-  //           if (bookingsrc.length > 0) {
-  //             const validBookingIds = new Set(bookingsrc.filter((b) => isVat(b.payment_type)).map((b) => String(b.id)));
-  //             dataToProcess = dataToProcess.filter((dRow) => validBookingIds.has(String(dRow.booking_id)));
-  //           }
-  //         }
-
-  //         if (dataToProcess.length === 0) {
-  //           // showLoading(false);
-  //           return logA('Không tìm thấy dữ liệu thỏa điều kiện VAT!', 'info');
-  //         } else L._('Đã lọc dữ liệu VAT: ' + dataToProcess.length, 'info');
-  //         fileName += '_VAT_ONLY';
-  //       }
-  //     }
-
-  //     // 3. Map dữ liệu sang định dạng xuất (Dùng fieldConfigs từ state bảng)
-  //     const fieldConfigs = tblData.fieldConfigs || {};
-  //     const headers = Object.keys(fieldConfigs).length > 0 ? Object.keys(fieldConfigs).filter((k) => !fieldConfigs[k].class?.includes('d-none')) : Object.keys(dataToProcess[0] || {});
-
-  //     const exportData = dataToProcess.map((row) => {
-  //       const rowObj = {};
-  //       headers.forEach((h) => {
-  //         const config = fieldConfigs[h] || {};
-  //         let val = row[h] !== undefined && row[h] !== null ? row[h] : '';
-
-  //         // Format dữ liệu
-  //         if (config.type === 'date' && val) val = formatDateVN(val);
-  //         else if (config.class?.split(' ').includes('number') && val) val = formatNumber(val);
-
-  //         const label = config.displayName || A.Lang?.t(h) || h;
-  //         rowObj[label] = typeof val === 'object' ? JSON.stringify(val) : val;
-  //       });
-  //       return rowObj;
-  //     });
-  //     // 4. Thực hiện tải file
-  //     if (type === 'excel') {
-  //       const wb = XLSX.utils.book_new();
-  //       const ws = XLSX.utils.json_to_sheet(exportData);
-  //       // Auto-size columns (tạm thời set cố định 20)
-  //       ws['!cols'] = Object.keys(exportData[0] || {}).map(() => ({ wch: 20 }));
-  //       XLSX.utils.book_append_sheet(wb, ws, 'Data');
-  //       XLSX.writeFile(wb, `${fileName}.xlsx`);
-  //     } else {
-  //       // Sử dụng html2pdf để hỗ trợ tiếng Việt tốt hơn jsPDF thuần
-  //       await loadLibraryAsync('html2pdf');
-
-  //       // Tạo bảng HTML tạm thời để render
-  //       const tempDiv = document.createElement('div');
-  //       tempDiv.style.padding = '20px';
-  //       tempDiv.style.fontFamily = 'Arial, sans-serif';
-
-  //       const tableHtml = `
-  //         <h3 style="text-align: center; color: #2c3e50;">BÁO CÁO: ${viewText}</h3>
-  //         <p style="text-align: center; font-size: 12px; color: #7f8c8d;">Ngày xuất: ${new Date().toLocaleString('vi-VN')}</p>
-  //         <table border="1" style="width: 100%; border-collapse: collapse; font-size: 10px;">
-  //           <thead>
-  //             <tr style="background-color: #2c3e50; color: white;">
-  //               ${Object.keys(exportData[0] || {})
-  //                 .map((h) => `<th style="padding: 8px;">${h}</th>`)
-  //                 .join('')}
-  //             </tr>
-  //           </thead>
-  //           <tbody>
-  //             ${exportData
-  //               .map(
-  //                 (row) => `
-  //               <tr>
-  //                 ${Object.values(row)
-  //                   .map((v) => `<td style="padding: 5px; text-align: center;">${v}</td>`)
-  //                   .join('')}
-  //               </tr>
-  //             `
-  //               )
-  //               .join('')}
-  //           </tbody>
-  //         </table>
-  //       `;
-  //       tempDiv.innerHTML = tableHtml;
-  //       A.Modal.show(tempDiv, 'Xuất file PDF');
-
-  //       const opt = {
-  //         margin: [10, 10, 10, 10],
-  //         filename: `${fileName}.pdf`,
-  //         image: { type: 'jpeg', quality: 0.98 },
-  //         html2canvas: { scale: 2, useCORS: true, logging: false },
-  //         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-  //       };
-
-  //       await html2pdf().set(opt).from(tempDiv).save();
-  //       // document.body.removeChild(tempDiv);
-  //       A.Modal.hide();
-  //     }
-
-  //     L._(`Đã xuất file ${type} thành công: ${fileName}`, 'success');
-  //   } catch (err) {
-  //     Opps('Lỗi trong downloadData: ', err);
-  //   } finally {
-  //     showLoading(false);
-  //   }
-  // },
-
-  // /**
-  //  * Khởi tạo TableResizeManager với debounce để tối ưu hiệu suất
-  //  * @param {string} tableId
-  //  */
+      console.warn(`[Utils] Không tìm thấy Element #${targetId} hoặc Template #${tmplId}`);
+      return null;
+    } catch (error) {
+      console.error(`[Utils] Lỗi trong toggleTemplate('${targetId}'):`, error);
+      return null;
+    }
+  },
 };
+
+const UI_HELP = {
+  /**
+   * @param {string}               message            Nội dung (hỗ trợ HTML và \n).
+   * @param {string}               [type='info']      'info'|'success'|'warning'|'error'|'danger'
+   * @param {Function|string|null} [modeOrCallback]   Chế độ hoặc OK callback (xem trên).
+   * @param {Function|Object|*}    [rest[0]]          Deny callback (nếu là Function → 3-button) HOẶC
+   *                                                  object tùy chọn Swal (confirm/alert mode).
+   *                                                  Object hỗ trợ: `onConfirm`, `onDeny`, `onCancel` (alias).
+   * @returns {void|Promise<boolean>}  toast → void;  alert → Promise<void>;
+   *                                   confirm/callback → Promise<boolean>  (true = isConfirmed)
+   */
+  logA: function (message, type = 'info', modeOrCallback = null, ...rest) {
+    if (typeof L !== 'undefined' && typeof L._ === 'function') L._(message, null, type);
+
+    // ── Xác định mode ───────────────────────────────────────────────────────
+    const isCallbackMode = typeof modeOrCallback === 'function';
+    const mode = isCallbackMode ? 'confirm' : String(modeOrCallback ?? 'toast').toLowerCase(); // 'toast' | 'alert' | 'confirm'
+
+    // ── Tách deny callback và args ──────────────────────────────────────────
+    let confirmCallback = null;
+    let denyCallback = null;
+    let cbArgs = [];
+    let swalExtra = {};
+
+    if (isCallbackMode) {
+      if (typeof rest[0] === 'function') {
+        denyCallback = rest[0];
+        cbArgs = rest.slice(1);
+      } else {
+        cbArgs = rest;
+      }
+    } else {
+      if (rest.length === 1 && rest[0] && typeof rest[0] === 'object') {
+        const { onConfirm: _onConfirm, onDeny: _onDeny, onCancel: _onCancel, mode: _mode, ...remaining } = rest[0];
+        confirmCallback = typeof _onConfirm === 'function' ? _onConfirm : null;
+        denyCallback = typeof _onDeny === 'function' ? _onDeny : typeof _onCancel === 'function' ? _onCancel : null;
+        swalExtra = remaining;
+      }
+    }
+
+    const isDenyMode = denyCallback !== null;
+
+    // ── Lookup tables ────────────────────────────────────────────────────────
+    const iconMap = {
+      info: 'info',
+      success: 'success',
+      warning: 'warning',
+      error: 'error',
+      danger: 'error',
+      question: 'question',
+      true: 'success',
+      false: 'error',
+    };
+    const titleMap = {
+      info: 'Thông báo',
+      success: 'Thành công',
+      warning: 'Cảnh báo',
+      error: 'Lỗi',
+      danger: 'Lỗi',
+      true: 'Thành công',
+      false: 'Thất bại',
+    };
+    const btnVariantMap = {
+      info: 'primary',
+      success: 'success',
+      warning: 'warning',
+      error: 'danger',
+      danger: 'danger',
+    };
+
+    const norm = String(type ?? 'info').toLowerCase();
+    const icon = iconMap[norm] || 'info';
+    const autoTitle = titleMap[norm] || 'Thông báo';
+    const variant = btnVariantMap[norm] || 'primary';
+    const isDangerous = norm === 'warning' || norm === 'error' || norm === 'danger';
+    const htmlBody = String(message).replace(/\n/g, '<br>');
+
+    // ── Fallback khi Swal chưa load ─────────────────────────────────────────
+    const _Swal = window.Swal || (typeof Swal !== 'undefined' ? Swal : null);
+
+    if (!_Swal) {
+      console.warn('[logA] SweetAlert2 (Swal) is not loaded.');
+      if (mode === 'toast') {
+        console.info('[logA] Toast fallback to console:', message);
+        return;
+      }
+      if (mode === 'alert') {
+        alert(message);
+        return Promise.resolve();
+      }
+      return new Promise((resolve) => {
+        const ok = window.confirm(message);
+        if (ok && isCallbackMode) modeOrCallback(...cbArgs);
+        else if (!ok && denyCallback) denyCallback();
+        resolve(ok);
+      });
+    }
+
+    const c = typeof _bsBtnColors === 'function' ? _bsBtnColors() : {};
+
+    const basePopup = {
+      position: 'center',
+      draggable: false,
+      toast: false,
+      timer: undefined,
+      timerProgressBar: false,
+      background: c.bodyBg || '',
+      color: c.bodyColor || '',
+      buttonsStyling: false,
+      allowOutsideClick: false,
+      customClass: {
+        popup: 'shadow rounded-3',
+        title: 'fw-semibold fs-5',
+        htmlContainer: 'text-start',
+      },
+    };
+
+    // ── Toast: hiển thị góc phải trên, tự ẩn sau 3.5s ───────────────────────
+    if (mode === 'toast') {
+      _Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon,
+        title: String(message),
+        showConfirmButton: false,
+        timer: (typeof A !== 'undefined' && typeof A.getConfig === 'function' ? A.getConfig('toast_duration') : null) || 3500,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+          toast.onmouseenter = _Swal.stopTimer;
+          toast.onmouseleave = _Swal.resumeTimer;
+        },
+      });
+      return;
+    }
+
+    // ── Alert modal: chính giữa, 1 nút Đóng, không tự ẩn ───────────────────
+    if (mode === 'alert') {
+      const { title: customTitle, ...extraSwal } = swalExtra;
+      return _Swal.fire({
+        ...basePopup,
+        allowOutsideClick: true,
+        draggable: true,
+        icon,
+        title: customTitle || autoTitle,
+        html: htmlBody,
+        confirmButtonText: 'Đóng',
+        showCancelButton: false,
+        focusConfirm: true,
+        confirmButtonColor: c[variant] || c.primary || '#0d6efd',
+        customClass: { ...basePopup.customClass, confirmButton: `btn btn-${variant} px-4` },
+        ...extraSwal,
+      });
+    }
+
+    // ── Confirm modal: 2 nút (Xác nhận | Hủy) hoặc 3 nút (Xác nhận | Từ chối | Hủy) ──
+    const { title: customTitle = '', confirmText = 'Xác nhận', denyText = 'Từ chối', cancelText = 'Hủy', confirmBtn: okVariant = variant, denyBtn: denyVariant = 'danger', cancelBtn: noVariant = 'secondary', ...extraSwal } = swalExtra;
+    const confirmTitle = customTitle || (autoTitle === 'Thông báo' ? 'Xác nhận' : autoTitle);
+
+    return _Swal
+      .fire({
+        ...basePopup,
+        allowOutsideClick: false,
+        icon,
+        draggable: true,
+        title: confirmTitle,
+        html: htmlBody,
+        showCancelButton: true,
+        showDenyButton: isDenyMode,
+        confirmButtonText: confirmText,
+        ...(isDenyMode && { denyButtonText: denyText }),
+        cancelButtonText: cancelText,
+        confirmButtonColor: c[okVariant] || c.primary || '#0d6efd',
+        ...(isDenyMode && { denyButtonColor: c[denyVariant] || c.danger || '#dc3545' }),
+        cancelButtonColor: c[noVariant] || c.secondary || '#6c757d',
+        focusConfirm: !isDangerous,
+        focusCancel: isDangerous && !isDenyMode,
+        focusDeny: isDangerous && isDenyMode,
+        reverseButtons: false,
+        customClass: {
+          ...basePopup.customClass,
+          confirmButton: `btn btn-${okVariant} px-4`,
+          ...(isDenyMode && { denyButton: `btn btn-${denyVariant} px-4` }),
+          cancelButton: `btn btn-${noVariant} px-4`,
+          actions: 'gap-2',
+        },
+        ...extraSwal,
+      })
+      .then((result) => {
+        if (result.isConfirmed) {
+          if (isCallbackMode) modeOrCallback(...cbArgs);
+          else if (confirmCallback) confirmCallback();
+        } else if (result.isDenied) {
+          if (denyCallback) denyCallback();
+        }
+        return result.isConfirmed;
+      });
+  },
+
+  // =========================================================================
+  // DIALOG UTILITIES — SweetAlert2 replacements for alert() / confirm()
+  // =========================================================================
+
+  /**
+   * Đọc CSS variables Bootstrap / ThemeManager từ :root tại thời điểm gọi.
+   * Kết quả phản ánh theme đang active mà không cần import ThemeManager.
+   * @private
+   * @returns {{ primary, secondary, success, danger, warning, info, bodyBg, bodyColor }}
+   */
+  _bsBtnColors: function () {
+    const s = getComputedStyle(document.documentElement);
+    const v = (name) => s.getPropertyValue(name).trim();
+    return {
+      primary: v('--bs-primary') || v('--primary-color') || '#0d6efd',
+      secondary: v('--bs-secondary') || v('--secondary-color') || '#6c757d',
+      success: v('--bs-success') || '#198754',
+      danger: v('--bs-danger') || '#dc3545',
+      warning: v('--bs-warning') || '#ffc107',
+      info: v('--bs-info') || '#0dcaf0',
+      bodyBg: v('--bs-body-bg') || v('--bg-primary') || '#ffffff',
+      bodyColor: v('--bs-body-color') || v('--text-primary') || '#212529',
+    };
+  },
+  showAlert: function (message, type = 'info', title = 'Thông Báo', options = {}) {
+    return this.logA(message, type, 'alert', title ? { title, ...options } : options);
+  },
+
+  showConfirm: function (message, okFnOrOpts, denyFn, opts = {}) {
+    let finalOpts = {};
+    if (typeof okFnOrOpts === 'function') {
+      finalOpts = { ...opts, onConfirm: okFnOrOpts, onDeny: denyFn };
+    } else {
+      finalOpts = { ...okFnOrOpts };
+    }
+    return this.logA(message, 'warning', 'confirm', finalOpts);
+  },
+
+  /**
+   * Tải nội dung HTML từ file tĩnh (local/Firebase Hosting)
+   * ✅ Optimized: Cache, timeout, path validation, retry
+   *
+   * @param {string} url - Tên file (vd: 'tpl_all.html') hoặc đường dẫn đầy đủ
+   * @param {Object} options - { useCache: true, timeout: 5000, retry: 1 }
+   * @returns {Promise<string>} - HTML content
+   */
+  loadHtmlFile: async (url, options = {}) => {
+    const { useCache = true, timeout = 5000, retry = 1, containerId = null } = options;
+
+    return new Promise((resolve, reject) => {
+      let finalSourcePath = url;
+      // 1. ✅ PATH VALIDATION: Chặn path traversal & absolute path
+      // Bỏ các ký tự nguy hiểm để tránh injection
+      if (url.includes('..') || url.startsWith('/')) {
+        reject(new Error(`❌ Invalid path: ${url} (Path traversal detected)`));
+        return;
+      }
+
+      // 2. Nếu là file HTML ngắn gọn (vd: 'tpl_all.html'), tự động thêm path
+      if (url.endsWith('.html') && !url.includes('/')) {
+        finalSourcePath = '/src/components/' + url;
+      }
+
+      // 3. ✅ CHECK CACHE TRƯỚC
+      if (useCache && _htmlCache?.[finalSourcePath]) {
+        L._(`⚡ HTML cached (from: ${finalSourcePath})`, 'info');
+        resolve(_htmlCache[finalSourcePath]);
+        return;
+      }
+
+      // 4. ✅ FETCH WITH TIMEOUT + RETRY LOGIC
+      const fetchWithTimeout = (path, attempt = 1) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        fetch(path, { signal: controller.signal })
+          .then((response) => {
+            clearTimeout(timeoutId);
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.text();
+          })
+          .then((html) => {
+            // ✅ CACHE RESULT
+            if (useCache) {
+              _htmlCache[finalSourcePath] = html;
+            }
+            // 2. Tạo div ảo để chứa HTML
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+
+            // 3. Tạo Fragment để chứa kết quả
+            const contentFragment = document.createDocumentFragment();
+
+            // 4. Chuyển TOÀN BỘ nội dung từ tempDiv sang Fragment
+            // Cách này sẽ giữ nguyên mọi thứ: div, span, và cả thẻ <template>
+            while (tempDiv.firstChild) {
+              contentFragment.appendChild(tempDiv.firstChild);
+            }
+            if (containerId) getE(containerId).appendChild(contentFragment);
+
+            L._(`✅ HTML loaded from: ${finalSourcePath}`, 'success');
+            resolve(html);
+          })
+          .catch((err) => {
+            clearTimeout(timeoutId);
+
+            // ✅ RETRY LOGIC
+            if (attempt < retry) {
+              L._(`⚠️ HTML fetch failed (attempt ${attempt}/${retry}), retrying...`, 'warning');
+              setTimeout(() => fetchWithTimeout(path, attempt + 1), 500);
+            } else {
+              Opps(`❌ Failed to load HTML from: ${finalSourcePath} (${err.message})`);
+              reject(err);
+            }
+          });
+      };
+      fetchWithTimeout(finalSourcePath);
+    });
+  },
+
+  /**
+   * Clear HTML cache (nếu cần reload)
+   */
+  clearHtmlCache: function (urlPattern = null) {
+    if (!urlPattern) {
+      Object.keys(_htmlCache).forEach((key) => delete _htmlCache[key]);
+      L._('🗑️ HTML cache cleared', 'info');
+    } else {
+      if (_htmlCache[urlPattern]) {
+        delete _htmlCache[urlPattern];
+        L._(`🗑️ HTML cache cleared for: ${urlPattern}`, 'info');
+      }
+    }
+  },
+
+  addDynamicCSS: function (cssCode, styleId = 'app-dynamic-styles') {
+    let styleTag = getE(styleId);
+    if (!styleTag) {
+      styleTag = document.createElement('style');
+      styleTag.id = styleId;
+      document.head.appendChild(styleTag);
+    }
+    styleTag.textContent += '\n' + cssCode;
+  },
+};
+UI_RENDERER.HELP = UI_HELP;
+
+window.showLoading = UI_RENDERER.showLoading;
+window.setBtnLoading = UI_RENDERER.setBtnLoading;
+window.toggleTemplate = UI_RENDERER.toggleTemplate;
+window.showAlert = UI_HELP.showAlert;
+window.showConfirm = UI_HELP.showConfirm;
+window.loadHtmlFile = UI_HELP.loadHtmlFile;
+window.addDynamicCSS = UI_HELP.addDynamicCSS;
 
 export default UI_RENDERER;

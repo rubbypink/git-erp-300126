@@ -22,12 +22,7 @@ const MenuUtils = {
     if (display) display.innerText = `${this.currentZoom}%`;
   },
   toggleFullScreen: function (e) {
-    if (e) e.stopPropagation();
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch((err) => console.error(err));
-    } else {
-      document.exitFullscreen();
-    }
+    A.UI?.toggleFullScreen();
   },
   toggleTheme: function (e) {
     if (e) e.stopPropagation();
@@ -133,7 +128,7 @@ export const ChromeMenuController = {
           type: 'item',
           label: 'Xóa Cache',
           icon: 'fa-solid fa-trash text-warning',
-          actionCode: "if(typeof clearLocalCache === 'function') clearLocalCache()",
+          actionCode: "if(typeof SYS.clearLocalCache === 'function') SYS.clearLocalCache()",
         },
         {
           type: 'item',
@@ -327,8 +322,8 @@ export const ChromeMenuController = {
         icon: 'fa-solid fa-money-bill-trend-up text-success',
         action: function () {
           if (window.A && A.TourPrice) {
-            activateTab('tab-tour-price');
-            A.TourPrice.init();
+            A.UI.activateTab('tab-tour-price');
+            // A.TourPrice.init();
           } else {
             logA('Đang tải module Tour Price...', 'info', 'toast');
           }
@@ -363,6 +358,7 @@ export const ChromeMenuController = {
             // Lưu ý: Cần đảm bảo script logic_report.js đã được load
             if (window.ReportModule) {
               window.ReportModule.init(); // Init report content inside modal
+              L._('🔍 CHROME MENU: Báo cáo: Đang tải...');
               modal.show(); // Show modal container
             } else {
               console.error('ReportModule not found. Please load logic_report.js');

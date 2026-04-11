@@ -7,13 +7,15 @@
 
 import PricingEngine from './PricingEngine.js';
 
-class TourPriceController {
+export default class TourPrice {
   constructor() {
+    this._initialized = false;
+    this.autoInit = false;
     this.containerId = 'tab-tour-price';
     this.templateId = 'tmpl-tour-price';
     this.modalTemplateId = 'tmpl-tp-modal-base';
     this.currentData = this._getEmptyData();
-    this.initialized = false;
+
     this.zoomLevel = 1.0;
   }
 
@@ -22,9 +24,9 @@ class TourPriceController {
    */
   async init() {
     try {
-      if (this.initialized) return;
-      L._('🔍 TourPriceController: init');
-      await loadHtmlFile('tpl_tour_price.html', { containerId: document.body });
+      if (this._initialized) return;
+      L._('🔍 TourPrice: init');
+      if (typeof window.loadHtmlFile === 'function') window.loadHtmlFile('tpl_tour_price.html', { containerId: document.body });
 
       // 1. Render UI từ template
       await A.UI.renderTemplate(this.containerId, this.templateId, false);
@@ -44,7 +46,7 @@ class TourPriceController {
       // 6. Khởi tạo Zoom UI
       this.updateZoomUI();
 
-      this.initialized = true;
+      this._initialized = true;
       L._('✅ TourPrice initialized', 'success');
     } catch (error) {
       Opps('TourPrice.init error:', error);
@@ -1076,7 +1078,7 @@ class TourPriceController {
    */
   async exportPDF() {
     try {
-      await loadLibraryAsync('html2pdf');
+      await SYS.loadLibraryAsync('html2pdf');
       const element = getE('tp-a4-document');
       if (!element) return Opps('Không tìm thấy nội dung để xuất PDF');
 
@@ -1169,7 +1171,7 @@ class TourPriceController {
     try {
       const element = getE('tp-a4-document');
       if (typeof html2canvas === 'undefined') {
-        await loadLibraryAsync('html2pdf');
+        await SYS.loadLibraryAsync('html2pdf');
       }
 
       const canvas = await html2canvas(element, {
@@ -1223,7 +1225,3 @@ class TourPriceController {
     };
   }
 }
-
-const TourPrice = new TourPriceController();
-window.TourPrice = TourPrice;
-export default TourPrice;

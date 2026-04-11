@@ -1,20 +1,18 @@
-// =====================================================================
-// 1. CORE IMPORTS (Bắt buộc load trước để chạy App & Login)
-// =====================================================================
-import Swal from 'sweetalert2';
-window.Swal = Swal; // Expose globally for legacy plain scripts (utils.js, logA, etc.)
 import DB_MANAGER from '/src/js/modules/db/DBManager.js';
 import EVENT_MANAGER from './EventManager.js';
-import ASelect from '/src/js/common/components/ASelect.js';
+import ASelect from '/src/js//components/ASelect.js';
 import { AUTH_MANAGER, SECURITY_MANAGER } from './LoginModule.js';
 import { FloatDraggable, Resizable, WindowMinimizer } from '/src/js/libs/ui_helper.js';
 import UI_RENDERER from './UI_Manager.js';
+
 import MobileEvent from './M_AutoMobileEvents.js'; // Self-initializing: tap→click, double-tap→dblclick, long-press→contextmenu
 import NotificationManager from './NotificationModule.js';
+
 window.NotificationManager = NotificationManager;
 
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { getApp } from 'firebase/app';
+import LogicBase from '@js/modules/core/logic_base.js';
 
 // Expose globally so legacy scripts (logic_operator, api_operator, etc.) can access it
 
@@ -95,7 +93,7 @@ class Application {
 
         if (!this.instance) {
           // Lưu config gốc để reset nếu cần
-          this._defaultOptions = { backdrop: false, keyboard: false, size: 'modal-xl' }; /* global bootstrap */
+          this._defaultOptions = { backdrop: true, keyboard: false, size: 'modal-xl' }; /* global bootstrap */
           this.fullscreen = false; // Flag kích hoạt handler fullscreen tích hợp sẵn
           this.header = true;
           this.instance = bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el, { ...this._defaultOptions });
@@ -1018,7 +1016,7 @@ class Application {
       // menu.toggleSide();
     }
     await SECURITY_MANAGER.cleanDOM(document);
-    activateTab('tab-dashboard');
+    A.UI.activateTab('tab-dashboard');
   }
 
   // --- FIX GETSTATE / GETCONFIG ---
@@ -1386,15 +1384,15 @@ class MODULELOADER {
       NotificationManager: () => import('./NotificationModule.js').then((m) => m.default),
       StateProxy: () => import('./StateProxy.js').then((m) => m.default),
 
-      ErpHeaderMenu: () => import('/src/js/common/components/header_menu.js').then((m) => m.default),
-      ErpFooterMenu: () => import('/src/js/common/components/footer_menu.js').then((m) => m.default),
-      ChromeMenuController: () => import('/src/js/common/components/Menu_StyleChrome.js').then((m) => m.ChromeMenuController),
+      ErpHeaderMenu: () => import('/src/js//components/header_menu.js').then((m) => m.default),
+      ErpFooterMenu: () => import('/src/js//components/footer_menu.js').then((m) => m.default),
+      ChromeMenuController: () => import('/src/js//components/Menu_StyleChrome.js').then((m) => m.ChromeMenuController),
       // Side-effect import: đăng ký custom element <offcanvas-menu> + <at-modal-full>
       // Trả về adapter object trỏ đến DOM instance để A.OffcanvasMenu.open() hoạt động
-      ContextMenu: () => import('/src/js/common/components/M_ContextMenu.js').then((m) => m.default),
-      CalculatorWidget: () => import('/src/js/common/components/calculator_widget.js').then((m) => m.CalculatorWidget),
+      ContextMenu: () => import('/src/js//components/M_ContextMenu.js').then((m) => m.default),
+      CalculatorWidget: () => import('/src/js//components/calculator_widget.js').then((m) => m.CalculatorWidget),
       OffcanvasMenu: async () => {
-        await import('/src/js/common/components/offcanvas_menu.js');
+        await import('/src/js//components/offcanvas_menu.js');
         const getEl = () => document.querySelector('offcanvas-menu');
         return {
           init: () => getEl()?.open(),
@@ -1409,7 +1407,7 @@ class MODULELOADER {
         };
       },
       ModalFull: async () => {
-        await import('/src/js/common/components/at_modal_full.js');
+        await import('/src/js/components/at_modal_full.js');
         const getEl = () => document.querySelector('at-modal-full');
         return {
           init: () => getEl()?.init(),
@@ -1426,20 +1424,20 @@ class MODULELOADER {
       },
       SalesModule: () => import('/src/js/modules/M_SalesModule.js').then((m) => m.default),
       Op: () => import('/src/js/modules/M_OperatorModule.js').then((m) => m.default),
-      AccountantCtrl: () => import('/accountant/controller_accountant.js').then((m) => m.default),
+      AccountantCtrl: () => import('@acc/controller_accountant.js').then((m) => m.default),
     };
 
     this.roleMap = {
-      admin: ['AdminConsole', 'ServicePriceController', 'SalesModule', 'PriceManager'],
+      admin: ['ServicePriceController', 'SalesModule', 'PriceManager'],
       op: ['Op', 'ServicePriceController', 'PriceManager'],
       acc: ['AccountantCtrl'],
       sale: ['SalesModule'],
       acc_thenice: [],
     };
-    this.forAllModules = ['ReportModule', 'TourPrice', 'CalculatorWidget', 'ThemeManager', 'Lang', 'NotificationManager', 'CostManager', 'ShortKey', 'BookingOverview', 'Router', 'ContextMenu'];
+    this.forAllModules = ['TourPrice', 'CalculatorWidget', 'ThemeManager', 'Lang', 'NotificationManager', 'CostManager', 'ShortKey', 'BookingOverview', 'Router'];
     this.commonModules = ['Lang', 'ThemeManager', 'StateProxy'];
     this.uiModules = ['OffcanvasMenu', 'ModalFull'];
-    this.asyncModules = ['AdminConsole', 'TourPrice', 'ReportModule', 'CalculatorWidget', 'ServicePriceController', 'CostManager', 'ShortKey', 'BookingOverview', 'ContextMenu', 'PriceManager'];
+    this.asyncModules = ['TourPrice', 'ReportModule', 'CalculatorWidget', 'ServicePriceController', 'CostManager', 'ShortKey', 'BookingOverview', 'PriceManager', 'ContextMenu'];
   }
 
   /**

@@ -450,12 +450,12 @@ const SECURITY_MANAGER = {
         },
         accountant: {
           // Gom nhóm roles kế toán
-          jsFile: './accountant/controller_accountant.js',
+          // jsFile: '@acc/controller_accountant.js',
           template: '/src/components/tpl_accountant.html',
           container: '.app-container',
           title: '9 Trip Phu Quoc - Accounting Center',
           moduleTitle: 'ACCOUNTING CENTER - QUẢN LÝ KẾ TOÁN',
-          css: { id: 'css-accountant', href: '/accountant/accountant.css' },
+          css: { id: 'css-accountant', href: '@acc/accountant.css' },
           footerTemplate: 'tmpl-acc-footer-bar',
         },
         sale: {
@@ -485,8 +485,8 @@ const SECURITY_MANAGER = {
       }
 
       // Load Logic JS
-      if (activeConfig.js) await loadJSForRole(configKey);
-      if (activeConfig.jsFile) await loadJSFile(activeConfig.jsFile, role);
+      if (activeConfig.js) await SYS.loadJSForRole(configKey);
+      if (activeConfig.jsFile) await SYS.loadJSFile(activeConfig.jsFile, role);
 
       // Render Giao diện chính
       await A.UI.renderTemplate('body', activeConfig.template, false, activeConfig.container);
@@ -511,7 +511,7 @@ const SECURITY_MANAGER = {
         if (maskedRole) {
           document.body.classList.add(`is-${maskedRole}`);
         } else {
-          if (typeof activateTab === 'function') activateTab('tab-admin-dashboard');
+          if (typeof A.UI.activateTab === 'function') A.UI.activateTab('tab-admin-dashboard');
         }
       } else {
         if (level >= 10) permissionClass = 'is-manager';

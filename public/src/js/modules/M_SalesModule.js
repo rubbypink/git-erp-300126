@@ -95,28 +95,24 @@ class SalesModule {
       }
 
       try {
-        // Chuẩn hóa bkData: Nếu là object chứa các record (key là ID) thì lấy record đầu tiên
+        // Chuẩn hóa bkData
         let finalBkData = bkData;
         if (bkData && typeof bkData === 'object' && !Array.isArray(bkData)) {
           const keys = Object.keys(bkData);
-          // Nếu object không có các field chính nhưng có key chứa object con -> lấy object con đầu tiên
           if (!bkData.id && !bkData.customer_id && keys.length > 0) {
             const firstVal = bkData[keys[0]];
             if (firstVal && typeof firstVal === 'object' && !Array.isArray(firstVal)) {
               finalBkData = firstVal;
-              L._('SalesModule.UI.loadBookingToUI: Extracted record from wrapped bkData', { id: finalBkData.id });
             }
           }
         }
 
-        const isBkObj = finalBkData && typeof finalBkData === 'object' && !Array.isArray(finalBkData);
-
-        if (!getE('main-form')) activateTab('tab-form');
-        if (isBkObj) HD.setFormData('sub-booking-form', finalBkData);
+        if (!getE('main-form')) A.UI.activateTab('tab-form');
+        if (finalBkData) HD.setFormData('sub-booking-form', finalBkData);
 
         let tbody = getE('detail-tbody');
         if (!tbody) {
-          activateTab('tab-form');
+          A.UI.activateTab('tab-form');
           tbody = getE('detail-tbody');
         }
 
@@ -124,11 +120,10 @@ class SalesModule {
           tbody.innerHTML = '';
           tbody.style.display = 'none';
         } else {
-          L._('SalesModule.UI.loadBookingToUI: Ko tìm thấy detail-tbody', 'error');
           return;
         }
 
-        // Chuẩn hóa customerData tương tự bkData
+        // Chuẩn hóa customerData
         let finalCustData = customerData;
         if (customerData && typeof customerData === 'object' && !Array.isArray(customerData)) {
           if (!customerData.id && !customerData.phone && !customerData.full_name) {
@@ -144,13 +139,12 @@ class SalesModule {
         }
 
         SalesModule.State.detailRowCount = 0;
-
         const detailsArr = Array.isArray(detailsData) ? detailsData : detailsData && typeof detailsData === 'object' ? Object.values(detailsData) : [];
 
         if (detailsArr.length > 0) {
           const sortedDetails = SalesModule.Logic.sortDetailsData(detailsArr);
-          // Tối ưu: Gọi addDetailRow một lần với mảng dữ liệu
-          await SalesModule.UI.addDetailRow(sortedDetails);
+          // GHOST MODE: Không cần await addDetailRow, cứ để nó chạy ngầm
+          SalesModule.UI.addDetailRow(sortedDetails);
         }
 
         tbody.style.display = 'table-row-group';
@@ -159,10 +153,8 @@ class SalesModule {
         try {
           const tabTrigger = document.querySelector('#mainTabs button[data-bs-target="#tab-form"]');
           if (tabTrigger) bootstrap.Tab.getOrCreateInstance(tabTrigger).show();
-          if (typeof toggleContextUI === 'function') toggleContextUI('tab-form');
-        } catch (e) {
-          L.log('SalesModule.UI.loadBookingToUI: LỖI khi chuyển tab', e);
-        }
+          if (typeof A.UI.toggleContextUI === 'function') A.UI.toggleContextUI('tab-form');
+        } catch (e) {}
       } catch (e) {
         L.log('SalesModule.UI.loadBookingToUI Error:', e);
       } finally {
@@ -173,7 +165,6 @@ class SalesModule {
 
     /**
      * Thêm một hoặc nhiều dòng dịch vụ chi tiết
-     * @param {Object|Array} data - Object dữ liệu hàng đơn lẻ hoặc Mảng các object dữ liệu
      */
     addDetailRow: async (data = null) => {
       try {
@@ -184,18 +175,10 @@ class SalesModule {
         const dataList = isArray ? data : [data];
         const fragment = document.createDocumentFragment();
 
-        // Ưu tiên lấy lists từ State -> APP_DATA -> LocalDB
         const lists = SalesModule.State.lists || window.APP_DATA?.lists || (await A.DB.local.get('app_config', 'lists')) || {};
-        if (!SalesModule.State.lists && Object.keys(lists).length > 0) SalesModule.State.lists = lists;
-
-        const locations = SalesModule.State.locations || (await SalesModule.UI.getLocationList());
-
         const optsType = Object.values(lists.types || {})
           .map((x) => `<option value="${x}">${x}</option>`)
           .join('');
-
-        // Mảng chứa các promise xử lý logic phụ trợ sau khi append
-        const postProcessTasks = [];
 
         for (const rowData of dataList) {
           SalesModule.State.detailRowCount++;
@@ -212,9 +195,16 @@ class SalesModule {
               </select>
             </td>
             <td>
-              <select data-source="SalesModule.State.locations" data-searchable="true" class="smart-select form-select form-select-sm" data-field="hotel_name" data-onchange="SalesModule.Logic.onLocationChange(this)">
-                <option value="">-</option>
-              </select>
+            <select 
+                class="smart-select form-select form-select-sm" 
+                data-source="hotels" 
+                data-searchable="true" 
+                data-field="hotel_name" 
+                data-onchange='SalesModule.Logic.onLocationChange(getE("${tr.id}"));'
+            >
+                <option value="">- Vui lòng chọn -</option>
+            </select>
+        
             </td>
             <td>
               <select class="form-select form-select-sm" data-field="service_name">
@@ -245,63 +235,41 @@ class SalesModule {
 
           fragment.appendChild(tr);
 
-          // Chuẩn bị task xử lý dữ liệu cho hàng này
-          const task = (async (currentRow, currentIdx, currentData) => {
-            try {
-              L._(`[addDetailRow] 🚀 Task Start for Row ${currentIdx}`, { currentData });
+          // GHOST MODE: Gán giá trị tự nhiên, ASelect sẽ tự "đuổi kịp"
+          if (rowData) {
+            // Gán ID và Type trước
+            setVal('[data-field="id"]', rowData.id || '', tr);
+            setVal('[data-field="service_type"]', rowData.service_type, tr);
 
-              if (currentData) {
-                const detailId = currentData.id || '';
-                setVal('[data-field="id"]', detailId, currentRow);
-                if (detailId) currentRow.setAttribute('data-item', detailId);
+            // Gán Hotel Name - ASelect (Ghost) sẽ tự động cập nhật UI khi value này thay đổi
+            setVal('[data-field="hotel_name"]', rowData.hotel_name, tr);
 
-                // 2. Gán select
-                setVal('[data-field="service_type"]', currentData.service_type, currentRow);
-                setVal('[data-field="hotel_name"]', currentData.hotel_name, currentRow);
-                debounce(() => L._(`[addDetailRow] 📍 Set hotel_name: ${currentData.hotel_name}, DOM value: ${getVal('[data-field="hotel_name"]', currentRow)}`), 100);
+            // Nạp danh sách dịch vụ chi tiết
+            SalesModule.UI.updateServiceSelect(tr, rowData.hotel_name).then(() => {
+              setVal('[data-field="service_name"]', rowData.service_name, tr);
+            });
 
-                // 4. Update danh sách dịch vụ (phòng hoặc dịch vụ khác)
-                await SalesModule.UI.updateServiceSelect(currentRow);
-                // 5. Gán service_name
-                setVal('[data-field="service_name"]', currentData.service_name, currentRow);
-                L._(`[addDetailRow] 🛎️ Set service_name: ${currentData.service_name}, DOM value: ${getVal('[data-field="service_name"]', currentRow)}`);
+            // Gán các trường còn lại
+            setVal('[data-field="check_in"]', rowData.check_in, tr);
+            setVal('[data-field="check_out"]', rowData.check_out, tr);
+            setVal('[data-field="nights"]', rowData.nights, tr);
+            setVal('[data-field="quantity"]', rowData.quantity, tr);
+            setVal('[data-field="unit_price"]', rowData.unit_price, tr);
+            setVal('[data-field="child_qty"]', rowData.child_qty, tr);
+            setVal('[data-field="child_price"]', rowData.child_price, tr);
+            setVal('[data-field="surcharge"]', rowData.surcharge, tr);
+            setVal('[data-field="discount"]', rowData.discount, tr);
+            setVal('[data-field="ref_code"]', rowData.ref_code, tr);
+            setVal('[data-field="note"]', rowData.note, tr);
 
-                // 6. Gán các trường còn lại
-                setVal('[data-field="check_in"]', currentData.check_in, currentRow);
-                setVal('[data-field="check_out"]', currentData.check_out, currentRow);
-                setVal('[data-field="nights"]', currentData.nights, currentRow);
-                setVal('[data-field="quantity"]', currentData.quantity, currentRow);
-                setVal('[data-field="unit_price"]', currentData.unit_price, currentRow);
-                setVal('[data-field="child_qty"]', currentData.child_qty, currentRow);
-                setVal('[data-field="child_price"]', currentData.child_price, currentRow);
-                setVal('[data-field="surcharge"]', currentData.surcharge, currentRow);
-                setVal('[data-field="discount"]', currentData.discount, currentRow);
-                setVal('[data-field="ref_code"]', currentData.ref_code, currentRow);
-                setVal('[data-field="note"]', currentData.note, currentRow);
-
-                SalesModule.Logic.calcRow(currentIdx);
-
-                currentRow.querySelectorAll('input, select').forEach((el) => {
-                  el.setAttribute('data-initial', el.value);
-                });
-              } else if (currentIdx === 1) {
-                setVal('[data-field="service_type"]', 'Phòng', currentRow);
-                // Đối với dòng mới (trống), vẫn cần trigger change để auto-fill
-                await SalesModule.Logic.onTypeChange(currentRow, true);
-              }
-            } catch (err) {
-              L.log(`SalesModule.UI.addDetailRow Task Error (Row ${currentIdx}):`, err);
-            }
-          })(tr, idx, rowData);
-
-          postProcessTasks.push(task);
+            SalesModule.Logic.calcRow(tr);
+          } else if (idx === 1) {
+            setVal('[data-field="service_type"]', 'Phòng', tr);
+            SalesModule.Logic.onTypeChange(tr, true);
+          }
         }
 
-        // Append toàn bộ fragment vào DOM một lần duy nhất
         tbody.appendChild(fragment);
-
-        // Thực thi các logic phụ trợ sau khi đã append vào DOM
-        await Promise.all(postProcessTasks);
       } catch (e) {
         L.log('SalesModule.UI.addDetailRow Error:', e);
       }
@@ -318,132 +286,51 @@ class SalesModule {
     },
 
     getLocationList: async () => {
-      L._(`[getLocationList] 🔄 Fetching locations...`);
-      if (SalesModule.State.locations && SalesModule.State?.locations?.length > 0) {
-        L._(`[getLocationList] ✅ Returning cached locations: ${SalesModule.State.locations.length}`);
-        return SalesModule.State.locations;
-      }
+      if (SalesModule.State.locations && SalesModule.State?.locations?.length > 0) return SalesModule.State.locations;
       var uniqueLocs = [];
       const lists = SalesModule.State?.lists || window.APP_DATA?.lists || (await A.DB.local.get('app_config', 'lists')) || {};
       const hotelsRaw = SalesModule.State?.hotels || window.APP_DATA?.hotels || (await A.DB.local.getCollection('hotels')) || [];
-
-      // Đảm bảo hotels luôn là Array
       const hotels = Array.isArray(hotelsRaw) ? hotelsRaw : Object.values(hotelsRaw);
-      L._(`[getLocationList] 🏨 Hotels raw count: ${hotels.length}`);
-
-      if (!SalesModule.State.hotels || SalesModule.State.hotels.length === 0) {
-        SalesModule.State.hotels = hotels;
-      }
-
       const others = Object.values(lists.locOther || {}) || [];
-      // Chuẩn hóa dữ liệu: hotels thường là object {id, name}, others có thể là string hoặc object
       const normalizedOthers = others.map((x) => (typeof x === 'string' ? { id: x, name: x } : x));
-
-      // Gộp danh sách và bảo toàn thuộc tính (đặc biệt là rooms)
       const allLocs = [...hotels, ...normalizedOthers];
       const map = new Map();
 
       for (let item of allLocs) {
         if (!item) continue;
-
-        // 1. Xử lý trường hợp item là object có key là index (0, 1, 2...)
-        if (typeof item === 'object' && !item.id && !item.name) {
-          const values = Object.values(item);
-          if (values.length > 0) {
-            const val = values[0];
-            item = { id: val, name: val };
-          }
-        }
-
-        // 2. Xác định ID
         const id = typeof item === 'object' ? item.id : item;
-        if (!id) continue;
-
-        // 3. Kiểm tra trùng lặp và bảo toàn dữ liệu
-        if (!map.has(id)) {
-          map.set(id, true);
-          const finalItem = typeof item === 'object' ? { ...item, id: item.id || id, name: item.name || id } : { id: item, name: item };
-          uniqueLocs.push(finalItem);
-        }
+        if (!id || map.has(id)) continue;
+        map.set(id, true);
+        uniqueLocs.push(typeof item === 'object' ? { ...item, id: item.id || id, name: item.name || id } : { id: item, name: item });
       }
 
       if (uniqueLocs.length > 0) SalesModule.State.locations = uniqueLocs;
       return uniqueLocs;
     },
 
-    updateServiceSelect: async (tr, el) => {
+    updateServiceSelect: async (tr, hotelIdorName) => {
       try {
-        if (!tr) tr = getE(el).closest('tr');
         if (!tr) return;
-
         const type = (getVal('[data-field="service_type"]', tr) || '').trim();
-        const hotelEl = $('[data-field="hotel_name"]', tr);
-
-        const instance = ASelect.getInstance(getE(el));
-        if (instance) {
-          // 3. Đợi dữ liệu sẵn sàng (nếu cần)
-          await instance.ready;
-
-          // 4. Thao tác với instance
-          console.log('Giá trị hiện tại:', el.value);
-        }
-        let loc = hotelEl ? hotelEl.value : getVal(hotelEl);
-        L._(`[updateServiceSelect] 🔍 Type: ${tr.id}, Loc: ${loc}`);
-
+        const loc = hotelIdorName ? hotelIdorName : getVal('[data-field="hotel_name"]', tr);
+        L._('🔍 updateServiceSelect: hotel:', loc);
         const elName = $('[data-field="service_name"]', tr);
         if (!elName) return;
 
         let options = [];
         if (type === 'Phòng') {
-          // Lấy danh sách khách sạn
-          let hotels = APP_DATA.hotels || (await SalesModule.UI.getLocationList());
+          const hotels = SalesModule.State.hotels || (await A.DB.local.getCollection('hotels')) || [];
+          const hotel = hotels.find((h) => String(h.id) === String(loc) || String(h.name) === String(loc));
 
-          // Tìm khách sạn khớp
-          let hotelFiltered = HD.filters(
-            hotels,
-            [
-              { field: 'id', operator: '==', value: loc },
-              { field: 'name', operator: '==', value: loc },
-            ],
-            'OR'
-          );
-
-          // FIX 1: Bóc tách đúng lớp Object/Array để lấy Data thật
-          let hotel = Array.isArray(hotelFiltered) ? hotelFiltered[0] : Object.values(hotelFiltered || {})[0];
-          L._(`[updateServiceSelect] 🎯 Found Hotel:`, hotel);
-
-          if (hotel) {
-            options = Array.isArray(hotel.rooms) ? hotel.rooms : Object.values(hotel.rooms || {});
-            L._(`[updateServiceSelect] 🛌 Rooms found: ${options.length}`);
-          } else {
-            L._(`[updateServiceSelect] ⚠️ No rooms found for hotel: ${loc}`);
-          }
+          if (hotel) options = Array.isArray(hotel.rooms) ? hotel.rooms : Object.values(hotel.rooms || {});
         } else {
           const services = window.APP_DATA?.lists?.services || SalesModule.State.lists?.services || {};
-          // FIX 2: Thêm || {} để an toàn tuyệt đối, tránh lỗi "Cannot convert undefined or null to object"
           options = Object.values(services[type] || {});
         }
 
         let currentVal = getVal(elName);
-        let html = `<option value="" selected disabled>-</option>`;
-
-        // Render HTML
-        html += options.map((opt) => `<option value="${opt.id || opt}">${opt.name || opt}</option>`).join('');
-        elName.innerHTML = html;
-
-        // Gán lại giá trị cũ
-        if (currentVal) {
-          // FIX 3: Tách làm 2 phép so sánh bình đẳng (Khớp ID HOẶC khớp Name)
-          const exists = options.some((opt) => String(opt.id || opt) === String(currentVal) || String(opt.name || opt) === String(currentVal));
-
-          if (exists) {
-            // Tối ưu: Dùng luôn biến elName đã query ở trên thay vì quét DOM lại lần nữa
-            setVal(elName, currentVal);
-          } else {
-            // Tối ưu UI: Reset về rỗng nếu data cũ ko còn tồn tại
-            setVal(elName, '');
-          }
-        }
+        elName.innerHTML = `<option value="">-</option>` + options.map((opt) => `<option value="${opt.id || opt}">${opt.name || opt}</option>`).join('');
+        if (currentVal) setVal(elName, currentVal);
       } catch (e) {
         L.log('SalesModule.UI.updateServiceSelect Error:', e);
       }
@@ -451,382 +338,129 @@ class SalesModule {
 
     fillFormFromSearch: (res) => {
       if (typeof showLoading === 'function') showLoading(false);
-      if (!res) {
-        L.log('SalesModule.UI.fillFormFromSearch: Không tìm thấy dữ liệu phù hợp!');
-        return;
-      }
-      try {
-        const bkData = res.bookings;
-        const detailsData = res.booking_details;
-        const customerData = res.customer;
-        SalesModule.UI.loadBookingToUI(bkData, customerData, detailsData);
-      } catch (e) {
-        L.log('SalesModule.UI.fillFormFromSearch Error:', e);
-      }
-    },
-    checkAndLoadTemplate: async () => {
-      try {
-        const tempName = getVal('BK_TourName');
-        if (!tempName) return;
-        const template = await requestAPI('getBookingTemplateAPI', tempName);
-        if (template?.found) {
-          const ok = await logA(`Hệ thống tìm thấy Template mẫu cho tour "${tempName}". Bạn có muốn tải vào không?`, 'question', 'confirm');
-          if (ok) {
-            const start = getVal('BK_Start');
-            const end = getVal('BK_End');
-            const adult = getVal('BK_Adult');
-            if (!start || !end || !adult) {
-              logA('Vui lòng điền đầy đủ: Ngày Đi, Ngày Về và Số người lớn!', 'warning');
-              return;
-            }
-            await SalesModule.Logic.processAndFillTemplate(template.booking_details, template.anchorDate, start, adult);
-          }
-        }
-      } catch (e) {
-        L.log('SalesModule.checkAndLoadTemplate Error:', e);
-      }
-    },
-    saveCurrentTemplate: async () => {
-      try {
-        const tempName = getVal('BK_TourName');
-        const newDate = getVal('BK_Start');
-        if (!tempName || !newDate) return logA('Vui lòng nhập Tên Tour và Ngày Đi!', 'warning');
-
-        const details = [];
-        document.querySelectorAll('#detail-tbody tr').forEach((tr) => {
-          const gV = (f) => getVal(`[data-field="${f}"]`, tr);
-          details.push({
-            service_type: gV('service_type'),
-            hotel_name: gV('hotel_name'),
-            service_name: gV('service_name'),
-            check_in: gV('check_in'),
-            check_out: gV('check_out'),
-            nights: gV('nights'),
-            quantity: gV('quantity'),
-            unit_price: gV('unit_price'),
-            child_qty: gV('child_qty'),
-            child_price: gV('child_price'),
-            surcharge: gV('surcharge'),
-            discount: gV('discount'),
-            total: tr.querySelector('[data-field="total"]')?.dataset.val || 0,
-            ref_code: gV('ref_code'),
-            note: gV('note'),
-          });
-        });
-
-        if (details.length === 0) return logA('Bảng chi tiết đang trống!', 'warning');
-        if (typeof showLoading === 'function') showLoading(true, 'Đang lưu Template...');
-        const res = await requestAPI('saveBookingTemplateAPI', tempName, details, newDate);
-        if (res && typeof logA === 'function') logA(res?.message || 'Đã lưu Template thành công.', 'success');
-      } catch (e) {
-        L.log('SalesModule.saveCurrentTemplate Error:', e);
-      } finally {
-        if (typeof showLoading === 'function') showLoading(false);
-      }
+      if (!res) return;
+      SalesModule.UI.loadBookingToUI(res.bookings, res.customer, res.booking_details);
     },
 
-    /**
-     * Render danh sách bản nháp vào dropdown menu
-     */
     renderDraftsMenu: () => {
       try {
         const container = getE('drafts-list');
         if (!container) return;
         container.innerHTML = '';
-
         const prefix = SalesModule.Config.draftKeyPrefix;
-        const drafts = [];
         for (let i = 1; i <= SalesModule.Config.maxDrafts; i++) {
-          const key = prefix + i;
-          const dataStr = localStorage.getItem(key);
+          const dataStr = localStorage.getItem(prefix + i);
           if (dataStr) {
-            try {
-              const data = JSON.parse(dataStr);
-              drafts.push({ key, data });
-            } catch (e) {
-              L.log(`SalesModule.UI.renderDraftsMenu: Lỗi parse draft ${key}`, e);
-            }
-          }
-        }
-
-        if (drafts.length > 0) {
-          drafts.forEach((d) => {
-            const b = d.data.bookings || {};
-            const label = `${b.customer_full_name || 'No Name'}: ${b.start_date || '?'} - ${b.end_date || '?'} - ${d.key}`;
+            const data = JSON.parse(dataStr);
+            const b = data.bookings || {};
+            const label = `${b.customer_full_name || 'No Name'}: ${b.start_date || '?'} - ${d.key}`;
             const li = document.createElement('li');
-            li.innerHTML = `<a class="dropdown-item small text-info" href="javascript:void(0)" onclick="SalesModule.Logic.loadDraft('${d.key}')">
+            li.innerHTML = `<a class="dropdown-item small text-info" href="javascript:void(0)" onclick="SalesModule.Logic.loadDraft('${prefix + i}')">
                 <i class="fa-solid fa-file-import me-2"></i> ${label}
               </a>`;
             container.appendChild(li);
-          });
+          }
         }
-      } catch (e) {
-        L.log('SalesModule.UI.renderDraftsMenu Error:', e);
-      }
+      } catch (e) {}
     },
   };
 
   // ─── 4. LOGIC HANDLERS ─────────────────────────────────────────────
   static Logic = {
     onTypeChange: async (el, resetChildren = true) => {
-      try {
-        const tr = getE(el).closest('tr');
-        if (!tr) return;
-        const idx = tr.dataset.row;
-
-        if (resetChildren) {
-          setVal('[data-field="hotel_name"]', '', tr);
-          await SalesModule.UI.updateServiceSelect(tr);
-          if (idx) SalesModule.Logic.autoFillRowData(idx);
-        } else {
-          await SalesModule.UI.updateServiceSelect(tr);
-        }
-      } catch (e) {
-        L.log('SalesModule.Logic.onTypeChange Error:', e);
+      const tr = getE(el).closest('tr');
+      if (!tr) return;
+      if (resetChildren) {
+        setVal('[data-field="hotel_name"]', '', tr);
+        await SalesModule.UI.updateServiceSelect(tr);
+        SalesModule.Logic.autoFillRowData(tr.dataset.row);
+      } else {
+        await SalesModule.UI.updateServiceSelect(tr);
       }
     },
     onLocationChange: async (el, resetName = true) => {
-      try {
-        const tr = getE(el)?.closest('tr');
-        if (!tr) return;
-
-        const loc = getVal('[data-field="hotel_name"]', tr);
-        L._(`[onLocationChange] 🔍 Location: ${loc}`);
-
-        const type = getVal('[data-field="service_type"]', tr);
-        if (type === 'Phòng') {
-          await SalesModule.UI.updateServiceSelect(tr, el);
-          if (resetName) setVal('[data-field="service_name"]', '', tr);
-        }
-      } catch (e) {
-        L.log('SalesModule.Logic.onLocationChange Error:', e);
+      const tr = getE(el)?.closest('tr');
+      if (!tr) return false;
+      if (getVal('[data-field="service_type"]', tr) === 'Phòng') {
+        if (resetName) setVal('[data-field="service_name"]', '', tr);
+        return await SalesModule.UI.updateServiceSelect(tr, el.value);
       }
     },
 
     autoFillRowData: (idx) => {
-      try {
-        const tr = getE(`row-${idx}`);
-        if (!tr) return;
-        const type = getVal('[data-field="service_type"]', tr);
-        const mainAdults = getNum('BK_Adult') || 1;
-        const mainChild = getNum('BK_Child') || 0;
-        const mainStart = getVal('BK_Start') || new Date();
-        const mainEnd = getVal('BK_End') || new Date();
+      const tr = getE(`row-${idx}`);
+      if (!tr) return;
+      const type = getVal('[data-field="service_type"]', tr);
+      const mainAdults = getNum('BK_Adult') || 1;
+      const mainChild = getNum('BK_Child') || 0;
+      const mainStart = getVal('BK_Start') || new Date();
+      const mainEnd = getVal('BK_End') || new Date();
 
-        let newQtyA = 0;
-        let newQtyC = 0;
-        if (type === 'Phòng') {
-          newQtyA = Math.ceil(mainAdults / 2);
-          newQtyC = mainChild;
-        } else if (['Xe', 'HDV'].includes(type)) {
-          newQtyA = 1;
-          newQtyC = 0;
-        } else {
-          newQtyA = mainAdults;
-          newQtyC = mainChild;
-        }
-        setVal('[data-field="quantity"]', newQtyA, tr);
-        setVal('[data-field="child_qty"]', newQtyC, tr);
+      let newQtyA = type === 'Phòng' ? Math.ceil(mainAdults / 2) : ['Xe', 'HDV'].includes(type) ? 1 : mainAdults;
+      let newQtyC = type === 'Phòng' || ['Xe', 'HDV'].includes(type) ? mainChild : 0;
 
-        let newIn = '';
-        let newOut = '';
-        const prevRow = tr.previousElementSibling;
-        let prevOutDate = '';
-        let prevInDate = '';
-        let preType = '';
-        if (prevRow && prevRow.querySelector('[data-field="check_out"]')) {
-          prevOutDate = getVal('[data-field="check_out"]', prevRow);
-          prevInDate = getVal('[data-field="check_in"]', prevRow);
-          preType = getVal('[data-field="service_type"]', prevRow);
-        }
+      setVal('[data-field="quantity"]', newQtyA, tr);
+      setVal('[data-field="child_qty"]', newQtyC, tr);
 
-        if (['Vé MB', 'Vé Tàu'].includes(type)) {
-          newIn = mainStart;
-          newOut = mainEnd;
-        } else if (type === 'Phòng') {
-          newIn = prevOutDate ? prevOutDate : mainStart;
-          newOut = mainEnd;
-        } else {
-          let refDate;
-          if (['Phòng', 'Vé MB', 'Vé Tàu'].includes(preType)) {
-            refDate = prevInDate ? prevInDate : mainStart;
-          } else {
-            refDate = prevOutDate ? prevOutDate : mainStart;
-          }
-          newIn = refDate;
-          newOut = refDate;
-        }
-        if (newIn) setVal('[data-field="check_in"]', newIn, tr);
-        if (newOut) setVal('[data-field="check_out"]', newOut, tr);
-        SalesModule.Logic.calcRow(idx);
-      } catch (e) {
-        L.log('SalesModule.Logic.autoFillRowData Error:', e);
+      let newIn = mainStart,
+        newOut = mainEnd;
+      const prevRow = tr.previousElementSibling;
+      if (prevRow) {
+        const prevOut = getVal('[data-field="check_out"]', prevRow);
+        if (type === 'Phòng' && prevOut) newIn = prevOut;
       }
+      setVal('[data-field="check_in"]', newIn, tr);
+      setVal('[data-field="check_out"]', newOut, tr);
+      SalesModule.Logic.calcRow(idx);
     },
 
     calcRow: (idx) => {
-      try {
-        if (getVal('BK_Status') === 'Hủy') return;
-        const tr = getE(`row-${idx}`);
-        if (!tr) return;
-        const gV = (f) => getVal(`[data-field="${f}"]`, tr);
-        const gN = (f) => getNum(`[data-field="${f}"]`, tr);
-        const sV = (f, val) => setVal(`[data-field="${f}"]`, val, tr);
-        const sN = (f, val) => setNum(`[data-field="${f}"]`, val, tr);
-
-        const dInStr = gV('check_in');
-        const dOutStr = gV('check_out');
-        const type = gV('service_type');
-
-        let night = 0;
-        if (dInStr && dOutStr) {
-          const dIn = new Date(dInStr);
-          const dOut = new Date(dOutStr);
-          const diff = (dOut - dIn) / 86400000;
-          if (type !== 'Phòng' || diff <= 0) {
-            night = 1;
-          } else {
-            night = diff;
-          }
-        }
-        sN('nights', night);
-
-        const qtyA = gN('quantity');
-        const priA = gN('unit_price');
-        const qtyC = gN('child_qty');
-        const priC = gN('child_price');
-        const sur = gN('surcharge');
-        const disc = gN('discount');
-        const multiplier = type === 'Phòng' ? Math.max(1, night) : 1;
-        const total = (qtyA * priA + qtyC * priC) * multiplier + sur - disc;
-        sN('total', total);
-        SalesModule.Logic.calcGrandTotal();
-      } catch (e) {
-        L.log('SalesModule.Logic.calcRow Error:', e);
+      const tr = typeof idx === 'object' ? idx : getE(`row-${idx}`);
+      if (!tr) {
+        L.log(`SalesModule.Logic.calcRow: Row ${idx} not found in DOM`, 'DEBUG');
       }
+      if (!tr || getVal('BK_Status') === 'Hủy') return;
+      const type = getVal('[data-field="service_type"]', tr);
+      const dIn = new Date(getVal('[data-field="check_in"]', tr));
+      let dOut = new Date(getVal('[data-field="check_out"]', tr));
+
+      const night = type === 'Phòng' && dOut > dIn ? (dOut - dIn) / 86400000 : 1;
+      setVal('[data-field="nights"]', night, tr);
+
+      const total = (getVal('[data-field="quantity"]', tr) * getVal('[data-field="unit_price"]', tr) + getVal('[data-field="child_qty"]', tr) * getVal('[data-field="child_price"]', tr)) * (type === 'Phòng' ? night : 1) + getVal('[data-field="surcharge"]', tr) - getVal('[data-field="discount"]', tr);
+      setVal('[data-field="total"]', total, tr);
+      SalesModule.Logic.calcGrandTotal();
     },
 
     calcGrandTotal: () => {
-      try {
-        if (getVal('BK_Status') === 'Hủy') return;
-        let grandTotal = 0;
-        let transportTotal = 0;
-        let transportA = 0;
-        let transportC = 0;
-        let landChildTotal = 0;
-
-        $$('[data-field="total"]', getE('detail-tbody')).forEach((elTotal) => {
-          const rowTotal = getNum(elTotal);
-          grandTotal += rowTotal;
-
-          const tr = elTotal.closest('tr');
-          if (tr) {
-            const type = getVal('[data-field="service_type"]', tr);
-            if (type === 'Vé MB' || type === 'Vé Tàu') {
-              const qtyA = getNum('[data-field="quantity"]', tr);
-              const priA = getNum('[data-field="unit_price"]', tr);
-              const qtyC = getNum('[data-field="child_qty"]', tr);
-              const priC = getNum('[data-field="child_price"]', tr);
-              const sur = getNum('[data-field="surcharge"]', tr);
-              const disc = getNum('[data-field="discount"]', tr);
-              transportA += qtyA * priA + sur - disc;
-              transportC += priC * qtyC;
-              transportTotal += rowTotal;
-            } else {
-              const qtyC = getNum('[data-field="child_qty"]', tr);
-              const priC = getNum('[data-field="child_price"]', tr);
-              const nightVal = getNum('[data-field="nights"]', tr) || 1;
-              const multiplier = type === 'Phòng' ? Math.max(1, nightVal) : 1;
-              landChildTotal += qtyC * priC * multiplier;
-            }
-          }
-        });
-
-        const elBkTotal = $('BK_Total');
-        if (elBkTotal) {
-          setNum(elBkTotal, grandTotal);
-        }
-
-        const countAdult = getNum('BK_Adult') || 1;
-        const countChild = getNum('BK_Child') || 0;
-
-        const avgChildPrice = countChild > 0 ? landChildTotal / countChild : 0;
-        const landTotal = grandTotal - transportTotal;
-        const landAdultTotal = landTotal - landChildTotal;
-        const avgAdultPrice = countAdult > 0 ? landAdultTotal / countAdult : 0;
-        const transAdultPrice = countAdult > 0 ? transportA / countAdult : 0;
-        const transChildPrice = countChild > 0 ? transportC / countChild : 0;
-
-        setHTML('Stats_AvgAdult', formatNumber(Math.round(avgAdultPrice)));
-        setHTML('Stats_AvgChild', formatNumber(Math.round(avgChildPrice)));
-        setHTML('Stats_TransportAdult', formatNumber(Math.round(transAdultPrice)));
-        setHTML('Stats_TransportChild', formatNumber(Math.round(transChildPrice)));
-
-        const balance = grandTotal - getNum('BK_Deposit');
-        setNum('BK_Balance', balance);
-        SalesModule.Logic.updateBkStatus();
-      } catch (e) {
-        L.log('SalesModule.Logic.calcGrandTotal Error:', e);
-      }
+      let grandTotal = 0;
+      $$('[data-field="total"]', getE('detail-tbody')).forEach((el) => (grandTotal += getNum(el)));
+      setVal('BK_Total', grandTotal);
+      setVal('BK_Balance', grandTotal - getNum('BK_Deposit'));
+      SalesModule.Logic.updateBkStatus();
     },
 
     updateBkStatus: (force = false) => {
-      try {
-        let curStatus = getVal('BK_Status');
-        let bkId = getVal('BK_ID');
-        let grandTotal = getNum('BK_Total');
-        let deposit = getNum('BK_Deposit');
-        const startDate = new Date(getVal('BK_Start'));
-        const today = new Date();
-        let stt = curStatus || 'Đặt Lịch';
-        if (!curStatus || curStatus !== 'Hủy' || force) {
-          if (grandTotal === 0 && bkId && deposit === 0) stt = 'Hủy';
-          else if (startDate <= today && deposit === grandTotal) stt = 'Xong BK';
-          else if (deposit === grandTotal && grandTotal > 0) stt = 'Thanh Toán';
-          else if (startDate < today && deposit < grandTotal) stt = 'Công nợ';
-          else if (deposit > 0) stt = 'Đặt Cọc';
-          else stt = 'Đặt Lịch';
-        }
-        setVal('BK_Status', stt);
-        return stt;
-      } catch (e) {
-        L.log('SalesModule.Logic.updateBkStatus Error:', e);
-        return '';
+      let stt = getVal('BK_Status') || 'Đặt Lịch';
+      if (stt !== 'Hủy' || force) {
+        const total = getNum('BK_Total'),
+          deposit = getNum('BK_Deposit');
+        if (deposit >= total && total > 0) stt = 'Thanh Toán';
+        else if (deposit > 0) stt = 'Đặt Cọc';
+        else stt = 'Đặt Lịch';
       }
+      setVal('BK_Status', stt);
+      return stt;
     },
 
     autoSetOrCalcDate: (start, end) => {
-      try {
-        if (!start) return;
-
-        // Nếu end là số (idx)
-        if (typeof end === 'number' || !isNaN(Number(end))) {
-          const idx = Number(end);
-          const tr = getE(`row-${idx}`);
-          if (tr) {
-            const elOut = tr.querySelector('[data-field="check_out"]');
-            if (elOut) {
-              elOut.value = start;
-              SalesModule.Logic.calcRow(idx);
-            }
-          }
-          return;
+      if (!start) return;
+      if (!isNaN(end)) {
+        const tr = getE(`row-${end}`);
+        if (tr) {
+          setVal('[data-field="check_out"]', start, tr);
+          SalesModule.Logic.calcRow(end);
         }
-
-        const targetElement = getE(end);
-        if (targetElement) {
-          targetElement.value = start;
-        } else {
-          const startDate = new Date(start);
-          const endDate = new Date(end);
-          if (!isNaN(endDate.getTime())) {
-            const diffTime = endDate - startDate;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            return diffDays;
-          }
-        }
-      } catch (e) {
-        L.log('SalesModule.Logic.autoSetOrCalcDate Error:', e);
       }
     },
 
@@ -1074,7 +708,7 @@ class SalesModule {
       }
     },
 
-    processAndFillTemplate: async (booking_details, anchorDateStr, newStartStr, newAdult) => {
+    processAndFillTemplate: (booking_details, anchorDateStr, newStartStr, newAdult) => {
       try {
         const parseDate = (dStr) => (dStr instanceof Date ? dStr : new Date(dStr));
         const bkId = getVal('BK_ID');
@@ -1086,7 +720,7 @@ class SalesModule {
         if (tbody) tbody.innerHTML = '';
         SalesModule.State.detailRowCount = 0;
 
-        const rowDataList = booking_details.map((row) => {
+        booking_details.forEach((row) => {
           let shiftedIn = '';
           let shiftedOut = '';
           if (row.in || row.check_in) {
@@ -1104,7 +738,7 @@ class SalesModule {
             finalQtyA = type === 'Phòng' ? Math.ceil(newAdult / 2) : newAdult;
           }
 
-          return {
+          const rowData = {
             id: '',
             booking_id: bkId,
             service_type: type,
@@ -1123,11 +757,8 @@ class SalesModule {
             ref_code: row.code || row.ref_code,
             note: row.note,
           };
+          SalesModule.UI.addDetailRow(rowData);
         });
-
-        // Tối ưu: Gọi addDetailRow một lần với mảng dữ liệu
-        await SalesModule.UI.addDetailRow(rowDataList);
-
         if (typeof logA === 'function') logA('Đã tải Template và cập nhật ngày tháng thành công!', 'success');
       } catch (e) {
         L.log('SalesModule.Logic.processAndFillTemplate Error:', e);
@@ -1200,7 +831,7 @@ class SalesModule {
         if (tbody) tbody.innerHTML = '';
         SalesModule.State.detailRowCount = 0;
 
-        const rowDataList = detailsArr.map((row) => {
+        detailsArr.forEach((row) => {
           let shiftedIn = '';
           let shiftedOut = '';
           if (row.check_in || row.in) {
@@ -1222,7 +853,7 @@ class SalesModule {
             finalQtyC = newChild;
           }
 
-          return {
+          const rowData = {
             id: '',
             booking_id: currentBkId ?? '',
             service_type: type,
@@ -1241,10 +872,8 @@ class SalesModule {
             ref_code: '',
             note: '',
           };
+          SalesModule.UI.addDetailRow(rowData);
         });
-
-        // Tối ưu: Gọi addDetailRow một lần với mảng dữ liệu
-        await SalesModule.UI.addDetailRow(rowDataList);
 
         if (typeof logA === 'function') logA(`Đã copy thành công ${detailsArr.length} dịch vụ từ Booking ${bkId}`, 'success');
       } catch (e) {
@@ -1768,7 +1397,7 @@ class SalesModule {
         if (!bookingId) bookingId = getVal('BK_ID');
         if (!bookingId) return logA('Không có mã Booking!', 'warning');
 
-        const res = typeof findBookingInLocal === 'function' ? await findBookingInLocal(bookingId) : null;
+        const res = typeof findBookingInLocal === 'function' ? findBookingInLocal(bookingId) : null;
         if (res?.success) {
           SalesModule.State.currentBookingData = res;
           const formEl = getE('tmpl-confirmation-modal');
@@ -1962,9 +1591,9 @@ class SalesModule {
 // ─── EXPOSE TO GLOBAL FOR HTML COMPATIBILITY ────────────────────────
 window.SalesModule = SalesModule;
 
-// Tự động khởi tạo module khi DOM sẵn sàng
+// Tự động render menu nháp khi module được load (nếu DOM đã sẵn sàng)
 document.addEventListener('DOMContentLoaded', () => {
-  SalesModule.init();
+  if (getE('drafts-list')) SalesModule.UI.renderDraftsMenu();
 });
 
 export default SalesModule;
