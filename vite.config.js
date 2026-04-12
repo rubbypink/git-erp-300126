@@ -60,6 +60,7 @@ export default defineConfig({
       '@js': resolve(__dirname, 'public/src/js'),
       '@db': resolve(__dirname, 'public/src/js/modules/db'),
       '@md': resolve(__dirname, 'public/src/js/modules'),
+      '@core': resolve(__dirname, 'public/src/js/modules/core'),
       '@acc': resolve(__dirname, 'public/src/accountant'),
       '@components': resolve(__dirname, 'public/src/components'),
     },

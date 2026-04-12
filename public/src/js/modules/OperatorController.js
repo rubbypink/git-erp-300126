@@ -1,179 +1,131 @@
 import { collection, doc, writeBatch } from 'firebase/firestore';
 
 /**
- * Module: Supplier Debt & Payment Manager (Operator Team)
- * Dependencies: HD (Helper), APP_DATA, A.DB, Swal, toggleTemplate, addDetailRow, getDateRange
+ * =========================================================================
+ * 9TRIP ERP - OPERATOR MODULE (Class-based)
+ * Chuyên gia quản lý Điều hành, Công nợ Nhà cung cấp và Thanh toán
+ * Cấu trúc chuẩn hóa MVC tương tự SalesModule
+ * =========================================================================
  */
 
-export const SupplierPayment = {
-  // Lưu state hiện tại để xử lý Payment/Update
-  state: {
+class OperatorController {
+  // ─── 1. CONFIGURATION ──────────────────────────────────────────────
+  static Config = {
+    collections: ['operator_entries', 'suppliers', 'transactions', 'fund_accounts'],
+    storageKeyLogs: '9trip_operator_logs',
+  };
+
+  // ─── 2. STATE ──────────────────────────────────────────────────────
+  static State = {
     entries: [],
     supplierId: null,
     totalDebt: 0,
-  },
+    isInitialized: false,
+  };
 
   /**
-   * BƯỚC 1: Hiển thị form lọc bằng SweetAlert2
+   * Khởi tạo module
    */
-  async openFilterDialog() {
+  static async init() {
+    if (this.State.isInitialized) return;
     try {
-      // 1.1 Chuẩn bị Options cho Nhà cung cấp
-      // const suppliers = APP_DATA?.lists?.suppliers || Object.values(window.APP_DATA?.suppliers || {});
-      // let supplierOptions = '<option value="">-- Chọn Nhà Cung Cấp --</option>';
-      // suppliers.forEach((s) => {
-      //   supplierOptions += `<option value="${s.id || s}">${s.name || s}</option>`;
-      // });
+      if (typeof L !== 'undefined') L._('OperatorController: Initializing...');
+      // Logic sync state khởi tạo có thể thêm ở đây nếu cần thiết
+      this.State.isInitialized = true;
+    } catch (e) {
+      if (typeof L !== 'undefined') L.log('OperatorController.init Error:', e);
+    }
+  }
 
-      // 1.2 Render Popup
-      const { value: filterParams } = await Swal.fire({
-        title: 'Tra cứu Công nợ NCC',
-        html: `
-                    <div class="text-start">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Nhà cung cấp <span class="text-danger">*</span></label>
-                            <select id="swal-supplier" class="smart-select form-select" data-source="suppliers"></select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Giai đoạn</label>
-                            <select id="swal-date-preset" class="form-select mb-2">
-                                <option value="">-- Chọn mốc thời gian --</option>
-                                <option value="Tháng Này">Tháng 1</option>
-                                <option value="Tháng Trước">Tháng 2</option>
-                                <option value="Tháng Sau">Tháng 3</option>
-                                <option value="Quý 1">Quý 1</option>
-                                <option value="Quý 2">Quý 2</option>
-                                <option value="Quý 3">Quý 1</option>
-                                <option value="Quý 4">Quý 2</option>
-                                <option value="Năm Nay">Năm Nay</option>
-                                <option value="Tất Cả">Tất Cả</option>
-                                <option value="Tùy chọn">Tùy chọn</option>
-                            </select>
-                            <div class="row">
-                                <div class="col-6"><input type="date" id="swal-start-date" class="form-control" placeholder="Từ ngày"></div>
-                                <div class="col-6"><input type="date" id="swal-end-date" class="form-control" placeholder="Đến ngày"></div>
-                            </div>
-                        </div>
+  // ─── 3. UI RENDERERS ───────────────────────────────────────────────
+  static UI = {
+    /**
+     * BƯỚC 1: Hiển thị form lọc bằng SweetAlert2
+     */
+    openFilterDialog: async () => {
+      try {
+        const { value: filterParams } = await Swal.fire({
+          title: '<h5 class="fw-bold mb-0 text-primary">Tra cứu Công nợ NCC</h5>',
+          html: `
+            <div class="text-start mt-3">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-dark mb-1">Nhà cung cấp <span class="text-danger">*</span></label>
+                    <select id="swal-supplier" class="smart-select form-select shadow-sm border-primary" data-source="suppliers"></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-dark mb-1">Giai đoạn</label>
+                    <select id="swal-date-preset" class="form-select form-select-sm mb-2 shadow-sm border-primary">
+                        <option value="">-- Chọn mốc thời gian --</option>
+                        <option value="Tháng Này">Tháng Này</option>
+                        <option value="Tháng Trước">Tháng Trước</option>
+                        <option value="Tháng Sau">Tháng Sau</option>
+                        <option value="Quý 1">Quý 1</option>
+                        <option value="Quý 2">Quý 2</option>
+                        <option value="Quý 3">Quý 3</option>
+                        <option value="Quý 4">Quý 4</option>
+                        <option value="Năm Nay">Năm Nay</option>
+                        <option value="Tất Cả">Tất Cả</option>
+                        <option value="Tùy chọn">Tùy chọn</option>
+                    </select>
+                    <div class="row g-2">
+                        <div class="col-6"><input type="date" id="swal-start-date" class="form-control form-control-sm" placeholder="Từ ngày"></div>
+                        <div class="col-6"><input type="date" id="swal-end-date" class="form-control form-control-sm" placeholder="Đến ngày"></div>
                     </div>
-                `,
-        didOpen: () => {
-          // Lắng nghe sự kiện chọn Preset Date để auto-fill input date
-          getE('swal-date-preset').addEventListener('change', function (e) {
-            if (typeof getDateRange === 'function') {
-              const range = getDateRange(e.target.value);
-              if (range && range.start && range.end) {
-                getE('swal-start-date').value = formatDateForInput(range.start);
-                getE('swal-end-date').value = formatDateForInput(range.end);
-              }
+                </div>
+            </div>
+          `,
+          showCancelButton: true,
+          confirmButtonText: 'Tra cứu',
+          cancelButtonText: 'Hủy',
+          customClass: { confirmButton: 'btn btn-primary px-4', cancelButton: 'btn btn-secondary px-4' },
+          buttonsStyling: false,
+          didOpen: () => {
+            const presetEl = getE('swal-date-preset');
+            if (presetEl) {
+              presetEl.addEventListener('change', function (e) {
+                if (typeof getDateRange === 'function') {
+                  const range = getDateRange(e.target.value);
+                  if (range && range.start && range.end) {
+                    setVal('swal-start-date', typeof formatDateForInput === 'function' ? formatDateForInput(range.start) : range.start);
+                    setVal('swal-end-date', typeof formatDateForInput === 'function' ? formatDateForInput(range.end) : range.end);
+                  }
+                }
+              });
             }
-          });
-        },
-        preConfirm: () => {
-          const supplier = getE('swal-supplier').value;
-          const start = getE('swal-start-date').value;
-          const end = getE('swal-end-date').value;
+          },
+          preConfirm: () => {
+            const supplier = getVal('swal-supplier');
+            const start = getVal('swal-start-date');
+            const end = getVal('swal-end-date');
 
-          if (!supplier) {
-            Swal.showValidationMessage('Vui lòng chọn Nhà cung cấp!');
-            return false;
-          }
-          return { supplier, start, end };
-        },
-      });
+            if (!supplier) {
+              Swal.showValidationMessage('Vui lòng chọn Nhà cung cấp!');
+              return false;
+            }
+            return { supplier, start, end };
+          },
+        });
 
-      if (filterParams) {
-        await this.processData(filterParams);
+        if (filterParams) {
+          await OperatorController.Logic.processData(filterParams);
+        }
+      } catch (error) {
+        console.error('[OperatorController.UI.openFilterDialog] Lỗi khởi tạo filter:', error);
       }
-    } catch (error) {
-      console.error('[SupplierDebt] Lỗi khởi tạo filter:', error);
-    }
-  },
+    },
 
-  /**
-   * BƯỚC 2 & 3: Lấy dữ liệu, tính toán thống kê và Render UI
-   */
-  async processData({ supplier, start, end }) {
-    try {
-      Swal.showLoading();
+    /**
+     * Helper Nội bộ: Tạo Container thống kê và Nút bấm
+     */
+    setupActionContainer: (cost, paid, debt, typeHtml) => {
+      try {
+        const oldContainer = getE('sup-action-container');
+        if (oldContainer) oldContainer.remove();
 
-      // 2.1 Load Dữ liệu ưu tiên APP_DATA, fallback Firestore
-      let sourceData = await A.DB.local.getCollection('operator_entries');
-      if (!sourceData || sourceData.length === 0) {
-        sourceData = await A.DB.getCollection('operator_entries');
-        if (APP_DATA) APP_DATA.operator_entries = sourceData; // Cache lại
-      }
-      let suppliers = await A.DB.getCollection('suppliers');
-      let supData = HD.find(suppliers, supplier, 'id') || HD.find(suppliers, supplier, 'name');
-
-      // 2.2 Lọc bằng HD.filter (Lọc Supplier trước)
-      let filtered = HD.filter(sourceData, supData.name, '==', 'supplier') || HD.filter(sourceData, supplier, '==', 'supplier');
-      L._(`🔍 Filtered ${Object.values(supData)} supplier`);
-
-      // Lọc tiếp theo Date Range (check_in)
-      if (start && end) {
-        filtered = Object.values(filtered).filter((item) => new Date(formatDateISO(item.check_in)) >= new Date(start) && new Date(formatDateISO(item.check_in)) <= new Date(end));
-        L._(`🔍 Filtered ${filtered.length} entries by date range: ${start} - ${end}`);
-      }
-
-      this.state.entries = filtered;
-      this.state.supplierId = supplier;
-
-      if (filtered.length === 0) {
-        Swal.fire('Thông báo', 'Không có dữ liệu công nợ trong giai đoạn này.', 'info');
-        return;
-      }
-
-      // 2.3 Tính toán Thống kê bằng HD.agg
-      const totalCost = HD.agg(filtered, 'total_cost');
-      const totalPaid = HD.agg(filtered, 'paid_amount');
-      const totalDebt = HD.agg(filtered, 'dept_balance') || totalCost - totalPaid;
-      this.state.totalDebt = totalDebt;
-
-      // Thống kê số lượng theo service_type
-      const statsAdults = {};
-      filtered.forEach((item) => {
-        const type = item.service_type || 'Khác';
-        statsAdults[type] = (statsAdults[type] || 0) + (Number(item.adults) || 0);
-      });
-      let typeHtml = Object.entries(statsAdults)
-        .map(([type, qty]) => `<span class="badge bg-info me-1">${type}: ${qty} lượt</span>`)
-        .join('');
-
-      // 2.4 Render UI (Action Container & Bảng)
-      this._setupActionContainer(totalCost, totalPaid, totalDebt, typeHtml);
-
-      // Xóa rỗng tbody trước khi render
-      const tbody = getE('detail-tbody');
-      if (tbody) tbody.innerHTML = '';
-
-      // Render từng dòng
-      filtered.forEach((rowData) => {
-        if (typeof Op.UI.addDetailRow === 'function') Op.UI.addDetailRow(rowData);
-      });
-
-      // Ẩn Card hiện tại để nhường chỗ cho ActionContainer & Table
-      if (typeof toggleTemplate === 'function') toggleTemplate('booking-card');
-
-      Swal.close();
-    } catch (error) {
-      console.error('[SupplierDebt] Lỗi xử lý dữ liệu:', error);
-      Swal.fire('Lỗi', 'Không thể tải dữ liệu.', 'error');
-    }
-  },
-
-  /**
-   * Helper Nội bộ: Tạo Container thống kê và Nút bấm
-   */
-  _setupActionContainer(cost, paid, debt, typeHtml) {
-    // Xóa action-container cũ nếu có
-    const oldContainer = getE('sup-action-container');
-    if (oldContainer) oldContainer.remove();
-
-    // Tạo mới
-    const container = document.createElement('div');
-    container.id = 'sup-action-container';
-    container.className = 'card shadow-sm border-primary mb-3';
-    container.innerHTML = `
+        const container = document.createElement('div');
+        container.id = 'sup-action-container';
+        container.className = 'card shadow-sm border-primary mb-3';
+        container.innerHTML = `
             <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-3">
                 <div>
                     <h5 class="mb-1 fw-bold text-primary">Tổng kết Dịch vụ</h5>
@@ -185,185 +137,294 @@ export const SupplierPayment = {
                     </div>
                 </div>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-secondary" onclick="Op.Supplier.closeView()"><i class="fa-solid fa-arrow-left"></i> Đóng</button>
-                    <button type="button" class="btn btn-warning" onclick="Op.Supplier.handleUpdateSync()"><i class="fa-solid fa-rotate"></i> Sync (Update)</button>
-                    ${debt > 0 ? `<button type="button" class="btn btn-success fw-bold shadow-sm" onclick="Op.Supplier.handlePayAll()"><i class="fa-solid fa-money-check-dollar"></i> Thanh toán Hết (${debt.toLocaleString()})</button>` : ''}
+                    <button type="button" class="btn btn-outline-secondary" onclick="OperatorController.UI.closeView()"><i class="fa-solid fa-arrow-left"></i> Đóng</button>
+                    <button type="button" class="btn btn-warning" onclick="OperatorController.DB.handleUpdateSync()"><i class="fa-solid fa-rotate"></i> Sync (Update)</button>
+                    ${debt > 0 ? `<button type="button" class="btn btn-success fw-bold shadow-sm" onclick="OperatorController.DB.handlePayAll()"><i class="fa-solid fa-money-check-dollar"></i> Thanh toán Hết (${debt.toLocaleString()})</button>` : ''}
                 </div>
             </div>
         `;
 
-    // Chèn vào trước bảng chi tiết
-    const tableArea = getE('detail-tbody').closest('.card');
-    if (tableArea) tableArea.parentNode.insertBefore(container, tableArea);
-  },
-
-  /**
-   * BƯỚC 4: Nghiệp vụ Pay All (Lô)
-   */
-  async handlePayAll() {
-    if (this.state.totalDebt <= 0) return Swal.fire('Thông báo', 'Không còn công nợ để thanh toán.', 'info');
-
-    const fundAccountId = await this._promptFundAccount(`Thanh toán ${(this.state.totalDebt * 1000).toLocaleString()} đ`);
-    if (!fundAccountId) return;
-
-    try {
-      const db = A.DB.db; // Giả định instance firestore
-      const batch = writeBatch(db);
-
-      // 1. Lấy thông tin Quỹ (Để trừ tiền)
-      // const fundObj = HD.find(APP_DATA.fund_accounts, fundAccountId, 'id');
-      // const fundRef = doc(db, 'fund_accounts', fundAccountId);
-      // batch.update(fundRef, {
-      //   balance: (fundObj.balance || 0) - this.state.totalDebt * 1000,
-      //   updated_at: new Date(),
-      // });
-
-      // 2. Tạo Transaction (1 phiếu duy nhất)
-      const txRef = doc(collection(db, 'transactions'));
-      const entryIds = HD.pluck(this.state.entries, 'id').join(', ');
-
-      batch.set(txRef, {
-        id: txRef.id,
-        transaction_date: new Date().toISOString(),
-        type: 'OUT',
-        amount: this.state.totalDebt * 1000,
-        receiver: this.state.supplierId,
-        category: 'PAY_SUPPLIER_BATCH',
-        booking_id: 'BATCH_PAYMENT',
-        description: `Thanh toán lô cho các dịch vụ: ${entryIds}`,
-        status: 'Completed',
-        fund_source: fundAccountId,
-        created_by: CURRENT_USER?.name || 'Unknown',
-        created_at: new Date().toISOString(),
-      });
-
-      // 3. Cập nhật các operator_entries (dept_balance về 0)
-      this.state.entries.forEach((entry) => {
-        if (entry.dept_balance > 0) {
-          const entryRef = doc(db, 'operator_entries', entry.id);
-          batch.update(entryRef, {
-            paid_amount: Number(entry.paid_amount || 0) + Number(entry.dept_balance),
-            dept_balance: 0,
-            updated_at: new Date().toISOString(),
-          });
+        const tbody = getE('detail-tbody');
+        if (tbody) {
+          const tableArea = tbody.closest('.card');
+          if (tableArea && tableArea.parentNode) {
+            tableArea.parentNode.insertBefore(container, tableArea);
+          }
         }
-      });
+      } catch (e) {
+        console.error('[OperatorController.UI.setupActionContainer] Error:', e);
+      }
+    },
 
-      await batch.commit();
-      logA('Đã thanh toán công nợ lô thành công!', 'success');
-      this.closeView(); // Trả lại giao diện ban đầu
-    } catch (error) {
-      console.error('[SupplierDebt] Lỗi PayAll:', error);
-      Swal.fire('Lỗi', 'Giao dịch thất bại. Hệ thống đã tự động Rollback!', 'error');
-    }
-  },
+    /**
+     * BƯỚC 6: Dọn dẹp và khôi phục UI
+     */
+    closeView: () => {
+      try {
+        const container = getE('sup-action-container');
+        if (container) container.remove();
 
-  /**
-   * BƯỚC 5: Nghiệp vụ Update (Đồng bộ thiếu/đủ giữa Entries và Transactions)
-   */
-  async handleUpdateSync() {
-    // Đảm bảo có transactions cache
-    if (!APP_DATA.transactions) {
-      APP_DATA.transactions = await A.DB.getCollection('transactions');
-    }
+        const tbody = getE('detail-tbody');
+        if (tbody) tbody.innerHTML = '';
 
-    const fundAccountId = await this._promptFundAccount(`Cập nhật đồng bộ Dữ liệu. Vui lòng chọn Quỹ xử lý hạch toán thiếu:`);
-    if (!fundAccountId) return;
+        if (typeof toggleTemplate === 'function') toggleTemplate('booking-card');
 
-    try {
-      const db = A.DB.db;
-      const batch = writeBatch(db);
-      let totalMissingGenerated = 0;
-      const fundObj = HD.find(APP_DATA.fund_accounts, fundAccountId, 'id');
+        OperatorController.State = { entries: [], supplierId: null, totalDebt: 0, isInitialized: true };
+      } catch (e) {
+        console.error('[OperatorController.UI.closeView] Error:', e);
+      }
+    },
 
-      this.state.entries.forEach((entry) => {
-        // Lọc các tx thuộc về entry này (Theo logAic của bạn: booking_id = entry.id)
-        const txs = HD.filter(APP_DATA.transactions, entry.id, '==', 'booking_id');
+    /**
+     * Helper Nội bộ: Popup chọn tài khoản quỹ bắt buộc
+     */
+    promptFundAccount: async (message) => {
+      try {
+        const funds = window.APP_DATA?.fund_accounts || [];
+        const options = {};
+        Object.entries(funds).forEach(([key, f]) => {
+          options[f.id] = f.name;
+        });
 
-        // Chỉ lấy các phiếu chi (OUT) Completed
-        const validTxs = txs.filter((t) => t.type === 'OUT' && t.status === 'Completed');
-        const txSum = HD.agg(validTxs, 'amount');
+        const { value: fundId } = await Swal.fire({
+          title: 'Hạch toán Nguồn Tiền',
+          text: message,
+          input: 'select',
+          inputOptions: options,
+          inputPlaceholder: '-- Bắt buộc chọn Quỹ --',
+          showCancelButton: true,
+          confirmButtonColor: '#198754',
+          confirmButtonText: 'Xác nhận',
+          inputValidator: (value) => {
+            if (!value) return 'Bạn phải chọn Nguồn tiền để sổ quỹ cân bằng!';
+          },
+        });
+        return fundId;
+      } catch (e) {
+        console.error('[OperatorController.UI.promptFundAccount] Error:', e);
+        return null;
+      }
+    },
+  };
 
-        // So sánh tổng phiếu chi với dept_amount (Ở đây tôi dùng paid_amount hiện tại để so sánh)
-        // Nếu User nhập tay paid_amount = 1000, nhưng TX mới có 800 -> Thiếu 200, tạo TX bù vào.
-        const missingAmount = (entry.paid_amount || 0) * 1000 - txSum;
+  // ─── 4. LOGIC HANDLERS ─────────────────────────────────────────────
+  static Logic = {
+    /**
+     * BƯỚC 2 & 3: Lấy dữ liệu, tính toán thống kê và Render UI
+     */
+    processData: async ({ supplier, start, end }) => {
+      try {
+        if (typeof showLoading === 'function') showLoading(true, 'Đang xử lý dữ liệu...');
+        else if (window.Swal) Swal.showLoading();
 
-        if (missingAmount > 0) {
-          totalMissingGenerated += missingAmount;
-
-          const txRef = doc(collection(db, 'transactions'));
-          batch.set(txRef, {
-            id: txRef.id,
-            transaction_date: new Date().toISOString(),
-            type: 'OUT',
-            amount: missingAmount,
-            receiver: this.state.supplierId,
-            category: 'SYNC_CORRECTION',
-            booking_id: entry.id,
-            description: `[Auto-Sync] Bổ sung hạch toán thiếu cho dịch vụ ${entry.id}`,
-            status: 'Completed',
-            fund_source: fundAccountId,
-            created_by: CURRENT_USER?.name || 'System Auto',
-            created_at: new Date().toISOString(),
-          });
+        // 2.1 Load Dữ liệu
+        let sourceData = await window.A?.DB?.local?.getCollection('operator_entries');
+        if (!sourceData || sourceData.length === 0) {
+          sourceData = await window.A?.DB?.getCollection('operator_entries');
+          if (window.APP_DATA) window.APP_DATA.operator_entries = sourceData;
         }
-      });
 
-      // Nếu có tạo giao dịch mới, phải trừ quỹ tổng
-      // if (totalMissingGenerated > 0) {
-      //   const fundRef = doc(db, 'fund_accounts', fundAccountId);
-      //   batch.update(fundRef, {
-      //     balance: (fundObj.balance || 0) - totalMissingGenerated,
-      //     updated_at: new Date(),
-      //   });
-      // }
+        let suppliers = await window.A?.DB?.getCollection('suppliers');
+        let supData = HD.find(suppliers, supplier, 'id') || HD.find(suppliers, supplier, 'name') || { name: supplier };
 
-      await batch.commit();
-      Swal.fire('Thành công', `Đã đồng bộ giao dịch. Phát sinh tự động bù trừ: ${totalMissingGenerated.toLocaleString()} đ`, 'success');
-    } catch (error) {
-      console.error('[SupplierDebt] Lỗi Sync:', error);
-      Swal.fire('Lỗi', 'Lỗi đồng bộ dữ liệu.', 'error');
-    }
-  },
+        // 2.2 Lọc dữ liệu
+        let filtered = HD.filter(sourceData, supData.name, '==', 'supplier') || HD.filter(sourceData, supplier, '==', 'supplier');
+        if (typeof L !== 'undefined') L._(`🔍 Filtered supplier:`, supData);
 
-  /**
-   * BƯỚC 6: Dọn dẹp và khôi phục UI
-   */
-  closeView() {
-    const container = getE('sup-action-container');
-    if (container) container.remove();
+        if (start && end) {
+          const startDate = new Date(start);
+          const endDate = new Date(end);
+          filtered = Object.values(filtered).filter((item) => {
+            const checkInDate = new Date(typeof formatDateISO === 'function' ? formatDateISO(item.check_in) : item.check_in);
+            return checkInDate >= startDate && checkInDate <= endDate;
+          });
+          if (typeof L !== 'undefined') L._(`🔍 Filtered ${filtered.length} entries by date range: ${start} - ${end}`);
+        }
 
-    const tbody = getE('detail-tbody');
-    if (tbody) tbody.innerHTML = '';
+        OperatorController.State.entries = filtered;
+        OperatorController.State.supplierId = supplier;
 
-    if (typeof toggleTemplate === 'function') toggleTemplate('booking-card');
+        if (filtered.length === 0) {
+          if (typeof showLoading === 'function') showLoading(false);
+          else if (window.Swal) Swal.close();
 
-    this.state = { entries: [], supplierId: null, totalDebt: 0 }; // Reset
-  },
+          if (typeof logA === 'function') logA('Không có dữ liệu công nợ trong giai đoạn này.', 'info');
+          else Swal.fire('Thông báo', 'Không có dữ liệu công nợ trong giai đoạn này.', 'info');
+          return;
+        }
 
-  /**
-   * Helper Nội bộ: Popup chọn tài khoản quỹ bắt buộc
-   */
-  async _promptFundAccount(message) {
-    const funds = APP_DATA?.fund_accounts || [];
-    const options = {};
-    Object.entries(funds).forEach(([key, f]) => {
-      options[f.id] = f.name;
-    });
+        // 2.3 Thống kê
+        const totalCost = HD.agg(filtered, 'total_cost');
+        const totalPaid = HD.agg(filtered, 'paid_amount');
+        const totalDebt = HD.agg(filtered, 'dept_balance') || totalCost - totalPaid;
+        OperatorController.State.totalDebt = totalDebt;
 
-    const { value: fundId } = await Swal.fire({
-      title: 'Hạch toán Nguồn Tiền',
-      text: message,
-      input: 'select',
-      inputOptions: options,
-      inputPlaceholder: '-- Bắt buộc chọn Quỹ --',
-      showCancelButton: true,
-      confirmButtonColor: '#198754',
-      confirmButtonText: 'Xác nhận',
-      inputValidator: (value) => {
-        if (!value) return 'Bạn phải chọn Nguồn tiền để sổ quỹ cân bằng!';
-      },
-    });
-    return fundId;
-  },
-};
+        const statsAdults = {};
+        filtered.forEach((item) => {
+          const type = item.service_type || 'Khác';
+          statsAdults[type] = (statsAdults[type] || 0) + (Number(item.adults) || 0);
+        });
+        let typeHtml = Object.entries(statsAdults)
+          .map(([type, qty]) => `<span class="badge bg-info me-1">${type}: ${qty} lượt</span>`)
+          .join('');
+
+        // 2.4 Render UI
+        OperatorController.UI.setupActionContainer(totalCost, totalPaid, totalDebt, typeHtml);
+
+        const tbody = getE('detail-tbody');
+        if (tbody) tbody.innerHTML = '';
+
+        filtered.forEach((rowData) => {
+          // Dynamic binding cho hàm thêm dòng tùy thuộc ngữ cảnh file chạy
+          if (window.Op && typeof Op.UI?.addDetailRow === 'function') {
+            Op.UI.addDetailRow(rowData);
+          } else if (typeof addDetailRow === 'function') {
+            addDetailRow(rowData);
+          }
+        });
+
+        if (typeof toggleTemplate === 'function') toggleTemplate('booking-card');
+
+        if (typeof showLoading === 'function') showLoading(false);
+        else if (window.Swal) Swal.close();
+      } catch (error) {
+        if (typeof showLoading === 'function') showLoading(false);
+        console.error('[OperatorController.Logic.processData] Error:', error);
+        if (typeof logA === 'function') logA('Không thể tải dữ liệu.', 'error');
+        else Swal.fire('Lỗi', 'Không thể tải dữ liệu.', 'error');
+      }
+    },
+  };
+
+  // ─── 5. DATABASE ACTIONS ───────────────────────────────────────────
+  static DB = {
+    /**
+     * BƯỚC 4: Nghiệp vụ Pay All (Lô)
+     */
+    handlePayAll: async () => {
+      if (OperatorController.State.totalDebt <= 0) {
+        if (typeof logA === 'function') return logA('Không còn công nợ để thanh toán.', 'info');
+        return Swal.fire('Thông báo', 'Không còn công nợ để thanh toán.', 'info');
+      }
+
+      const fundAccountId = await OperatorController.UI.promptFundAccount(`Thanh toán ${(OperatorController.State.totalDebt * 1000).toLocaleString()} đ`);
+      if (!fundAccountId) return;
+
+      try {
+        if (typeof showLoading === 'function') showLoading(true, 'Đang thanh toán lô...');
+        const db = window.A?.DB?.db;
+        if (!db) throw new Error('Lỗi mất kết nối CSDL (A.DB.db)');
+
+        const batch = writeBatch(db);
+        const txRef = doc(collection(db, 'transactions'));
+        const entryIds = HD.pluck(OperatorController.State.entries, 'id').join(', ');
+
+        batch.set(txRef, {
+          id: txRef.id,
+          transaction_date: new Date().toISOString(),
+          type: 'OUT',
+          amount: OperatorController.State.totalDebt * 1000,
+          receiver: OperatorController.State.supplierId,
+          category: 'PAY_SUPPLIER_BATCH',
+          booking_id: 'BATCH_PAYMENT',
+          description: `Thanh toán lô cho các dịch vụ: ${entryIds}`,
+          status: 'Completed',
+          fund_source: fundAccountId,
+          created_by: window.CURRENT_USER?.name || 'Unknown',
+          created_at: new Date().toISOString(),
+        });
+
+        OperatorController.State.entries.forEach((entry) => {
+          if (entry.dept_balance > 0) {
+            const entryRef = doc(db, 'operator_entries', entry.id);
+            batch.update(entryRef, {
+              paid_amount: Number(entry.paid_amount || 0) + Number(entry.dept_balance),
+              dept_balance: 0,
+              updated_at: new Date().toISOString(),
+            });
+          }
+        });
+
+        await batch.commit();
+
+        if (typeof showLoading === 'function') showLoading(false);
+        if (typeof logA === 'function') logA('Đã thanh toán công nợ lô thành công!', 'success');
+        else Swal.fire('Thành công', 'Đã thanh toán công nợ lô thành công!', 'success');
+
+        OperatorController.UI.closeView();
+      } catch (error) {
+        if (typeof showLoading === 'function') showLoading(false);
+        console.error('[OperatorController.DB.handlePayAll] Error:', error);
+        if (typeof logA === 'function') logA('Giao dịch thất bại. Hệ thống đã tự động Rollback!', 'error');
+        else Swal.fire('Lỗi', 'Giao dịch thất bại. Hệ thống đã tự động Rollback!', 'error');
+      }
+    },
+
+    /**
+     * BƯỚC 5: Nghiệp vụ Update (Đồng bộ thiếu/đủ)
+     */
+    handleUpdateSync: async () => {
+      if (!window.APP_DATA?.transactions) {
+        window.APP_DATA.transactions = await window.A?.DB?.getCollection('transactions');
+      }
+
+      const fundAccountId = await OperatorController.UI.promptFundAccount(`Cập nhật đồng bộ Dữ liệu. Vui lòng chọn Quỹ xử lý hạch toán thiếu:`);
+      if (!fundAccountId) return;
+
+      try {
+        if (typeof showLoading === 'function') showLoading(true, 'Đang đồng bộ...');
+        const db = window.A?.DB?.db;
+        if (!db) throw new Error('Lỗi mất kết nối CSDL (A.DB.db)');
+
+        const batch = writeBatch(db);
+        let totalMissingGenerated = 0;
+
+        OperatorController.State.entries.forEach((entry) => {
+          const txs = HD.filter(window.APP_DATA.transactions, entry.id, '==', 'booking_id');
+          const validTxs = txs.filter((t) => t.type === 'OUT' && t.status === 'Completed');
+          const txSum = HD.agg(validTxs, 'amount');
+
+          const missingAmount = (entry.paid_amount || 0) * 1000 - txSum;
+
+          if (missingAmount > 0) {
+            totalMissingGenerated += missingAmount;
+
+            const txRef = doc(collection(db, 'transactions'));
+            batch.set(txRef, {
+              id: txRef.id,
+              transaction_date: new Date().toISOString(),
+              type: 'OUT',
+              amount: missingAmount,
+              receiver: OperatorController.State.supplierId,
+              category: 'SYNC_CORRECTION',
+              booking_id: entry.id,
+              description: `[Auto-Sync] Bổ sung hạch toán thiếu cho dịch vụ ${entry.id}`,
+              status: 'Completed',
+              fund_source: fundAccountId,
+              created_by: window.CURRENT_USER?.name || 'System Auto',
+              created_at: new Date().toISOString(),
+            });
+          }
+        });
+
+        await batch.commit();
+        if (typeof showLoading === 'function') showLoading(false);
+
+        const msg = `Đã đồng bộ giao dịch. Phát sinh tự động bù trừ: ${totalMissingGenerated.toLocaleString()} đ`;
+        if (typeof logA === 'function') logA(msg, 'success');
+        else Swal.fire('Thành công', msg, 'success');
+      } catch (error) {
+        if (typeof showLoading === 'function') showLoading(false);
+        console.error('[OperatorController.DB.handleUpdateSync] Error:', error);
+        if (typeof logA === 'function') logA('Lỗi đồng bộ dữ liệu.', 'error');
+        else Swal.fire('Lỗi', 'Lỗi đồng bộ dữ liệu.', 'error');
+      }
+    },
+  };
+}
+
+// ─── EXPOSE TO GLOBAL FOR HTML COMPATIBILITY ────────────────────────
+window.OperatorController = OperatorController;
+// Export bí danh cho phép tương thích hoàn toàn với các tệp hiện tại đang gọi "SupplierPayment"
+export const SupplierPayment = OperatorController;
+export default OperatorController;

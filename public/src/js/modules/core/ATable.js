@@ -61,6 +61,7 @@ export default class ATable {
     this.state = {
       fullData: [],
       filteredData: [],
+      settings: {},
       sort: { field: null, dir: 'asc' },
       groupByField: this.options.groupByField || null,
       currentPage: 1,
@@ -76,10 +77,10 @@ export default class ATable {
     if (!this.container) {
       console.warn(`[ATable] Container #${containerId} not found`);
     }
-    if (CURRENT_USER && CURRENT_USER?.role === 'admin') {
-      this.options.editable = true;
-      this.options.draggable = false;
-    }
+    // if (CURRENT_USER && CURRENT_USER?.role === 'admin') {
+    //   this.options.editable = true;
+    //   this.options.draggable = false;
+    // }
 
     // Đăng ký instance vào registry
     ATable.instances.set(containerId, this);
@@ -114,7 +115,7 @@ export default class ATable {
       this.state.hiddenFields = {};
       this.state.allFieldsOrder = []; // Reset thứ tự cột
       this._resolveFieldConfigs();
-
+      await this._prefetchDictionaries();
       // 3. Render
       this.render();
 
@@ -180,6 +181,12 @@ export default class ATable {
       if (pageLink) {
         e.preventDefault();
         this.goToPage(parseInt(pageLink.dataset.page));
+        return;
+      }
+      const btnSettings = getE(`${this.containerId}-btn-settings`, this.container);
+      if (btnSettings.contains(e.target)) {
+        e.preventDefault();
+        this.generateOptionsForm();
         return;
       }
 
@@ -271,31 +278,171 @@ export default class ATable {
     wrapper.dataset.eventsAttached = 'true';
   }
 
-  // Bổ sung hàm pre-fetch:
+  /**
+   * Tối ưu Helper: Pre-fetch tất cả data source của các cột 1 LẦN DUY NHẤT
+   * Hỗ trợ chuẩn hóa dữ liệu từ Array hoặc Object Map (Firestore chuẩn)
+   */
   async _prefetchDictionaries() {
     this.state.dictionaries = this.state.dictionaries || {};
     const { fieldConfigs, allFieldsOrder } = this.state;
 
+    // Chỉ lấy các cột đang được cấu hình có dataSource
     const fetchPromises = allFieldsOrder
       .filter((h) => fieldConfigs[h] && fieldConfigs[h].dataSource)
       .map(async (h) => {
         const source = fieldConfigs[h].dataSource;
+
+        // Caching: Nếu chưa có dict cho source này thì mới fetch
         if (!this.state.dictionaries[source]) {
-          // Caching để không gọi lại
-          const data = await this._getDataSource(source);
-          // Build map dạng { "id_1": "Display Name 1" } để lookup O(1)
-          const dict = {};
-          if (data && Array.isArray(data)) {
-            data.forEach((item) => {
-              const id = String(item.id || item.uid || item.value);
-              dict[id] = item.displayName || item.name || item.title || item.user_name || item.text || item.full_name || id;
-            });
+          try {
+            const rawData = await this._getDataSource(source);
+
+            const displayDict = {}; // Từ điển nhẹ: Dùng để map ID -> Tên hiển thị (Render Table)
+            const fullByIdDict = {}; // Từ điển nặng: Map ID -> Full Object (Dành cho xử lý Logic)
+
+            if (rawData) {
+              // Chuẩn hóa thành Array để dễ lặp (bất chấp đầu vào là Array hay Object Map của Firestore)
+              // Bổ sung: Nếu bản thân rawData đã là 1 mảng thì giữ nguyên, nếu là Object thì gom Object.keys/values
+              let normalizedArray = [];
+              if (Array.isArray(rawData)) {
+                normalizedArray = rawData;
+              } else if (typeof rawData === 'object') {
+                // Duyệt Object Map của Firestore: { "id1": {...}, "id2": {...} }
+                Object.entries(rawData).forEach(([key, val]) => {
+                  // Đảm bảo val có chứa id bên trong để đồng nhất
+                  if (typeof val === 'object' && val !== null) {
+                    normalizedArray.push({ id: key, ...val });
+                  }
+                });
+              }
+
+              // Xây dựng 2 cuốn từ điển
+              normalizedArray.forEach((item) => {
+                if (item && typeof item === 'object') {
+                  const id = String(item.id || item.uid || item.value || '');
+
+                  if (id) {
+                    // 1. Lưu từ điển Full Data (Second Index)
+                    fullByIdDict[id] = item;
+
+                    // 2. Lưu từ điển Hiển thị (Display)
+                    displayDict[id] = item.displayName || item.name || item.title || item.user_name || item.text || item.full_name || id;
+                  }
+                } else if (typeof item === 'string' || typeof item === 'number') {
+                  // Xử lý fallback nếu mảng chỉ là các chuỗi hoặc số: ['Pending', 'Confirmed']
+                  const val = String(item);
+                  displayDict[val] = val;
+                  fullByIdDict[val] = item;
+                }
+              });
+            }
+
+            // Lưu vào State của Table
+            this.state.dictionaries[source] = displayDict;
+            this.state.dictionaries[`${source}_Obj`] = fullByIdDict; // Second index cho Full Data
+          } catch (err) {
+            console.error(`[ATable] Lỗi khi prefetch từ điển cho source "${source}":`, err);
+            this.state.dictionaries[source] = {};
+            this.state.dictionaries[`${source}_Obj`] = {};
           }
-          this.state.dictionaries[source] = dict;
         }
       });
 
     await Promise.all(fetchPromises);
+  }
+
+  async _getDataSource(source) {
+    if (!source) return null;
+    if (Array.isArray(source) || typeof source === 'object') {
+      return source;
+    }
+    let codeStr = unescapeHtml(source);
+    L._(`[ATable] _getDataSource: ${codeStr}`);
+    try {
+      if (codeStr.startsWith('APP_DATA')) {
+        const paths = codeStr.split('.');
+        let current = APP_DATA; // Quét từ root của RAM cache
+        let foundInRAM = true;
+
+        // 1. Quét sâu vào RAM một cách an toàn (Safe Traversal)
+        for (let i = 1; i < paths.length; i++) {
+          if (current && current[paths[i]] !== undefined) {
+            current = current[paths[i]];
+          } else {
+            foundInRAM = false;
+            break; // Gãy nhánh ở RAM, dừng vòng lặp ngay để tránh lỗi TypeError
+          }
+        }
+
+        // Nếu tìm thấy mượt mà trên RAM, trả về luôn (Tốc độ ánh sáng)
+        if (foundInRAM && current !== undefined && current !== null) {
+          // Trả về Array nếu là Object dạng { id1: {...}, id2: {...} } để Helper map data dễ hơn
+          return typeof current === 'object' && !Array.isArray(current) ? Object.values(current) : current;
+        }
+
+        // 2. FALLBACK XUỐNG LOCAL DB NẾU RAM MISS
+        // paths[0] luôn là 'APP_DATA'
+        // paths[1] là Collection (VD: 'users', 'rooms')
+        // paths[2] là Document ID (VD: 'u123')
+        if (!foundInRAM && paths.length > 1) {
+          const collectionName = paths[1];
+
+          if (paths.length === 2) {
+            // Trường hợp: "APP_DATA.users" -> Lấy Full Collection
+            const dbData = await A.DB.local.getAllAsObject(collectionName);
+            return dbData ? dbData : null;
+          } else if (paths.length === 3) {
+            // Trường hợp: "APP_DATA.users.u123" -> Lấy 1 Document
+            const docId = paths[2];
+            const docData = await A.DB.local.get(collectionName, docId);
+            return docData ? docData : null;
+          }
+        }
+        return null;
+      }
+      if (A?.DB?.schema.isCollection(codeStr)) {
+        const data = await A.DB.local.getCollection(codeStr);
+
+        if (data) return data;
+      } else {
+        // TH2: Chuỗi là Code Nội Tuyến (Inline Code)
+
+        // Dấu hiệu nhận biết: Có chứa dấu phẩy, khoảng trắng, hoặc ngoặc
+        if (codeStr.includes(';') || codeStr.includes('(') || codeStr.includes(' ')) {
+          // Sử dụng hàm Function nội hàm để wrap logic.
+          // Hỗ trợ truyền cứng 3 biến hay dùng ở các Form/Select
+          const dynamicScript = new Function('value', 'selectEl', 'instance', codeStr);
+          return await dynamicScript(safeArgs[0], safeArgs[1], safeArgs[2]);
+        }
+        // TH3: Chuỗi là Đường Dẫn Hàm (Object Path) - VD: 'App.Sales.tinhTien'
+        const parts = codeStr.split('.');
+        let current = window; // Bắt đầu quét từ Window (Global)
+        let context = window; // Context mặc định là Window
+        for (let i = 0; i < parts.length; i++) {
+          if (current[parts[i]] !== undefined) {
+            // Ghi nhận context là object cha (phần tử đứng ngay trước hàm cuối cùng)
+            if (i < parts.length - 1) {
+              context = current[parts[i]];
+            }
+            current = current[parts[i]];
+          } else {
+            console.warn(`[runFn] Lỗi: Không tìm thấy đường dẫn hàm "${codeStr}"`);
+            return null;
+          }
+        }
+        // Sau khi phân giải, kiểm tra xem nó có đích thị là function không
+        if (typeof current === 'function') {
+          // Gọi hàm và áp dụng (apply) đúng ngữ cảnh context đã tìm được
+          return await current.apply(context, safeArgs);
+        } else {
+          return current;
+        }
+      }
+    } catch (e) {
+      console.warn(`[ATable] _getDataSource error for ${source}:`, e);
+    }
+
+    return null;
   }
 
   /**
@@ -310,8 +457,7 @@ export default class ATable {
     }
 
     const layoutHtml = `
-      <div class="d-flex flex-column h-100 w-100 table-container-wrapper" style="${fsStyle}">
-        <div id="${this.containerId}-header-menu" class="table-header-actions-wrapper" style="z-index: 5;"></div>
+      <div class="d-flex flex-column h-100 w-100 table-container-wrapper" style="${fsStyle}"><div id="${this.containerId}-header-menu" class="table-header-actions-wrapper" style="z-index: 5;"></div>
         <div id="${this.containerId}-content-area" class="table-responsive w-100 at-table-container flex-grow-1" style="overflow: auto; position: relative;">
           <!-- Table will be rendered here -->
         </div>
@@ -417,6 +563,7 @@ export default class ATable {
 
     headerMenuEl.innerHTML = `
       <div id="tbl-${this.containerId}-header" class="table-header-actions d-flex align-items-center mb-1 gap-3 p-2" style="z-index: 5;">
+        <button id="${this.containerId}-btn-settings" class="btn btn-sm btn-light border-0 shadow-sm p-0 bg-transparent"><icon class="fas fa-cog"></icon></button>
         <h6 class="mb-0 fw-bold text-primary text-uppercase me-auto">${title || (colName ? window.A?.Lang?.t(colName) : '')}</h6>
         ${extraHtml}
         <div class="group-by-select">${groupByHtml}</div>
@@ -588,7 +735,7 @@ export default class ATable {
               const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
               const firstCell = h === 'id' || h === 'uid';
 
-              return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''} ${firstCell ? 'drag-handle' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${isHtml ? displayVal : escapeHtml(shortVal)}</td>`;
+              return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''} ${firstCell ? 'drag-handle' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${isHtml ? escapeHtml(shortVal) : displayVal || val}</td>`;
             })
             .join('')}
         </tr>`;
@@ -608,7 +755,7 @@ export default class ATable {
 
     Object.entries(groups).forEach(([groupName, groupItemObj]) => {
       let groupItems = Object.values(groupItemObj);
-      const displayGroupName = fieldConfigs[groupByField]?.type === 'date' ? formatDateVN(groupName) : groupName;
+      const displayGroupName = fieldConfigs[groupByField]?.type === 'date' ? formatDateISO(groupName) : groupName;
 
       const groupSums = {};
       sumFields.forEach((f) => {
@@ -643,7 +790,7 @@ export default class ATable {
                 let val = item[h] !== undefined && item[h] !== null ? item[h] : '';
                 const config = fieldConfigs[h] || {};
                 val = this._tryParseJSON(val);
-                if (config.type === 'date' && val) val = formatDateVN(val);
+                if (config.type === 'date' && val) val = formatDateISO(val);
                 if (config.class?.split(' ').includes('number') && val) val = formatNumber(val);
 
                 if ((typeof val === 'object' && val !== null) || config.type === 'object') {
@@ -841,9 +988,22 @@ export default class ATable {
     }
   }
   async _defaultCellChange(collection, itemId, change) {
-    return await A.DB.updateSingle(collection, itemId, change);
+    showConfirm(
+      `Lưu thông tin?`,
+      async () => {
+        try {
+          const res = await A.DB.updateSingle(collection, itemId, change);
+          if (res && res.success) logA(`Lưu thành công: ${res.message}`, 'success', 'toast');
+          else logA(`Lưu thất bại: ${res.message}`, 'warning', 'toast');
+        } catch (e) {
+          logA(`Lưu thất bại: ${e.message}`, 'warning', 'toast');
+        }
+      },
+      () => {
+        StateProxy.undo();
+      }
+    );
   }
-
   _toggleGroup(headerRow) {
     let next = headerRow.nextElementSibling;
     const icon = headerRow.querySelector('.group-icon');
@@ -1168,7 +1328,7 @@ export default class ATable {
           const config = fieldConfigs[h] || {};
           let val = row[h] !== undefined && row[h] !== null ? row[h] : '';
 
-          if (config.type === 'date' && val) val = formatDateVN(val);
+          if (config.type === 'date' && val) val = formatDateISO(val);
           else if (config.class?.split(' ').includes('number') && val) val = formatNumber(val);
 
           const label = config.displayName || window.A?.Lang?.t(h) || h;
@@ -1633,5 +1793,123 @@ export default class ATable {
       }
     }
     return val;
+  }
+
+  /**
+   * Tạo form cấu hình từ đối tượng options (Dành cho ATable hoặc các module UI)
+   * @param {Object} options - Đối tượng chứa các cấu hình
+   * @returns {string} - Chuỗi HTML của form
+   */
+  generateOptionsForm(options) {
+    try {
+      const defaultOptions = {
+        mode: 'replace',
+        colName: '',
+        pageSize: 25,
+        sorter: true,
+        fs: 12,
+        header: true,
+        footer: true,
+        groupBy: false,
+        editable: false,
+        draggable: false,
+        download: false,
+        contextMenu: false,
+        zoom: false,
+        style: 'auto',
+        title: '',
+        onCellChange: null,
+        data: null,
+        hiddenField: false,
+      };
+
+      // Merge options với default
+      const finalOptions = { ...defaultOptions, ...this.options };
+      finalOptions.colName = this.state?.currentColName ?? 'bookings';
+
+      // Bản đồ nhãn tiếng Việt
+      const labels = {
+        mode: 'Chế độ Render',
+        colName: 'Tên Collection',
+        pageSize: 'Số hàng hiển thị',
+        sorter: 'Sorter',
+        fs: 'Cỡ chữ (px)',
+        header: 'Hiện tiêu đề',
+        footer: 'Hiện chân trang',
+        groupBy: 'Group By',
+        editable: 'Editable',
+        draggable: 'Draggable',
+        download: 'Tính Năng Download',
+        contextMenu: 'Tạo Context Menu',
+        zoom: 'Tính Năng Zoom',
+        style: 'Style Class Custom',
+        title: 'Tiêu đề',
+        hiddenField: 'Tính năng Ẩn Cột',
+      };
+
+      let html = `<form id="full-settings-form" class="options-form container-fluid p-2 bg-light rounded border shadow-sm">
+                          <div class="row g-3">`;
+
+      for (const [key, value] of Object.entries(finalOptions)) {
+        // Bỏ qua các trường null hoặc function
+        if (value === null || typeof value === 'function') continue;
+
+        const label = labels[key] || key;
+        let inputHtml = '';
+
+        if (typeof value === 'boolean') {
+          // Sử dụng form-switch cho boolean
+          inputHtml = `
+                      <div class="col-6 col-md-4 col-lg-3">
+                          <div class="form-check form-switch h-100 d-flex align-items-center">
+                              <input class="form-check-input me-2" type="checkbox" role="switch" 
+                                  id="opt_${key}" data-field="${key}" ${value ? 'checked' : ''}>
+                              <label class="form-check-label small text-secondary text-truncate" for="opt_${key}">${label}</label>
+                          </div>
+                      </div>`;
+        } else {
+          // Sử dụng input text/number cho các loại khác
+          const inputType = typeof value === 'number' ? 'number' : 'text';
+          inputHtml = `
+                      <div class="col-12 col-md-6 col-lg-4">
+                          <div class="form-floating mb-0">
+                              <input type="${inputType}" class="form-control form-control-sm shadow-none border-0 border-bottom rounded-0 bg-transparent" 
+                                  id="opt_${key}" data-field="${key}" placeholder="${label}" value="${value}">
+                              <label for="opt_${key}" class="small text-muted">${label}</label>
+                          </div>
+                      </div>`;
+        }
+
+        html += inputHtml;
+      }
+
+      html += `   </div>
+                  </form>`;
+
+      A.Modal.render(html, 'Cấu hình', { size: 'modal-sm' });
+      A.Modal.show(null, 'Cấu hình', this._updateSettings.bind(this));
+    } catch (error) {
+      console.error('Error in generateOptionsForm:', error);
+      return `<div class="alert alert-danger">Lỗi khi tạo form cấu hình.</div>`;
+    }
+  }
+  _updateSettings() {
+    try {
+      const form = document.getElementById('full-settings-form');
+      if (!form) return;
+
+      const settings = {};
+      const inputs = form.querySelectorAll('.options-form input');
+
+      inputs.forEach((input) => {
+        const field = input.dataset.field;
+        settings[field] = input.value;
+      });
+      this.state.settings = settings;
+      this.updateOptions(settings);
+    } catch (error) {
+      console.error('Error in _updateSettings:', error);
+      return;
+    }
   }
 }

@@ -65,46 +65,56 @@ export default class LogicBase {
   static async findBookingInLocal(id, collection = 'bookings') {
     try {
       if (!id) return null;
-      const local = A.DB.local;
-      let role = CURRENT_USER.role,
-        detailsSource = role === 'op' ? 'operator_entries' : 'booking_details';
 
-      // 1. Tìm booking chính
-      let bookingData = await local.get(collection, id);
-      let detailsData = [];
+      const local = window.A?.DB?.local || A.DB.local;
+      const role = window.CURRENT_USER?.role || '';
+      let detailsSource = role === 'op' ? 'operator_entries' : 'booking_details';
 
-      // 2. Nếu không thấy booking, thử tìm id trong bảng details (có thể user nhập detail ID)
-      if (!bookingData && collection !== 'bookings') {
-        const detailHit = await local.get(detailsSource, id);
-        if (detailHit) {
-          const bookingId = detailHit.booking_id;
-          if (bookingId) {
-            bookingData = await local.get('bookings', bookingId);
-          }
+      let bookingId = String(id);
+
+      // 1. TÁCH BOOKING_ID TỪ CHUỖI ID (Không cần query database)
+      // Kiểm tra nếu ID bắt đầu bằng 5 chữ số và theo sau là dấu "_" (VD: 12345_xyz)
+      const idMatch = bookingId.match(/^(\d{5})_/);
+
+      if (idMatch) {
+        bookingId = idMatch[1]; // Lấy đúng 5 chữ số đầu tiên làm booking_id
+
+        // Nếu user có truyền collection cụ thể (khác bookings), ưu tiên lấy theo collection đó
+        if (collection !== 'bookings') {
+          detailsSource = collection;
         }
       }
 
+      // 2. TÌM BOOKING HEADER CHÍNH
+      const bookingData = await local.get('bookings', bookingId);
       if (!bookingData) return null;
 
-      // 3. Lấy tất cả details liên quan đến booking này
-      const bookingId = bookingData.id;
-      detailsData = await local.find(detailsSource, 'booking_id', bookingId);
+      // 3. LẤY TẤT CẢ DETAILS LIÊN QUAN TỚI BOOKING NÀY
+      const detailsData = await local.find(detailsSource, 'booking_id', bookingId);
 
-      // 4. Lấy thông tin khách hàng
+      // 4. LẤY THÔNG TIN KHÁCH HÀNG (từ số điện thoại của booking chính)
       let phoneRaw = bookingData.customer_phone;
       const phone = phoneRaw ? String(phoneRaw).replace(/^'/, '').trim() : '';
       let custRow = null;
-      if (phone !== '') {
+
+      if (phone) {
         const customers = await local.find('customers', 'phone', phone);
-        custRow = customers.length > 0 ? customers[0] : null;
+        custRow = customers && customers.length > 0 ? customers[0] : null;
       }
 
-      return { success: true, bookings: bookingData, [detailsSource]: detailsData, customer: custRow, source: 'local' };
+      // 5. TRẢ VỀ KẾT QUẢ CHUẨN
+      return {
+        success: true,
+        bookings: bookingData,
+        [detailsSource]: detailsData,
+        customer: custRow,
+        source: 'local',
+      };
     } catch (e) {
-      L.log('findBookingInLocal Error:', e);
+      if (typeof L !== 'undefined') L.log('findBookingInLocal Error:', e);
       return null;
     } finally {
-      showLoading(false);
+      if (typeof showLoading === 'function') showLoading(false);
     }
   }
 
@@ -380,7 +390,7 @@ export default class LogicBase {
     }, 500);
   }
 
-  static async onGridRowClick(id, collection = 'bookings') {
+  static async onGridRowClick(id, collection = null) {
     if (!id) return;
     showLoading(true);
 
@@ -389,13 +399,6 @@ export default class LogicBase {
       if (localResult) {
         SYS.runFnByRole('fillFormFromSearch', 'UI', localResult);
         return;
-      }
-      await A.DB.syncDelta(collection);
-      const retryResult = await LogicBase.findBookingInLocal(id, collection);
-      if (retryResult) {
-        SYS.runFnByRole('fillFormFromSearch', 'UI', retryResult);
-      } else {
-        L._('onGridRowClick: Data still not found after Firebase load', id, 'warning');
       }
     } catch (e) {
       Opps('onGridRowClick Error:', e);

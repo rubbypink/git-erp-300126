@@ -48,6 +48,8 @@ export const DB_SCHEMA = {
         attrs: [],
         class: 'd-none',
         placeholder: '',
+        foreignKey: 'customers',
+        foreignKeyDisplay: 'full_name',
       },
       {
         index: 2,
@@ -227,6 +229,8 @@ export const DB_SCHEMA = {
         tag: 'select',
         attrs: [],
         class: '',
+        foreignKey: 'users',
+        foreignKeyDisplay: 'user_name',
         dataSource: 'APP_DATA.lists.staff',
       },
       {
@@ -235,7 +239,7 @@ export const DB_SCHEMA = {
         displayNameEng: 'Status',
         displayName: 'Trạng thái',
         type: 'select',
-        tag: 'input',
+        tag: 'select',
         attrs: ['readonly'],
         class: 'fw-bold bg-warning bg-opacity-25',
         options: ['Đặt Lịch', 'Xác Nhận', 'Thanh Toán', 'Xong BK', 'Hủy'],
@@ -315,6 +319,8 @@ export const DB_SCHEMA = {
         attrs: ['hidden'],
         class: 'd-bkid',
         placeholder: '',
+        foreignKey: 'bookings',
+        foreignKeyDisplay: 'id',
       },
       {
         index: 2,
@@ -325,14 +331,12 @@ export const DB_SCHEMA = {
         tag: 'select',
         attrs: [],
         class: 'd-type',
-        options: ['Phòng', 'Vé MB', 'Vé Tàu', 'Ăn'],
         dataSource: 'APP_DATA.lists.types',
         validation: {
           required: true,
         },
-        event: {
-          change: 'SalesModule.UI.updateHotelSelect',
-        },
+
+        onchange: 'SalesModule.UI.onTypeChange',
       },
       {
         index: 3,
@@ -348,9 +352,9 @@ export const DB_SCHEMA = {
         },
         dataSource: 'hotels',
         description: 'Extracted from lists.hotelMatrix[col0] + lists.locOther',
-        event: {
-          change: 'SalesModule.UI.updateServiceSelect',
-        },
+        onchange: 'SalesModule.UI.updateServiceSelect',
+        foreignKey: 'hotels',
+        foreignKeyDisplay: 'name',
       },
       {
         index: 4,
@@ -590,7 +594,7 @@ export const DB_SCHEMA = {
         tag: 'select',
         attrs: ['readonly'],
         class: 'd-name',
-        dataSource: 'serviceNames',
+        dataSource: 'APP_DATA.lists.servcies',
         dependsOn: ['service_type', 'hotel_name'],
         description: 'Depends on service_type and hotel_name',
       },
@@ -758,6 +762,8 @@ export const DB_SCHEMA = {
         attrs: [],
         class: 'd-supplier',
         dataSource: 'suppliers',
+        foreignKey: 'suppliers',
+        foreignKeyDisplay: 'name',
       },
       {
         index: 21,
@@ -1026,7 +1032,7 @@ export const DB_SCHEMA = {
         tag: 'select',
         attrs: ['required'],
         class: '',
-        options: ['admin', 'op', 'sale', 'acc'],
+        dataSource: ['admin', 'op', 'sale', 'acc'],
         validation: {
           required: true,
         },
@@ -1073,7 +1079,11 @@ export const DB_SCHEMA = {
         tag: 'select',
         attrs: [],
         class: '',
-        options: ['active', 'inactive', 'suspended'],
+        options: [
+          { id: 'active', name: 'ACTIVE' },
+          { id: 'inactive', name: 'INACTIVE' },
+          { id: 'suspended', name: 'SUSPENDED' },
+        ],
         placeholder: 'Status',
       },
       {
@@ -1173,7 +1183,7 @@ export const DB_SCHEMA = {
         tag: 'select',
         attrs: [],
         class: '',
-        options: ['1', '2', '3', '4', '5'],
+        dataSource: ['1', '2', '3', '4', '5'],
       },
       {
         index: 7,
@@ -1190,8 +1200,9 @@ export const DB_SCHEMA = {
         name: 'rooms',
         displayNameEng: 'Room Types',
         displayName: 'Loại Phòng',
-        type: 'select',
-        tag: 'select',
+        type: 'map',
+        tag: 'object',
+        fields: [{ id: 'ID Phòng', name: 'Loại Phòng', index: 'STT', type: 'SL Khách' }],
         attrs: [],
         class: '',
       },
@@ -1297,7 +1308,7 @@ export const DB_SCHEMA = {
         name: 'contact_person',
         displayNameEng: 'Contact Person',
         displayName: 'Người Liên hệ',
-        type: 'object',
+        type: 'json',
         tag: 'input',
         attrs: [],
         class: '',
@@ -1358,7 +1369,7 @@ export const DB_SCHEMA = {
         tag: 'select',
         attrs: ['required'],
         class: '',
-        options: [
+        dataSource: [
           { id: 'IN', name: 'Thu' },
           { id: 'OUT', name: 'Chi' },
           { id: 'PENDING', name: 'Chờ Duyệt' },
@@ -1372,7 +1383,7 @@ export const DB_SCHEMA = {
         name: 'amount',
         displayNameEng: 'Amount',
         displayName: 'Số tiền',
-        type: 'text',
+        type: 'number',
         tag: 'input',
         attrs: ['required'],
         class: 'number',
@@ -1431,6 +1442,8 @@ export const DB_SCHEMA = {
         attrs: [],
         class: '',
         dataSource: 'fund_accounts',
+        foreignKey: 'fund_accounts',
+        foreignKeyDisplay: 'name',
       },
       {
         index: 9,
@@ -1441,7 +1454,7 @@ export const DB_SCHEMA = {
         tag: 'select',
         attrs: [],
         class: '',
-        options: ['Completed', 'Pending', 'Cancelled'],
+        dataSource: ['Completed', 'Pending', 'Cancelled'],
       },
       {
         index: 10,
@@ -1627,7 +1640,11 @@ export const DB_SCHEMA = {
         tag: 'select',
         attrs: ['required'],
         class: '',
-        options: ['cash', 'bank', 'credit_card'],
+        dataSource: [
+          { id: 'cash', name: 'Tiền Mặt' },
+          { id: 'bank', name: 'CK Ngân Hàng' },
+          { id: 'credit_card', name: 'Thẻ Quốc Tế' },
+        ],
         validation: {
           required: true,
         },
@@ -1672,7 +1689,7 @@ export const DB_SCHEMA = {
         name: 'balance',
         displayNameEng: 'Current Balance',
         displayName: 'Số dư',
-        type: 'text',
+        type: 'number',
         tag: 'input',
         attrs: ['readonly'],
         class: 'number',
@@ -1817,6 +1834,8 @@ export const DB_SCHEMA = {
             dataSource: 'hotels',
             description: 'Mã Khách sạn (Firestore: info.hotelId)',
             validation: { required: true },
+            foreignKey: 'hotels',
+            foreignKeyDisplay: 'name',
           },
           {
             index: 1,
@@ -1863,7 +1882,7 @@ export const DB_SCHEMA = {
             displayNameEng: 'View Config',
             displayName: 'Cấu hình hiển thị',
             type: 'json',
-            tag: 'textarea',
+            tag: 'object',
             attrs: [],
             class: '',
             description: 'Firestore: info.viewConfig — {periods: string[], packages: string[], priceTypes: string[]}',
@@ -1890,7 +1909,7 @@ export const DB_SCHEMA = {
         displayNameEng: 'Price Data Map',
         displayName: 'Dữ liệu giá',
         type: 'json',
-        tag: 'textarea',
+        tag: 'object',
         attrs: ['readonly'],
         class: '',
         description: 'Dạng Map: { "roomId_rateType": { "periodId_supplierId": { startDate, endDate, supplier, costPrice, sellPrice }}}',
@@ -2015,12 +2034,12 @@ export const DB_SCHEMA = {
         name: 'items',
         displayNameEng: 'Price Items',
         displayName: 'Danh sách giá dịch vụ',
-        type: 'array',
-        tag: 'textarea',
+        type: 'map',
+        tag: 'object',
         attrs: [],
         class: '',
         description: 'Firestore: items[]. Chỉnh qua component at-tbl-service-price.',
-        itemSchema: {
+        fields: {
           type: { displayName: 'Loại DV', type: 'select', dataSource: 'APP_DATA.lists.types' },
           name: { displayName: 'Tên DV', type: 'text' },
           from: { displayName: 'Từ ngày', type: 'text', placeholder: 'DD/MM' },
@@ -2276,19 +2295,6 @@ export const DB_SCHEMA = {
       if (field?.name) map[field.index] = field.name;
     });
     return map;
-  },
-
-  arrayToObject: function (arrData, collectionName) {
-    const map = this.FIELD_MAP(collectionName);
-    if (!map || Object.keys(map).length === 0) return {};
-    const obj = {};
-    Object.keys(map).forEach((index) => {
-      let val = arrData[index];
-      if (val === undefined || val === null) val = '';
-      if (val instanceof Date) val = val.toISOString().split('T')[0];
-      obj[map[index]] = val;
-    });
-    return obj;
   },
 
   getHeader: function (collectionName) {
@@ -2651,63 +2657,6 @@ export async function loadFormDataSchema(formId, idorData = null) {
   });
   form.dataset.item = data.id || ''; // Store loaded ID in form dataset for reference
 }
-/**
- * Helper: Get data source array from APP_DATA
- * Handles both dataSourceName directly and dataSourceName_obj suffix
- * Converts object format to array format automatically
- * @private
- * @param {string} dataSourceName - Data source name (e.g., 'users' or 'hotels')
- * @returns {Array} Array of data items, or empty array if not found
- */
-function _getDataSourceArray(dataSourceName) {
-  if (!window.APP_DATA) {
-    console.warn('⚠️ APP_DATA not available');
-    return [];
-  }
-
-  // Try to get from APP_DATA[dataSourceName]
-  let data = APP_DATA?.[dataSourceName] ?? APP_DATA?.[`${dataSourceName}`];
-  if (Array.isArray(data)) {
-    return data;
-  }
-
-  // If data is object (not array), convert to array
-  // Used for object format: { key: { id, name, full_name }, ... }
-  if (data && typeof data === 'object' && !Array.isArray(data)) {
-    const convertedArray = [];
-    for (const key in data) {
-      if (data.hasOwnProperty(key)) {
-        const item = data[key];
-
-        // Extract ID: try id, uid, name, or use object key as fallback
-        const itemId = item.id || item.uid || item.name || key;
-
-        // Extract display text: try name, full_name, display_name, service_name
-        const itemName = item.name || item.full_name || item.display_name || item.service_name || itemId;
-
-        // Create standardized item object
-        const convertedItem = {
-          id: itemId,
-          uid: item.uid || itemId,
-          name: itemName,
-          full_name: item.full_name || itemName,
-          display_name: item.display_name || itemName,
-          service_name: item.service_name || itemName,
-          ...item, // Include all other properties from original item
-        };
-
-        convertedArray.push(convertedItem);
-      }
-    }
-
-    if (convertedArray.length > 0) {
-      return convertedArray;
-    }
-  }
-
-  console.warn(`⚠️ Data source '${dataSourceName}' not found in APP_DATA`);
-  return [];
-}
 
 /**
  * Setup delegated event listeners for all data-db-action elements inside a form.
@@ -2783,116 +2732,6 @@ function _initDocumentFormActions(formId) {
     true
   );
 }
-/**
- * Helper: Auto-populate all dynamic selects in a form
- * Called after form is inserted into DOM
- * @private
- * @param {string} formId - ID of the form
- */
-function _autoPopulateDynamicSelects(formId) {
-  const form = document.getElementById(formId);
-  if (!form) {
-    console.warn(`Form '${formId}' not found in DOM`);
-    return;
-  }
-
-  const selectsWithSource = form.querySelectorAll('select[data-source]');
-  if (selectsWithSource.length === 0) {
-    return; // No dynamic selects
-  }
-
-  selectsWithSource.forEach((select) => {
-    const dataSourceName = select.dataset.source;
-    const fieldName = select.name;
-
-    // Skip service_name here - it will be populated on-demand when dependencies change
-    if (dataSourceName === 'serviceNames') {
-      return;
-    }
-
-    populateSelectFromSource(fieldName, dataSourceName);
-  });
-
-  // ===== NEW: Setup cascading dropdown logic =====
-  // Find all select fields that have dependsOn attribute (dependent fields)
-  const dependentSelects = form.querySelectorAll('select[data-depends-on]');
-
-  dependentSelects.forEach((dependentSelect) => {
-    const dependsOnFields = dependentSelect.dataset.dependsOn.split(',').map((f) => f.trim());
-    const sourceFieldName = dependentSelect.dataset.source;
-
-    // Only handle service_name (which depends on service_type and hotel_name)
-    if (sourceFieldName !== 'serviceNames') {
-      return;
-    }
-
-    // Add change listeners to all dependency fields
-    dependsOnFields.forEach((fieldName) => {
-      const depField = form.querySelector(`[name="${fieldName}"]`);
-      if (depField) {
-        depField.addEventListener('change', () => {
-          // Repopulate service_name select
-          _populateServiceNameSelect(form, dependentSelect.name);
-        });
-      }
-    });
-
-    // Initial populate if all dependencies have values
-    const serviceTypeField = form.querySelector('[name="service_type"]');
-    const hotelNameField = form.querySelector('[name="hotel_name"]');
-
-    if (serviceTypeField && serviceTypeField.value && hotelNameField) {
-      setTimeout(() => {
-        _populateServiceNameSelect(form, dependentSelect.name);
-      }, 50);
-    }
-  });
-
-  L._(`✅ Auto-populated ${selectsWithSource.length} dynamic selects in form '${formId}'`);
-}
-
-/**
- * Populate service_name select based on service_type and hotel_name
- * This is a cascading logic: service_name options depend on both fields
- * @private
- * @param {HTMLElement} form - The form element
- * @param {string} selectName - Name of the service_name select element
- */
-function _populateServiceNameSelect(form, selectName) {
-  const serviceNameSelect = form ? form.querySelector(`[name="${selectName}"]`) : document.querySelector(`[name="${selectName}"]`);
-  if (!serviceNameSelect) return;
-
-  const serviceTypeField = form ? form.querySelector('[name="service_type"]') : document.querySelector('[name="service_type"]');
-  const hotelNameField = form ? form.querySelector('[name="hotel_name"]') : document.querySelector('[name="hotel_name"]');
-
-  if (!serviceTypeField || !hotelNameField) return;
-
-  const serviceType = serviceTypeField.value;
-  const hotelName = hotelNameField.value;
-
-  // Get options based on dependencies
-  const options = _getServiceNameOptions(serviceType, hotelName);
-
-  // Keep current value if still valid
-  const currentValue = serviceNameSelect.value;
-
-  // Clear and rebuild options
-  serviceNameSelect.innerHTML = '<option value="">-- Chọn --</option>';
-
-  options.forEach((optName) => {
-    const optionEl = document.createElement('option');
-    optionEl.value = optName;
-    optionEl.textContent = optName;
-    serviceNameSelect.appendChild(optionEl);
-  });
-
-  // Restore value if still valid
-  if (options.includes(currentValue)) {
-    serviceNameSelect.value = currentValue;
-  } else {
-    serviceNameSelect.value = '';
-  }
-}
 
 /**
  * Helper: Get data from APP_DATA by path
@@ -2905,9 +2744,9 @@ function _getDataByPath(path) {
   if (!path || !window.APP_DATA) return null;
 
   // Split path by dots and traverse APP_DATA
+  if (path.startsWith('APP_DATA')) path = path.substring(9); // Remove 'APP_DATA.' prefix
   const keys = path.split('.');
   let data = window.APP_DATA;
-
   for (const key of keys) {
     if (data && typeof data === 'object' && key in data) {
       data = data[key];
@@ -2915,73 +2754,7 @@ function _getDataByPath(path) {
       return null;
     }
   }
-
   return data;
-}
-
-/**
- * Helper: Convert object to array
- * If data is object (not array), convert to array
- * @private
- * @param {*} data - Data to convert
- * @returns {Array} Array of data items
- */
-function _convertObjectToArray(data) {
-  if (!data) return [];
-
-  // Already array
-  if (Array.isArray(data)) {
-    return data;
-  }
-
-  // Object → array
-  if (typeof data === 'object') {
-    return Object.values(data);
-  }
-
-  // Single value → array
-  return [data];
-}
-
-/**
- * Helper: Get select options from dataSource or field.options
- * Supports special dataSource names that require complex logic:
- *   - 'hotelLocations': Extract hotel names from lists.hotelMatrix + lists.locOther
- *   - 'serviceNames': Get service options based on service_type and hotel_name (context-dependent)
- * @private
- * @param {Object} field - Field definition
- * @param {string} [collectionName] - Collection name (for context if needed)
- * @returns {Array} Array of option values
- */
-function _getSelectOptions(field, collectionName) {
-  // PRIORITY 1: Special dataSource handlers
-  if (field.dataSource === 'hotelLocations') {
-    return _getHotelLocationOptions();
-  }
-
-  if (field.dataSource === 'serviceNames') {
-    // Will be populated dynamically via _populateServiceNameSelect
-    // Return empty for initial render, will be filled on demand
-    return [];
-  }
-
-  // PRIORITY 2: Standard dataSource (with path support)
-  if (field.dataSource && field.dataSource !== 'hotelLocations' && field.dataSource !== 'serviceNames') {
-    const data = _getDataByPath(field.dataSource);
-    const dataArray = _convertObjectToArray(data);
-
-    if (dataArray && dataArray.length > 0) {
-      return dataArray;
-    }
-  }
-
-  // PRIORITY 3: field.options
-  if (field.options && Array.isArray(field.options)) {
-    return field.options;
-  }
-
-  // FALLBACK: empty array
-  return [];
 }
 
 /**
@@ -3004,41 +2777,6 @@ function _getHotelLocationOptions() {
   const allLocations = [...new Set([...hotelNames, ...otherLocs])];
 
   return allLocations;
-}
-
-/**
- * Get service name options based on service_type and hotel_name
- * Logic (from SalesModule.js updateServiceSelect):
- *   - If service_type === 'Phòng': Get room types from lists.hotelMatrix[hotel_name].slice(2)
- *   - Otherwise: Get from lists.serviceMatrix where col[0] === service_type, return col[1]
- * @private
- * @param {string} serviceType - The selected service type
- * @param {string} hotelName - The selected hotel/location (for rooms only)
- * @returns {Array<string>} Array of service names
- */
-function _getServiceNameOptions(serviceType, hotelName) {
-  const lists = window.APP_DATA?.lists || {};
-  let options = [];
-
-  if (serviceType === 'Phòng') {
-    // Room service: lookup hotel matrix by hotel name
-    const matrix = lists.hotelMatrix || [];
-    const hotelRow = matrix.find((row) => row && row[0] === hotelName);
-
-    if (hotelRow) {
-      // Take columns 2+ (skip col 0=name, col 1=blank), filter empty
-      options = hotelRow.slice(2).filter((cell) => cell !== '' && cell !== null);
-    }
-  } else {
-    // Service type: lookup service matrix
-    const svcMatrix = lists.serviceMatrix || [];
-    options = svcMatrix
-      .filter((row) => row && row[0] === serviceType)
-      .map((row) => row[1])
-      .filter((name) => name !== '' && name !== null);
-  }
-
-  return options;
 }
 
 /**
@@ -3091,10 +2829,9 @@ function _createFieldGroup(field, collectionName) {
   if (field.tag === 'select') {
     // SELECT field
     const dataSourceAttr = field.dataSource ? `data-source="${field.dataSource}"` : '';
-    const dependsOnAttr = field.dependsOn ? `data-depends-on="${field.dependsOn.join(',')}"` : '';
+    const dataOnchange = field.onchange ? `data-onchange="${field.onchange}" ` : '';
     fieldHtml += `
     <select
-      id="${field.name}"
       name="${field.name}"
       class="form-select form-select-sm ${field.class || ''}"
       data-field="${field.name}"
@@ -3102,7 +2839,7 @@ function _createFieldGroup(field, collectionName) {
       ${isRequired ? 'required' : ''}
       ${isReadonly ? 'disabled' : ''}
       ${dataSourceAttr}
-      ${dependsOnAttr}
+      ${dataOnchange}
       style="flex: 1; min-height: 32px;">
       <option value="">-- Chọn --</option>
     `;
@@ -3365,66 +3102,6 @@ function toggleCollapse(collapseId, headerEl) {
   }
 }
 
-/**
- * Populate select field with data from dataSource
- * Handles both array and object formats
- *
- * @param {string} fieldName - Name of the field (select id)
- * @param {string} dataSourceName - Name of the data source collection
- *
- * @example
- * // For users collection
- * populateSelectFromSource('staff_id', 'users');
- *
- * @example
- * // For hotels collection
- * populateSelectFromSource('hotel_name', 'hotels');
- * // Will populate from Object.values(APP_DATA.hotels)_obj or Object.values(APP_DATA.hotels)
- */
-function populateSelectFromSource(fieldName, dataSourceName) {
-  const selectEl = document.getElementById(fieldName);
-  if (!selectEl) {
-    console.warn(`Select element with ID '${fieldName}' not found`);
-    return;
-  }
-
-  // Get data from APP_DATA
-  const dataArray = _getDataSourceArray(dataSourceName);
-  if (!dataArray || dataArray.length === 0) {
-    console.warn(`No data found for source '${dataSourceName}'`);
-    return;
-  }
-
-  // Clear existing options (keep the placeholder)
-  const existingOptions = selectEl.querySelectorAll('option:not(:first-child)');
-  existingOptions.forEach((opt) => opt.remove());
-
-  // Add new options from data source
-  // Handle both array and object formats
-  dataArray.forEach((item) => {
-    const option = document.createElement('option');
-
-    // Get ID/value (handle both object and array formats)
-    const itemId = item.id || item.uid || item.code || item.value || '';
-
-    // Get display text (try multiple properties based on data type)
-    let itemText = '';
-    if (typeof item === 'string') {
-      itemText = item;
-    } else if (typeof item === 'object') {
-      // Try common display name properties
-      itemText = item.user_name || item.full_name || item.name || item.displayNameEng || item.displayName || item.account || item.value || itemId || '';
-    }
-
-    if (itemId) {
-      option.value = itemId;
-      option.textContent = itemText;
-      selectEl.appendChild(option);
-    }
-  });
-
-  L._(`✅ Populated '${fieldName}' with ${dataArray.length} options from '${dataSourceName}'`);
-}
 const COL_INDEX = {
   // BOOKINGS
   M_ID: 0,

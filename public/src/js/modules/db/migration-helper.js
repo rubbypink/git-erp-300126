@@ -321,8 +321,8 @@ export async function exportJSONFile() {
     const exportData = {};
     for (const table of db.tables) {
       const tableName = table.name;
-      // Sử dụng getAll như bạn yêu cầu hoặc toArray() của Dexie để lấy data
-      const records = typeof localDB.getAll === 'function' ? await localDB.getAll(tableName) : await table.toArray();
+      // Sử dụng getCollection như bạn yêu cầu hoặc toArray() của Dexie để lấy data
+      const records = typeof localDB.getCollection === 'function' ? await localDB.getCollection(tableName) : await table.toArray();
 
       exportData[tableName] = records;
       console.log(`📦 Table [%c${tableName}%c]: %c${records.length}%c bản ghi`, 'color: #e83e8c', 'color: inherit', 'color: #28a745; font-weight: bold;', 'color: inherit');

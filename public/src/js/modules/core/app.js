@@ -1,14 +1,8 @@
 import DB_MANAGER from '/src/js/modules/db/DBManager.js';
 import EVENT_MANAGER from './EventManager.js';
-import ASelect from '/src/js//components/ASelect.js';
 import { AUTH_MANAGER, SECURITY_MANAGER } from './LoginModule.js';
 import { FloatDraggable, Resizable, WindowMinimizer } from '/src/js/libs/ui_helper.js';
 import UI_RENDERER from './UI_Manager.js';
-
-import MobileEvent from './M_AutoMobileEvents.js'; // Self-initializing: tap→click, double-tap→dblclick, long-press→contextmenu
-import NotificationManager from './NotificationModule.js';
-
-window.NotificationManager = NotificationManager;
 
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { getApp } from 'firebase/app';
@@ -837,8 +831,7 @@ class Application {
           this._ensureModalExists();
           this.#state.user = userProfile;
           window.CURRENT_USER = userProfile;
-          const moduleManager = new MODULELOADER(this, this.#config.disabledModules);
-          this.#moduleManager = moduleManager;
+          if (!this.#moduleManager) this.#moduleManager = new MODULELOADER(this, this.#config.disabledModules);
           this.#modules['Event'].init();
           // Báo cho admin_app.js biết là Auth đã xử lý xong
           this.#state.isReady = true;
@@ -881,7 +874,7 @@ class Application {
 
         // 4. Khởi tạo UI renderer + render template theo role (song song)
         const moduleManager = new MODULELOADER(this, this.#config.disabledModules);
-        this.#moduleManager = moduleManager;
+        if (!this.#moduleManager) this.#moduleManager = moduleManager;
         this.#config.saveLoad = true;
 
         CURRENT_USER = this.#state.user;
@@ -1323,6 +1316,13 @@ class Application {
     return this._call(moduleName, methodName, ...args);
   }
 
+  get ModuleLoader() {
+    if (!this.#moduleManager) {
+      this.#moduleManager = new MODULELOADER(this, this.#config.disabledModules);
+    }
+    return this.#moduleManager;
+  }
+
   get DB() {
     return this.#createProxy('Database');
   }
@@ -1439,7 +1439,7 @@ class MODULELOADER {
       sale: ['SalesModule'],
       acc_thenice: [],
     };
-    this.forAllModules = ['TourPrice', 'CalculatorWidget', 'ThemeManager', 'Lang', 'NotificationManager', 'CostManager', 'ShortKey', 'BookingOverview', 'Router', 'ReportModule'];
+    this.forAllModules = ['TourPrice', 'CalculatorWidget', 'ThemeManager', 'Lang', 'CostManager', 'ShortKey', 'BookingOverview', 'Router', 'ReportModule'];
     this.commonModules = ['Lang', 'ThemeManager', 'StateProxy'];
     this.uiModules = ['OffcanvasMenu', 'ModalFull'];
     this.asyncModules = ['TourPrice', 'ReportModule', 'CalculatorWidget', 'ServicePriceController', 'CostManager', 'ShortKey', 'BookingOverview', 'PriceManager', 'ContextMenu'];

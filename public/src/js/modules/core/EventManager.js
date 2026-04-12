@@ -743,13 +743,18 @@ class EventManager {
       const coll = table.dataset.collection;
       const trId = tr.id || tr.dataset.item;
 
-      if (!coll || !trId) return;
+      if (!trId) return;
+      let bookingId = String(trId);
 
-      const isDetailEntry = ['booking_details', 'operator_entries'].includes(coll);
-
-      if (typeof onGridRowClick === 'function') {
-        onGridRowClick(trId, coll);
+      // 1. TÁCH BOOKING_ID TỪ CHUỖI ID (Không cần query database)
+      // Kiểm tra nếu ID bắt đầu bằng 5 chữ số và theo sau là dấu "_" (VD: 12345_xyz)
+      const idMatch = bookingId.match(/^(\d{5})_/);
+      let collName;
+      if (idMatch) {
+        bookingId = idMatch[1]; // Lấy đúng 5 chữ số đầu tiên làm booking_id
       }
+
+      LogicBase.onGridRowClick(bookingId, 'bookings');
     };
 
     this.on(
@@ -757,7 +762,8 @@ class EventManager {
       'dblclick',
       (e) => {
         e.preventDefault();
-        L._('EventManager.on tr dblclick');
+        if (e.key !== 'Ctrl') return;
+        L._('EventManager.on tr dblclick + Ctrl');
         if (getE('#detail-tbody')?.contains(e.target) || getE('#bkov-detail-tbody')?.contains(e.target) || getE('#bkov-txn-tbody')?.contains(e.target)) return;
         handleRowClick(e);
       },

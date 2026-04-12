@@ -145,12 +145,14 @@
             <li>
               <hr class="dropdown-divider my-1">
             </li>
-            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="updateDeposit()" title="Cập nhật tổng tiền đặt cọc từ giao dịch">
-                <i class="fa-solid fa-coins me-2"></i> Cập nhật Deposit
-              </a></li>
-            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="updateBkStatus()" title="Cập nhật trạng thái booking">
-                <i class="fa-solid fa-refresh me-2"></i> Cập nhật Trạng thái
-              </a></li>
+            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="Op.Logic.updateDeposit()" title="Cập nhật trạng thái deposit"></a>
+              <i class="fa-solid fa-coins me-2"></i> Cập nhật Deposit
+              </a>
+            </li>
+            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="Op.Logic.updateBkStatus()" title="Cập nhật trạng thái booking"></a>
+              <i class="fa-solid fa-refresh me-2"></i> Cập nhật Trạng thái
+              </a>
+            </li>
             <li><a class="dropdown-item small" href="javascript:void(0)" onclick="Op.Logic.calcGrandTotal()" title="Tính lại tổng tiền booking">
                 <i class="fa-solid fa-calculator me-2"></i> Tính lại Tổng
               </a></li>
@@ -236,7 +238,7 @@
             <i class="fa-solid fa-arrow-right-arrow-left fa-rotate-90"></i> Đảo thứ tự
           </button>
           <button type="button" class="btn btn-sm btn-secondary" id="btn-sync-row" onclick="Op.DB.syncRow(CURRENT_CTX_ROW)"><i class="fa-solid fa-plus"></i> Sync dòng</button>
-          <button type="button" class="btn btn-sm btn-primary" id="btn-add-row"><i class="fa-solid fa-plus"></i> Thêm
+          <button type="button" class="btn btn-sm btn-primary" id="btn-add-row" onclick="Op.UI.addDetaiRow()"><i class="fa-solid fa-plus"></i> Thêm
             dòng</button>
         </div>
       </div>

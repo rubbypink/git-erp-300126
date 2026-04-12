@@ -132,6 +132,7 @@ fieldset {
   align-content: start;
   grid-auto-flow: row;
   overflow: hidden; /* Đảm bảo con không tràn border */
+  overflow-x: auto;
   min-width: 0; /* Fix grid overflow */
 }
 
@@ -237,7 +238,7 @@ select.form-select {
 /* --- DROPDOWN & MENU --- */
 .dropdown-menu {
   /* Giữ !important cho các thuộc tính quan trọng của dropdown để đè Bootstrap popper */
-  background-color: var(--surface-color) !important;
+  background-color: var(--surface-color);
   color: var(--text-color) !important;
   border: 0.0625rem solid var(--border-color);
   border-radius: 0.375rem !important;
@@ -253,7 +254,7 @@ select.form-select {
 }
 
 .dropdown-item {
-  color: var(--text-color) !important;
+  color: var(--text-color);
   padding: 0.25rem 0.5rem;
   font-size: 0.65rem;
   font-weight: 400 !important;
@@ -263,14 +264,14 @@ select.form-select {
 }
 
 .dropdown-item:hover {
-  background-color: var(--hover-bg) !important;
-  color: var(--primary-color) !important;
+  background-color: var(--hover-bg);
+  color: var(--primary-color);
   padding-left: 0.875rem !important;
 }
 
 .dropdown-item.active {
-  background-color: var(--primary-color) !important;
-  color: #ffffff !important;
+  background-color: var(--primary-color);
+  color: #ffffff;
 }
 
 .dropdown-divider {
@@ -524,6 +525,7 @@ body {
   grid-template-columns: repeat(var(--grid-cols), minmax(0, 1fr));
   /* transition: background-color 0.3s ease, color 0.3s ease; */ /* Trùng lặp với khai báo ở dòng 166 */
   gap: 0;
+  /* overflow: hidden; */
 }
 
 /* ─── NAV-CONTAINER: Horizontal flex, auto-wrap, horizontal scroll ─── */
@@ -838,7 +840,7 @@ body.dark-theme .chrome-trigger-btn:focus {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   padding: 0.5rem;
-  padding-right: 1.5rem;
+  padding-right: 2rem;
   font-weight: 500;
   max-width: 7rem;
   white-space: nowrap;
@@ -1053,6 +1055,7 @@ body:not(.is-acc):not(.is-admin) .acc-only {
   .app-content {
     flex: 1 1 0; /* 0 thay vì auto */
     min-height: 0; /* Cho phép shrink đúng */
+    justify-content: center;
     /* overflow-y: auto !important; */ /* Đã xóa !important */
     overflow-y: auto;
     overflow-x: hidden;
@@ -1068,6 +1071,7 @@ body:not(.is-acc):not(.is-admin) .acc-only {
 
   .tab-content {
     flex: 1 1 auto;
+    flex-direction: column;
     /* overflow-y: auto !important; */ /* Đã xóa !important */
     overflow-y: auto;
     overflow-x: hidden;
@@ -1136,7 +1140,7 @@ body:not(.is-acc):not(.is-admin) .acc-only {
   }
 
   #tab-dashboard tbody {
-    overflow-y: auto;
+    overflow: auto;
   }
 
   /* --- 2. FIX MODAL BACKDROP CLICK-THROUGH --- */
@@ -1167,7 +1171,7 @@ body:not(.is-acc):not(.is-admin) .acc-only {
   select,
   textarea {
     /* Giữ !important để đảm bảo tương tác trên mobile không bị chặn bởi các lớp overlay */
-    pointer-events: auto !important;
+    pointer-events: auto;
     touch-action: manipulation !important; /* Cho phép zoom nhấp nhưng không lag */
     width: fit-content;
     padding: 0.15rem;

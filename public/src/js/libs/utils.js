@@ -9,7 +9,10 @@
 // =====================================================================
 import Swal from 'sweetalert2';
 window.Swal = Swal; // Expose globally for legacy plain scripts (utils.js, logA, etc.)
-
+import MobileEvent from '@core/M_AutoMobileEvents.js'; // Self-initializing: tap→click, double-tap→dblclick, long-press→contextmenu
+import NotificationManager from '@core/NotificationModule.js';
+import ASelect from '/src/js//components/ASelect.js';
+window.NotificationManager = NotificationManager;
 import L from '@js/common/logger.js';
 import SYS from '@js/libs/sys_helper.js';
 import UI_DASH from '@js/common/ui_dashboard.js';

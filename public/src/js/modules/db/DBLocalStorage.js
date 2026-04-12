@@ -88,7 +88,7 @@ class IndexedDBHelper {
   async _doInitDB() {
     try {
       // Nâng cấp version lên 8 để cập nhật index cho notification_dedup
-      this.db.version(9).stores(buildDexieSchema());
+      this.db.version(10).stores(buildDexieSchema());
       await this.db.open();
       await this._loadSyncMeta();
       return true;
@@ -362,12 +362,14 @@ class IndexedDBHelper {
       try {
         let query = table.where(fieldName);
         let collection;
-        if (startValue != null && endValue != null) {
-          collection = query.between(startValue, endValue, true, true);
-        } else if (startValue != null) {
-          collection = query.aboveOrEqual(startValue);
-        } else if (endValue != null) {
-          collection = query.belowOrEqual(endValue);
+        let start = new Date(startValue);
+        let end = new Date(endValue);
+        if (startValue != null && endValue != null && start.getTime() <= end.getTime()) {
+          collection = query.between(start, end, true, true);
+        } else if (start != null) {
+          collection = query.aboveOrEqual(start);
+        } else if (end != null) {
+          collection = query.belowOrEqual(end);
         } else {
           collection = table.toCollection();
         }
