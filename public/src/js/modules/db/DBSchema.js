@@ -1297,7 +1297,7 @@ export const DB_SCHEMA = {
         name: 'contact_person',
         displayNameEng: 'Contact Person',
         displayName: 'Người Liên hệ',
-        type: 'text',
+        type: 'object',
         tag: 'input',
         attrs: [],
         class: '',
@@ -1877,11 +1877,11 @@ export const DB_SCHEMA = {
             tag: 'select',
             class: '',
             dataSource: 'suppliers',
-            description: 'Mã Khách sạn (Firestore: info.hotelId)',
+            description: 'Mã NCC (Firestore: info.supplierId)',
             validation: { required: true },
           },
         ],
-        description: 'Mã NCC (Firestore: info.hotelId)',
+        description: 'Mã NCC (Firestore: info.supplierId)',
       },
 
       {
@@ -1893,7 +1893,7 @@ export const DB_SCHEMA = {
         tag: 'textarea',
         attrs: ['readonly'],
         class: '',
-        description: 'Dạng Map: { "roomId_rateType": { "periodId": { startDate, endDate, supplier, costPrice, sellPrice } } }',
+        description: 'Dạng Map: { "roomId_rateType": { "periodId_supplierId": { startDate, endDate, supplier, costPrice, sellPrice }}}',
       },
       {
         index: 3,

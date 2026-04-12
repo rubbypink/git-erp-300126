@@ -1,7 +1,8 @@
 import { createFormBySchema, loadFormDataSchema, DB_SCHEMA } from '/src/js/modules/db/DBSchema.js';
 import PriceImportAI from '../prices/M_ImportPriceAI.js';
 import ATable from './ATable.js';
-
+const _viCollator = new Intl.Collator('vi', { numeric: true, sensitivity: 'base' });
+const _numRegex = /[^0-9.-]+/g;
 var _htmlCache = {};
 const UI_RENDERER = {
   renderedTemplates: {},
@@ -298,17 +299,6 @@ const UI_RENDERER = {
     const userRole = CURRENT_USER?.role || 'sale',
       allowedCollections = COLL_MANIFEST?.[userRole] || [],
       mappedKeys = A.DB.schema.getCollectionNames();
-    // allowedCollections.forEach((key) => {
-    //   if (data[key] && Object.values(data[key]).length > 0) {
-    //     const opt = document.createElement('option');
-    //     opt.value = key;
-    //     opt.textContent = mappedKeys?.[key] || key;
-    //     selectElem.appendChild(opt);
-    //     hasOption = true;
-    //     if (key === 'bookings') selectElem.selectedIndex = selectElem.options.length - 1;
-    //   }
-    // });
-    // selectElem.disabled = false;
     let options = {};
     allowedCollections.forEach((key) => {
       options[key] = mappedKeys?.[key] || key;
@@ -477,7 +467,7 @@ const UI_RENDERER = {
           header: true,
           headerExtra: [
             `<div class="btn btn-sm btn-warning shadow-sm p-0" id="datalist-select"">
-        <select id="btn-select-datalist" data-creatable="${CURRENT_USER.role === 'admin' ? 'true' : 'false'}" data-source="A.UI.initBtnSelectDataList"  data-onchange="A.UI.updateTableData();" class="smart-select form-select form-select-sm bg-warning rounded border-0" style="min-width: 6rem;">
+        <select id="btn-select-datalist" data-creatable="${CURRENT_USER.role === 'admin' ? 'true' : 'false'}" data-source="A.UI.initBtnSelectDataList"  data-onchange="A.UI.updateTableData();" class="smart-select form-select form-select-sm border-0" style="min-width: 6rem;">
         </select>
       </div>`,
           ],
@@ -491,7 +481,16 @@ const UI_RENDERER = {
           groupBy: true,
           fs: 0.7,
         });
-        // this.initBtnSelectDataList();
+        setTimeout(() => {
+          getE('btn-select-datalist')
+            .querySelectorAll('options')
+            .forEach((opt) => {
+              if (opt.value && opt.value === 'bookings') {
+                opt.selected = true;
+                getE('btn-select-datalist').dispatchEvent(new Event('change'));
+              }
+            });
+        }, 500);
         break;
       case 'tab-price-pkg':
         if (A.PriceManager) {
@@ -554,56 +553,79 @@ const UI_RENDERER = {
     if (!currentTable) currentTable = GRID_STATE.currentTable;
     if (!sort) sort = GRID_STATE.sort;
     if (!data) data = GRID_STATE.filteredData;
+
+    if (!data || data.length === 0) return [];
+
     let sorted = [...data];
     const modifier = sort.dir === 'asc' ? 1 : -1;
     const DATE_PRIORITY = ['start_date', 'check_in', 'transaction_date', 'created_at', 'updated_at'];
 
+    // Tối ưu hàm toNum: Bỏ qua ép kiểu/regex nếu nó ĐÃ LÀ SỐ
+    const toNum = (v) => {
+      if (typeof v === 'number') return v;
+      if (!v) return 0;
+      if (typeof getNum === 'function') return getNum(v);
+      return Number(String(v).replace(_numRegex, '')) || 0;
+    };
+
+    // Hàm so sánh lõi
     const _compare = (va, vb, fmt) => {
       if (fmt === 'date') return parseDateVal(va) - parseDateVal(vb);
       if (fmt === 'money' || fmt === 'number') {
-        const toNum = (v) => (typeof getNum === 'function' ? getNum(v) : Number(String(v).replace(/[^0-9.-]+/g, '')) || 0);
         return toNum(va) - toNum(vb);
       }
-      return String(va ?? '')
-        .toLowerCase()
-        .localeCompare(String(vb ?? '').toLowerCase(), 'vi');
-    };
-
-    const _stableSort = (a, b, fieldName, format) => {
-      let cmp = _compare(a?.[fieldName] ?? '', b?.[fieldName] ?? '', format) * modifier;
-      if (cmp !== 0) return cmp;
-      for (const f of DATE_PRIORITY) {
-        if (f === fieldName) continue;
-        const valA = a?.[f],
-          valB = b?.[f];
-        if (valA || valB) {
-          const dateCmp = (parseDateVal(valA) - parseDateVal(valB)) * modifier;
-          if (dateCmp !== 0) return dateCmp;
-        }
-      }
-      return String(a?.id || '').localeCompare(String(b?.id || ''), 'en') * modifier;
+      // Dùng Collator tốc độ cao thay cho localeCompare
+      return _viCollator.compare(String(va ?? ''), String(vb ?? ''));
     };
 
     if (sort.column) {
+      // Resolve cấu hình cột 1 LẦN DUY NHẤT ở ngoài vòng lặp sort
       const resolveColConfig = (raw) => GRID_COLS?.find((c) => String(c?.i) === raw || String(c?.key) === raw) || null;
       const colConfig = resolveColConfig(sort.column);
       const fieldName = colConfig?.key || colConfig?.i || sort.column;
       const format = colConfig?.fmt ?? 'text';
 
       const isSecondary = A.DB?.schema?.[currentTable]?.isSecondaryIndex === true;
+      const groupByField = isSecondary ? (A.DB.schema[currentTable]?.groupBy ?? 'id') : null;
+
+      // Đưa _stableSort vào trong if (sort.column) để gom chung fieldName & format
+      const _stableSort = (a, b) => {
+        let cmp = _compare(a?.[fieldName] ?? '', b?.[fieldName] ?? '', format) * modifier;
+        if (cmp !== 0) return cmp;
+
+        // Vòng lặp ưu tiên ngày tháng
+        for (let i = 0; i < DATE_PRIORITY.length; i++) {
+          const f = DATE_PRIORITY[i];
+          if (f === fieldName) continue;
+
+          const valA = a?.[f],
+            valB = b?.[f];
+          if (valA || valB) {
+            const dateCmp = (parseDateVal(valA) - parseDateVal(valB)) * modifier;
+            if (dateCmp !== 0) return dateCmp;
+          }
+        }
+
+        // Fallback cuối cùng bằng ID (Dùng toán tử thô < > siêu tốc, bỏ localeCompare)
+        const idA = String(a?.id || '');
+        const idB = String(b?.id || '');
+        return idA === idB ? 0 : idA < idB ? -modifier : modifier;
+      };
+
       if (isSecondary) {
-        const groupByField = A.DB.schema[currentTable]?.groupBy ?? 'id';
         sorted.sort((a, b) => {
           const ga = String(a?.[groupByField] ?? '');
           const gb = String(b?.[groupByField] ?? '');
-          const groupCmp = ga.localeCompare(gb, 'vi') * modifier;
+          // Dùng Collator thay cho localeCompare
+          const groupCmp = _viCollator.compare(ga, gb) * modifier;
           if (groupCmp !== 0) return groupCmp;
-          return _stableSort(a, b, fieldName, format);
+          return _stableSort(a, b);
         });
       } else {
-        sorted.sort((a, b) => _stableSort(a, b, fieldName, format));
+        sorted.sort(_stableSort);
       }
     }
+
     return sorted;
   },
   resetForm: function (e) {

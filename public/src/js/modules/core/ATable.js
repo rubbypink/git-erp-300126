@@ -220,15 +220,26 @@ export default class ATable {
         return;
       }
 
-      // Xử lý click xem chi tiết object
+      // Xử lý click xem chi tiết object (Tối ưu Memory: Lấy từ RAM, không lấy từ DOM)
       const viewObjBtn = target.closest('.at-view-object');
       if (viewObjBtn) {
-        try {
-          const valStr = viewObjBtn.dataset.val;
-          const val = JSON.parse(decodeURIComponent(valStr));
-          this._showObjectPopup(val);
-        } catch (err) {
-          console.error('[ATable] Parse object error:', err);
+        e.preventDefault();
+        e.stopPropagation();
+
+        const tr = viewObjBtn.closest('tr');
+        const itemId = tr ? tr.dataset.item : null;
+        const field = viewObjBtn.dataset.field;
+
+        if (itemId && field) {
+          // Tìm đúng item trong bộ nhớ đang hiển thị
+          const item = this.state.fullData.find((i) => String(i.id || i.uid || i) === String(itemId));
+          if (item && item[field] !== undefined) {
+            const config = this.state.fieldConfigs[field] || {};
+            const title = config.displayName || field;
+            this._showObjectPopup(item[field], title, item); // Truyền raw data (chưa bị stringify)
+          } else {
+            console.warn('[ATable] Không tìm thấy data cho:', itemId, field);
+          }
         }
         return;
       }
@@ -237,7 +248,7 @@ export default class ATable {
     A.Event.on(
       wrapper,
       'change',
-      (e) => {
+      async (e) => {
         const target = e.target;
 
         if (target.classList.contains('at-group-by')) {
@@ -258,6 +269,33 @@ export default class ATable {
       true
     );
     wrapper.dataset.eventsAttached = 'true';
+  }
+
+  // Bổ sung hàm pre-fetch:
+  async _prefetchDictionaries() {
+    this.state.dictionaries = this.state.dictionaries || {};
+    const { fieldConfigs, allFieldsOrder } = this.state;
+
+    const fetchPromises = allFieldsOrder
+      .filter((h) => fieldConfigs[h] && fieldConfigs[h].dataSource)
+      .map(async (h) => {
+        const source = fieldConfigs[h].dataSource;
+        if (!this.state.dictionaries[source]) {
+          // Caching để không gọi lại
+          const data = await this._getDataSource(source);
+          // Build map dạng { "id_1": "Display Name 1" } để lookup O(1)
+          const dict = {};
+          if (data && Array.isArray(data)) {
+            data.forEach((item) => {
+              const id = String(item.id || item.uid || item.value);
+              dict[id] = item.displayName || item.name || item.title || item.user_name || item.text || item.full_name || id;
+            });
+          }
+          this.state.dictionaries[source] = dict;
+        }
+      });
+
+    await Promise.all(fetchPromises);
   }
 
   /**
@@ -289,6 +327,7 @@ export default class ATable {
     } else {
       this.container.insertAdjacentHTML('beforeend', layoutHtml);
     }
+    this._initTooltips();
   }
 
   _renderGroupByBtn(update = false) {
@@ -345,9 +384,9 @@ export default class ATable {
     let zoomHtml = '';
     if (zoom) {
       zoomHtml = `
-        <div class="btn-group btn-group-sm shadow-sm at-zoom-group">
-          <button type="button" class="btn btn-light border at-zoom-out" title="Thu nhỏ"><i class="fas fa-minus"></i></button>
-          <button type="button" class="btn btn-light border at-zoom-in" title="Phóng to"><i class="fas fa-plus"></i></button>
+        <div class="btn-group btn-group-sm gap-2 px-2 border shadow-sm at-zoom-group">
+          <button type="button" class="btn btn-sm btn-light border-0 at-zoom-out" title="Thu nhỏ"><i class="fas fa-minus"></i></button>
+          <button type="button" class="btn btn-sm btn-light border-0 at-zoom-in" title="Phóng to"><i class="fas fa-plus"></i></button>
         </div>`;
     }
 
@@ -379,25 +418,25 @@ export default class ATable {
     headerMenuEl.innerHTML = `
       <div id="tbl-${this.containerId}-header" class="table-header-actions d-flex align-items-center mb-1 gap-3 p-2" style="z-index: 5;">
         <h6 class="mb-0 fw-bold text-primary text-uppercase me-auto">${title || (colName ? window.A?.Lang?.t(colName) : '')}</h6>
-        <div class="search-box flex-grow-1" style="max-width: 200px;">
-          <div class="input-group input-group-sm bg-white rounded overflow-hidden shadow-sm border">
-            <span class="input-group-text border-0"><i class="fas fa-search text-muted"></i></span>
-            <input type="text" class="form-control bg-light border-0 ps-0 at-search-input" placeholder="Tìm kiếm nhanh..." style="box-shadow: none;">
-          </div>
-        </div>
+        ${extraHtml}
         <div class="group-by-select">${groupByHtml}</div>
         ${zoomHtml}
         ${downloadHtml}
         ${draggableHtml}
-        ${hiddenFieldsDropdownHtml}
-        ${extraHtml}
+        <div id="hidden-field-select">${hiddenFieldsDropdownHtml}</div>
+        <div class="search-box flex-grow-1" style="max-width: 200px;">
+          <div class="input-group input-group-sm p-0 bg-white rounded overflow-hidden shadow-sm border">
+            <span class="input-group-text border-0"><i class="fas fa-search text-muted small"></i></span>
+            <input type="text" class="form-control form-control-sm bg-light border-0 ps-0 at-search-input" placeholder="Tìm kiếm nhanh..." style="box-shadow: none;">
+          </div>
+        </div>
       </div>`;
   }
 
   /**
    * Trả về HTML cho một dropdown menu chứa danh sách các checkbox để ẩn/hiện field
    */
-  _renderHiddenFieldsDropdown() {
+  _renderHiddenFieldsDropdown(update = false) {
     const { fieldConfigs, hiddenFields, allFieldsOrder } = this.state;
     const allFields = { ...fieldConfigs, ...hiddenFields };
     const fieldNames = allFieldsOrder;
@@ -424,7 +463,7 @@ export default class ATable {
       })
       .join('');
 
-    return `
+    let html = `
       <div class="dropdown btn-group at-fields-dropdown">
         <button class="btn btn-sm btn-light border shadow-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
           <i class="fas fa-columns"></i>
@@ -439,6 +478,14 @@ export default class ATable {
           ${itemsHtml}
         </ul>
       </div>`;
+    if (update) {
+      const headerMenuEl = getE(`${this.containerId}-header-menu`);
+      if (headerMenuEl) {
+        const container = getE('hidden-field-select', headerMenuEl);
+        if (container) container.innerHTML = html;
+      }
+      return html;
+    }
   }
 
   /**
@@ -464,7 +511,7 @@ export default class ATable {
 
     contentArea.innerHTML = `
       <table class="${tableClass}" id="${tableId}" ${collectionAttr} style="transform: scale(${this.state.zoomLevel}); transform-origin: top left;">
-        <thead class="table-secondary text-nowrap sticky-top border-bottom" style="z-index: 3; top: 0;">
+        <thead class="table-secondary text-nowrap sticky-top border-bottom" style="z-index: 3; top: 0; font-size: 0.85rem;">
           <tr>${this._renderTableHead(headers)}</tr>
         </thead>
         <tbody class="grid-body text-nowrap" id="${this.containerId}-tbody">
@@ -473,8 +520,8 @@ export default class ATable {
         ${footer ? `<tfoot class="table-light fw-bold border-top-2 sticky-bottom" id="${this.containerId}-tfoot" style="z-index: 2; bottom: 0;">${this._renderTableFooter(filteredData, headers)}</tfoot>` : ''}
       </table>`;
     this._renderGroupByBtn(true);
+    this._renderHiddenFieldsDropdown(true);
     this._initResizer();
-    this._initTooltips();
   }
 
   _renderTableHead(headers) {
@@ -511,9 +558,14 @@ export default class ATable {
             .map((h) => {
               let val = item[h] !== undefined && item[h] !== null ? item[h] : '';
               const config = fieldConfigs[h] || {};
+              // MỚI: Quét và parse JSON ngay lập tức trước khi làm bất cứ thứ gì khác
+              val = this._tryParseJSON(val);
 
-              if (config.type === 'date' && val) val = formatDateISO(val);
+              if ((config.type === 'date' || config.name?.split('_').includes('at')) && val) val = formatDateISO(val);
               if (config.class?.split(' ').includes('number') && val) val = formatNumber(val);
+              if ((typeof val === 'object' && val !== null) || config.type === 'map' || config.type === 'json') {
+                return this._renderObjectCell(val, config, h);
+              }
 
               if (editable && config.editable !== false) {
                 return this._renderEditableCell(h, val, config);
@@ -522,24 +574,12 @@ export default class ATable {
               // Code mới: Xử lý hiển thị dữ liệu dạng object
               const isHtml = config.type === 'html' || config.html === true;
 
-              // Nếu là object và không phải null
-              if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-                return this._renderObjectCell(val, config, h);
-              }
-
-              let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+              let displayVal = '';
 
               if (config.dataSource && val) {
-                let sourceData = null;
-                this._getDataSource(config.dataSource).then((data) => {
-                  sourceData = data;
-                  L._(`[ATable] _renderObjectCell - sourceData: ${sourceData[0]}`);
-                });
-                if (sourceData) {
-                  const matched = sourceData.find((i) => String(i.id || i.uid || i.value) === String(val));
-                  if (matched) {
-                    displayVal = matched.displayName || matched.name || matched.value || matched.title || matched.user_name || matched.text || matched.full_name || displayVal;
-                  }
+                const dict = this.state.dictionaries[config.dataSource];
+                if (dict && dict[String(val)]) {
+                  displayVal = dict[String(val)];
                 }
               }
 
@@ -602,31 +642,24 @@ export default class ATable {
               .map((h) => {
                 let val = item[h] !== undefined && item[h] !== null ? item[h] : '';
                 const config = fieldConfigs[h] || {};
+                val = this._tryParseJSON(val);
                 if (config.type === 'date' && val) val = formatDateVN(val);
                 if (config.class?.split(' ').includes('number') && val) val = formatNumber(val);
+
+                if ((typeof val === 'object' && val !== null) || config.type === 'object') {
+                  return this._renderObjectCell(val, config, h);
+                }
 
                 if (editable && config.editable !== false) {
                   return this._renderEditableCell(h, val, config);
                 }
 
-                // Code mới: Xử lý hiển thị dữ liệu dạng object trong grouped rows
-                if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
-                  return this._renderObjectCell(val, config, h);
-                }
-
                 let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
 
                 if (config.dataSource && val) {
-                  let sourceData = null;
-                  this._getDataSource(config.dataSource).then((data) => {
-                    sourceData = data;
-                    L._(`[ATable] _renderObjectCell - sourceData: ${sourceData[0]}`);
-                  });
-                  if (sourceData) {
-                    const matched = sourceData.find((i) => String(i.id || i.uid || i.value) === String(val));
-                    if (matched) {
-                      displayVal = matched.displayName || matched.name || matched.title || matched.user_name || matched.text || matched.full_name || displayVal;
-                    }
+                  const dict = this.state.dictionaries[config.dataSource];
+                  if (dict && dict[String(val)]) {
+                    displayVal = dict[String(val)];
                   }
                 }
 
@@ -648,9 +681,15 @@ export default class ATable {
     const tag = config.tag || 'input';
     const type = config.type || 'text';
     const extraClass = config.class || '';
-    const attrs = Array.isArray(config.attrs) ? config.attrs.join(' ') : '';
-    const baseClass = 'form-control form-control-sm border-0 bg-transparent text-center at-cell-edit';
-    const fullClass = `${baseClass} ${extraClass}`.trim();
+    const attrs = Array.isArray(config.attrs)
+      ? config.attrs
+          .filter((attr) => {
+            attr !== 'readonly' || attr !== 'hidden';
+          })
+          .join(' ')
+      : String(config.attrs).replace('readonly', '').replace('hidden', '');
+    const baseClass = 'form-control form-control-sm m-0 px-1 border-0 bg-transparent text-center at-cell-edit';
+    const fullClass = `${baseClass} ${extraClass.replace('d-none', '')}`.trim();
 
     let inputHtml = '';
     if (tag === 'select') {
@@ -666,66 +705,18 @@ export default class ATable {
         inputHtml = `<select class="${fullClass} ${smartClass}" data-field="${field}" ${selectAttrs}></select>`;
       } else {
         const options = config.options || [];
-        const optionsHtml = options.map((opt) => `<option value="${opt}" ${String(opt) === String(val) ? 'selected' : ''}>${opt}</option>`).join('');
+        const optionsHtml = options.map((opt) => `<option value="${opt.id || opt.uid || opt}" ${String(opt.name || opt.text || opt.displayName || opt) === String(val) ? 'selected' : ''}>${opt.name || opt.text || opt.displayName || opt}</option>`).join('');
         inputHtml = `<select class="${fullClass}" data-field="${field}" ${selectAttrs}>${optionsHtml}</select>`;
       }
     } else if (tag === 'textarea') {
-      inputHtml = `<textarea class="${fullClass}" data-field="${field}" ${attrs}>${val}</textarea>`;
+      inputHtml = `<textarea class="${fullClass}" data-field="${field}" ${attrs} rows="1" cols="2">${val}</textarea>`;
+    } else if (type === 'status' || config.name === 'status') {
+      inputHtml = `<at-status data-field="${field}" ${attrs}>${val}</at-status>`;
     } else {
       inputHtml = `<input type="${type}" class="${fullClass}" data-field="${field}" value="${val}" ${attrs}>`;
     }
 
     return `<td class="p-0">${inputHtml}</td>`;
-  }
-
-  async _getDataSource(source) {
-    if (!source) return null;
-    let codeStr = unescapeHtml(source);
-    L._(`[ATable] _getDataSource: ${codeStr}`);
-    try {
-      if (A?.DB?.schema.isCollection(codeStr)) {
-        const data = await A.DB.local.getCollection(codeStr);
-        if (data) return Array.isArray(data) ? data : Object.values(data);
-      } else {
-        // TH2: Chuỗi là Code Nội Tuyến (Inline Code)
-        // Dấu hiệu nhận biết: Có chứa dấu phẩy, khoảng trắng, hoặc ngoặc
-        if (codeStr.includes(';') || codeStr.includes('(') || codeStr.includes(' ')) {
-          // Sử dụng hàm Function nội hàm để wrap logic.
-          // Hỗ trợ truyền cứng 3 biến hay dùng ở các Form/Select
-          const dynamicScript = new Function('value', 'selectEl', 'instance', codeStr);
-          return await dynamicScript(safeArgs[0], safeArgs[1], safeArgs[2]);
-        }
-
-        // TH3: Chuỗi là Đường Dẫn Hàm (Object Path) - VD: 'App.Sales.tinhTien'
-        const parts = codeStr.split('.');
-        let current = window; // Bắt đầu quét từ Window (Global)
-        let context = window; // Context mặc định là Window
-
-        for (let i = 0; i < parts.length; i++) {
-          if (current[parts[i]] !== undefined) {
-            // Ghi nhận context là object cha (phần tử đứng ngay trước hàm cuối cùng)
-            if (i < parts.length - 1) {
-              context = current[parts[i]];
-            }
-            current = current[parts[i]];
-          } else {
-            console.warn(`[runFn] Lỗi: Không tìm thấy đường dẫn hàm "${codeStr}"`);
-            return null;
-          }
-        }
-
-        // Sau khi phân giải, kiểm tra xem nó có đích thị là function không
-        if (typeof current === 'function') {
-          // Gọi hàm và áp dụng (apply) đúng ngữ cảnh context đã tìm được
-          return await current.apply(context, safeArgs);
-        } else {
-          return Array.isArray(current) ? current : Object.values(current);
-        }
-      }
-    } catch (e) {
-      console.warn(`[ATable] _getDataSource error for ${source}:`, e);
-    }
-    return null;
   }
 
   _renderTableFooter(items, headers) {
@@ -820,32 +811,37 @@ export default class ATable {
   }
 
   _initTooltips() {
-    /*
     if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
-      const tooltipTriggerList = [].slice.call(this.container.querySelectorAll('[data-bs-toggle="tooltip"]'));
-      tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-      });
-    }
-    */
+      const tableContainer = this.container.querySelector('.table-container-wrapper');
+      if (!tableContainer || tableContainer.dataset.tooltipInited) return;
 
-    // Code mới: Bổ sung option { html: true } khi khởi tạo bootstrap.Tooltip
-    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
-      const tooltipTriggerList = [].slice.call(this.container.querySelectorAll('[data-bs-toggle="tooltip"]'));
-      tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl, { html: true });
+      // Khởi tạo qua cha, tự động áp dụng cho mọi element con (kể cả element mới được render sau này)
+      new bootstrap.Tooltip(tableContainer, {
+        selector: '[data-bs-toggle="tooltip"]',
+        html: true,
+        trigger: 'hover', // Tránh lỗi kẹt tooltip
       });
+
+      tableContainer.dataset.tooltipInited = 'true';
     }
   }
 
-  _handleCellChange(itemId, field, value) {
+  async _handleCellChange(itemId, field, value) {
     const item = this.state.fullData.find((i) => (i.id || i.uid) === itemId);
+    const collection = this.options.colName;
     if (item) {
       item[field] = value;
       if (this.options.onCellChange) {
-        this.options.onCellChange(itemId, field, value, item);
+        this.options.onCellChange(collection, itemId, { field: value, item: item });
+      } else if (collection && itemId) {
+        const res = await this._defaultCellChange(collection, itemId, { field: value });
+        if (res && res.success) logA(`Lưu thành công: ${res.message}`, 'success', 'toast');
+        else logA(`Lưu thất bại: ${res.message}`, 'warning', 'toast');
       }
     }
+  }
+  async _defaultCellChange(collection, itemId, change) {
+    return await A.DB.updateSingle(collection, itemId, change);
   }
 
   _toggleGroup(headerRow) {
@@ -943,19 +939,7 @@ export default class ATable {
 
     if (A?.UI?.stableSort) {
       this.state.filteredData = A.UI.stableSort(filteredData, this.options.colName, { column: field, dir: dir });
-    } else {
-      this.state.filteredData = [...filteredData].sort((a, b) => {
-        let valA = a[field] ?? '';
-        let valB = b[field] ?? '';
-
-        if (!isNaN(getNum(valA)) && !isNaN(getNum(valB))) {
-          return dir === 'asc' ? getNum(valA) - getNum(valB) : getNum(valB) - getNum(valA);
-        }
-
-        return dir === 'asc' ? String(valA).localeCompare(String(valB), 'vi') : String(valB).localeCompare(String(valA), 'vi');
-      });
     }
-
     this.refresh();
   }
 
@@ -1278,6 +1262,18 @@ export default class ATable {
     if (this.containerId) {
       ATable.instances.delete(this.containerId);
     }
+
+    // Hủy Sortable instance nếu có
+    if (this.state.draggable) {
+      this.state.draggable.destroy();
+    }
+
+    // Hủy các tooltips đã gắn vào container
+    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+      const tooltipInstance = bootstrap.Tooltip.getInstance(this.container.querySelector('.table-container-wrapper'));
+      if (tooltipInstance) tooltipInstance.dispose();
+    }
+
     if (this.container) {
       this.container.innerHTML = '';
     }
@@ -1286,91 +1282,356 @@ export default class ATable {
   /**
    * Helper: Render ô chứa dữ liệu dạng object
    */
+  /**
+   * Tối ưu: Render ô chứa dữ liệu dạng Object / Array
+   * Trọng tâm: KHÔNG lưu JSON vào DOM attribute để tránh phình bộ nhớ.
+   */
   _renderObjectCell(val, config, field) {
     try {
-      const tableHtml = this._objectToTableHtml(val);
-      const valStr = encodeURIComponent(JSON.stringify(val));
-      const tooltipAttr = `data-bs-toggle="tooltip" data-bs-placement="top" title='${tableHtml.replace(/'/g, '&apos;')}'`;
+      const isArray = Array.isArray(val);
+      const keyCount = isArray ? val.length : Object.keys(val).length;
+      const typeText = isArray ? `Xem DS (${keyCount})` : `(${keyCount} Thông tin)`;
+      const icon = isArray ? 'fa-list-ol' : 'fa-cube';
 
+      // Tạo tóm tắt siêu ngắn gọn cho Tooltip (chỉ lấy 2 key đầu)
+      let summary = '';
+      if (isArray && keyCount > 0) {
+        summary = `Gồm ${keyCount} phần tử...`;
+      } else if (!isArray && keyCount > 0) {
+        const sampleKeys = Object.keys(val).slice(0, 2);
+        summary = sampleKeys.map((k) => `${k}: ${String(val[k]).substring(0, 20)}`).join(', ');
+        if (keyCount > 2) summary += '...';
+      } else {
+        summary = 'Dữ liệu trống';
+      }
+
+      // Chỉ truyền tên field. Element cha <tr> đã có sẵn data-item (ID).
       return `
-        <td data-field="${field}" class="at-object-cell">
-          <div class="d-flex align-items-center justify-content-center gap-2">
-            <span class="badge bg-light text-primary border cursor-help" ${tooltipAttr}>
-              <i class="fas fa-cube me-1"></i> Object
+        <td data-field="${field}" class="at-object-cell text-center align-middle">
+          <div class="d-inline-flex align-items-center gap-2 border rounded px-2 py-1 bg-light shadow-sm">
+            <span class="small text-muted cursor-help" data-bs-toggle="tooltip" title="${escapeHtml(summary)}">
+              <i class="fas ${icon} me-1 text-secondary"></i> ${typeText}
             </span>
-            <button class="btn btn-xs btn-outline-primary at-view-object" data-val="${valStr}" title="Xem chi tiết">
-              <i class="fas fa-eye"></i>
+            <button type="button" class="btn btn-xs btn-outline-primary p-0 px-1 at-view-object" data-field="${field}" title="Xem chi tiết">
+              <i class="fas fa-eye" style="font-size: 0.75rem;"></i>
             </button>
           </div>
         </td>`;
     } catch (err) {
       console.error('[ATable] _renderObjectCell error:', err);
-      return `<td data-field="${field}">Error</td>`;
+      return `<td data-field="${field}"><span class="text-danger">Lỗi</span></td>`;
     }
   }
 
   /**
-   * Helper: Chuyển đổi object thành HTML table đơn giản cho tooltip
+   * Helper: Thuật toán đệ quy render Object/Array đa tầng
    */
-  _objectToTableHtml(obj) {
-    if (!obj || typeof obj !== 'object') return String(obj);
-    try {
-      let rows = '';
-      Object.entries(obj).forEach(([key, val]) => {
-        let displayVal = val;
-        if (typeof val === 'object' && val !== null) {
-          displayVal = Array.isArray(val) ? `Array(${val.length})` : '{...}';
-        }
-        rows += `
-          <tr>
-            <td class="text-start fw-bold pe-2" style="font-size: 10px; color: #666;">${key}:</td>
-            <td class="text-start" style="font-size: 10px;">${escapeHtml(String(displayVal))}</td>
-          </tr>`;
-      });
-      return `<table class="table table-sm table-borderless mb-0 text-white">${rows}</table>`;
-    } catch (err) {
-      return 'Error rendering object';
+  _buildNestedObjectHtml(obj, depth = 0) {
+    L._(`[ATable] _buildNestedObjectHtml: ${JSON.stringify(obj)}`);
+    if (obj === null || obj === undefined) return '<span class="badge bg-light text-muted border">null</span>';
+    if (typeof obj !== 'object') return `<span class="fw-medium">${escapeHtml(String(obj))}</span>`;
+
+    // 1. XỬ LÝ MẢNG (ARRAY)
+    if (Array.isArray(obj)) {
+      if (obj.length === 0) return '<span class="text-muted small">[] (Mảng rỗng)</span>';
+
+      // Nếu là mảng giá trị đơn (string, number) -> Dùng badge cho gọn
+      if (typeof obj[0] !== 'object' || obj[0] === null) {
+        return obj.map((v) => `<span class="badge bg-info text-dark border me-1 mb-1 shadow-sm">${A.Lang?.t(v) || escapeHtml(String(v))}</span>`).join('');
+      }
+
+      // Nếu là mảng Object -> Vẽ bảng
+      const keys = Array.from(new Set(obj.flatMap((o) => Object.keys(o || {}))));
+      let html = `<div class="table-responsive bg-white rounded border mt-1 mb-2 shadow-sm">
+                    <table class="table table-sm table-hover table-bordered mb-0" style="font-size: 0.7rem;">`;
+      html += `<thead class="table-light text-nowrap"><tr>${keys.map((k) => `<th class="text-secondary fw-bold">${escapeHtml(k)}</th>`).join('')}</tr></thead><tbody>`;
+      html += obj.map((row) => `<tr>${keys.map((k) => `<td>${this._buildNestedObjectHtml(row[k], depth + 1)}</td>`).join('')}</tr>`).join('');
+      html += `</tbody></table></div>`;
+      return html;
     }
+
+    // 2. XỬ LÝ OBJECT / FIRESTORE MAP
+    const keys = Object.keys(obj);
+    if (keys.length === 0) return '<span class="text-muted small">{} (Object rỗng)</span>';
+
+    // Vẽ layout dạng Tree-Table (Key - Value)
+    let html = `<table class="table table-sm table-borderless mb-0 w-100 ${depth > 0 ? 'border-start border-2 border-primary ms-2' : ''}" style="font-size: 0.7rem;"><tbody>`;
+    keys.forEach((key) => {
+      const val = obj[key];
+      const isComplex = typeof val === 'object' && val !== null;
+
+      html += `
+        <tr class="border-bottom border-light">
+          <th class="text-nowrap fw-bold text-dark align-top pt-2" style="width: 1%; padding-left: 0.5rem; background-color: rgba(0,0,0,0.02);">
+            ${isComplex ? `<i class="fas fa-layer-group text-primary me-2 small"></i>` : `<i class="fas fa-caret-right text-muted me-2 small"></i>`} 
+            ${escapeHtml(val)}
+          </th>
+          <td class="text-break align-middle pt-2 pb-2">
+            ${this._buildNestedObjectHtml(val, depth + 1)}
+          </td>
+        </tr>`;
+    });
+    html += `</tbody></table>`;
+    return html;
   }
 
   /**
-   * Helper: Hiển thị popup chi tiết object
+   * Tối ưu Helper: Cập nhật hàm gọi Modal hiển thị
    */
-  _showObjectPopup(val) {
+  _showObjectPopup(rawData, title = 'Chi tiết dữ liệu', fullItem = null) {
     try {
       if (!window.A?.Modal) {
-        console.warn('[ATable] window.A.Modal not found');
-        alert(JSON.stringify(val, null, 2));
+        alert(JSON.stringify(rawData, null, 2));
         return;
       }
 
-      let rows = '';
-      Object.entries(val).forEach(([key, value]) => {
-        let displayValue = value;
-        if (typeof value === 'object' && value !== null) {
-          displayValue = `<pre class="mb-0 bg-light p-2 rounded" style="font-size: 11px;">${JSON.stringify(value, null, 2)}</pre>`;
-        } else {
-          displayValue = `<span class="fw-medium">${escapeHtml(String(value))}</span>`;
-        }
+      let contentHtml = '';
+      let icon = '<i class="fas fa-database text-primary me-2"></i>';
 
-        rows += `
-          <tr>
-            <th class="bg-light w-30" style="width: 150px;">${key}</th>
-            <td>${displayValue}</td>
-          </tr>`;
-      });
+      // ĐỊNH TUYẾN 1: Nếu là dữ liệu Giá Khách Sạn -> Vẽ Ma trận
+      if (this._isHotelPriceMatrix(rawData)) {
+        icon = '<i class="fas fa-th text-success me-2"></i>';
+        const currentHotelId = fullItem?.info?.hotelId || fullItem?.info?.hotel_id || fullItem?.info?.id || '';
+        let hotel = APP_DATA.hotels[currentHotelId];
+        contentHtml = this._buildMatrixHtml(rawData, hotel);
+        title = `Bảng Giá ${hotel?.name} - ${fullItem?.info?.year}`;
+      }
+      // ĐỊNH TUYẾN 2: Dữ liệu Object/Array lồng nhau thông thường -> Đệ quy
+      else {
+        contentHtml = `
+          <div class="at-nested-viewer rounded overflow-auto" style="max-height: 70vh; background-color: #f8f9fa;">
+            ${this._buildNestedObjectHtml(rawData)}
+          </div>`;
+      }
 
-      const html = `
-        <div class="table-responsive">
-          <table class="table table-bordered align-middle mb-0">
-            <tbody>${rows}</tbody>
-          </table>
-        </div>`;
-
-      A.Modal.render(html, 'Chi tiết dữ liệu', { size: 'modal-sm', footer: false });
+      A.Modal.render(contentHtml, `${icon} Dữ Liệu: ${title.toUpperCase()}`, { size: 'modal-xl', footer: false });
       A.Modal.show();
     } catch (err) {
       console.error('[ATable] _showObjectPopup error:', err);
     }
+  }
+
+  /**
+   * Helper: Nhận diện cấu trúc Matrix Giá Hotel
+   * Cấu trúc chuẩn: { "roomId_rateType": { "periodId_supplierId": { costPrice, sellPrice... } } }
+   */
+  _isHotelPriceMatrix(obj) {
+    try {
+      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
+      const keys1 = Object.keys(obj);
+      if (keys1.length === 0 || !keys1[0].includes('___')) return false;
+
+      const val1 = obj[keys1[0]];
+      if (!val1 || typeof val1 !== 'object') return false;
+
+      const keys2 = Object.keys(val1);
+      if (keys2.length === 0 || !keys2[0].includes('___')) return false;
+
+      const leaf = val1[keys2[0]];
+      // Nếu có 1 trong các key đặc trưng của giá thì xác nhận là Ma trận
+      return leaf && (leaf.costPrice !== undefined || leaf.sellPrice !== undefined || leaf.price !== undefined || leaf.startDate !== undefined);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * Helper: Build giao diện Ma trận bảng giá
+   */
+  _buildMatrixHtml(obj, hotel) {
+    const items = [];
+    const rooms = new Set();
+    const rateTypes = new Set();
+    const periods = new Set();
+    let globalSupplier = 'N/A';
+    const periodData = {}; // Lưu: { periodId: { sDate, eDate } }
+
+    let roomData = hotel?.rooms;
+
+    // 1. Phân tách và san phẳng dữ liệu (Flatten Data)
+    Object.entries(obj).forEach(([key1, val1]) => {
+      // Split by _ and pop the last part in case roomId contains _
+      const parts1 = key1.split('___');
+      const rateType = parts1.pop();
+      const roomId = parts1.join('___');
+
+      rooms.add(roomId);
+      rateTypes.add(rateType);
+
+      if (val1 && typeof val1 === 'object') {
+        Object.entries(val1).forEach(([key2, val2]) => {
+          const parts2 = key2.split('___');
+          const supplierId = parts2.pop();
+          if (globalSupplier === 'N/A') globalSupplier = supplierId;
+          const periodId = parts2.join('___');
+          if (!periodData[periodId]) {
+            periodData[periodId] = {
+              sDate: this._formatShortDate(val2.startDate),
+              eDate: this._formatShortDate(val2.endDate),
+            };
+          }
+          periods.add(periodId);
+          items.push({ roomId, rateType, periodId, supplierId, ...val2 });
+        });
+      }
+    });
+
+    // 2. Logic Trục thông minh: Ưu tiên trải dài CỘT
+    // Ông nào NHIỀU ITEM HƠN sẽ được ưu tiên làm CỘT (để dễ so sánh ngang).
+    // Ông nào ÍT ITEM HƠN sẽ bị đẩy xuống làm Dòng Cha (Group).
+
+    // Mặc định ban đầu: Giai đoạn làm Cột, Gói giá làm Dòng Cha
+    let parentKey = 'rateType';
+    let colKey = 'periodId';
+    let parentSet = rateTypes;
+    let colSet = periods;
+    let parentLabel = 'Gói Giá (Rate Type)';
+    let colLabel = 'Giai Đoạn (Period)';
+
+    // ĐẢO TRỤC: Nếu Gói giá (VD: 7) > Giai đoạn (VD: 1)
+    if (rateTypes.size > periods.size) {
+      parentKey = 'periodId'; // Giai đoạn bị đẩy làm Dòng Cha
+      colKey = 'rateType'; // Gói giá được đẩy lên làm Cột
+      parentSet = periods;
+      colSet = rateTypes;
+      parentLabel = 'Giai Đoạn (Period)';
+      colLabel = 'Gói Giá (Rate Type)';
+    }
+
+    const cols = Array.from(colSet);
+    const parentGroups = Array.from(parentSet);
+    const roomList = Array.from(rooms);
+    const supplierName = APP_DATA.suppliers[globalSupplier]?.name || globalSupplier;
+
+    // 3. Render HTML
+    let html = `<div class="table-responsive bg-white rounded shadow-sm border" style="max-height: 75vh; overflow-y: auto;">
+                  <table class="table table-bordered table-hover table-sm align-middle mb-0 text-nowrap" style="font-size: 0.75rem;">`;
+
+    // HEADER
+    html += `<thead class="table-dark sticky-top" style="z-index: 2;">
+    <tr>
+      <th class="text-center bg-dark text-warning p-2" style="width: 180px; border-right: 2px solid #444;">
+         <div class="small opacity-75">NHÀ CUNG CẤP</div>
+         <div class="fw-bold"><i class="fas fa-handshake"></i> ${supplierName}</div>
+      </th>`;
+    cols.forEach((c) => {
+      // Nếu cột là Period, hiển thị kèm ngày
+      let subTitle = '';
+      if (colKey === 'periodId' && periodData[c]) {
+        subTitle = `<div class="small fw-normal opacity-75">${periodData[c].sDate} - ${periodData[c].eDate}</div>`;
+      }
+      html += `<th class="text-center py-2">
+                <div class="fw-bold">${window.A?.Lang?.t(c) || c}</div>
+                ${subTitle}
+                </th>`;
+    });
+    html += `</tr></thead><tbody>`;
+
+    // BODY
+    parentGroups.forEach((groupVal) => {
+      const displayGroup = window.A?.Lang?.t(groupVal) || groupVal;
+      let groupExtraInfo = '';
+      if (parentKey === 'periodId' && periodData[groupVal]) {
+        groupExtraInfo = ` <span class="badge bg-white text-primary ms-2">${periodData[groupVal].sDate} - ${periodData[groupVal].eDate}</span>`;
+      }
+      // Dòng Cha (Group)
+      html += `<tr class="table-active">
+                 <td colspan="${cols.length + 1}" class="fw-bold text-primary text-uppercase" style="border-top: 2px solid #dee2e6; border-bottom: 2px solid #dee2e6;">
+                   <i class="fas fa-folder-open me-2"></i> ${parentLabel}: <span class="text-danger">${displayGroup}</span>${groupExtraInfo}
+                 </td>
+               </tr>`;
+
+      // Các dòng Con (Room)
+      roomList.forEach((roomVal) => {
+        let hasData = false; // Cờ kiểm tra xem phòng này có data trong group này không
+        const roomObj = Array.isArray(roomData) ? roomData.find((r) => String(r.id) === String(roomVal)) : roomData[roomVal];
+        const displayRoom = roomObj?.name || roomVal;
+
+        let rowHtml = `<tr>
+                         <td class="fw-bold text-start ps-3 bg-light" style="border-right: 2px solid #dee2e6;">
+                           ${displayRoom}
+                         </td>`;
+
+        cols.forEach((colVal) => {
+          // Khớp dữ liệu
+          const match = items.find((i) => i.roomId === roomVal && i[parentKey] === groupVal && i[colKey] === colVal);
+
+          if (match) {
+            hasData = true;
+            // Xử lý format tiền tệ và ngày tháng
+            const cost = typeof formatMoney === 'function' ? formatMoney(match.costPrice) : match.costPrice;
+            const sell = typeof formatMoney === 'function' ? formatMoney(match.sellPrice) : match.sellPrice;
+
+            // Áp dụng format mới
+            // const sDate = formatShortDate(match.startDate);
+            // const eDate = formatShortDate(match.endDate);
+            // const supId = match.supplier || match.supplierId || 'N/A';
+
+            rowHtml += `
+              <td class="text-center" style="min-width: 100px; vertical-align: top;">
+                <div class="d-flex flex-column gap-1 h-100 w-100">
+                  <div class="px-2 py-1 d-flex justify-content-between border-bottom bg-danger bg-opacity-10">
+                    <span class="text-muted small">NET:</span>
+                    <span class="text-danger fw-bold">${cost}</span>
+                  </div>
+                  <div class="px-2 py-1 d-flex justify-content-between bg-success bg-opacity-10">
+                    <span class="text-muted small">BÁN:</span>
+                    <span class="text-success fw-bold">${sell}</span>
+                  </div>
+                </div>
+              </td>`;
+          } else {
+            rowHtml += `<td class="text-center bg-light opacity-50"><i class="fas fa-minus small"></i></td>`;
+          }
+        });
+        rowHtml += `</tr>`;
+
+        // Chỉ in ra dòng nếu phòng này thực sự có giá trong Group này
+        if (hasData) {
+          html += rowHtml;
+        }
+      });
+    });
+
+    html += `</tbody></table></div>`;
+    return html;
+  }
+
+  // Helper format ngày siêu an toàn (nằm gọn bên trong loop)
+  _formatShortDate(dateVal) {
+    if (!dateVal) return '?';
+    const str = String(dateVal); // Ép kiểu số về chuỗi an toàn
+
+    // Bắt định dạng YYYYMMDD (ví dụ: 20260331 -> 31/03)
+    if (str.length === 8 && !isNaN(str)) {
+      return `${str.substring(6, 8)}/${str.substring(4, 6)}`;
+    }
+
+    // Bắt định dạng chuẩn YYYY-MM-DD (2026-03-31 -> 31/03)
+    if (str.includes('-')) {
+      const parts = str.split('T')[0].split('-'); // Loại bỏ giờ nếu có
+      return parts.length === 3 ? `${parts[2]}/${parts[1]}` : str.substring(0, 5);
+    }
+
+    // Các trường hợp khác (DD/MM/YYYY)
+    return str.substring(0, 5);
+  }
+
+  /**
+   * Helper: Quét và dịch ngược chuỗi JSON thành Object/Array một cách an toàn
+   */
+  _tryParseJSON(val) {
+    // Chỉ xử lý nếu là chuỗi, có độ dài hợp lý và có dấu hiệu của JSON
+    if (typeof val === 'string' && val.length >= 2) {
+      const trimmed = val.trim();
+      if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        try {
+          return JSON.parse(trimmed); // Ép kiểu thành Object/Array
+        } catch (e) {
+          return val; // Nếu lỗi parse (JSON fake), trả về chuỗi gốc
+        }
+      }
+    }
+    return val;
   }
 }
