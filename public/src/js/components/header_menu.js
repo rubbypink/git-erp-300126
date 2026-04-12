@@ -341,7 +341,7 @@ export default class ErpHeaderMenu {
                  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
                  width: 260px;
                  padding: 8px 0;
-                 z-index: 1000;
+                 z-index: 1055;
                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                  font-size: 0.85rem;
                  color: var(--erp-menu-text);
@@ -418,7 +418,7 @@ export default class ErpHeaderMenu {
                      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
                      width: 250px;
                      padding: 8px 0;
-                     z-index: 1001;
+                     z-index: 1056;
                  }
                  .erp-submenu:hover > .erp-submenu-content {
                      display: block;

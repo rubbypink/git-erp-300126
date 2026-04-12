@@ -682,7 +682,7 @@ td input.form-control-sm {
 }
 
 #tab-form tbody {
-  overflow-y: auto;
+  overflow: auto;
 }
 
 /* --- 4. TAB Quản Lý Giá --- */
@@ -735,6 +735,7 @@ td input.form-control-sm {
 #detail-tbody {
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+  padding-bottom: 1.5rem;
 }
 
 /* --- 6. CÁC THÀNH PHẦN KHÁC (TABLE, BUTTON...) --- */

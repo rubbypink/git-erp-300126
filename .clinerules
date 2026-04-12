@@ -49,7 +49,7 @@ public/src/js/
 └── libs/                   # Thư viện tiện ích (utils.js, sys_helper.js, db_helper.js)
 ```
 
----
+## public/src/components # Các template html chính của dự án
 
 ## 🔄 DATA FLOW & GATEKEEPER PATTERN
 

@@ -78,6 +78,7 @@ export default class ATable {
     }
     if (CURRENT_USER && CURRENT_USER?.role === 'admin') {
       this.options.editable = true;
+      this.options.draggable = false;
     }
 
     // Đăng ký instance vào registry
