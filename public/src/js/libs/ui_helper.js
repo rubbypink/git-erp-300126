@@ -595,7 +595,7 @@ class FloatDraggable {
     dragStart(e) {
         if (e.target.classList.contains('btn')) return;
         if (e.target !== this.handle && !this.handle.contains(e.target)) return;
-        if (this.target.classList.contains('modal-dialog-centered')) this.target.classList.remove('modal-dialog-centered');
+        // if (this.target.classList.contains('modal-dialog-centered')) this.target.classList.remove('modal-dialog-centered');
         const isTouch = e.type === 'touchstart';
         this.initialX = (isTouch ? e.touches[0].clientX : e.clientX) - this.xOffset;
         this.initialY = (isTouch ? e.touches[0].clientY : e.clientY) - this.yOffset;
@@ -653,21 +653,71 @@ class FloatDraggable {
         document.removeEventListener('touchend', this.dragEnd);
     }
 
-    resetPosition() {
-        const prevTransition = this.target.style.transition;
-        this.target.style.transition = 'transform 0.3s ease-out';
 
-        const rect = this.target.getBoundingClientRect();
-        this.xOffset += window.innerWidth / 2 - (rect.left + rect.width / 2);
-        this.yOffset += window.innerHeight / 2 - (rect.top + rect.height / 2);
-        this.currentX = this.xOffset;
-        this.currentY = this.yOffset;
+    /**
+     * Canh giữa tuyệt đối (Miễn nhiễm với mọi tàn dư của Resizable)
+     */
+    resetPosition(animate = true) {
+        if (!this.target) return;
 
-        this.target.style.transform = `translate3d(${this.xOffset}px, ${this.yOffset}px, 0)`;
+        // 1. BẺ GÃY LỰC CẢN CỦA BOOTSTRAP (Thẻ Cha)
+        this.target.style.margin = '0px';
+        this.target.style.position = 'absolute';
+        this.target.style.left = '0px';
+        this.target.style.top = '0px';
+        this.target.style.maxWidth = 'none'; // ★ QUAN TRỌNG: Mở khóa để thẻ cha có thể ôm trọn thẻ con dù bị kéo to đến đâu
 
-        setTimeout(() => {
-            this.target.style.transition = prevTransition;
-        }, 300);
+        // 2. ĐỊNH VỊ LẠI THẺ CON TRƯỚC KHI ĐO
+        const visualBox = this.target.querySelector('.modal-content') || this.target;
+
+        // ★ BÍ QUYẾT TRIỆT TIÊU LỖI CỦA RESIZE-END:
+        // Gỡ bỏ mọi tọa độ tà đạo mà Resizable có thể đã gán vào thẻ con.
+        // Ép nó khớp 100% với góc 0,0 của thẻ cha (Không ảnh hưởng đến width/height bạn vừa kéo).
+        visualBox.style.left = '0px';
+        visualBox.style.top = '0px';
+        visualBox.style.transform = 'none';
+
+        // 3. ĐO ĐẠC KÍCH THƯỚC THỰC TẾ
+        let modalWidth = visualBox.offsetWidth;
+        let modalHeight = visualBox.offsetHeight;
+
+        // Fallback an toàn nếu trình duyệt chưa kịp vẽ (0 pixel)
+        if (modalWidth === 0) modalWidth = 800;
+        if (modalHeight === 0) modalHeight = 200;
+
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+
+        // 4. CÔNG THỨC TUYỆT ĐỐI
+        let targetX = screenWidth / 2 - modalWidth / 2;
+        let targetY = screenHeight / 2 - modalHeight / 2;
+
+        // --- Ràng buộc an toàn ---
+        if (modalHeight + 40 > screenHeight) targetY = 20;
+        if (targetX < 0) targetX = 0;
+
+        // 5. CẬP NHẬT LẠI DỮ LIỆU ĐỂ ĐỒNG BỘ HOÀN TOÀN
+        this.xOffset = targetX;
+        this.yOffset = targetY;
+        this.currentX = targetX;
+        this.currentY = targetY;
+
+        // 6. THỰC THI DI CHUYỂN
+        requestAnimationFrame(() => {
+            if (animate) {
+                const prevTransition = this.target.style.transition;
+                this.target.style.transition = 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)';
+                this.target.style.transform = `translate3d(${targetX}px, ${targetY}px, 0)`;
+
+                clearTimeout(this._resetTimer);
+                this._resetTimer = setTimeout(() => {
+                    this.target.style.transition = prevTransition || 'none';
+                }, 400);
+            } else {
+                this.target.style.transition = 'none';
+                this.target.style.transform = `translate3d(${targetX}px, ${targetY}px, 0)`;
+            }
+        });
     }
 }
 
@@ -1204,16 +1254,7 @@ class WindowMinimizer {
         this.oldDisplay = window.getComputedStyle(this.target).display;
         const title = this._resolveTitle();
 
-        // 2. Loại bỏ modal-dialog-centered nếu có
-        const modalDialog = this._getModalDialog();
-        if (this.removeCenteredClass && modalDialog) {
-            if (modalDialog.classList.contains('modal-dialog-centered')) {
-                this.hadCenteredClass = true;
-                modalDialog.classList.remove('modal-dialog-centered');
-            }
-        }
-
-        // 3. ★ FIX BACKDROP: Ẩn hoàn toàn cửa sổ, giải phóng Body
+        // 2.★ FIX BACKDROP: Ẩn hoàn toàn cửa sổ, giải phóng Body
         this.target.style.display = 'none';
         this.target.classList.remove('show'); // Gỡ class show
         document.body.classList.remove('modal-open'); // Cho phép cuộn trang chủ
@@ -1228,6 +1269,14 @@ class WindowMinimizer {
                 this.hiddenBackdrops.push(b);
             }
         });
+        // 3. Loại bỏ modal-dialog-centered nếu có
+        const modalDialog = this._getModalDialog();
+        if (this.removeCenteredClass && modalDialog) {
+            if (modalDialog.classList.contains('modal-dialog-centered')) {
+                this.hadCenteredClass = true;
+                modalDialog.classList.remove('modal-dialog-centered');
+            }
+        }
 
         // 4. Tạo nút trong Taskbar
         this.initTaskbar();
@@ -1256,8 +1305,8 @@ class WindowMinimizer {
             'position: absolute',
             'top: -8px',
             'right: -8px',
-            'width: 20px',
-            'height: 20px',
+            'width: 25px',
+            'height: 25px',
             'border-radius: 50%',
             'background: #dc3545',
             'color: #fff',

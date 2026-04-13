@@ -818,10 +818,11 @@ body.dark-theme .chrome-trigger-btn:focus {
 .modal-content {
     /* Giữ !important để đè style mặc định của Bootstrap modal-body */
     flex: 1 1 auto !important;
-    overflow-y: auto; /* Tự động hiện thanh cuộn nếu bạn thu nhỏ quá */
+    overflow: auto; /* Tự động hiện thanh cuộn nếu bạn thu nhỏ quá */
     -webkit-overflow-scrolling: touch;
     min-height: 0; /* Fix lỗi flexbox trên một số trình duyệt Safari/cũ */
     max-height: 100vh;
+    max-width: 100vw;
 }
 
 /* 3. (Tùy chọn) Nếu bảng của bạn nằm trong body, ép nó cao 100% */

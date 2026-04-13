@@ -420,13 +420,16 @@ class DynamicModal {
 
         const modalHTML = `
             <div id="${id}" class="modal fade" tabindex="-1" data-bs-backdrop="false">
-                <div class="modal-dialog modal-dialog-centered" style="padding-bottom: 5rem;">
+                <div class="modal-dialog" style="padding-bottom: 5rem;">
                     <div class="modal-content shadow-lg border-0">
                         <div class="modal-header bg-gradient py-2">
                             <h6 class="modal-title fw-bold text-uppercase" style="letter-spacing: 1px; justify-self: center;">
                                 <i class="fa-solid fa-sliders me-2"></i>Modal Title
                             </h6>
                             <div class="btn-group gap-2">
+                                <button class="btn btn-sm btn-link text-dark btn-center px-1" title="Canh giữa màn hình">
+                                    <i class="fa-solid fa-crosshairs"></i>
+                                </button>
                                 <button class="btn btn-sm btn-link text-dark btn-minimize px-1" title="Minimize"><i class="fa-solid fa-minus"></i></button>
                                 <button class="btn btn-sm btn-link text-dark btn-fullscreen px-1" title="Fullscreen"><i class="fa-solid fa-expand"></i></button>
                                 <button type="button" class="btn btn-sm btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -475,7 +478,6 @@ class DynamicModal {
                 };
             }
 
-            this._initEscListener(id);
             if (typeof FloatDraggable !== 'undefined') node.draggable = new FloatDraggable(el, { targetSelector: '.modal-dialog', handleSelector: '.modal-header' });
             if (typeof Resizable !== 'undefined') new Resizable(el, { targetSelector: '.modal-content', minWidth: 400, minHeight: 300 });
             if (typeof WindowMinimizer !== 'undefined') node.minimizer = new WindowMinimizer(el, { title: null, btnSelector: '.btn-minimize' });
@@ -485,8 +487,13 @@ class DynamicModal {
                 if (document.activeElement) document.activeElement.blur();
                 this._handleHidden(id);
             });
+            el.addEventListener('shown.bs.modal', () => {
+                this._initEscListener(id);
+                this.adaptAndCenter(id);
+            });
 
             this._setupFullscreenButton(id);
+            this._setupCenterButton(id);
         }
         return node.instance;
     }
@@ -765,6 +772,19 @@ class DynamicModal {
         const dialog = el.querySelector('.modal-dialog');
         if (!btn || !dialog) return;
 
+        // ★ MỚI VỪA MỞ LÊN -> CANH GIỮA (Không animate để hiện ra là đứng ngay giữa luôn)
+        el.addEventListener(
+            'shown.bs.modal',
+            () => {
+                if (!node.fullscreen && !dialog.classList.contains('modal-fullscreen')) {
+                    if (node.draggable && typeof node.draggable.resetPosition === 'function') {
+                        node.draggable.resetPosition(false);
+                    }
+                }
+            },
+            { once: true }
+        );
+
         if (node.fullscreenHandler) btn.removeEventListener('click', node.fullscreenHandler);
 
         node.fullscreenHandler = () => {
@@ -793,6 +813,59 @@ class DynamicModal {
             }
         };
         btn.addEventListener('click', node.fullscreenHandler);
+    }
+
+    // Thêm hàm này vào AModal
+    _setupCenterButton(id) {
+        const el = this._getEl(id);
+        const node = this.#getNode(id);
+        if (!el || !node) return;
+
+        const btn = el.querySelector('.btn-center');
+        const dialog = el.querySelector('.modal-dialog');
+        if (!btn || !dialog) return;
+
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            // Nếu Modal đang Fullscreen thì nút này không có tác dụng
+            if (dialog.classList.contains('modal-fullscreen')) return;
+
+            // Gọi Draggable trượt nhẹ nhàng về giữa
+            if (node.draggable && typeof node.draggable.resetPosition === 'function') {
+                this.adaptAndCenter(id);
+            }
+        });
+    }
+    /**
+     * Tự động co giãn Modal theo nội dung và đưa về giữa
+     */
+    adaptAndCenter(id) {
+        const el = this._getEl(id);
+        const node = this.#getNode(id);
+        if (!el || !node) return;
+
+        const dialog = el.querySelector('.modal-dialog');
+        const content = el.querySelector('.modal-content');
+        const body = this._getBody(id);
+
+        if (!dialog || !content || !body) return;
+
+        // 1. Gỡ bỏ giới hạn tạm thời để đo kích thước thật
+        content.style.height = 'auto';
+
+        // 2. Đo kích thước "ngầm" của nội dung (scrollHeight)
+        const idealHeight = content.scrollHeight;
+        const maxHeight = window.innerHeight * 0.9; // Giới hạn 90% màn hình
+
+        // 3. Áp dụng kích thước mới (Co giãn thông minh)
+        const finalHeight = Math.min(idealHeight, maxHeight);
+        content.style.height = `${finalHeight}px`;
+
+        // 4. Gọi hàm thần thánh của bạn để đưa nó về tâm màn hình
+        if (node.draggable && typeof node.draggable.resetPosition === 'function') {
+            // Gọi trượt mượt mà vì đây là thay đổi kích thước lúc đang làm việc
+            node.draggable.resetPosition(true);
+        }
     }
 
     _resetToDefaults(id) {
