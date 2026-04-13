@@ -423,6 +423,7 @@ class FormLogic {
 // PHẦN 3: MAIN CONTROLLER (Updated v3.2)
 // =============================================================================
 class AdminController {
+    static autoInit = true;
     constructor() {
         this.collections = [
             { name: '📦 Booking', path: 'bookings', type: 'MATRIX' },
@@ -457,8 +458,8 @@ class AdminController {
         this.selectedCollectionIndex = null;
         this.migration = AT.migrationHelper;
         this._initialized = false;
+        this.temp = null;
     }
-    static autoInit = false;
 
     async init() {
         if (this._initialized) {
@@ -467,38 +468,43 @@ class AdminController {
         }
         this._initialized = true;
 
-        let modal = A.ModalFull || document.querySelector('at-modal-full');
-        if (!modal) {
-            const newmodal = document.createElement('at-modal-full');
-            document.body.appendChild(newmodal);
-            modal = newmodal;
-        }
+        // let modalEl = A.Modal?.getEl() || getE('dynamic-modal');
+        // if (!modalEl) {
+        //     Opps('❌ Không tìm thấy Modal thật bạn đã khởi tạo.');
+        //     return;
+        // }
         const html = await this._getLayout();
-        modal.render(html, 'Admin Console (v3.2 Full Fix)');
-        await this.initSettingsTab();
-        this._bindEvents();
-        this.modal = modal;
+
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+
+        // 3. Tạo Fragment để chứa kết quả
+        const contentFragment = document.createDocumentFragment();
+
+        // 4. Chuyển TOÀN BỘ nội dung từ tempDiv sang Fragment
+        // Cách này sẽ giữ nguyên mọi thứ: div, span, và cả thẻ <template>
+        while (tempDiv.firstChild) {
+            contentFragment.appendChild(tempDiv.firstChild);
+        }
+        this.temp = contentFragment.cloneNode(true);
+        this.modal = A.Modal;
     }
 
     async _getLayout() {
         const opts = this.collections.map((c, i) => `<option value="${i}">${c.name}</option>`).join('');
 
         // Gọi Fetch lấy file HTML
-        const response = await A.UI.HELP.loadHtmlFile('./src/components/tpl_admin_settings.html');
+        const response = await A.UI.HELP.loadHtmlFile('./src/components/tpl_admin_settings.html', false);
 
         // Kiểm tra nếu đường dẫn sai (báo lỗi 404)
         if (!response) {
             throw new Error(`Lỗi mạng: ${response?.status} - Không tìm thấy file template!`);
         }
-
-        // GIẢI MÃ: Biến response thành chuỗi Text HTML
-        const htmlText = response;
-
-        return htmlText.replace('<!-- SELECT_COLLECTION_OPTIONS_PLACEHOLDER -->', opts);
+        return response;
     }
 
     _bindEvents() {
-        const db = getFirestore(getApp());
+        const db = A.DB.db;
         const select = document.getElementById('adm-select');
         const inputPath = document.getElementById('adm-input-path');
         const btnFetch = document.getElementById('adm-btn-fetch');
@@ -789,13 +795,14 @@ class AdminController {
      */
     async openAdminSettings() {
         try {
-            if (this._initialized && this.modal) {
+            if (this._initialized) {
                 // Nếu đã khởi tạo rồi, chỉ cần mở modal và reload config
-
-                await this.modal.render(await this._getLayout(), 'Admin Console (v3.2 Full)');
+                const content = this.temp;
+                await A.Modal.render(content, 'Admin Console (v3.2 Full)', { size: 'modal-fullscreen' });
+                A.Modal.show();
                 await this.initSettingsTab();
                 this._bindEvents();
-                this.modal.show();
+
                 // Reload config từ Firestore lên form
                 await A._syncConfigToForm();
 
@@ -804,8 +811,8 @@ class AdminController {
                 // Chưa khởi tạo, gọi init để tải HTML và bind sự kiện
                 this._initialized = false; // Đảm bảo init sẽ chạy
                 await this.init();
-                if (this.modal) {
-                    this.modal.show();
+                if (A.Modal) {
+                    A.Modal.show();
                     // Tải config từ Firestore lên form
                     await A._syncConfigToForm();
                 }

@@ -42,6 +42,7 @@ export const ChromeMenuController = {
     triggerId: 'erp-menu-trigger',
     actionsRegistry: {}, // Kho chứa các hàm gọi an toàn
     fn: MenuUtils,
+    initialized: false,
 
     // Khung dữ liệu Menu mặc định
     config: [
@@ -96,7 +97,7 @@ export const ChromeMenuController = {
             type: 'item',
             label: 'Cập Nhật List',
             icon: 'fa-solid fa-list-check text-success',
-            actionCode: "if(typeof A.AdminConsole.showUpdateListModal === 'function') A.AdminConsole.showUpdateListModal()",
+            actionCode: 'A.AdminConsole.showUpdateListModal()',
         },
         {
             type: 'item',
@@ -140,7 +141,7 @@ export const ChromeMenuController = {
                     type: 'item',
                     label: 'QL Cấu Hình',
                     icon: 'fa-solid fa-cog text-warning',
-                    actionCode: "if(typeof A.AdminConsole.openAdminSettings === 'function') A.AdminConsole.openAdminSettings()",
+                    actionCode: 'A.AdminConsole.openAdminSettings()',
                 },
                 {
                     type: 'item',
@@ -154,14 +155,15 @@ export const ChromeMenuController = {
 
     // Khởi chạy hệ thống
     init: async function () {
-        if (this._initialized) return; // Ngăn init lại nếu đã chạy
+        if (this.initialized) return; // Ngăn init lại nếu đã chạy
         try {
             this.normalizeConfig(this.config);
             await this.renderMenuAsync(this.config);
             this.bindEvents();
             this._updateMenu();
+
             AUTH_MANAGER.updateUserMenu();
-            this._initialized = true;
+            this.initialized = true;
         } catch (error) {
             console.error('[ERP Menu Error] Init failed:', error);
         }

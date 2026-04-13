@@ -1,6 +1,5 @@
-import { createFormBySchema, loadFormDataSchema, DB_SCHEMA } from '/src/js/modules/db/DBSchema.js';
-import PriceImportAI from '../prices/M_ImportPriceAI.js';
-import ATable from './ATable.js';
+import { createFormBySchema, loadFormDataSchema } from '/src/js/modules/db/DBSchema.js';
+// import ATable from './ATable.js';
 const _viCollator = new Intl.Collator('vi', { numeric: true, sensitivity: 'base' });
 const _numRegex = /[^0-9.-]+/g;
 var _htmlCache = {};
@@ -9,27 +8,32 @@ const UI_RENDERER = {
     currentSaveHandler: null,
     COMPONENT_PATH: '/src/components/',
     htmlCache: {},
+    table: null,
     // ✅ Cache để tránh fetch lặp lại
 
     // Render Dashboard & Load Data
-    init: async function (moduleManager) {
+    init: async function () {
         await Promise.all([]);
         const user = A.getState('user');
         const role = user ? user.role : CURRENT_USER.role;
         L._('UI: User Role:', role);
         if (!['acc', 'acc_thenice', 'ketoan'].includes(role)) {
-            const [headerModule, chromeMenu, footerModule] = await Promise.all([moduleManager.loadModule('ErpHeaderMenu'), moduleManager.loadModule('ChromeMenuController', false), moduleManager.loadModule('ErpFooterMenu'), this.renderTemplate('body', 'tpl_all.html', true, '.app-container')]);
-            if (headerModule) new headerModule();
-            A.call('ChromeMenuController', 'init', role);
-            const mainErpFooter = new footerModule('erp-main-footer');
-            mainErpFooter.init();
+            const [headerModule, footerModule] = await Promise.all([A.load('ErpHeaderMenu'), A.load('ErpFooterMenu'), this.renderTemplate('body', 'tpl_all.html', true, '.app-container')]);
+            // if (headerModule && !headerModule.initialized) new headerModule();
+            // const mainErpFooter = new footerModule('erp-main-footer');
+            // mainErpFooter.init();
         } else {
-            const [headerModule, chromeMenu] = await Promise.all([moduleManager.loadModule('ErpHeaderMenu'), moduleManager.loadModule('ChromeMenuController', false), this.renderTemplate('body', 'tpl_all.html', true, '.app-container')]);
-            if (headerModule) new headerModule();
-            A.call('ChromeMenuController', 'init', role);
+            const [headerModule, chromeMenu] = await Promise.all([A.load('ErpHeaderMenu'), this.renderTemplate('body', 'tpl_all.html', true, '.app-container')]);
+            // if (headerModule && !headerModule.initialized) new headerModule();
         }
 
         L._('[UI MODULE]✅ UI Initialization completed.');
+        if (A.AdminConsole && CURRENT_USER.role === 'admin') {
+            await A.AdminConsole.init();
+        } else if (CURRENT_USER.role === 'admin') {
+            await A.load('AdminConsole');
+            await A.AdminConsole.init();
+        }
     },
 
     renderMainLayout: async function (source = 'main_layout.html', containerSelector = '#main-app') {
@@ -699,12 +703,13 @@ const UI_RENDERER = {
      * @param {Object} opts - Tùy chọn: { mode: 'replace', colName: '', contextMenu: false, pageSize: 25, sorter: false, fs: 14, header: false, title: '', footer: false, groupBy: false }
      */
 
-    createTable: function (containerId, opts = {}) {
+    createTable: async function (containerId, opts = {}) {
         try {
             if (CURRENT_USER.role === 'admin') {
                 opts.hiddenField = true;
             }
-            const table = new ATable(containerId, opts);
+            if (!this.table) this.table = (await import('./ATable.js')).default;
+            new this.table(containerId, opts);
         } catch (error) {
             Opps(`[UI_RENDERER] createTable lỗi: ${error.message}`, error);
         }
@@ -1170,7 +1175,10 @@ const UI_HELP = {
      * @returns {Promise<string>} - HTML content
      */
     loadHtmlFile: async (url, options = {}) => {
-        const { useCache = true, timeout = 5000, retry = 1, containerId = null } = options;
+        let useCache = options === false || !options?.useCache ? false : true;
+        let timeout = options?.timeout ?? 5000;
+        let retry = options?.retry ?? 1;
+        let containerId = options?.containerId ?? null;
 
         return new Promise((resolve, reject) => {
             let finalSourcePath = url;
@@ -1212,9 +1220,20 @@ const UI_HELP = {
                         if (!response.ok) {
                             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                         }
+
                         return response.text();
                     })
                     .then((html) => {
+                        const isIndexFallback = html.includes('id="app-launcher"') || html.includes('id="main-app"') || (html.includes('<!DOCTYPE html>') && !html.includes('<template') && !html.includes('tpl-'));
+
+                        if (isIndexFallback) {
+                            throw new Error(`Fallback index.html (SPA) thay vì template component: ${finalSourcePath}`);
+                        }
+
+                        // 1d. Xác nhận nội dung không rỗng
+                        if (!html.trim()) {
+                            throw new Error(`File trống: ${finalSourcePath}`);
+                        }
                         // ✅ CACHE RESULT
                         if (useCache) {
                             _htmlCache[finalSourcePath] = html;

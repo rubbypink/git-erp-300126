@@ -38,7 +38,6 @@ const AUTH_MANAGER = {
                     console.warn(`⚠️ clearPersistence thất bại: [${err.code}] ${err.message}`);
                 }
             }
-            const db = getFirestore(this.app);
             // THÊM ĐOẠN NÀY: Tự động trỏ vào Emulator nếu chạy trên localhost
             if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
                 try {

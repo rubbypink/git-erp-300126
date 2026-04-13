@@ -4,7 +4,7 @@
  * Cơ chế: Tự động dàn layout Desktop/Mobile và ẩn/hiện element theo Role.
  */
 export default class ErpHeaderMenu {
-    static autoInit = false;
+    static initialized = false;
     static _injectedStyles = false;
     constructor(containerId = 'nav-container') {
         this.containerId = containerId;
@@ -31,6 +31,9 @@ export default class ErpHeaderMenu {
                 this.currentRole = A.getState('user') ? A.getState('user').role : CURRENT_USER.role || 'sale';
                 this._applyRoleFilters(); // Chỉ chạy CSS filter sau khi đã có Role
             }
+            const chromeMenu = await A.load('ChromeMenuController', false);
+            await chromeMenu.init();
+            ErpHeaderMenu.initialized = true;
         } catch (error) {
             console.error('[9 Trip ERP] Lỗi khởi tạo Header Menu:', error);
         }
@@ -115,7 +118,7 @@ export default class ErpHeaderMenu {
                 }
                 
                 /* Tối ưu dropdown menu trên mobile để dễ touch (chạm) */
-                .erp-mobile-dropdown-menu, .erp-header .dropdown-menu {
+                .erp-mobile-dropdown-menu {
                     width: 20rem;
                     background-color: var(--surface-color);
                     color: var(--text-color);
@@ -125,7 +128,7 @@ export default class ErpHeaderMenu {
                     border: none;
                     border-radius: 8px;
                 }
-                .erp-mobile-dropdown-menu .dropdown-item, .erp-header .dropdown-menu .dropdown-item {
+                .erp-mobile-dropdown-menu .dropdown-item {
                     padding: 12px 20px;
                     color: var(--text-color);
                     border-bottom: 1px solid #f8f9fa;
@@ -198,7 +201,7 @@ export default class ErpHeaderMenu {
 
                     <div class="erp-desktop-tabs d-none d-lg-flex align-items-center flex-grow-1 px-3">
                         ${this._getNavTabsHTML()}
-                        <h5 id="module-title" class="m-0 fw-bold text-uppercase text-white ms-auto d-none d-xl-block" style="letter-spacing: 1px; font-size: 1.1rem;">
+                        <h5 id="module-title" class="m-0 fw-bold text-uppercase ms-auto d-none d-xl-block" style="letter-spacing: 1px; font-size: 1.1rem;">
                             ADMIN MANAGEMENT
                         </h5>
                     </div>
@@ -254,21 +257,21 @@ export default class ErpHeaderMenu {
         return `
             <ul class="nav nav-tabs border-0" id="mainTabs" role="tablist">
                 <li class="nav-item">
-                    <button class="nav-link active fw-bold border-0 bg-transparent text-white" data-bs-target="#tab-dashboard" onclick="A.UI.activateTab('tab-dashboard')">
+                    <button class="nav-link active fw-bold border-0 bg-transparent" data-bs-target="#tab-dashboard" onclick="A.UI.activateTab('tab-dashboard')">
                         <i class="fa-solid fa-chart-line text-warning"></i> Dashboard
                     </button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link border-0 bg-transparent text-white-50 main-tabs-btn" data-bs-target="#tab-form" onclick="A.UI.activateTab('tab-form')">Booking</button>
+                    <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-target="#tab-form" onclick="A.UI.activateTab('tab-form')">Booking</button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link border-0 bg-transparent text-white-50 main-tabs-btn" data-bs-target="#tab-data-tbl" onclick="A.UI.activateTab('tab-data-tbl')">Bảng Data</button>
+                    <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-target="#tab-data-tbl" onclick="A.UI.activateTab('tab-data-tbl')">Bảng Data</button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link border-0 bg-transparent text-white-50 main-tabs-btn" data-bs-target="#tab-tour-price" onclick="A.UI.activateTab('tab-tour-price')">Bảng Giá</button>
+                    <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-target="#tab-tour-price" onclick="A.UI.activateTab('tab-tour-price')">Bảng Giá</button>
                 </li>                
                 <li class="nav-item op-only">
-                    <button class="nav-link border-0 bg-transparent text-white-50 main-tabs-btn" data-bs-target="#tab-price-pkg" onclick="A.UI.activateTab('tab-price-pkg')">Quản Lý Giá</button>
+                    <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-target="#tab-price-pkg" onclick="A.UI.activateTab('tab-price-pkg')">Quản Lý Giá</button>
                 </li>
                 <li class="nav-item admin-only">
                     <button class="nav-link text-warning border-0 bg-transparent main-tabs-btn" data-bs-target="#tab-admin-dashboard" onclick="A.UI.activateTab('tab-admin-dashboard')">

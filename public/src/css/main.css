@@ -40,6 +40,8 @@
     --text-secondary: #3b4450; /* Xám tối - Văn bản phụ (contrast ≥4.5:1) */
     --border-color: #afb8c4; /* Xám sáng - Border */
     --surface-color: #f7f7f7; /* Trắng - Card/Modal */
+    --popup-bg: #2b2a2a; /* Trắng - Popup */
+    --popup-text: #e7e7e7; /* Sáng - Popup */
     --hover-bg: #eaeaeb; /* Xám siêu nhạt - Hover */
     --input-bg: #e4e4e4; /* Trắng - Input background */
     --success-color: #10b981; /* Xanh lá - Thành công */
@@ -81,6 +83,8 @@
         --text-secondary: #8e9aaa; /* Xám sáng - Văn bản phụ (contrast ≥4.5:1 on dark bg) */
         --border-color: #334155; /* Xám tối - Border */
         --surface-color: #2d4c7c; /* Xanh đen - Card/Modal */
+        --popup-bg: #e4e4e4; /* Trắng - Popup */
+        --popup-text: #080808; /* Sáng - Popup */
         --hover-bg: #334155; /* Xám tối - Hover */
         --input-bg: #1e293b; /* Xanh đen - Input background */
         --success-color: #4ade80; /* Xanh lá sáng - Thành công */
@@ -243,8 +247,8 @@ select.form-select {
 /* --- DROPDOWN & MENU --- */
 .dropdown-menu {
     /* Giữ !important cho các thuộc tính quan trọng của dropdown để đè Bootstrap popper */
-    background-color: var(--surface-color);
-    color: var(--text-color) !important;
+    background-color: var(--popup-bg);
+    color: var(--popup-text) !important;
     border: 0.0625rem solid var(--border-color);
     border-radius: 0.375rem !important;
     padding: 0.375rem 0;
@@ -259,7 +263,7 @@ select.form-select {
 }
 
 .dropdown-item {
-    color: var(--text-color);
+    color: var(--popup-text);
     padding: 0.25rem 0.5rem;
     font-size: 0.65rem;
     font-weight: 500 !important;
@@ -817,6 +821,7 @@ body.dark-theme .chrome-trigger-btn:focus {
     overflow-y: auto; /* Tự động hiện thanh cuộn nếu bạn thu nhỏ quá */
     -webkit-overflow-scrolling: touch;
     min-height: 0; /* Fix lỗi flexbox trên một số trình duyệt Safari/cũ */
+    max-height: 100vh;
 }
 
 /* 3. (Tùy chọn) Nếu bảng của bạn nằm trong body, ép nó cao 100% */

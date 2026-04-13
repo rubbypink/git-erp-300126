@@ -6,6 +6,7 @@ import ATable from './core/ATable.js';
  * Tối ưu hóa: Sử dụng ATable cho bảng dữ liệu, Mobile Responsive, Clean Code.
  */
 class ReportModule {
+    static autoInit = false;
     constructor() {
         this.state = {
             data: {
@@ -17,12 +18,12 @@ class ReportModule {
             syncErrorsForFix: [],
             charts: { main: null, pie: null },
         };
-        this.table = null;
-        this.autoInit = false;
         this._initialized = false;
         this.FMT = new Intl.NumberFormat('vi-VN');
         this.CHART_CDN = 'https://cdn.jsdelivr.net/npm/chart.js';
     }
+
+    table = null;
 
     /**
      * Khởi tạo Module
@@ -251,8 +252,7 @@ class ReportModule {
         this._renderLineChart(Object.keys(revenueByDate).sort(), Object.values(revenueByDate), 'Doanh thu ngày');
 
         // Render ATable
-        if (!this.table) this._initTable({ colName: 'report_sales_general', header: true, data: data });
-        else this.table.init(data, 'report_sales_general');
+        this._initTable({ colName: 'report_sales_general', header: true, data: data });
     }
 
     _processSalesServices() {
@@ -284,8 +284,7 @@ class ReportModule {
         );
 
         // Render ATable
-        if (!this.table) this._initTable({ colName: 'report_sales_services', header: true, data: sorted });
-        else this.table.init(sorted, 'report_sales_services');
+        this._initTable({ colName: 'report_sales_services', header: true, data: sorted });
     }
 
     _processSalesMatrixStaff() {
@@ -336,8 +335,7 @@ class ReportModule {
             rowData['TỔNG CỘNG'] = rowTotal;
             return rowData;
         });
-        if (!this.table) this._initTable({ colName: '', header: true, data: rows });
-        else this.table.init(rows);
+        this._initTable({ colName: '', header: true, data: rows });
     }
 
     _processOperatorGeneral() {
@@ -363,8 +361,7 @@ class ReportModule {
         );
 
         // Sử dụng schema gốc operator_entries
-        if (!this.table) this._initTable({ colName: 'operator_entries', header: true, data: ops });
-        else this.table.init(ops, 'operator_entries');
+        this._initTable({ colName: 'operator_entries', header: true, data: ops });
     }
 
     _processOperatorDebtDetail() {
@@ -383,10 +380,7 @@ class ReportModule {
                 debt_display: debt > 0 ? this.FMT.format(debt) : '0',
             };
         });
-        if (!this.table) this._initTable({ colName: 'report_op_debt_detail', groupBy: true, groupByField: 'supplier', header: true, data: data });
-        else this.table.init(data, 'report_op_debt_detail');
-        this._initTable({ colName: 'report_op_debt_detail', groupBy: true, groupByField: 'supplier', header: true });
-        this.table.init(data);
+        this._initTable({ colName: 'report_op_debt_detail', groupBy: true, groupByField: 'supplier', header: true, data: data });
     }
 
     _processFinancialGeneral() {
@@ -418,8 +412,7 @@ class ReportModule {
                 margin: m + '%',
             };
         });
-        if (!this.table) this._initTable({ colName: 'report_fin_general', header: true, data: data });
-        else this.table.init(data, 'report_fin_general');
+        this._initTable({ colName: 'report_fin_general', header: true, data: data });
     }
 
     _processFinancialByType() {
@@ -464,8 +457,7 @@ class ReportModule {
             sorted.map((s) => s.profit),
             'Lợi nhuận theo Loại DV'
         );
-        if (!this.table) this._initTable({ colName: '', header: true, data: sorted });
-        else this.table.init(sorted);
+        this._initTable({ colName: '', header: true, data: sorted });
     }
 
     // --- ERROR REPORTS ---
@@ -498,8 +490,7 @@ class ReportModule {
                 status: bk.status,
             };
         });
-        if (!this.table) this._initTable({ colName: '', header: true, data: data });
-        else this.table.init(data);
+        this._initTable({ colName: '', header: true, data: data });
     }
 
     _processErrorSyncSalesAccounting() {
@@ -549,7 +540,7 @@ class ReportModule {
 
         this.state.syncErrorsForFix = syncErrors;
         this._initTable({ colName: 'report_error_sync_sa', header: true });
-        this.table.init(syncErrors.sort((a, b) => b.diff - a.diff));
+        this.table?.init(syncErrors.sort((a, b) => b.diff - a.diff));
 
         // Thêm nút Fix Data vào footer nếu có lỗi
         if (syncErrors.length > 0) {
@@ -581,8 +572,7 @@ class ReportModule {
 
         this._updateKPI('Chi Tiết Lỗi', errors.length, '', 'ID Trống', errors.filter((d) => !d.booking_id).length, '', 'ID Không Tồn Tại', errors.filter((d) => d.booking_id && !validBkIds.has(d.booking_id)).length, '', 'Chi Tiết Đúng', details.length - errors.length, '');
 
-        this._initTable({ colName: 'report_error_booking_details', header: true });
-        this.table.init(errors);
+        this._initTable({ data: errors, colName: 'report_error_booking_details', header: true });
     }
 
     _processErrorSyncSalesOperator() {
@@ -602,8 +592,7 @@ class ReportModule {
 
         this._updateKPI('Chi Tiết Cần O/E', details.length, '', 'Chi Tiết Lỗi', errors.length, '', 'Đã O/E', details.length - errors.length, '', 'O/E Có', operators.length, '');
 
-        this._initTable({ colName: 'report_error_sync_so', header: true });
-        this.table.init(errors);
+        this._initTable({ data: errors, colName: 'report_error_sync_so', header: true });
     }
 
     _processErrorCancelledBooking() {
@@ -619,8 +608,7 @@ class ReportModule {
         this._updateKPI('Booking Hủy Lỗi', cancelledErrors.length, '', 'Tổng Tiền Chưa Xóa', totalAmountNotZeroed, 'VND', 'BK Hủy Đúng', this.state.data.bookings.filter((bk) => (bk.status || '').includes('Hủy') && (Number(bk.total_amount) || 0) === 0).length, '', 'Tổng BK Hủy', this.state.data.bookings.filter((bk) => (bk.status || '').includes('Hủy')).length, '');
 
         this.state.syncErrorsForFix = cancelledErrors;
-        this._initTable({ colName: 'report_error_cancelled_booking', header: true });
-        this.table.init(cancelledErrors);
+        this._initTable({ data: cancelledErrors, colName: 'report_error_cancelled_booking', header: true });
 
         if (cancelledErrors.length > 0) {
             setTimeout(() => {

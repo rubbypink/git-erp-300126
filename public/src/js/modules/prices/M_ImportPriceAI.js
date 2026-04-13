@@ -12,81 +12,77 @@ import { getApp } from 'firebase/app';
 import ATable from '../core/ATable.js';
 
 export default class PriceImportAI {
-  constructor(cdm = null) {
-    this.containerId = null;
-    this.extractedData = []; // Lưu trữ dữ liệu items (bảng giá)
-    this.metadata = {}; // Lưu thông tin metadata (Năm, NCC)
-    this.hotelInfo = null; // Lưu thông tin khách sạn bóc tách được (nếu có)
+    constructor(cdm = null) {
+        this.containerId = null;
+        this.extractedData = []; // Lưu trữ dữ liệu items (bảng giá)
+        this.metadata = {}; // Lưu thông tin metadata (Năm, NCC)
+        this.hotelInfo = null; // Lưu thông tin khách sạn bóc tách được (nếu có)
 
-    this.currentImportType = 'hotel_price'; // Default
-    this.cdm = cdm; // Centralized Data Manager (PriceManager)
-    this.table = null;
-    this.storeName = 'ai_prices';
-  }
-
-  /**
-   * Khởi tạo Module. Tự động tìm container và render.
-   */
-  async init(containerId) {
-    try {
-      if (!this.containerId) this.containerId = containerId || 'tab-price-pkg';
-      const container = getE(this.containerId);
-      if (!container) {
-        L._(`[PriceImportAI] Không tìm thấy phần tử #${this.containerId}. Bỏ qua khởi tạo.`, null, 'warning');
-        return;
-      }
-
-      // Render bộ khung UI (Action Bar + Hotel Info Form + Data Grid)
-      container.innerHTML = this._buildUI();
-
-      // Gắn các sự kiện (Event Listeners)
-      this._attachEvents(container);
-
-      // Cập nhật danh sách lịch sử
-      await this._updateHistorySelect(container);
-
-      L._(`[PriceImportAI] Khởi tạo thành công tại #${this.containerId}`);
-    } catch (error) {
-      Opps('[PriceImportAI] init error:', error);
+        this.currentImportType = 'hotel_price'; // Default
+        this.cdm = cdm; // Centralized Data Manager (PriceManager)
+        this.table = null;
+        this.storeName = 'ai_prices';
     }
-  }
 
-  /**
-   * Hiển thị Modal Import AI (Sử dụng khi gọi từ nút ngoài)
-   * @param {string} type - 'hotel_price' | 'service_price'
-   */
-  async showImportModal(type = 'hotel_price') {
-    try {
-      this.currentImportType = type;
-      const htmlContent = this._buildUI();
+    /**
+     * Khởi tạo Module. Tự động tìm container và render.
+     */
+    async init(containerId) {
+        try {
+            if (!this.containerId) this.containerId = containerId || 'tab-price-pkg';
+            const container = getE(this.containerId);
+            if (!container) {
+                L._(`[PriceImportAI] Không tìm thấy phần tử #${this.containerId}. Bỏ qua khởi tạo.`, null, 'warning');
+                return;
+            }
 
-      if (A.Modal) {
-        await A.Modal.render(htmlContent, 'AI Import - Trích xuất bảng giá', { size: 'modal-xl' });
-        A.Modal.show();
-      } else {
-        const modal = A.Modal._getInstance();
-        modal.show(htmlContent, 'AI Import - Trích xuất bảng giá');
-      }
+            // Render bộ khung UI (Action Bar + Hotel Info Form + Data Grid)
+            container.innerHTML = this._buildUI();
 
-      const modalEl = A.Modal._getEl();
-      if (modalEl) {
-        modalEl.querySelector('#ai-import-type').value = type;
-        await this._updateHistorySelect(modalEl);
-        this._attachEvents(modalEl);
-      }
-      this.modal = A.Modal._getInstance();
-    } catch (error) {
-      Opps('[PriceImportAI] Lỗi khi hiển thị Modal:', error);
+            // Gắn các sự kiện (Event Listeners)
+            this._attachEvents(container);
+
+            // Cập nhật danh sách lịch sử
+            await this._updateHistorySelect(container);
+
+            L._(`[PriceImportAI] Khởi tạo thành công tại #${this.containerId}`);
+        } catch (error) {
+            Opps('[PriceImportAI] init error:', error);
+        }
     }
-  }
 
-  /**
-   * Dựng UI bằng Bootstrap. Đảm bảo Mobile First.
-   * Chú ý: Có thêm vùng chứa #ai-hotel-info-container
-   * @private
-   */
-  _buildUI() {
-    return `
+    /**
+     * Hiển thị Modal Import AI (Sử dụng khi gọi từ nút ngoài)
+     * @param {string} type - 'hotel_price' | 'service_price'
+     */
+    async showImportModal(type = 'hotel_price') {
+        try {
+            this.currentImportType = type;
+            const htmlContent = this._buildUI();
+
+            if (A.Modal) {
+                await A.Modal.render(htmlContent, 'AI Import - Trích xuất bảng giá', { size: 'modal-xl' });
+                A.Modal.show();
+            }
+            const modalEl = A.Modal._getEl();
+            if (modalEl) {
+                modalEl.querySelector('#ai-import-type').value = type;
+                await this._updateHistorySelect(modalEl);
+                this._attachEvents(modalEl);
+            }
+            this.modal = A.Modal;
+        } catch (error) {
+            Opps('[PriceImportAI] Lỗi khi hiển thị Modal:', error);
+        }
+    }
+
+    /**
+     * Dựng UI bằng Bootstrap. Đảm bảo Mobile First.
+     * Chú ý: Có thêm vùng chứa #ai-hotel-info-container
+     * @private
+     */
+    _buildUI() {
+        return `
       <div class="ai-import-wrapper d-flex flex-column h-100" style="min-height: 80vh;">
           <div class="action-bar p-3 bg-light border-bottom sticky-top shadow-sm d-flex flex-wrap gap-2 align-items-center">
               
@@ -148,323 +144,323 @@ export default class PriceImportAI {
           </div>
       </div>
     `;
-  }
-
-  /**
-   * Gắn sự kiện cho các nút bấm
-   * @private
-   */
-  _attachEvents(container) {
-    try {
-      const fileInput = container.querySelector('#ai-file-upload');
-      const typeSelect = container.querySelector('#ai-import-type');
-      const historySelect = container.querySelector('#ai-history-select');
-
-      typeSelect.addEventListener('change', (e) => {
-        this.currentImportType = e.target.value;
-      });
-
-      historySelect.addEventListener('change', (e) => {
-        if (e.target.value) this._loadFromLocal(e.target.value);
-      });
-
-      container.querySelector('#btn-trigger-upload').addEventListener('click', () => {
-        fileInput.click();
-      });
-
-      fileInput.addEventListener('change', (e) => this._handleFileUpload(e));
-
-      container.querySelector('#btn-ai-save-local').addEventListener('click', () => this._saveToLocal());
-      container.querySelector('#btn-ai-delete-local').addEventListener('click', () => this._deleteFromLocal());
-
-      container.querySelector('#btn-ai-clear').addEventListener('click', () => {
-        this.extractedData = [];
-        this.metadata = {};
-        this.hotelInfo = null;
-        this._renderGrid();
-      });
-
-      container.querySelector('#btn-ai-save').addEventListener('click', () => this._handleSaveToDB());
-    } catch (error) {
-      Opps('[PriceImportAI] _attachEvents error:', error);
     }
-  }
 
-  /**
-   * TỐI ƯU: Lưu dữ liệu hiện tại vào IndexedDB (Chụp lại toàn bộ Form UI + Data Grid)
-   */
-  async _saveToLocal() {
-    try {
-      const data = this.table ? this.table.getData() : this.extractedData;
-      if (!data || data.length === 0) {
-        logA('Không có dữ liệu bảng giá để lưu tạm', 'warning', 'toast');
-        return;
-      }
+    /**
+     * Gắn sự kiện cho các nút bấm
+     * @private
+     */
+    _attachEvents(container) {
+        try {
+            const fileInput = container.querySelector('#ai-file-upload');
+            const typeSelect = container.querySelector('#ai-import-type');
+            const historySelect = container.querySelector('#ai-history-select');
 
-      // Lấy dữ liệu mới nhất từ form UI
-      const finalHotelInfo = this._getLatestHotelInfo() || this.hotelInfo;
-      const defaultName = finalHotelInfo?.name ? `Báo giá ${finalHotelInfo.name}` : `Bản lưu ${new Date().toLocaleTimeString('vi-VN')}`;
+            typeSelect.addEventListener('change', (e) => {
+                this.currentImportType = e.target.value;
+            });
 
-      const name = await new Promise((resolve) => {
-        Swal.fire({
-          title: 'Lưu bản nháp AI',
-          input: 'text',
-          inputValue: defaultName,
-          showCancelButton: true,
-          confirmButtonText: '<i class="fa-solid fa-floppy-disk"></i> Lưu',
-          cancelButtonText: 'Hủy',
-        }).then((result) => {
-          resolve(result.isConfirmed ? result.value : null);
-        });
-      });
+            historySelect.addEventListener('change', (e) => {
+                if (e.target.value) this._loadFromLocal(e.target.value);
+            });
 
-      if (!name) return;
+            container.querySelector('#btn-trigger-upload').addEventListener('click', () => {
+                fileInput.click();
+            });
 
-      const record = {
-        id: 'save-' + Date.now(),
-        name: name,
-        type: this.currentImportType,
-        data: data,
-        metadata: this.metadata || {},
-        hotelInfo: finalHotelInfo,
-        timestamp: Date.now(),
-      };
+            fileInput.addEventListener('change', (e) => this._handleFileUpload(e));
 
-      const success = await A.DB.local.put(this.storeName, record);
-      if (success) {
-        logA('Đã lưu bản nháp thành công!', 'success', 'toast');
-        await this._updateHistorySelect();
+            container.querySelector('#btn-ai-save-local').addEventListener('click', () => this._saveToLocal());
+            container.querySelector('#btn-ai-delete-local').addEventListener('click', () => this._deleteFromLocal());
 
-        // Auto select bản vừa lưu để UI khớp trạng thái
-        const historySelect = document.getElementById('ai-history-select');
-        if (historySelect) historySelect.value = record.id;
-      }
-    } catch (error) {
-      Opps('[PriceImportAI] _saveToLocal error:', error);
-    }
-  }
+            container.querySelector('#btn-ai-clear').addEventListener('click', () => {
+                this.extractedData = [];
+                this.metadata = {};
+                this.hotelInfo = null;
+                this._renderGrid();
+            });
 
-  /**
-   * TỐI ƯU: Tải dữ liệu từ IndexedDB, render lại Form UI và Grid hoàn chỉnh
-   */
-  async _loadFromLocal(id) {
-    try {
-      this._toggleLoading(true);
-      const record = await A.DB.local.get(this.storeName, id);
-      if (record) {
-        this.extractedData = record.data || [];
-        this.metadata = record.metadata || {};
-        this.hotelInfo = record.hotelInfo || null;
-        this.currentImportType = record.type;
-
-        const typeSelect = document.getElementById('ai-import-type');
-        if (typeSelect) typeSelect.value = record.type;
-
-        this._renderGrid();
-        logA(`Đã tải bản nháp: ${record.name}`, 'success', 'toast');
-      } else {
-        logA('Không tìm thấy bản lưu này!', 'error', 'toast');
-      }
-    } catch (error) {
-      Opps('[PriceImportAI] _loadFromLocal error:', error);
-    } finally {
-      this._toggleLoading(false);
-    }
-  }
-
-  /**
-   * TỐI ƯU: Xóa bản lưu từ IndexedDB và Clear UI gọn gàng
-   */
-  async _deleteFromLocal() {
-    try {
-      const historySelect = document.getElementById('ai-history-select');
-      const selectedId = historySelect ? historySelect.value : '';
-
-      const msg = selectedId ? 'Bạn có chắc chắn muốn xóa bản lưu nháp này?' : 'Bạn có chắc chắn muốn xóa TOÀN BỘ lịch sử lưu tạm?';
-
-      const confirm = await showConfirm(msg);
-      if (!confirm) return;
-
-      let success = false;
-      if (selectedId) {
-        success = await A.DB.local.delete(this.storeName, selectedId);
-      } else {
-        success = await A.DB.local.clear(this.storeName);
-      }
-
-      if (success) {
-        logA('Đã xóa thành công!', 'success', 'toast');
-        await this._updateHistorySelect();
-
-        // Trả UI về trạng thái rỗng nếu đang xóa bản hiện tại
-        if (selectedId) {
-          this.extractedData = [];
-          this.hotelInfo = null;
-          this.metadata = {};
-          if (historySelect) historySelect.value = '';
-          this._renderGrid();
+            container.querySelector('#btn-ai-save').addEventListener('click', () => this._handleSaveToDB());
+        } catch (error) {
+            Opps('[PriceImportAI] _attachEvents error:', error);
         }
-      }
-    } catch (error) {
-      Opps('[PriceImportAI] _deleteFromLocal error:', error);
     }
-  }
 
-  async _updateHistorySelect(container = document) {
-    try {
-      const historySelect = container.querySelector('#ai-history-select');
-      if (!historySelect) return;
+    /**
+     * TỐI ƯU: Lưu dữ liệu hiện tại vào IndexedDB (Chụp lại toàn bộ Form UI + Data Grid)
+     */
+    async _saveToLocal() {
+        try {
+            const data = this.table ? this.table.getData() : this.extractedData;
+            if (!data || data.length === 0) {
+                logA('Không có dữ liệu bảng giá để lưu tạm', 'warning', 'toast');
+                return;
+            }
 
-      const records = await A.DB.local.getCollection(this.storeName);
-      if (Array.isArray(records)) {
-        records.sort((a, b) => b.timestamp - a.timestamp);
-        let html = '<option value="">-- Lịch sử trích xuất --</option>';
-        records.forEach((r) => {
-          const time = new Date(r.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-          const date = new Date(r.timestamp).toLocaleDateString('vi-VN');
-          html += `<option value="${r.id}">${r.name} (${time} ${date})</option>`;
-        });
-        historySelect.innerHTML = html;
-      }
-    } catch (error) {
-      console.error('[PriceImportAI] _updateHistorySelect error:', error);
+            // Lấy dữ liệu mới nhất từ form UI
+            const finalHotelInfo = this._getLatestHotelInfo() || this.hotelInfo;
+            const defaultName = finalHotelInfo?.name ? `Báo giá ${finalHotelInfo.name}` : `Bản lưu ${new Date().toLocaleTimeString('vi-VN')}`;
+
+            const name = await new Promise((resolve) => {
+                Swal.fire({
+                    title: 'Lưu bản nháp AI',
+                    input: 'text',
+                    inputValue: defaultName,
+                    showCancelButton: true,
+                    confirmButtonText: '<i class="fa-solid fa-floppy-disk"></i> Lưu',
+                    cancelButtonText: 'Hủy',
+                }).then((result) => {
+                    resolve(result.isConfirmed ? result.value : null);
+                });
+            });
+
+            if (!name) return;
+
+            const record = {
+                id: 'save-' + Date.now(),
+                name: name,
+                type: this.currentImportType,
+                data: data,
+                metadata: this.metadata || {},
+                hotelInfo: finalHotelInfo,
+                timestamp: Date.now(),
+            };
+
+            const success = await A.DB.local.put(this.storeName, record);
+            if (success) {
+                logA('Đã lưu bản nháp thành công!', 'success', 'toast');
+                await this._updateHistorySelect();
+
+                // Auto select bản vừa lưu để UI khớp trạng thái
+                const historySelect = document.getElementById('ai-history-select');
+                if (historySelect) historySelect.value = record.id;
+            }
+        } catch (error) {
+            Opps('[PriceImportAI] _saveToLocal error:', error);
+        }
     }
-  }
 
-  /**
-   * Đọc file (Ảnh/PDF) thành Base64 và gọi Backend
-   * @private
-   */
-  async _handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+    /**
+     * TỐI ƯU: Tải dữ liệu từ IndexedDB, render lại Form UI và Grid hoàn chỉnh
+     */
+    async _loadFromLocal(id) {
+        try {
+            this._toggleLoading(true);
+            const record = await A.DB.local.get(this.storeName, id);
+            if (record) {
+                this.extractedData = record.data || [];
+                this.metadata = record.metadata || {};
+                this.hotelInfo = record.hotelInfo || null;
+                this.currentImportType = record.type;
 
-    // Reset input để có thể chọn lại cùng 1 file nếu cần
-    event.target.value = '';
+                const typeSelect = document.getElementById('ai-import-type');
+                if (typeSelect) typeSelect.value = record.type;
 
-    try {
-      this._toggleLoading(true);
-
-      const base64String = await this._fileToBase64(file);
-      const base64Data = base64String.split(',')[1];
-      const mimeType = file.type;
-
-      L._(`[PriceImportAI] Gửi Backend xử lý file: ${file.name} (${mimeType})`);
-
-      let result;
-      if (window.A?.DB?.callFunction) {
-        result = await A.DB.callFunction('processDocumentAI', {
-          fileBase64: base64Data,
-          mimeType: mimeType,
-          importType: this.currentImportType,
-          fileName: file.name,
-        });
-      } else {
-        const functions = getFunctions(getApp(), 'asia-southeast1');
-        const processDocumentAI = httpsCallable(functions, 'processDocumentAI');
-        result = await processDocumentAI({
-          fileBase64: base64Data,
-          mimeType: mimeType,
-          importType: this.currentImportType,
-          fileName: file.name,
-        });
-      }
-
-      if (result.data && result.success) {
-        // this.extractedData = result.data;
-        // this._saveToLocal();
-        this.extractedData = this._normalizeAIData(result.data.items);
-        this.metadata = result.data.metadata || {};
-        this.hotelInfo = result.data.hotel_info || null; // Lấy thêm info khách sạn
-
-        L._(`AI đã bóc tách được ${this.extractedData.length} dòng dữ liệu.`);
-        this._renderGrid();
-      } else {
-        throw new Error(result?.message || result?.code || 'AI không thể trích xuất dữ liệu.');
-      }
-    } catch (error) {
-      Opps('[PriceImportAI] Lỗi trích xuất AI:', error);
-    } finally {
-      this._toggleLoading(false);
+                this._renderGrid();
+                logA(`Đã tải bản nháp: ${record.name}`, 'success', 'toast');
+            } else {
+                logA('Không tìm thấy bản lưu này!', 'error', 'toast');
+            }
+        } catch (error) {
+            Opps('[PriceImportAI] _loadFromLocal error:', error);
+        } finally {
+            this._toggleLoading(false);
+        }
     }
-  }
 
-  _normalizeAIData(data) {
-    if (!Array.isArray(data)) return [];
-    return data.map((item) => {
-      const normalized = { id: 'ai-' + Date.now() + Math.random() };
-      for (const [key, value] of Object.entries(item)) {
-        const k = key.toLowerCase();
-        if (k.includes('room') || k.includes('phòng')) normalized.room_name = value;
-        else if (k.includes('period') || k.includes('giai đoạn')) normalized.period_name = value;
-        else if (k.includes('package') || k.includes('gói')) normalized.package_name = value;
-        else if (k.includes('type') || k.includes('loại')) normalized.rate_type_name = value;
-        else if (k.includes('price') || k.includes('giá')) normalized.price = value;
+    /**
+     * TỐI ƯU: Xóa bản lưu từ IndexedDB và Clear UI gọn gàng
+     */
+    async _deleteFromLocal() {
+        try {
+            const historySelect = document.getElementById('ai-history-select');
+            const selectedId = historySelect ? historySelect.value : '';
 
-        const cleanKey = k.replace(/\s+/g, '-');
-        normalized[cleanKey] = value;
-      }
-      return normalized;
-    });
-  }
+            const msg = selectedId ? 'Bạn có chắc chắn muốn xóa bản lưu nháp này?' : 'Bạn có chắc chắn muốn xóa TOÀN BỘ lịch sử lưu tạm?';
 
-  /**
-   * Trích xuất thông tin khách sạn mới nhất từ Form HTML (Human-in-the-loop)
-   * @private
-   */
-  _getLatestHotelInfo() {
-    if (!this.hotelInfo || this.currentImportType !== 'hotel_price') return null;
-    const container = document.getElementById('ai-hotel-info-container');
-    if (!container) return this.hotelInfo;
+            const confirm = await showConfirm(msg);
+            if (!confirm) return;
 
-    return {
-      name: container.querySelector('[name="hi_name"]')?.value || '',
-      address: container.querySelector('[name="hi_address"]')?.value || '',
-      phone: container.querySelector('[name="hi_phone"]')?.value || '',
-      email: container.querySelector('[name="hi_email"]')?.value || '',
-      star: parseInt(container.querySelector('[name="hi_star"]')?.value) || 0,
-      website: container.querySelector('[name="hi_website"]')?.value || '',
-      pictures: this.hotelInfo.pictures || [],
-      rooms: this.hotelInfo.rooms || [],
-    };
-  }
+            let success = false;
+            if (selectedId) {
+                success = await A.DB.local.delete(this.storeName, selectedId);
+            } else {
+                success = await A.DB.local.clear(this.storeName);
+            }
 
-  _renderGrid() {
-    try {
-      const infoContainer = document.getElementById('ai-hotel-info-container');
-      const gridContainer = document.getElementById('ai-data-grid-container');
-      if (!gridContainer) return;
+            if (success) {
+                logA('Đã xóa thành công!', 'success', 'toast');
+                await this._updateHistorySelect();
 
-      // Logic Fallback: Nếu không có supplier_name thì lấy tên Khách sạn
-      let supplierName = (this.metadata?.supplier_name || '').trim();
-      if (!supplierName && this.hotelInfo?.name) {
-        supplierName = this.hotelInfo.name.trim();
-      }
+                // Trả UI về trạng thái rỗng nếu đang xóa bản hiện tại
+                if (selectedId) {
+                    this.extractedData = [];
+                    this.hotelInfo = null;
+                    this.metadata = {};
+                    if (historySelect) historySelect.value = '';
+                    this._renderGrid();
+                }
+            }
+        } catch (error) {
+            Opps('[PriceImportAI] _deleteFromLocal error:', error);
+        }
+    }
 
-      if (infoContainer) {
-        if (this.currentImportType === 'hotel_price') {
-          // --- FORM CHO KHÁCH SẠN ---
-          infoContainer.classList.remove('d-none');
+    async _updateHistorySelect(container = document) {
+        try {
+            const historySelect = container.querySelector('#ai-history-select');
+            if (!historySelect) return;
 
-          // Render danh sách phòng bóc tách được (Badge)
-          let roomsHtml = '';
-          if (this.hotelInfo?.rooms && Array.isArray(this.hotelInfo.rooms)) {
-            roomsHtml = `
+            const records = await A.DB.local.getCollection(this.storeName);
+            if (Array.isArray(records)) {
+                records.sort((a, b) => b.timestamp - a.timestamp);
+                let html = '<option value="">-- Lịch sử trích xuất --</option>';
+                records.forEach((r) => {
+                    const time = new Date(r.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                    const date = new Date(r.timestamp).toLocaleDateString('vi-VN');
+                    html += `<option value="${r.id}">${r.name} (${time} ${date})</option>`;
+                });
+                historySelect.innerHTML = html;
+            }
+        } catch (error) {
+            console.error('[PriceImportAI] _updateHistorySelect error:', error);
+        }
+    }
+
+    /**
+     * Đọc file (Ảnh/PDF) thành Base64 và gọi Backend
+     * @private
+     */
+    async _handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Reset input để có thể chọn lại cùng 1 file nếu cần
+        event.target.value = '';
+
+        try {
+            this._toggleLoading(true);
+
+            const base64String = await this._fileToBase64(file);
+            const base64Data = base64String.split(',')[1];
+            const mimeType = file.type;
+
+            L._(`[PriceImportAI] Gửi Backend xử lý file: ${file.name} (${mimeType})`);
+
+            let result;
+            if (window.A?.DB?.callFunction) {
+                result = await A.DB.callFunction('processDocumentAI', {
+                    fileBase64: base64Data,
+                    mimeType: mimeType,
+                    importType: this.currentImportType,
+                    fileName: file.name,
+                });
+            } else {
+                const functions = getFunctions(getApp(), 'asia-southeast1');
+                const processDocumentAI = httpsCallable(functions, 'processDocumentAI');
+                result = await processDocumentAI({
+                    fileBase64: base64Data,
+                    mimeType: mimeType,
+                    importType: this.currentImportType,
+                    fileName: file.name,
+                });
+            }
+
+            if (result.data && result.success) {
+                // this.extractedData = result.data;
+                // this._saveToLocal();
+                this.extractedData = this._normalizeAIData(result.data.items);
+                this.metadata = result.data.metadata || {};
+                this.hotelInfo = result.data.hotel_info || null; // Lấy thêm info khách sạn
+
+                L._(`AI đã bóc tách được ${this.extractedData.length} dòng dữ liệu.`);
+                this._renderGrid();
+            } else {
+                throw new Error(result?.message || result?.code || 'AI không thể trích xuất dữ liệu.');
+            }
+        } catch (error) {
+            Opps('[PriceImportAI] Lỗi trích xuất AI:', error);
+        } finally {
+            this._toggleLoading(false);
+        }
+    }
+
+    _normalizeAIData(data) {
+        if (!Array.isArray(data)) return [];
+        return data.map((item) => {
+            const normalized = { id: 'ai-' + Date.now() + Math.random() };
+            for (const [key, value] of Object.entries(item)) {
+                const k = key.toLowerCase();
+                if (k.includes('room') || k.includes('phòng')) normalized.room_name = value;
+                else if (k.includes('period') || k.includes('giai đoạn')) normalized.period_name = value;
+                else if (k.includes('package') || k.includes('gói')) normalized.package_name = value;
+                else if (k.includes('type') || k.includes('loại')) normalized.rate_type_name = value;
+                else if (k.includes('price') || k.includes('giá')) normalized.price = value;
+
+                const cleanKey = k.replace(/\s+/g, '-');
+                normalized[cleanKey] = value;
+            }
+            return normalized;
+        });
+    }
+
+    /**
+     * Trích xuất thông tin khách sạn mới nhất từ Form HTML (Human-in-the-loop)
+     * @private
+     */
+    _getLatestHotelInfo() {
+        if (!this.hotelInfo || this.currentImportType !== 'hotel_price') return null;
+        const container = document.getElementById('ai-hotel-info-container');
+        if (!container) return this.hotelInfo;
+
+        return {
+            name: container.querySelector('[name="hi_name"]')?.value || '',
+            address: container.querySelector('[name="hi_address"]')?.value || '',
+            phone: container.querySelector('[name="hi_phone"]')?.value || '',
+            email: container.querySelector('[name="hi_email"]')?.value || '',
+            star: parseInt(container.querySelector('[name="hi_star"]')?.value) || 0,
+            website: container.querySelector('[name="hi_website"]')?.value || '',
+            pictures: this.hotelInfo.pictures || [],
+            rooms: this.hotelInfo.rooms || [],
+        };
+    }
+
+    _renderGrid() {
+        try {
+            const infoContainer = document.getElementById('ai-hotel-info-container');
+            const gridContainer = document.getElementById('ai-data-grid-container');
+            if (!gridContainer) return;
+
+            // Logic Fallback: Nếu không có supplier_name thì lấy tên Khách sạn
+            let supplierName = (this.metadata?.supplier_name || '').trim();
+            if (!supplierName && this.hotelInfo?.name) {
+                supplierName = this.hotelInfo.name.trim();
+            }
+
+            if (infoContainer) {
+                if (this.currentImportType === 'hotel_price') {
+                    // --- FORM CHO KHÁCH SẠN ---
+                    infoContainer.classList.remove('d-none');
+
+                    // Render danh sách phòng bóc tách được (Badge)
+                    let roomsHtml = '';
+                    if (this.hotelInfo?.rooms && Array.isArray(this.hotelInfo.rooms)) {
+                        roomsHtml = `
               <div class="mt-2">
                 <label class="small text-muted fw-bold d-block mb-1">Hạng phòng bóc tách được:</label>
                 <div class="d-flex flex-wrap gap-1">
                   ${this.hotelInfo.rooms
-                    .map((r) => {
-                      const rName = typeof r === 'string' ? r : r.name || 'N/A';
-                      return `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">${rName}</span>`;
-                    })
-                    .join('')}
+                      .map((r) => {
+                          const rName = typeof r === 'string' ? r : r.name || 'N/A';
+                          return `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">${rName}</span>`;
+                      })
+                      .join('')}
                 </div>
               </div>
             `;
-          }
+                    }
 
-          infoContainer.innerHTML = `
+                    infoContainer.innerHTML = `
             <div class="d-flex align-items-center mb-2">
                 <i class="fa-solid fa-hotel text-primary me-2"></i>
                 <h6 class="mb-0 fw-bold">Thông tin Khách sạn & Nhà cung cấp</h6>
@@ -504,10 +500,10 @@ export default class PriceImportAI {
             </div>
             ${roomsHtml}
           `;
-        } else if (this.currentImportType === 'service_price') {
-          // --- FORM RÚT GỌN CHO DỊCH VỤ ---
-          infoContainer.classList.remove('d-none');
-          infoContainer.innerHTML = `
+                } else if (this.currentImportType === 'service_price') {
+                    // --- FORM RÚT GỌN CHO DỊCH VỤ ---
+                    infoContainer.classList.remove('d-none');
+                    infoContainer.innerHTML = `
             <div class="d-flex align-items-center mb-2">
                 <i class="fa-solid fa-truck-fast text-success me-2"></i>
                 <h6 class="mb-0 fw-bold">Thông tin Nhà cung cấp Dịch vụ</h6>
@@ -519,127 +515,127 @@ export default class PriceImportAI {
                 </div>
             </div>
           `;
-        } else {
-          infoContainer.classList.add('d-none');
-          infoContainer.innerHTML = '';
-        }
-      }
+                } else {
+                    infoContainer.classList.add('d-none');
+                    infoContainer.innerHTML = '';
+                }
+            }
 
-      // 2. Render Bảng giá (Grid)
-      if (!this.extractedData || this.extractedData.length === 0) {
-        gridContainer.innerHTML = `
+            // 2. Render Bảng giá (Grid)
+            if (!this.extractedData || this.extractedData.length === 0) {
+                gridContainer.innerHTML = `
             <div class="text-center text-muted p-5 border border-dashed rounded m-3">
                 <i class="fa-solid fa-file-pdf fa-3x mb-3 text-secondary opacity-50"></i>
                 <h5>Bảng dữ liệu trống</h5>
                 <p class="small">Vui lòng tải lên file để AI trích xuất hoặc chọn từ Lịch sử.</p>
             </div>`;
-        return;
-      }
+                return;
+            }
 
-      this.table = new ATable('ai-data-grid-container', {
-        editable: true,
-        header: false,
-        pageSize: 50,
-        header: true,
-      });
-      this.table.init(this.extractedData);
-    } catch (error) {
-      Opps('[PriceImportAI] _renderGrid error:', error);
-    }
-  }
-
-  async _handleSaveToDB() {
-    try {
-      const data = this.table ? this.table.getData() : this.extractedData;
-      if (!data || data.length === 0) {
-        logA('Không có dữ liệu bảng giá để lưu', 'warning', 'toast');
-        return;
-      }
-
-      const confirm = await showConfirm(`Bạn có chắc chắn muốn đẩy ${data.length} dòng dữ liệu này vào hệ thống?`);
-      if (!confirm) return;
-
-      showLoading(true, 'Đang đồng bộ dữ liệu vào ERP...');
-
-      const finalHotelInfo = this._getLatestHotelInfo();
-
-      // CHUẨN HÓA ID PHÒNG TRƯỚC KHI LƯU
-      if (finalHotelInfo && Array.isArray(finalHotelInfo.rooms)) {
-        finalHotelInfo.rooms = finalHotelInfo.rooms.map((room) => {
-          const roomName = typeof room === 'string' ? room : room.name || 'Phòng Mặc Định';
-          const roomId = room.id || this._sanitizeRoomId(roomName);
-          return typeof room === 'object' ? { ...room, id: roomId, name: roomName } : { id: roomId, name: roomName };
-        });
-      }
-
-      // TRÍCH XUẤT supplier_name MỚI NHẤT TỪ FORM TRƯỚC KHI LƯU
-      const infoContainer = document.getElementById('ai-hotel-info-container');
-      if (infoContainer) {
-        const splInput = infoContainer.querySelector('[name="hi_supplier_name"]');
-        if (splInput && splInput.value.trim()) {
-          this.metadata = this.metadata || {};
-          this.metadata.supplier_name = splInput.value.trim();
+            this.table = new ATable('ai-data-grid-container', {
+                editable: true,
+                header: false,
+                pageSize: 50,
+                header: true,
+            });
+            this.table.init(this.extractedData);
+        } catch (error) {
+            Opps('[PriceImportAI] _renderGrid error:', error);
         }
-      }
-
-      if (this.cdm && typeof this.cdm.importFromAI === 'function') {
-        await this.cdm.importFromAI(this.currentImportType, data, this.metadata, finalHotelInfo);
-
-        if (this.modal) this.modal.hide();
-        logA('Đã đồng bộ dữ liệu vào ERP thành công!', 'success', 'alert');
-      } else {
-        throw new Error('CDM (PriceManager) không được kết nối hoặc thiếu hàm importFromAI.');
-      }
-    } catch (error) {
-      Opps('[PriceImportAI] Lỗi khi lưu dữ liệu:', error);
-    } finally {
-      showLoading(false);
     }
-  }
 
-  // --- Utility Helpers ---
+    async _handleSaveToDB() {
+        try {
+            const data = this.table ? this.table.getData() : this.extractedData;
+            if (!data || data.length === 0) {
+                logA('Không có dữ liệu bảng giá để lưu', 'warning', 'toast');
+                return;
+            }
 
-  /**
-   * Helper chuẩn hóa ID phòng (Đồng bộ với M_HotelPrice.js)
-   * @private
-   */
-  _sanitizeRoomId(name) {
-    if (!name) return 'phong_mac_dinh';
-    return name
-      .toString()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Xóa dấu tiếng Việt
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '_') // Thay ký tự đặc biệt/khoảng trắng bằng _
-      .replace(/_+/g, '_') // Gộp nhiều gạch dưới thành 1
-      .replace(/^_|_$/g, ''); // Cắt gạch dưới ở 2 đầu
-  }
+            const confirm = await showConfirm(`Bạn có chắc chắn muốn đẩy ${data.length} dòng dữ liệu này vào hệ thống?`);
+            if (!confirm) return;
 
-  _toggleLoading(show) {
-    const loader = document.getElementById('ai-loading-indicator');
-    const grid = document.getElementById('ai-data-grid-container');
-    const info = document.getElementById('ai-hotel-info-container');
-    if (!loader || !grid) return;
+            showLoading(true, 'Đang đồng bộ dữ liệu vào ERP...');
 
-    if (show) {
-      loader.classList.remove('d-none');
-      grid.classList.add('d-none');
-      if (info) info.classList.add('d-none');
-    } else {
-      loader.classList.add('d-none');
-      grid.classList.remove('d-none');
-      // info display được quyết định trong _renderGrid()
+            const finalHotelInfo = this._getLatestHotelInfo();
+
+            // CHUẨN HÓA ID PHÒNG TRƯỚC KHI LƯU
+            if (finalHotelInfo && Array.isArray(finalHotelInfo.rooms)) {
+                finalHotelInfo.rooms = finalHotelInfo.rooms.map((room) => {
+                    const roomName = typeof room === 'string' ? room : room.name || 'Phòng Mặc Định';
+                    const roomId = room.id || this._sanitizeRoomId(roomName);
+                    return typeof room === 'object' ? { ...room, id: roomId, name: roomName } : { id: roomId, name: roomName };
+                });
+            }
+
+            // TRÍCH XUẤT supplier_name MỚI NHẤT TỪ FORM TRƯỚC KHI LƯU
+            const infoContainer = document.getElementById('ai-hotel-info-container');
+            if (infoContainer) {
+                const splInput = infoContainer.querySelector('[name="hi_supplier_name"]');
+                if (splInput && splInput.value.trim()) {
+                    this.metadata = this.metadata || {};
+                    this.metadata.supplier_name = splInput.value.trim();
+                }
+            }
+
+            if (this.cdm && typeof this.cdm.importFromAI === 'function') {
+                await this.cdm.importFromAI(this.currentImportType, data, this.metadata, finalHotelInfo);
+
+                if (this.modal) this.modal.hide();
+                logA('Đã đồng bộ dữ liệu vào ERP thành công!', 'success', 'alert');
+            } else {
+                throw new Error('CDM (PriceManager) không được kết nối hoặc thiếu hàm importFromAI.');
+            }
+        } catch (error) {
+            Opps('[PriceImportAI] Lỗi khi lưu dữ liệu:', error);
+        } finally {
+            showLoading(false);
+        }
     }
-  }
 
-  _fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = (error) => reject(error);
-    });
-  }
+    // --- Utility Helpers ---
+
+    /**
+     * Helper chuẩn hóa ID phòng (Đồng bộ với M_HotelPrice.js)
+     * @private
+     */
+    _sanitizeRoomId(name) {
+        if (!name) return 'phong_mac_dinh';
+        return name
+            .toString()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Xóa dấu tiếng Việt
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '_') // Thay ký tự đặc biệt/khoảng trắng bằng _
+            .replace(/_+/g, '_') // Gộp nhiều gạch dưới thành 1
+            .replace(/^_|_$/g, ''); // Cắt gạch dưới ở 2 đầu
+    }
+
+    _toggleLoading(show) {
+        const loader = document.getElementById('ai-loading-indicator');
+        const grid = document.getElementById('ai-data-grid-container');
+        const info = document.getElementById('ai-hotel-info-container');
+        if (!loader || !grid) return;
+
+        if (show) {
+            loader.classList.remove('d-none');
+            grid.classList.add('d-none');
+            if (info) info.classList.add('d-none');
+        } else {
+            loader.classList.add('d-none');
+            grid.classList.remove('d-none');
+            // info display được quyết định trong _renderGrid()
+        }
+    }
+
+    _fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = (error) => reject(error);
+        });
+    }
 }
 
 window.PriceImportAI = PriceImportAI;
