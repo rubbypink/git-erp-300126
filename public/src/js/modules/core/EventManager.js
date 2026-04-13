@@ -464,6 +464,15 @@ class EventManager {
       '#global-search',
       'keyup',
       (e) => {
+        if (e.key === 'Enter' && e.ctrlKey) {
+          if (typeof SYS.runFn === 'function') {
+            const value = getVal('global-search');
+            if (value && value.trim().length > 0) {
+              SYS.runFn(value);
+            }
+            initGlobalTableSearch();
+          }
+        }
         if (e.key === 'Enter') {
           if (typeof initGlobalTableSearch === 'function') {
             initGlobalTableSearch();
@@ -762,7 +771,6 @@ class EventManager {
       'dblclick',
       (e) => {
         e.preventDefault();
-        if (e.key !== 'Ctrl') return;
         L._('EventManager.on tr dblclick + Ctrl');
         if (getE('#detail-tbody')?.contains(e.target) || getE('#bkov-detail-tbody')?.contains(e.target) || getE('#bkov-txn-tbody')?.contains(e.target)) return;
         handleRowClick(e);

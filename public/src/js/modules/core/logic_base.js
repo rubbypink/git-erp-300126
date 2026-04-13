@@ -562,3 +562,4 @@ window.onGridRowClick = LogicBase.onGridRowClick;
 window._callServer = LogicBase._callServer;
 window.requestAPI = LogicBase.requestAPI;
 window.reloadPage = LogicBase.reloadPage;
+window.LogicBase = LogicBase;

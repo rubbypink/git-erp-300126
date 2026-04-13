@@ -664,7 +664,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
         iconClass: 'fa-solid fa-money-bill',
         btnClass: 'btn-primary op-only',
         callback: async () => {
-          await A.Op.Supplier.openFilterDialog();
+          await OperatorController.UI.openFilterDialog();
         },
         attributes: { 'data-ontabs': '2' },
       },

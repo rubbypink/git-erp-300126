@@ -80,7 +80,7 @@ const SYS = {
     if (!funcRef) return null;
 
     // Chuẩn hóa: Đảm bảo args luôn là mảng để gọi hàm an toàn
-    const safeArgs = Array.isArray(args) ? args : [args];
+    const safeArgs = Array.isArray(args) ? args : [args] || '';
 
     try {
       // TRƯỜNG HỢP 1: function truyền trực tiếp (Standard function hoặc Arrow function)
@@ -137,7 +137,7 @@ const SYS = {
       if (typeof Opps === 'function') {
         Opps(errMsg, error);
       } else {
-      console.error(errMsg, error);
+        console.error(errMsg, error);
       }
       return null;
     }

@@ -21,6 +21,7 @@ function buildDexieSchema() {
     notification_dedup: 'id, processed_at', // Cache chống lặp thông báo (Thêm index processed_at)
     counters_id: 'id', // Cache bộ đếm ID
     ai_prices: 'id',
+    selling_prices: 'id',
   };
 
   // 2. Load các table từ DB_SCHEMA
@@ -87,8 +88,7 @@ class IndexedDBHelper {
 
   async _doInitDB() {
     try {
-      // Nâng cấp version lên 8 để cập nhật index cho notification_dedup
-      this.db.version(10).stores(buildDexieSchema());
+      this.db.version(11).stores(buildDexieSchema());
       await this.db.open();
       await this._loadSyncMeta();
       return true;

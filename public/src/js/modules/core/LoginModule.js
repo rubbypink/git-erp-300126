@@ -1,98 +1,102 @@
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider, signOut, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator, clearIndexedDbPersistence } from 'firebase/firestore';
 
 //  AUTH MODULE (FIRESTORE VERSION) ---
 const AUTH_MANAGER = {
-  CFG_FB_RTDB: {
-    apiKey: 'AIzaSyAhBOSEAGKN5_8_lfWSPLzQ5gBBd33Jzdc',
-    authDomain: 'trip-erp-923fd.firebaseapp.com',
-    projectId: 'trip-erp-923fd',
-    storageBucket: 'trip-erp-923fd.firebasestorage.app',
-    messagingSenderId: '600413765548',
-    appId: '1:600413765548:web:bc644e1e58f7bead5d8409',
-    measurementId: 'G-BG2ECM4R89',
-  },
-  app: null,
-  auth: null,
-  initFirebase: async function () {
-    try {
-      if (!getApps().length) {
-        this.app = initializeApp(this.CFG_FB_RTDB);
-      } else {
-        this.app = getApp();
-      }
-      this.auth = getAuth(this.app);
-
-      const db = getFirestore(this.app);
-
-      // THÊM ĐOẠN NÀY: Tự động trỏ vào Emulator nếu chạy trên localhost
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    CFG_FB_RTDB: {
+        apiKey: 'AIzaSyAhBOSEAGKN5_8_lfWSPLzQ5gBBd33Jzdc',
+        authDomain: 'trip-erp-923fd.firebaseapp.com',
+        projectId: 'trip-erp-923fd',
+        storageBucket: 'trip-erp-923fd.firebasestorage.app',
+        messagingSenderId: '600413765548',
+        appId: '1:600413765548:web:bc644e1e58f7bead5d8409',
+        measurementId: 'G-BG2ECM4R89',
+    },
+    app: null,
+    auth: null,
+    initFirebase: async function () {
         try {
-          connectFirestoreEmulator(db, '127.0.0.1', 8080);
-          connectAuthEmulator(this.auth, 'http://127.0.0.1:9099', { disableWarnings: true });
-          logA('🔥 [DEV MODE] Đã kết nối thành công với Firebase Local Emulator!');
-        } catch (err) {
-          Opps("Lỗi kết nối Emulator. Đảm bảo bạn đã chạy 'firebase emulators:start'", err);
+            if (!getApps().length) {
+                this.app = initializeApp(this.CFG_FB_RTDB);
+            } else {
+                this.app = getApp();
+            }
+            this.auth = getAuth(this.app);
+
+            // ─── TẮT PERSISTENCE TRÊN MOBILE ────────────────────────────────────────
+            // Trên mobile/WebView Firestore có thể tự bật offline cache → tắt thủ công
+            // clearPersistence() phải gọi TRƯỚC khi bất kỳ Firestore operation nào chạy
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+
+            if (isMobile) {
+                try {
+                    await clearIndexedDbPersistence(getFirestore(this.app));
+                    console.log('📱 Firestore persistence: ĐÃ TẮT (Mobile)');
+                } catch (err) {
+                    // Lỗi này xảy ra nếu Firestore đã có operation đang chạy — bỏ qua
+                    console.warn(`⚠️ clearPersistence thất bại: [${err.code}] ${err.message}`);
+                }
+            }
+            const db = getFirestore(this.app);
+            // THÊM ĐOẠN NÀY: Tự động trỏ vào Emulator nếu chạy trên localhost
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                try {
+                    connectFirestoreEmulator(db, '127.0.0.1', 8080);
+                    connectAuthEmulator(this.auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+                    logA('🔥 [DEV MODE] Đã kết nối thành công với Firebase Local Emulator!');
+                } catch (err) {
+                    Opps("Lỗi kết nối Emulator. Đảm bảo bạn đã chạy 'firebase emulators:start'", err);
+                }
+            }
+            // ─────────────────────────────────────────────────────────────────────────
+
+            return this.app;
+        } catch (e) {
+            console.error('🔥 Firebase Init Error:', e);
+            throw e;
         }
-      }
-
-      // ─── TẮT PERSISTENCE TRÊN MOBILE ────────────────────────────────────────
-      // Trên mobile/WebView Firestore có thể tự bật offline cache → tắt thủ công
-      // clearPersistence() phải gọi TRƯỚC khi bất kỳ Firestore operation nào chạy
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
-
-      if (isMobile) {
+    },
+    fetchUserProfile: async function (firebaseUser) {
         try {
-          await firebaseFirestore.clearPersistence();
-          L._('📱 Firestore persistence: ĐÃ TẮT (Mobile)');
-        } catch (err) {
-          // Lỗi này xảy ra nếu Firestore đã có operation đang chạy — bỏ qua
-          console.warn(`⚠️ clearPersistence thất bại: [${err.code}] ${err.message}`);
+            CR_COLLECTION = ROLE_DATA[CURRENT_USER.role] || '';
+            await SECURITY_MANAGER.applySecurity(CURRENT_USER);
+        } catch (e) {
+            console.error(e);
+            Opps('Lỗi tải profile: ' + e.message);
+        } finally {
+            // Đóng modal
+            showLoading(false);
         }
-      }
-      // ─────────────────────────────────────────────────────────────────────────
+    },
+    clearIndexedDB: async function () {
+        try {
+            await clearIndexedDbPersistence(this.db);
+            logA('✅ IndexedDB persistence cleared!', 'success');
+        } catch (e) {
+            console.error(e);
+            Opps('Lỗi clear IndexedDB: ' + e.message);
+        }
+    },
 
-      return this.app;
-    } catch (e) {
-      console.error('🔥 Firebase Init Error:', e);
-      throw e;
-    }
-  },
-  // Lấy thông tin chi tiết từ Firestore
-  fetchUserProfile: async function (firebaseUser) {
-    try {
-      CR_COLLECTION = ROLE_DATA[CURRENT_USER.role] || '';
-      await SECURITY_MANAGER.applySecurity(CURRENT_USER);
-      // SECURITY_MANAGER.cleanDOM(document);
-      // loadDataFromFirebase() đã được xử lý bởi app.js#runPostBoot — không gọi ở đây
-    } catch (e) {
-      console.error(e);
-      Opps('Lỗi tải profile: ' + e.message);
-    } finally {
-      // Đóng modal
-      showLoading(false);
-    }
-  },
+    updateUserMenu: function () {
+        const userFullName = CURRENT_USER.profile.user_name || CURRENT_USER.email.split('@')[0];
+        const userEmail = CURRENT_USER.email;
+        const userRole = CURRENT_USER.role;
 
-  updateUserMenu: function () {
-    const userFullName = CURRENT_USER.profile.user_name || CURRENT_USER.email.split('@')[0];
-    const userEmail = CURRENT_USER.email;
-    const userRole = CURRENT_USER.role;
+        if (getE('user-menu-text')) getE('user-menu-text').innerText = userFullName;
+        if (getE('user-menu-name')) getE('user-menu-name').innerText = userFullName;
+        if (getE('user-menu-email')) getE('user-menu-email').innerText = userEmail;
+        if (getE('user-menu-role')) getE('user-menu-role').innerText = userRole.toUpperCase();
 
-    if (getE('user-menu-text')) getE('user-menu-text').innerText = userFullName;
-    if (getE('user-menu-name')) getE('user-menu-name').innerText = userFullName;
-    if (getE('user-menu-email')) getE('user-menu-email').innerText = userEmail;
-    if (getE('user-menu-role')) getE('user-menu-role').innerText = userRole.toUpperCase();
+        if (getE('btn-logout-menu')) getE('btn-logout-menu').style.display = 'flex';
+        const modalTitle = A.getConfig('moduleTitle') || '9 Trip System';
+        if (getE('module-title')) getE('module-title').innerText = modalTitle;
+    },
 
-    if (getE('btn-logout-menu')) getE('btn-logout-menu').style.display = 'flex';
-    const modalTitle = A.getConfig('moduleTitle') || '9 Trip System';
-    if (getE('module-title')) getE('module-title').innerText = modalTitle;
-  },
-
-  // Hiển thị màn hình lựa chọn Khách / Nhân sự
-  showChoiceScreen: function () {
-    const choiceHTML = `
+    // Hiển thị màn hình lựa chọn Khách / Nhân sự
+    showChoiceScreen: function () {
+        const choiceHTML = `
         <style id="erp-login-style">
             .erp-login-bg {
                 min-height: 100dvh; width: 100vw;
@@ -179,32 +183,32 @@ const AUTH_MANAGER = {
             </div>
         </div>
         `;
-    const appEl = getE('main-app');
-    if (appEl) appEl.classList.add('d-none');
-    let container = document.getElementById('app-launcher');
-    if (!container) {
-      container = document.createElement('div');
-      container.id = 'app-launcher';
-      container.classList.add('vh-100', 'vw-100', 'flex-column');
-      document.body.appendChild(container);
-    }
-    container.innerHTML = choiceHTML;
-    container.classList.remove('d-none');
+        const appEl = getE('main-app');
+        if (appEl) appEl.classList.add('d-none');
+        let container = document.getElementById('app-launcher');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'app-launcher';
+            container.classList.add('vh-100', 'vw-100', 'flex-column');
+            document.body.appendChild(container);
+        }
+        container.innerHTML = choiceHTML;
+        container.classList.remove('d-none');
 
-    // Gán sự kiện
-    setTimeout(() => {
-      getE('btn-choice-customer')?.addEventListener('click', () => {
-        window.location.href = 'https://9tripvietnam.com';
-      });
-      getE('btn-choice-staff')?.addEventListener('click', () => {
-        this.showLoginForm();
-      });
-    }, 100);
-  },
+        // Gán sự kiện
+        setTimeout(() => {
+            getE('btn-choice-customer')?.addEventListener('click', () => {
+                window.location.href = 'https://9tripvietnam.com';
+            });
+            getE('btn-choice-staff')?.addEventListener('click', () => {
+                this.showLoginForm();
+            });
+        }, 100);
+    },
 
-  // Hiển thị Form Login vào Modal
-  showLoginForm: function () {
-    const loginHTML = `
+    // Hiển thị Form Login vào Modal
+    showLoginForm: function () {
+        const loginHTML = `
         <style id="erp-login-style">
             .erp-login-bg {
                 min-height: 100dvh; width: 100vw;
@@ -342,243 +346,243 @@ const AUTH_MANAGER = {
             </div>
         </div>
         `;
-    let container = document.getElementById('app-launcher');
-    if (!container) {
-      container = document.createElement('div');
-      container.id = 'app-launcher';
-      container.classList.add('vh-100', 'vw-100', 'flex-column');
-      document.body.appendChild(container);
-    }
-    container.innerHTML = loginHTML;
-    container.classList.remove('d-none');
-
-    // Gán sự kiện Enter
-    setTimeout(() => {
-      getE('login-pass')?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          showLoading(true);
-          this.handleEmailLogin();
+        let container = document.getElementById('app-launcher');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'app-launcher';
+            container.classList.add('vh-100', 'vw-100', 'flex-column');
+            document.body.appendChild(container);
         }
-      });
-      getE('btn-mail-login')?.addEventListener('click', () => {
-        showLoading(true);
-        this.handleEmailLogin();
-      });
-      getE('btn-google-login')?.addEventListener('click', () => {
-        showLoading(true);
-        this.handleSocialLogin('google');
-      });
-      getE('btn-back-choice')?.addEventListener('click', () => {
-        this.showChoiceScreen();
-      });
-    }, 100);
-  },
+        container.innerHTML = loginHTML;
+        container.classList.remove('d-none');
 
-  handleEmailLogin: async function () {
-    let email = getE('login-email').value;
-    const pass = getE('login-pass').value;
+        // Gán sự kiện Enter
+        setTimeout(() => {
+            getE('login-pass')?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    showLoading(true);
+                    this.handleEmailLogin();
+                }
+            });
+            getE('btn-mail-login')?.addEventListener('click', () => {
+                showLoading(true);
+                this.handleEmailLogin();
+            });
+            getE('btn-google-login')?.addEventListener('click', () => {
+                showLoading(true);
+                this.handleSocialLogin('google');
+            });
+            getE('btn-back-choice')?.addEventListener('click', () => {
+                this.showChoiceScreen();
+            });
+        }, 100);
+    },
 
-    if (!email || !pass) {
-      showLoading(false);
-      logA('Thiếu thông tin', 'warning', 'alert');
-      return;
-    }
+    handleEmailLogin: async function () {
+        let email = getE('login-email').value;
+        const pass = getE('login-pass').value;
 
-    // Kiểm tra nếu email không chứa '@' thì tự động thêm domain
-    if (!email.includes('@')) {
-      email = email + '@9tripphuquoc.com';
-    }
+        if (!email || !pass) {
+            showLoading(false);
+            logA('Thiếu thông tin', 'warning', 'alert');
+            return;
+        }
 
-    try {
-      await signInWithEmailAndPassword(this.auth, email, pass);
-    } catch (e) {
-      Opps('Lỗi đăng nhập: ' + e.message);
-    } finally {
-      showLoading(false);
-    }
-  },
+        // Kiểm tra nếu email không chứa '@' thì tự động thêm domain
+        if (!email.includes('@')) {
+            email = email + '@9tripphuquoc.com';
+        }
 
-  // Xử lý Login Social
-  handleSocialLogin: async function (providerName) {
-    let provider;
-    if (providerName === 'google') provider = new GoogleAuthProvider();
-    if (providerName === 'facebook') provider = new FacebookAuthProvider();
+        try {
+            await signInWithEmailAndPassword(this.auth, email, pass);
+        } catch (e) {
+            Opps('Lỗi đăng nhập: ' + e.message);
+        } finally {
+            showLoading(false);
+        }
+    },
 
-    try {
-      showLoading(true);
-      // Dùng signInWithPopup cho tiện trên WebApp
-      await signInWithPopup(this.auth, provider);
-    } catch (e) {
-      console.error(e);
-      Opps('Lỗi đăng nhập: ' + e.message);
-    } finally {
-      showLoading(false);
-    }
-  },
+    // Xử lý Login Social
+    handleSocialLogin: async function (providerName) {
+        let provider;
+        if (providerName === 'google') provider = new GoogleAuthProvider();
+        if (providerName === 'facebook') provider = new FacebookAuthProvider();
 
-  signOut: function () {
-    signOut(this.auth).then(() => {
-      A.DB.stopNotificationsListener(); // Hủy tất cả subscription khi logout
-      location.reload(); // Reload trang cho sạch
-    });
-  },
+        try {
+            showLoading(true);
+            // Dùng signInWithPopup cho tiện trên WebApp
+            await signInWithPopup(this.auth, provider);
+        } catch (e) {
+            console.error(e);
+            Opps('Lỗi đăng nhập: ' + e.message);
+        } finally {
+            showLoading(false);
+        }
+    },
+
+    signOut: function () {
+        signOut(this.auth).then(() => {
+            A.DB.stopNotificationsListener(); // Hủy tất cả subscription khi logout
+            location.reload(); // Reload trang cho sạch
+        });
+    },
 };
 
 const SECURITY_MANAGER = {
-  /**
-   * HÀM CHÍNH: ÁP DỤNG PHÂN QUYỀN VÀ KHỞI TẠO MODULE
-   * Tối ưu hóa bởi 9Trip Tech Lead
-   */
-  applySecurity: async function (userProfile) {
-    try {
-      const email = (userProfile.email || '').toLowerCase();
-      const level = parseInt(userProfile.level || 0);
-      const role = (userProfile.role || '').toLowerCase();
-      const maskedRole = userProfile.realrole || null;
-      const admEmails = window.A.getConfig('ADMIN_EMAILS');
-      const isHardAdmin = typeof admEmails !== 'undefined' && admEmails.includes(email);
+    /**
+     * HÀM CHÍNH: ÁP DỤNG PHÂN QUYỀN VÀ KHỞI TẠO MODULE
+     * Tối ưu hóa bởi 9Trip Tech Lead
+     */
+    applySecurity: async function (userProfile) {
+        try {
+            const email = (userProfile.email || '').toLowerCase();
+            const level = parseInt(userProfile.level || 0);
+            const role = (userProfile.role || '').toLowerCase();
+            const maskedRole = userProfile.realrole || null;
+            const admEmails = window.A.getConfig('ADMIN_EMAILS');
+            const isHardAdmin = typeof admEmails !== 'undefined' && admEmails.includes(email);
 
-      // 1. Cấu hình Module dựa trên Role
-      const ROLE_CONFIG = {
-        op: {
-          js: 'op',
-          template: 'tpl_operator.html',
-          container: '.app-container',
-          title: '9 Trip Phu Quoc - Operator Center',
-          moduleTitle: 'OPERATOR CENTER - QUẢN LÝ NCC - ĐIỀU HÀNH',
-          css: null,
-        },
-        accountant: {
-          // Gom nhóm roles kế toán
-          // jsFile: '@acc/controller_accountant.js',
-          template: '/src/components/tpl_accountant.html',
-          container: '.app-container',
-          title: '9 Trip Phu Quoc - Accounting Center',
-          moduleTitle: 'ACCOUNTING CENTER - QUẢN LÝ KẾ TOÁN',
-          css: { id: 'css-accountant', href: '@acc/accountant.css' },
-          footerTemplate: 'tmpl-acc-footer-bar',
-        },
-        sale: {
-          template: 'tpl_sales.html',
-          container: '.app-container',
-          title: '9 Trip Phu Quoc - Sales Center',
-          moduleTitle: 'SALES CENTER - QUẢN LÝ BOOKING',
-          css: null,
-        },
-      };
+            // 1. Cấu hình Module dựa trên Role
+            const ROLE_CONFIG = {
+                op: {
+                    js: 'op',
+                    template: 'tpl_operator.html',
+                    container: '.app-container',
+                    title: '9 Trip Phu Quoc - Operator Center',
+                    moduleTitle: 'OPERATOR CENTER - QUẢN LÝ NCC - ĐIỀU HÀNH',
+                    css: null,
+                },
+                accountant: {
+                    // Gom nhóm roles kế toán
+                    // jsFile: '@acc/controller_accountant.js',
+                    template: '/src/components/tpl_accountant.html',
+                    container: '.app-container',
+                    title: '9 Trip Phu Quoc - Accounting Center',
+                    moduleTitle: 'ACCOUNTING CENTER - QUẢN LÝ KẾ TOÁN',
+                    css: { id: 'css-accountant', href: '@acc/accountant.css' },
+                    footerTemplate: 'tmpl-acc-footer-bar',
+                },
+                sale: {
+                    template: 'tpl_sales.html',
+                    container: '.app-container',
+                    title: '9 Trip Phu Quoc - Sales Center',
+                    moduleTitle: 'SALES CENTER - QUẢN LÝ BOOKING',
+                    css: null,
+                },
+            };
 
-      // 2. Xác định cấu hình áp dụng
-      let configKey = 'sale'; // Mặc định
-      if (role === 'op') configKey = 'op';
-      else if (['acc', 'acc_thenice', 'ketoan'].includes(role)) configKey = 'accountant';
+            // 2. Xác định cấu hình áp dụng
+            let configKey = 'sale'; // Mặc định
+            if (role === 'op') configKey = 'op';
+            else if (['acc', 'acc_thenice', 'ketoan'].includes(role)) configKey = 'accountant';
 
-      const activeConfig = ROLE_CONFIG[configKey];
+            const activeConfig = ROLE_CONFIG[configKey];
 
-      // 3. Xử lý UI & Tài nguyên (Async)
-      // Load CSS nếu có
-      if (activeConfig.css && !getE(activeConfig.css.id)) {
-        const link = document.createElement('link');
-        link.id = activeConfig.css.id;
-        link.rel = 'stylesheet';
-        link.href = activeConfig.css.href;
-        document.head.appendChild(link);
-      }
+            // 3. Xử lý UI & Tài nguyên (Async)
+            // Load CSS nếu có
+            if (activeConfig.css && !getE(activeConfig.css.id)) {
+                const link = document.createElement('link');
+                link.id = activeConfig.css.id;
+                link.rel = 'stylesheet';
+                link.href = activeConfig.css.href;
+                document.head.appendChild(link);
+            }
 
-      // Load Logic JS
-      if (activeConfig.js) await SYS.loadJSForRole(configKey);
-      if (activeConfig.jsFile) await SYS.loadJSFile(activeConfig.jsFile, role);
+            // Load Logic JS
+            if (activeConfig.js) await SYS.loadJSForRole(configKey);
+            if (activeConfig.jsFile) await SYS.loadJSFile(activeConfig.jsFile, role);
 
-      // Render Giao diện chính
-      await A.UI.renderTemplate('body', activeConfig.template, false, activeConfig.container);
+            // Render Giao diện chính
+            await A.UI.renderTemplate('body', activeConfig.template, false, activeConfig.container);
 
-      // Render Footer riêng cho kế toán nếu có
-      if (activeConfig.footerTemplate) {
-        await A.UI.renderTemplate('body', activeConfig.footerTemplate, false, '#main-footer', 'prepend');
-      }
+            // Render Footer riêng cho kế toán nếu có
+            if (activeConfig.footerTemplate) {
+                await A.UI.renderTemplate('body', activeConfig.footerTemplate, false, '#main-footer', 'prepend');
+            }
 
-      // Cập nhật thông tin tiêu đề
-      if (activeConfig.moduleTitle) A.setConfig('moduleTitle', activeConfig.moduleTitle);
-      if (activeConfig.title) document.title = activeConfig.title;
+            // Cập nhật thông tin tiêu đề
+            if (activeConfig.moduleTitle) A.setConfig('moduleTitle', activeConfig.moduleTitle);
+            if (activeConfig.title) document.title = activeConfig.title;
 
-      // 4. Xử lý Phân quyền (Security Class)
-      document.body.className = ''; // Reset class
-      let permissionClass = '';
+            // 4. Xử lý Phân quyền (Security Class)
+            document.body.className = ''; // Reset class
+            let permissionClass = '';
 
-      if (isHardAdmin || level >= 50) {
-        permissionClass = 'is-admin';
-        L._('🛡️ Security: ADMIN MODE');
+            if (isHardAdmin || level >= 50) {
+                permissionClass = 'is-admin';
+                L._('🛡️ Security: ADMIN MODE');
 
-        if (maskedRole) {
-          document.body.classList.add(`is-${maskedRole}`);
-        } else {
-          if (typeof A.UI.activateTab === 'function') A.UI.activateTab('tab-admin-dashboard');
+                if (maskedRole) {
+                    document.body.classList.add(`is-${maskedRole}`);
+                } else {
+                    if (typeof A.UI.activateTab === 'function') A.UI.activateTab('tab-admin-dashboard');
+                }
+            } else {
+                if (level >= 10) permissionClass = 'is-manager';
+                else if (level >= 5) permissionClass = 'is-sup';
+                else {
+                    // Mapping class theo role cụ thể cho level thấp
+                    const roleClassMap = {
+                        ketoan: 'is-acc',
+                        acc: 'is-acc',
+                        acc_thenice: 'is-acc-thenice',
+                        op: 'is-op',
+                        operator: 'is-op',
+                    };
+                    permissionClass = roleClassMap[role] || (maskedRole === 'op' ? 'is-op' : 'is-sale');
+                }
+                L._(`🛡️ Security: STAFF MODE (${role})`);
+            }
+
+            if (permissionClass) document.body.classList.add(permissionClass);
+
+            L._('LOGIN: UI FOR ROLE LOADED');
+        } catch (error) {
+            console.error('❌ Lỗi tại applySecurity:', error);
+            if (typeof showToast === 'function') showToast('Lỗi phân quyền hệ thống!', 'danger');
         }
-      } else {
-        if (level >= 10) permissionClass = 'is-manager';
-        else if (level >= 5) permissionClass = 'is-sup';
-        else {
-          // Mapping class theo role cụ thể cho level thấp
-          const roleClassMap = {
-            ketoan: 'is-acc',
-            acc: 'is-acc',
-            acc_thenice: 'is-acc-thenice',
-            op: 'is-op',
-            operator: 'is-op',
-          };
-          permissionClass = roleClassMap[role] || (maskedRole === 'op' ? 'is-op' : 'is-sale');
+    },
+    /**
+     * GIẢI PHÁP CHO VẤN ĐỀ 3: XỬ LÝ DYNAMIC CONTENT
+     * Hàm này sẽ duyệt qua container mới render và xóa các node bị cấm
+     */
+    cleanDOM: async function (container) {
+        // Lấy class hiện tại của body để biết đang là ai
+        const body = document.body;
+
+        // Định nghĩa quy tắc xóa (Ngược lại với CSS hiển thị)
+        // Nếu KHÔNG PHẢI Admin -> Xóa .admin-only
+        const user = A.getState('user');
+        const isAdmin = user && (user.realrole === 'admin' || user.role === 'admin');
+        if (!body.classList.contains('is-admin') && !isAdmin) {
+            container.querySelectorAll('.admin-only').forEach((el) => el.remove());
         }
-        L._(`🛡️ Security: STAFF MODE (${role})`);
-      }
 
-      if (permissionClass) document.body.classList.add(permissionClass);
+        // Nếu KHÔNG PHẢI Admin VÀ KHÔNG PHẢI Manager -> Xóa .manager-only
+        if (!body.classList.contains('is-admin') && !body.classList.contains('is-manager')) {
+            container.querySelectorAll('.manager-only').forEach((el) => el.remove());
+        }
 
-      L._('LOGIN: UI FOR ROLE LOADED');
-    } catch (error) {
-      console.error('❌ Lỗi tại applySecurity:', error);
-      if (typeof showToast === 'function') showToast('Lỗi phân quyền hệ thống!', 'danger');
-    }
-  },
-  /**
-   * GIẢI PHÁP CHO VẤN ĐỀ 3: XỬ LÝ DYNAMIC CONTENT
-   * Hàm này sẽ duyệt qua container mới render và xóa các node bị cấm
-   */
-  cleanDOM: async function (container) {
-    // Lấy class hiện tại của body để biết đang là ai
-    const body = document.body;
+        // Nếu KHÔNG PHẢI (Admin, Manager, Sup) -> Xóa .sup-only
+        if (!body.classList.contains('is-admin') && !body.classList.contains('is-manager') && !body.classList.contains('is-sup')) {
+            container.querySelectorAll('.sup-only').forEach((el) => el.remove());
+        }
 
-    // Định nghĩa quy tắc xóa (Ngược lại với CSS hiển thị)
-    // Nếu KHÔNG PHẢI Admin -> Xóa .admin-only
-    const user = A.getState('user');
-    const isAdmin = user && (user.realrole === 'admin' || user.role === 'admin');
-    if (!body.classList.contains('is-admin') && !isAdmin) {
-      container.querySelectorAll('.admin-only').forEach((el) => el.remove());
-    }
-
-    // Nếu KHÔNG PHẢI Admin VÀ KHÔNG PHẢI Manager -> Xóa .manager-only
-    if (!body.classList.contains('is-admin') && !body.classList.contains('is-manager')) {
-      container.querySelectorAll('.manager-only').forEach((el) => el.remove());
-    }
-
-    // Nếu KHÔNG PHẢI (Admin, Manager, Sup) -> Xóa .sup-only
-    if (!body.classList.contains('is-admin') && !body.classList.contains('is-manager') && !body.classList.contains('is-sup')) {
-      container.querySelectorAll('.sup-only').forEach((el) => el.remove());
-    }
-
-    // Xử lý Role cụ thể (Logic loại trừ)
-    // Ví dụ: Nếu là Sale -> Xóa Op, Xóa Acc
-    const role = CURRENT_USER.role;
-    if (body.classList.contains('is-sale') || role === 'sale') {
-      container.querySelectorAll('.op-only, .acc-only').forEach((el) => el.remove());
-    }
-    if (body.classList.contains('is-op') || role === 'op') {
-      container.querySelectorAll('.sales-only, .acc-only').forEach((el) => el.remove());
-    }
-    if (body.classList.contains('is-acc') || CURRENT_USER.role === 'acc_thenice') {
-      container.querySelectorAll('.sales-only').forEach((el) => el.remove());
-      container.querySelectorAll('[data-bs-target="#tab-form"]').forEach((el) => el.remove()); // Ẩn tab Dashboard chung
-    }
-    L._('LOGIN: DOM CLEANED BASED ON ROLE');
-  },
+        // Xử lý Role cụ thể (Logic loại trừ)
+        // Ví dụ: Nếu là Sale -> Xóa Op, Xóa Acc
+        const role = CURRENT_USER.role;
+        if (body.classList.contains('is-sale') || role === 'sale') {
+            container.querySelectorAll('.op-only, .acc-only').forEach((el) => el.remove());
+        }
+        if (body.classList.contains('is-op') || role === 'op') {
+            container.querySelectorAll('.sales-only, .acc-only').forEach((el) => el.remove());
+        }
+        if (body.classList.contains('is-acc') || CURRENT_USER.role === 'acc_thenice') {
+            container.querySelectorAll('.sales-only').forEach((el) => el.remove());
+            container.querySelectorAll('[data-bs-target="#tab-form"]').forEach((el) => el.remove()); // Ẩn tab Dashboard chung
+        }
+        L._('LOGIN: DOM CLEANED BASED ON ROLE');
+    },
 };
 
 export { AUTH_MANAGER, SECURITY_MANAGER };

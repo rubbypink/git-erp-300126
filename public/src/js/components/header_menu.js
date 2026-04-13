@@ -4,46 +4,46 @@
  * Cơ chế: Tự động dàn layout Desktop/Mobile và ẩn/hiện element theo Role.
  */
 export default class ErpHeaderMenu {
-  static autoInit = false;
-  static _injectedStyles = false;
-  constructor(containerId = 'nav-container') {
-    this.containerId = containerId;
-    this.user = A.getState('user');
-    this.currentRole = this.user ? this.user.role : CURRENT_USER.role || 'guest';
-    this.config = { height: '60px', zIndex: '1040', bgColor: '#cf3a3a' };
-    this._initialized = false;
+    static autoInit = false;
+    static _injectedStyles = false;
+    constructor(containerId = 'nav-container') {
+        this.containerId = containerId;
+        this.user = A.getState('user');
+        this.currentRole = this.user ? this.user.role : CURRENT_USER.role || 'guest';
+        this.config = { height: '60px', zIndex: '1040', bgColor: '#cf3a3a' };
+        this._initialized = false;
 
-    // [SỬA LỖI]: Bơm HTML ngay lập tức (Đồng bộ) để giữ chỗ ID cho Firebase Auth bắn dữ liệu vào
-    this._injectStyles();
-    this._renderLayout();
-    this._initClickOutside();
-    this.init();
-  }
-
-  async init() {
-    if (this._initialized) {
-      console.warn('[ERP Header Menu] Đã khởi tạo rồi, bỏ qua...');
-      return;
+        // [SỬA LỖI]: Bơm HTML ngay lập tức (Đồng bộ) để giữ chỗ ID cho Firebase Auth bắn dữ liệu vào
+        this._injectStyles();
+        this._renderLayout();
+        this._initClickOutside();
+        this.init();
     }
-    this._initialized = true;
-    try {
-      if (!this.currentRole || this.currentRole === 'guest') {
-        this.currentRole = A.getState('user') ? A.getState('user').role : CURRENT_USER.role || 'sale';
-        this._applyRoleFilters(); // Chỉ chạy CSS filter sau khi đã có Role
-      }
-    } catch (error) {
-      console.error('[9 Trip ERP] Lỗi khởi tạo Header Menu:', error);
+
+    async init() {
+        if (this._initialized) {
+            console.warn('[ERP Header Menu] Đã khởi tạo rồi, bỏ qua...');
+            return;
+        }
+        this._initialized = true;
+        try {
+            if (!this.currentRole || this.currentRole === 'guest') {
+                this.currentRole = A.getState('user') ? A.getState('user').role : CURRENT_USER.role || 'sale';
+                this._applyRoleFilters(); // Chỉ chạy CSS filter sau khi đã có Role
+            }
+        } catch (error) {
+            console.error('[9 Trip ERP] Lỗi khởi tạo Header Menu:', error);
+        }
+        // $('[data-bs-target="#tab-admin-dashboard"]')?.click();
     }
-    // $('[data-bs-target="#tab-admin-dashboard"]')?.click();
-  }
 
-  /**
-   * (Private) Bơm CSS độc lập để xử lý Responsive chuẩn xác
-   */
-  _injectStyles() {
-    if (ErpHeaderMenu._injectedStyles) return;
+    /**
+     * (Private) Bơm CSS độc lập để xử lý Responsive chuẩn xác
+     */
+    _injectStyles() {
+        if (ErpHeaderMenu._injectedStyles) return;
 
-    const css = `
+        const css = `
             /* [FIX] Nâng toàn bộ container gốc lên tầng trên cùng */
             #${this.containerId} {
                 position: relative; /* Hoặc 'sticky' với top: 0 nếu bạn muốn header trượt theo màn hình */
@@ -115,16 +115,19 @@ export default class ErpHeaderMenu {
                 }
                 
                 /* Tối ưu dropdown menu trên mobile để dễ touch (chạm) */
-                .erp-mobile-dropdown-menu {
-                    width: 250px;
+                .erp-mobile-dropdown-menu, .erp-header .dropdown-menu {
+                    width: 20rem;
+                    background-color: var(--surface-color);
+                    color: var(--text-color);
                     max-height: 80vh;
                     overflow-y: auto;
                     box-shadow: 0 10px 30px rgba(0,0,0,0.15);
                     border: none;
                     border-radius: 8px;
                 }
-                .erp-mobile-dropdown-menu .dropdown-item {
+                .erp-mobile-dropdown-menu .dropdown-item, .erp-header .dropdown-menu .dropdown-item {
                     padding: 12px 20px;
+                    color: var(--text-color);
                     border-bottom: 1px solid #f8f9fa;
                 }
                 /* [FIX] Chống bóp méo icon, chỉ áp dụng cho Dropdown Mobile */
@@ -175,15 +178,15 @@ export default class ErpHeaderMenu {
             }
         `;
 
-    addDynamicCSS(css);
-    ErpHeaderMenu._injectedStyles = true;
-  }
+        addDynamicCSS(css);
+        ErpHeaderMenu._injectedStyles = true;
+    }
 
-  _renderLayout() {
-    const container = getE(this.containerId);
-    if (!container) return;
+    _renderLayout() {
+        const container = getE(this.containerId);
+        if (!container) return;
 
-    container.innerHTML = `
+        container.innerHTML = `
             <nav class="navbar navbar-dark p-0 erp-header-wrapper">
                 <div class="erp-header-inner w-100 d-flex align-items-center">
                     
@@ -228,10 +231,10 @@ export default class ErpHeaderMenu {
                 </div>
             </nav>
         `;
-  }
+    }
 
-  _getSearchAndFiltersHTML() {
-    return `
+    _getSearchAndFiltersHTML() {
+        return `
             <div class="d-flex align-items-center gap-2">
                 <form class="form-inline m-0 d-none d-md-block">
                     <div class="input-group input-group-sm flex-center gap-0 bg-white rounded overflow-hidden shadow-sm">
@@ -243,12 +246,12 @@ export default class ErpHeaderMenu {
                 </form>
             </div>
         `;
-  }
+    }
 
-  // --- CÁC HÀM TRÍCH XUẤT HTML THÀNH PHẦN (Giữ nguyên ID và Class cũ) ---
+    // --- CÁC HÀM TRÍCH XUẤT HTML THÀNH PHẦN (Giữ nguyên ID và Class cũ) ---
 
-  _getNavTabsHTML() {
-    return `
+    _getNavTabsHTML() {
+        return `
             <ul class="nav nav-tabs border-0" id="mainTabs" role="tablist">
                 <li class="nav-item">
                     <button class="nav-link active fw-bold border-0 bg-transparent text-white" data-bs-target="#tab-dashboard" onclick="A.UI.activateTab('tab-dashboard')">
@@ -256,29 +259,29 @@ export default class ErpHeaderMenu {
                     </button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link border-0 bg-transparent text-white-50" data-bs-target="#tab-form" onclick="A.UI.activateTab('tab-form')">Booking</button>
+                    <button class="nav-link border-0 bg-transparent text-white-50 main-tabs-btn" data-bs-target="#tab-form" onclick="A.UI.activateTab('tab-form')">Booking</button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link border-0 bg-transparent text-white-50" data-bs-target="#tab-data-tbl" onclick="A.UI.activateTab('tab-data-tbl')">Bảng Data</button>
+                    <button class="nav-link border-0 bg-transparent text-white-50 main-tabs-btn" data-bs-target="#tab-data-tbl" onclick="A.UI.activateTab('tab-data-tbl')">Bảng Data</button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link border-0 bg-transparent text-white-50" data-bs-target="#tab-tour-price" onclick="A.UI.activateTab('tab-tour-price')">Bảng Giá</button>
+                    <button class="nav-link border-0 bg-transparent text-white-50 main-tabs-btn" data-bs-target="#tab-tour-price" onclick="A.UI.activateTab('tab-tour-price')">Bảng Giá</button>
                 </li>                
                 <li class="nav-item op-only">
-                    <button class="nav-link border-0 bg-transparent text-white-50" data-bs-target="#tab-price-pkg" onclick="A.UI.activateTab('tab-price-pkg')">Quản Lý Giá</button>
+                    <button class="nav-link border-0 bg-transparent text-white-50 main-tabs-btn" data-bs-target="#tab-price-pkg" onclick="A.UI.activateTab('tab-price-pkg')">Quản Lý Giá</button>
                 </li>
                 <li class="nav-item admin-only">
-                    <button class="nav-link text-warning border-0 bg-transparent" data-bs-target="#tab-admin-dashboard" onclick="A.UI.activateTab('tab-admin-dashboard')">
+                    <button class="nav-link text-warning border-0 bg-transparent main-tabs-btn" data-bs-target="#tab-admin-dashboard" onclick="A.UI.activateTab('tab-admin-dashboard')">
                         <i class="fa-solid fa-user-shield"></i> Admin
                     </button>
                 </li>
             </ul>
         `;
-  }
+    }
 
-  _getSettingsMenuHTML() {
-    return `
-            <div class="erp-header d-flex justify-content-end shadow-sm">
+    _getSettingsMenuHTML() {
+        return `
+            <div class="erp-header d-flex justify-content-end">
                 <button id="erp-menu-trigger" class="chrome-trigger-btn" aria-label="Menu" title="Menu">
                 <i class="fa-solid fa-ellipsis-vertical"></i>
                 </button>
@@ -447,10 +450,10 @@ export default class ErpHeaderMenu {
              }
             </style>
         `;
-  }
+    }
 
-  _getNotificationWidgetHTML() {
-    return `
+    _getNotificationWidgetHTML() {
+        return `
             <div class="notification-widget dropdown position-relative me-2">
                 <button class="btn btn-warning btn-sm dropdown-toggle d-flex align-items-center justify-content-center position-relative shadow-sm border-0" type="button" id="notificationBellBtn" data-bs-toggle="dropdown" data-bs-auto-close="true" style="width: 36px; height: 36px; border-radius: 50%;">
                     <i class="fa-solid fa-bell text-warning" style="font-size: 1.2rem;"></i>
@@ -477,115 +480,115 @@ export default class ErpHeaderMenu {
                 </div>
             </div>
         `;
-  }
-
-  /**
-   * (Private) Đăng ký event click-outside để đóng tất cả custom dropdown trong header.
-   * Xử lý:
-   *   1. Toggle #erp-menu-container khi click #erp-menu-trigger
-   *   2. Accordion submenu (.erp-submenu) trên mobile
-   *   3. Click ngoài vùng menu → ẩn tất cả + disable pointer-events
-   */
-  _initClickOutside() {
-    // ── Handler duy nhất — 3 case xử lý tuần tự, return sớm để tránh chồng lấn ──
-    const handler = (e) => {
-      const trigger = getE('erp-menu-trigger');
-      const menu = getE('erp-menu-container');
-      const btnCustomUpdate = getE('btn-custom-update');
-
-      // ── 4. Click ngoài → đóng notification menu (Bootstrap 5 fallback)notificationPanel ──
-      const notifPanel = getE('notificationPanel');
-      const notifBtn = getE('notificationBellBtn');
-      if (notifPanel && notifPanel.classList.contains('show')) {
-        if (!notifPanel.contains(e.target) && !notifBtn.contains(e.target)) {
-          const bsDropdown = bootstrap.Dropdown.getInstance(notifBtn);
-          if (bsDropdown) bsDropdown.hide();
-          if (notifPanel) notifPanel.classList.remove('show');
-        }
-      }
-
-      // ── 0. Xử lý click button Cập Nhật Tùy Chỉnh ──
-      if (btnCustomUpdate && btnCustomUpdate.contains(e.target)) {
-        try {
-          this._handleCustomUpdate();
-        } catch (err) {
-          console.error('[ErpHeaderMenu] Lỗi khi xử lý Cập Nhật Tùy Chỉnh:', err);
-        }
-        return;
-      }
-
-      // ── 1. Toggle settings menu ──
-      if (trigger && trigger.contains(e.target)) {
-        const isHidden = menu.classList.contains('d-none');
-        menu.classList.toggle('d-none', !isHidden);
-        menu.style.pointerEvents = isHidden ? 'auto' : 'none';
-        return;
-      }
-
-      // ── 2. Mobile accordion cho .erp-submenu ──
-      const submenuTrigger = e.target.closest('.erp-submenu > .erp-menu-item');
-      if (submenuTrigger && menu && menu.contains(submenuTrigger)) {
-        const submenu = submenuTrigger.closest('.erp-submenu');
-        menu.querySelectorAll('.erp-submenu.active').forEach((el) => {
-          if (el !== submenu) el.classList.remove('active');
-        });
-        submenu.classList.toggle('active');
-        return;
-      }
-
-      // ── 3. Click ngoài → đóng settings menu ──
-      if (menu && !menu.classList.contains('d-none')) {
-        const wrapper = document.querySelector('.erp-header');
-        if (!wrapper || !wrapper.contains(e.target)) {
-          menu.classList.add('d-none');
-          menu.style.pointerEvents = 'none';
-          menu.querySelectorAll('.erp-submenu.active').forEach((el) => el.classList.remove('active'));
-        }
-      }
-    };
-
-    // Dùng A.Event.on để được auto-cleanup + dedup qua _listenerRegistry.
-    // Fallback về native nếu A chưa khởi tạo (trường hợp header render trước app boot).
-    if (typeof window.A?.Event?.on === 'function') {
-      A.Event.on(document, 'click', handler, true);
-    } else {
-      document.addEventListener('click', handler);
     }
-  }
 
-  /**
-   * (Private) Xử lý logic Cập Nhật Tùy Chỉnh
-   */
-  _handleCustomUpdate() {
-    try {
-      // 1. Ẩn menu hiện tại
-      const menu = getE('erp-menu-container');
-      if (menu) {
-        menu.classList.add('d-none');
-        menu.style.pointerEvents = 'none';
-      }
+    /**
+     * (Private) Đăng ký event click-outside để đóng tất cả custom dropdown trong header.
+     * Xử lý:
+     *   1. Toggle #erp-menu-container khi click #erp-menu-trigger
+     *   2. Accordion submenu (.erp-submenu) trên mobile
+     *   3. Click ngoài vùng menu → ẩn tất cả + disable pointer-events
+     */
+    _initClickOutside() {
+        // ── Handler duy nhất — 3 case xử lý tuần tự, return sớm để tránh chồng lấn ──
+        const handler = (e) => {
+            const trigger = getE('erp-menu-trigger');
+            const menu = getE('erp-menu-container');
+            const btnCustomUpdate = getE('btn-custom-update');
 
-      // 2. Lọc options theo Role
-      const options = [];
-      const role = this.currentRole;
+            // ── 4. Click ngoài → đóng notification menu (Bootstrap 5 fallback)notificationPanel ──
+            const notifPanel = getE('notificationPanel');
+            const notifBtn = getE('notificationBellBtn');
+            if (notifPanel && notifPanel.classList.contains('show')) {
+                if (!notifPanel.contains(e.target) && !notifBtn.contains(e.target)) {
+                    const bsDropdown = bootstrap.Dropdown.getInstance(notifBtn);
+                    if (bsDropdown) bsDropdown.hide();
+                    if (notifPanel) notifPanel.classList.remove('show');
+                }
+            }
 
-      // Mặc định luôn có lists
-      options.push({ id: 'lists', name: 'Danh sách chung (Lists)' });
+            // ── 0. Xử lý click button Cập Nhật Tùy Chỉnh ──
+            if (btnCustomUpdate && btnCustomUpdate.contains(e.target)) {
+                try {
+                    this._handleCustomUpdate();
+                } catch (err) {
+                    console.error('[ErpHeaderMenu] Lỗi khi xử lý Cập Nhật Tùy Chỉnh:', err);
+                }
+                return;
+            }
 
-      // Phân quyền
-      if (role === 'admin' || role === 'op' || role === 'acc') {
-        options.push({ id: 'hotels', name: 'Khách sạn (Hotels)' });
-        options.push({ id: 'suppliers', name: 'Nhà cung cấp (Suppliers)' });
-      }
+            // ── 1. Toggle settings menu ──
+            if (trigger && trigger.contains(e.target)) {
+                const isHidden = menu.classList.contains('d-none');
+                menu.classList.toggle('d-none', !isHidden);
+                menu.style.pointerEvents = isHidden ? 'auto' : 'none';
+                return;
+            }
 
-      if (role === 'admin') {
-        options.push({ id: 'app_config', name: 'Cấu hình hệ thống (App Config)' });
-        options.push({ id: 'users', name: 'Người dùng (Users)' });
-      }
+            // ── 2. Mobile accordion cho .erp-submenu ──
+            const submenuTrigger = e.target.closest('.erp-submenu > .erp-menu-item');
+            if (submenuTrigger && menu && menu.contains(submenuTrigger)) {
+                const submenu = submenuTrigger.closest('.erp-submenu');
+                menu.querySelectorAll('.erp-submenu.active').forEach((el) => {
+                    if (el !== submenu) el.classList.remove('active');
+                });
+                submenu.classList.toggle('active');
+                return;
+            }
 
-      // 3. Hiển thị Modal chọn
-      const selectId = 'custom-update-select';
-      const html = `
+            // ── 3. Click ngoài → đóng settings menu ──
+            if (menu && !menu.classList.contains('d-none')) {
+                const wrapper = document.querySelector('.erp-header');
+                if (!wrapper || !wrapper.contains(e.target)) {
+                    menu.classList.add('d-none');
+                    menu.style.pointerEvents = 'none';
+                    menu.querySelectorAll('.erp-submenu.active').forEach((el) => el.classList.remove('active'));
+                }
+            }
+        };
+
+        // Dùng A.Event.on để được auto-cleanup + dedup qua _listenerRegistry.
+        // Fallback về native nếu A chưa khởi tạo (trường hợp header render trước app boot).
+        if (typeof window.A?.Event?.on === 'function') {
+            A.Event.on(document, 'click', handler, true);
+        } else {
+            document.addEventListener('click', handler);
+        }
+    }
+
+    /**
+     * (Private) Xử lý logic Cập Nhật Tùy Chỉnh
+     */
+    _handleCustomUpdate() {
+        try {
+            // 1. Ẩn menu hiện tại
+            const menu = getE('erp-menu-container');
+            if (menu) {
+                menu.classList.add('d-none');
+                menu.style.pointerEvents = 'none';
+            }
+
+            // 2. Lọc options theo Role
+            const options = [];
+            const role = this.currentRole;
+
+            // Mặc định luôn có lists
+            options.push({ id: 'lists', name: 'Danh sách chung (Lists)' });
+
+            // Phân quyền
+            if (role === 'admin' || role === 'op' || role === 'acc') {
+                options.push({ id: 'hotels', name: 'Khách sạn (Hotels)' });
+                options.push({ id: 'suppliers', name: 'Nhà cung cấp (Suppliers)' });
+            }
+
+            if (role === 'admin') {
+                options.push({ id: 'app_config', name: 'Cấu hình hệ thống (App Config)' });
+                options.push({ id: 'users', name: 'Người dùng (Users)' });
+            }
+
+            // 3. Hiển thị Modal chọn
+            const selectId = 'custom-update-select';
+            const html = `
         <div class="p-2">
           <label class="form-label small fw-bold text-muted mb-2">Chọn loại dữ liệu cần cập nhật:</label>
           <select id="${selectId}" class="form-select form-select-sm shadow-sm border-primary">
@@ -597,75 +600,75 @@ export default class ErpHeaderMenu {
         </div>
       `;
 
-      logA(html, 'info', 'confirm', {
-        title: 'Cập Nhật Tùy Chỉnh',
-        confirmText: 'Cập Nhật Ngay',
-        cancelText: 'Bỏ qua',
-        onConfirm: async () => {
-          const selectedValue = getVal(selectId);
-          if (!selectedValue) return;
+            logA(html, 'info', 'confirm', {
+                title: 'Cập Nhật Tùy Chỉnh',
+                confirmText: 'Cập Nhật Ngay',
+                cancelText: 'Bỏ qua',
+                onConfirm: async () => {
+                    const selectedValue = getVal(selectId);
+                    if (!selectedValue) return;
 
-          showLoading(true, `Đang cập nhật ${selectedValue}...`);
-          try {
-            await A.DB.loadCollections([selectedValue], { forceNew: true });
-            logA(`Đã cập nhật dữ liệu [${selectedValue}] thành công!`, 'success', 'toast');
-          } catch (err) {
-            console.error('[ErpHeaderMenu] Lỗi loadMeta:', err);
-            logA(`Lỗi khi cập nhật dữ liệu: ${err.message}`, 'error');
-          } finally {
-            showLoading(false);
-          }
-        },
-      });
-    } catch (error) {
-      console.error('[ErpHeaderMenu] _handleCustomUpdate error:', error);
-      Opps(error, '_handleCustomUpdate');
+                    showLoading(true, `Đang cập nhật ${selectedValue}...`);
+                    try {
+                        await A.DB.loadCollections([selectedValue], { forceNew: true });
+                        logA(`Đã cập nhật dữ liệu [${selectedValue}] thành công!`, 'success', 'toast');
+                    } catch (err) {
+                        console.error('[ErpHeaderMenu] Lỗi loadMeta:', err);
+                        logA(`Lỗi khi cập nhật dữ liệu: ${err.message}`, 'error');
+                    } finally {
+                        showLoading(false);
+                    }
+                },
+            });
+        } catch (error) {
+            console.error('[ErpHeaderMenu] _handleCustomUpdate error:', error);
+            Opps(error, '_handleCustomUpdate');
+        }
     }
-  }
 
-  /**
-   * (Private) Logic ẩn hiện các phần tử dựa trên cấu hình Role
-   */
-  _applyRoleFilters() {
-    const container = getE(this.containerId);
-    if (!container) return;
+    /**
+     * (Private) Logic ẩn hiện các phần tử dựa trên cấu hình Role
+     */
+    _applyRoleFilters() {
+        const container = getE(this.containerId);
+        if (!container) return;
 
-    // Map class phân quyền
-    const roleClassMap = {
-      sale: '.sales-only',
-      op: '.op-only',
-      acc: '.acc-only',
-      admin: '.admin-only',
-      manager: '.manager-only',
-    };
+        // Map class phân quyền
+        const roleClassMap = {
+            sale: '.sales-only',
+            op: '.op-only',
+            acc: '.acc-only',
+            admin: '.admin-only',
+            manager: '.manager-only',
+        };
 
-    // 1. Ẩn tất cả các element có dính class phân quyền (reset trạng thái)
-    Object.values(roleClassMap).forEach((selector) => {
-      const elements = container.querySelectorAll(selector);
-      elements.forEach((el) => {
-        // Sử dụng !important thông qua style để đè lên các class d-flex nếu có
-        el.style.setProperty('display', 'none', 'important');
-      });
-    });
-
-    // 2. Mở lại các element thuộc quyền của user hiện tại
-    if (this.currentRole === 'admin') {
-      // Admin thấy tất cả
-      Object.values(roleClassMap).forEach((selector) => {
-        const elements = container.querySelectorAll(selector);
-        elements.forEach((el) => {
-          el.style.removeProperty('display');
+        // 1. Ẩn tất cả các element có dính class phân quyền (reset trạng thái)
+        Object.values(roleClassMap).forEach((selector) => {
+            const elements = container.querySelectorAll(selector);
+            elements.forEach((el) => {
+                // Sử dụng !important thông qua style để đè lên các class d-flex nếu có
+                el.style.setProperty('display', 'none', 'important');
+            });
         });
-      });
-    } else {
-      // User thường chỉ thấy role của mình
-      const allowedSelector = roleClassMap[this.currentRole];
-      if (allowedSelector) {
-        const elements = container.querySelectorAll(allowedSelector);
-        elements.forEach((el) => {
-          el.style.removeProperty('display');
-        });
-      }
+
+        // 2. Mở lại các element thuộc quyền của user hiện tại
+        if (this.currentRole === 'admin') {
+            // Admin thấy tất cả
+            Object.values(roleClassMap).forEach((selector) => {
+                const elements = container.querySelectorAll(selector);
+                elements.forEach((el) => {
+                    el.style.removeProperty('display');
+                });
+            });
+        } else {
+            // User thường chỉ thấy role của mình
+            const allowedSelector = roleClassMap[this.currentRole];
+            if (allowedSelector) {
+                const elements = container.querySelectorAll(allowedSelector);
+                elements.forEach((el) => {
+                    el.style.removeProperty('display');
+                });
+            }
+        }
     }
-  }
 }

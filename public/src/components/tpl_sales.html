@@ -114,7 +114,7 @@
 </template>
 
 <template id="tmpl-form">
-  <form id="main-form" class="gap-2 mt-0">
+  <form id="main-form" class="w-100 h-100 gap-2 mt-0">
     <div class="card my-2">
       <div class="card-header d-flex justify-content-between bg-primary bg-gradient bg-opacity-75 text-white py-0" style="cursor: pointer; user-select: none;">
         <div class="flex-grow-1 bg-primary bg-gradient bg-opacity-75 text-white py-0" style="cursor: pointer; user-select: none;" data-bs-toggle="collapse" data-bs-target="#booking_details_collapse" role="button">
@@ -162,35 +162,35 @@
         </div>
       </div>
       <div class="col-12 collapse show" id="booking_details_collapse" data-bs-parent=".card">
-        <div class="card-body d-flex justify-content-around my-0" id="sub-booking-form">
+        <div class="card-body row  justify-content-around mx-0 my-0" id="sub-booking-form">
           <fieldset name="customers" id="fs_customer_info" class="col-12 col-md-4" data-collection="customers">
             <legend>Thông tin Khách Hàng</legend>
             <div class="d-none"><input type="text" class="form-control form-control-sm" id="Cust_Id" data-field="customer_id" value="">
             </div>
 
-            <div class="col-auto py-0">
+            <div class="py-0">
               <label for="Cust_Name" class="form-label small">Họ và tên (*)</label>
               <input type="text" class="form-control form-control-sm mx-1" id="Cust_Name" data-field="customer_full_name" placeholder="Họ tên khách" onchange="SalesModule.Logic.findCustByPhone()" required list="list-cust-names" autocomplete="off"><datalist id="list-cust-names"></datalist>
             </div>
-            <div class="col-auto">
+            <div>
               <label class="form-label small" for="Cust_Birthdate">Ngày Sinh</label>
               <input type="date" class="form-control form-control-sm" id="Cust_Birthdate" data-field="customer_dob">
             </div>
-            <div class="col-auto"><label class="form-label small">Số CCCD</label><input type="text" class="form-control form-control-sm" id="Cust_ID_Card" data-field="customer_id_card" value="">
+            <div><label class="form-label small">Số CCCD</label><input type="text" class="form-control form-control-sm" id="Cust_ID_Card" data-field="customer_id_card" value="">
             </div>
-            <div class="col-auto"><label class="form-label small">Ngày Cấp</label><input type="date" class="form-control form-control-sm" id="Cust_ID_Card_Date" data-field="customer_id_card_date"></div>
+            <div><label class="form-label small">Ngày Cấp</label><input type="date" class="form-control form-control-sm" id="Cust_ID_Card_Date" data-field="customer_id_card_date"></div>
 
-            <div class="col-auto">
+            <div>
               <label for="Cust_Phone" class="form-label small">Số Điện Thoại (*)</label>
               <input type="text" class="form-control form-control-sm phone_number mx-1" id="Cust_Phone" data-field="customer_phone" placeholder="Số điện thoại khách" onchange="SalesModule.Logic.findCustByPhone()" required list="list-cust-phones" autocomplete="off"><datalist id="list-cust-phones"></datalist>
             </div>
-            <div class="col-auto">
+            <div>
               <label for="Cust_Email" class="form-label small">Email</label>
               <input type="email" class="form-control form-control-sm mx-1" id="Cust_Email" data-field="customer_email" placeholder="Email khách" required>
             </div>
-            <div class="col-auto"><label class="form-label small">Nguồn</label><select data-source="APP_DATA.lists.source" data-searchable="true" class="smart-select form-select form-select-sm" id="Cust_Source" data-field="customer_source"></select>
+            <div><label class="form-label small">Nguồn</label><select data-source="APP_DATA.lists.source" data-searchable="true" class="smart-select form-select form-select-sm" id="Cust_Source" data-field="customer_source"></select>
             </div>
-            <div class="col-auto"><label class="form-label small">Tổng Chi</label><input type="text" class="form-control form-control-sm number" id="Cust_Total" data-field="customer_total_spend" value="" readonly>
+            <div><label class="form-label small">Tổng Chi</label><input type="text" class="form-control form-control-sm number" id="Cust_Total" data-field="customer_total_spend" value="" readonly>
             </div>
             <div class="g-r-100">
               <label for="Cust_Addr" class="form-label small">Địa chỉ</label>
@@ -206,18 +206,18 @@
 
           <fieldset class="col-12 col-md-4" name="bookings" id="fs_booking_info" data-collection="bookings">
             <legend>Thông tin Booking</legend>
-            <div class="col-auto"><label class="form-label small fw-bold">Mã Booking</label><input type="text" class="form-control form-control-sm fw-bold text-danger" id="BK_ID" data-field="id" readonly placeholder="Auto ID" style="pointer-events: none; user-select: none;">
+            <div><label class="form-label small fw-bold">Mã Booking</label><input type="text" class="form-control form-control-sm fw-bold text-danger" id="BK_ID" data-field="id" readonly placeholder="Auto ID" style="pointer-events: none; user-select: none;">
             </div>
-            <div class="col-auto"><label class="form-label small">Ngày Đặt</label><input type="date" class="form-control form-control-sm" id="BK_Date" data-field="created_at"></div>
+            <div><label class="form-label small">Ngày Đặt</label><input type="date" class="form-control form-control-sm" id="BK_Date" data-field="created_at"></div>
 
-            <div class="col-auto"><label class="form-label small">Ngày Đi</label><input type="date" class="form-control form-control-sm" id="BK_Start" data-field="start_date"></div>
-            <div class="col-auto"><label class="form-label small">Ngày Về</label><input type="date" class="form-control form-control-sm" id="BK_End" data-field="end_date"></div>
+            <div><label class="form-label small">Ngày Đi</label><input type="date" class="form-control form-control-sm" id="BK_Start" data-field="start_date"></div>
+            <div><label class="form-label small">Ngày Về</label><input type="date" class="form-control form-control-sm" id="BK_End" data-field="end_date"></div>
 
 
-            <div class="col-auto"><label class="form-label small">Ng Lớn</label><input type="text" inputmode="numeric" class="form-control form-control-sm number" id="BK_Adult" data-field="adults" value="2"></div>
-            <div class="col-auto"><label class="form-label small">Trẻ Em</label><input type="text" inputmode="numeric" class="form-control form-control-sm number" id="BK_Child" data-field="children"></div>
+            <div><label class="form-label small">Ng Lớn</label><input type="text" inputmode="numeric" class="form-control form-control-sm number" id="BK_Adult" data-field="adults" value="2"></div>
+            <div><label class="form-label small">Trẻ Em</label><input type="text" inputmode="numeric" class="form-control form-control-sm number" id="BK_Child" data-field="children"></div>
 
-            <div class="col-auto">
+            <div>
               <label for="BK_TourName" class="form-label small">Tên Tour/Combo</label>
               <div class="d-flex">
                 <input type="text" class="form-control form-control-sm" id="BK_TourName" list="list-tours" placeholder="Nhập tên tour..." onchange="SalesModule.UI.checkAndLoadTemplate()">
@@ -230,8 +230,8 @@
               <datalist id="list-tours"></datalist>
             </div>
             <div></div>
-            <div class="col-auto"><label class="form-label small fw-bold text-primary ">Tổng Booking</label><input type="text" class="form-control form-control-sm fw-bold text-end bg-warning number" id="BK_Total" data-field="total_amount" readonly value="0"></div>
-            <div class="col-auto"><label class="form-label small">Trạng thái</label>
+            <div><label class="form-label small fw-bold text-primary ">Tổng Booking</label><input type="text" class="form-control form-control-sm fw-bold text-end bg-warning number" id="BK_Total" data-field="total_amount" readonly value="0"></div>
+            <div><label class="form-label small">Trạng thái</label>
               <at-status class="input-group" style="height: fit-content;">
                 <input type="text" class="form-control form-control-sm fw-bold bg-opacity-25 border-0" id="BK_Status" data-field="status" readonly value="Đặt Lịch">
                 <button class="btn btn-sm btn-outline-primary rounded-0 border-left-0" type="button" title="Cập nhật trạng thái" onclick="SalesModule.Logic.updateBkStatus()">
@@ -239,7 +239,7 @@
                 </button>
               </at-status>
             </div>
-            <div class="col-auto"><label class="form-label small">Nhân viên</label>
+            <div><label class="form-label small">Nhân viên</label>
               <select data-source="users" data-searchable="true" class="smart-select form-select form-select-sm" id="BK_Staff" data-field="staff_id">
                 <option value="-1">-- Chọn NV --</option>
               </select>
@@ -248,14 +248,14 @@
 
           <fieldset class="col-12 col-md-3" data-collection="bookings">
             <legend>Thanh Toán</legend>
-            <div class="col-auto"><label class="form-label small fw-bold text-success">Đặt Cọc</label><input type="text" class="form-control form-control-sm text-end border-success number" id="BK_Deposit" data-field="deposit_amount" value="0"></div>
-            <div class="col-auto"><label class="form-label small fw-bold text-danger">Còn Lại</label><input type="text" class="form-control form-control-sm text-end fw-bold text-danger number" id="BK_Balance" data-field="balance_amount" readonly value="0"></div>
-            <div class="col-auto">
+            <div><label class="form-label small fw-bold text-success">Đặt Cọc</label><input type="text" class="form-control form-control-sm text-end border-success number" id="BK_Deposit" data-field="deposit_amount" value="0"></div>
+            <div><label class="form-label small fw-bold text-danger">Còn Lại</label><input type="text" class="form-control form-control-sm text-end fw-bold text-danger number" id="BK_Balance" data-field="balance_amount" readonly value="0"></div>
+            <div>
               <label class="form-label small">Loại TT</label>
               <select data-source="APP_DATA.lists.payment" data-searchable="true" class="smart-select form-select form-select-sm" id="BK_PayType" data-field="payment_method"></select>
             </div>
-            <div class="col-auto"><label class="form-label small">Hạn TT</label><input type="date" class="form-control form-control-sm" id="BK_PayDue" data-field="payment_due_date"></div>
-            <div class="col-12 py-0 my-2 g-r-100">
+            <div><label class="form-label small">Hạn TT</label><input type="date" class="form-control form-control-sm" id="BK_PayDue" data-field="payment_due_date"></div>
+            <div class="py-0 my-2 g-r-100">
               <textarea name="BK_Note" class="form-control form-control-sm pt-2 align-middle" id="BK_Note" data-field="note" placeholder="Ghi Chú:" rows="5"></textarea>
             </div>
             <div class="flex-center g-r-100 mb-1">
@@ -278,15 +278,15 @@
         </div>
         <div class="d-flex gap-2">
           <button type="button" class="btn btn-sm btn-warning" onclick="SalesModule.Logic.copyBooking()" title="Load Booking Mẫu">
-            <i class="fa-solid fa-arrow-right-arrow-left fa-rotate-90"></i> Load Booking Mẫu
+            <i class="fa-solid fa-arrow-right-arrow-left fa-rotate-90"></i> Load BK Mẫu
           </button>
-          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="reverseDetailsRows()" title="Đảo ngược thứ tự dòng">
+          <button type="button" class="btn btn-sm btn-secondary" onclick="reverseDetailsRows()" title="Đảo ngược thứ tự dòng">
             <i class="fa-solid fa-arrow-right-arrow-left fa-rotate-90"></i> Đảo thứ tự
           </button>
           <button type="button" class="btn btn-sm btn-secondary" onclick="copyRow()"><i class="fa-solid fa-plus"></i>
-            Copy dòng</button>
+             Copy dòng</button>
           <button type="button" class="btn btn-sm btn-primary" onclick="SYS.runFnByRole('addDetailRow','UI')"><i class="fa-solid fa-plus"></i>
-            Thêm dòng</button>
+             Thêm dòng</button>
         </div>
       </div>
       <div class="table-responsive" id="tbl-booking-form">

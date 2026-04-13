@@ -16,6 +16,8 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
     "vite": "^7.3.1",
     "vite-plugin-static-copy": "^3.2.0"
   },

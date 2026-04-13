@@ -15,13 +15,13 @@
 
         <div class="d-flex align-items-center gap-2">
           <div class="input-group input-group-sm shadow-sm border-dark bg-secondary rounded-3" style="min-width: 200px;">
-            <select id="tp-tour-select" data-source="tour_prices" class="smart-select form-select border-0  ps-0">
+            <select id="tp-tour-select" data-source="tour_prices" data-onchange='A.TourPrice.loadData(getVal("tp-tour-select"));' class="smart-select form-select border-0  ps-0">
               <option value="">-- Chọn Tour/Combo --</option>
             </select>
           </div>
 
-          <div class="btn-group btn-group-sm gap-2 shadow-sm" style="min-width: 180px;">
-            <button id="tp-btn-open-base" class="btn btn-sm btn-warning d-none fw-bold" title="Quản lý Giá Gốc (OP/Admin)">
+          <div class="btn-group btn-group-sm gap-2 shadow-sm" style="min-width: 220px;">
+            <button id="tp-btn-open-base" class="btn btn-sm btn-warning op-only fw-bold" title="Quản lý Giá Gốc (OP/Admin)">
               <i class="fa-solid fa-calculator me-1"></i> Giá Gốc
             </button>
             <button id="tp-btn-export" class="btn btn-sm btn-primary fw-bold" title="Xuất PDF">
