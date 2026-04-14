@@ -22,6 +22,7 @@ export default class PriceImportAI {
         this.cdm = cdm; // Centralized Data Manager (PriceManager)
         this.table = null;
         this.storeName = 'ai_prices';
+        this._eventsAttached = false;
     }
 
     /**
@@ -39,8 +40,8 @@ export default class PriceImportAI {
             // Render bộ khung UI (Action Bar + Hotel Info Form + Data Grid)
             container.innerHTML = this._buildUI();
 
-            // Gắn các sự kiện (Event Listeners)
-            this._attachEvents(container);
+            // Gắn các sự kiện (Event Listeners) - Sử dụng Delegation để an toàn hơn
+            this._attachEvents();
 
             // Cập nhật danh sách lịch sử
             await this._updateHistorySelect(container);
@@ -62,15 +63,12 @@ export default class PriceImportAI {
 
             if (A.Modal) {
                 await A.Modal.render(htmlContent, 'AI Import - Trích xuất bảng giá', { size: 'modal-xl' });
+                await this._updateHistorySelect();
+                this._attachEvents();
                 A.Modal.show();
+                const typeSelect = getE('#ai-import-type');
+                if (typeSelect) typeSelect.value = type;
             }
-            const modalEl = A.Modal._getEl();
-            if (modalEl) {
-                modalEl.querySelector('#ai-import-type').value = type;
-                await this._updateHistorySelect(modalEl);
-                this._attachEvents(modalEl);
-            }
-            this.modal = A.Modal;
         } catch (error) {
             Opps('[PriceImportAI] Lỗi khi hiển thị Modal:', error);
         }
@@ -147,40 +145,78 @@ export default class PriceImportAI {
     }
 
     /**
-     * Gắn sự kiện cho các nút bấm
+     * Gắn sự kiện cho các nút bấm sử dụng A.Event.on (Lazy Delegation)
      * @private
      */
-    _attachEvents(container) {
+    _attachEvents() {
         try {
-            const fileInput = container.querySelector('#ai-file-upload');
-            const typeSelect = container.querySelector('#ai-import-type');
-            const historySelect = container.querySelector('#ai-history-select');
+            L._('AI: Attaching events...');
+            // 1. Thay đổi loại import
+            A.Event.on(
+                '#ai-import-type',
+                'change',
+                (e, target) => {
+                    this.currentImportType = target.value;
+                },
+                true
+            );
 
-            typeSelect.addEventListener('change', (e) => {
-                this.currentImportType = e.target.value;
-            });
+            // 2. Chọn từ lịch sử
+            A.Event.on(
+                '#ai-history-select',
+                'change',
+                (e, target) => {
+                    if (target.value) this._loadFromLocal(target.value);
+                },
+                true
+            );
 
-            historySelect.addEventListener('change', (e) => {
-                if (e.target.value) this._loadFromLocal(e.target.value);
-            });
+            // 3. Trigger upload file
+            A.Event.on(
+                '#btn-trigger-upload',
+                'click',
+                () => {
+                    const fileInput = getE('ai-file-upload');
+                    if (fileInput) fileInput.click();
+                },
+                true
+            );
 
-            container.querySelector('#btn-trigger-upload').addEventListener('click', () => {
-                fileInput.click();
-            });
+            // 4. Xử lý file upload (Sự kiện change trên input file không nên dùng lazy delegation vì lý do bảo mật trình duyệt)
+            // Tuy nhiên, vì input file nằm trong container được render, ta gán trực tiếp hoặc dùng delegation cấp gần nhất.
+            // Ở đây dùng delegation vào document cho đồng bộ, A.Event.on xử lý tốt.
+            A.Event.on(
+                '#ai-file-upload',
+                'change',
+                (e) => {
+                    this._handleFileUpload(e);
+                },
+                true
+            );
 
-            fileInput.addEventListener('change', (e) => this._handleFileUpload(e));
+            // 5. Lưu tạm vào Local (IndexedDB)
+            A.Event.on('#btn-ai-save-local', 'click', () => this._saveToLocal(), true);
 
-            container.querySelector('#btn-ai-save-local').addEventListener('click', () => this._saveToLocal());
-            container.querySelector('#btn-ai-delete-local').addEventListener('click', () => this._deleteFromLocal());
+            // 6. Xóa bản lưu Local
+            A.Event.on('#btn-ai-delete-local', 'click', () => this._deleteFromLocal(), true);
 
-            container.querySelector('#btn-ai-clear').addEventListener('click', () => {
-                this.extractedData = [];
-                this.metadata = {};
-                this.hotelInfo = null;
-                this._renderGrid();
-            });
+            // 7. Xóa trắng UI
+            A.Event.on(
+                '#btn-ai-clear',
+                'click',
+                () => {
+                    this.extractedData = [];
+                    this.metadata = {};
+                    this.hotelInfo = null;
+                    this._renderGrid();
+                },
+                true
+            );
 
-            container.querySelector('#btn-ai-save').addEventListener('click', () => this._handleSaveToDB());
+            // 8. Xác nhận và lưu vào ERP
+            A.Event.on('#btn-ai-save', 'click', () => this._handleSaveToDB(), true);
+
+            this._eventsAttached = true;
         } catch (error) {
             Opps('[PriceImportAI] _attachEvents error:', error);
         }
@@ -232,7 +268,7 @@ export default class PriceImportAI {
                 await this._updateHistorySelect();
 
                 // Auto select bản vừa lưu để UI khớp trạng thái
-                const historySelect = document.getElementById('ai-history-select');
+                const historySelect = getE('ai-history-select');
                 if (historySelect) historySelect.value = record.id;
             }
         } catch (error) {
@@ -253,7 +289,7 @@ export default class PriceImportAI {
                 this.hotelInfo = record.hotelInfo || null;
                 this.currentImportType = record.type;
 
-                const typeSelect = document.getElementById('ai-import-type');
+                const typeSelect = getE('ai-import-type');
                 if (typeSelect) typeSelect.value = record.type;
 
                 this._renderGrid();
@@ -273,7 +309,7 @@ export default class PriceImportAI {
      */
     async _deleteFromLocal() {
         try {
-            const historySelect = document.getElementById('ai-history-select');
+            const historySelect = getE('ai-history-select');
             const selectedId = historySelect ? historySelect.value : '';
 
             const msg = selectedId ? 'Bạn có chắc chắn muốn xóa bản lưu nháp này?' : 'Bạn có chắc chắn muốn xóa TOÀN BỘ lịch sử lưu tạm?';
@@ -308,7 +344,7 @@ export default class PriceImportAI {
 
     async _updateHistorySelect(container = document) {
         try {
-            const historySelect = container.querySelector('#ai-history-select');
+            const historySelect = getE('#ai-history-select');
             if (!historySelect) return;
 
             const records = await A.DB.local.getCollection(this.storeName);
@@ -367,8 +403,6 @@ export default class PriceImportAI {
             }
 
             if (result.data && result.success) {
-                // this.extractedData = result.data;
-                // this._saveToLocal();
                 this.extractedData = this._normalizeAIData(result.data.items);
                 this.metadata = result.data.metadata || {};
                 this.hotelInfo = result.data.hotel_info || null; // Lấy thêm info khách sạn
@@ -410,7 +444,7 @@ export default class PriceImportAI {
      */
     _getLatestHotelInfo() {
         if (!this.hotelInfo || this.currentImportType !== 'hotel_price') return null;
-        const container = document.getElementById('ai-hotel-info-container');
+        const container = getE('ai-hotel-info-container');
         if (!container) return this.hotelInfo;
 
         return {
@@ -427,8 +461,8 @@ export default class PriceImportAI {
 
     _renderGrid() {
         try {
-            const infoContainer = document.getElementById('ai-hotel-info-container');
-            const gridContainer = document.getElementById('ai-data-grid-container');
+            const infoContainer = getE('ai-hotel-info-container');
+            const gridContainer = getE('ai-data-grid-container');
             if (!gridContainer) return;
 
             // Logic Fallback: Nếu không có supplier_name thì lấy tên Khách sạn
@@ -569,7 +603,7 @@ export default class PriceImportAI {
             }
 
             // TRÍCH XUẤT supplier_name MỚI NHẤT TỪ FORM TRƯỚC KHI LƯU
-            const infoContainer = document.getElementById('ai-hotel-info-container');
+            const infoContainer = getE('ai-hotel-info-container');
             if (infoContainer) {
                 const splInput = infoContainer.querySelector('[name="hi_supplier_name"]');
                 if (splInput && splInput.value.trim()) {
@@ -581,7 +615,7 @@ export default class PriceImportAI {
             if (this.cdm && typeof this.cdm.importFromAI === 'function') {
                 await this.cdm.importFromAI(this.currentImportType, data, this.metadata, finalHotelInfo);
 
-                if (this.modal) this.modal.hide();
+                if (A.Modal) A.Modal.hide();
                 logA('Đã đồng bộ dữ liệu vào ERP thành công!', 'success', 'alert');
             } else {
                 throw new Error('CDM (PriceManager) không được kết nối hoặc thiếu hàm importFromAI.');
@@ -612,9 +646,9 @@ export default class PriceImportAI {
     }
 
     _toggleLoading(show) {
-        const loader = document.getElementById('ai-loading-indicator');
-        const grid = document.getElementById('ai-data-grid-container');
-        const info = document.getElementById('ai-hotel-info-container');
+        const loader = getE('ai-loading-indicator');
+        const grid = getE('ai-data-grid-container');
+        const info = getE('ai-hotel-info-container');
         if (!loader || !grid) return;
 
         if (show) {

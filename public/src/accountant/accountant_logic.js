@@ -214,5 +214,3 @@ export async function auditTransactionsChecking() {
   }
 }
 
-// Export function cho window access (nếu cần)
-window.migrateBookingTransactions = migrateBookingTransactions;

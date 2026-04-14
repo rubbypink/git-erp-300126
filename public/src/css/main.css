@@ -166,6 +166,13 @@ select {
     -webkit-appearance: none !important;
     -moz-appearance: none !important;
     appearance: none !important;
+    background-color: var(--popup-bg);
+    color: var(--popup-text);
+    border-color: var(--border-color);
+}
+select option {
+    color: var(--popup-text);
+    background-color: var(--popup-bg);
 }
 
 /* 2. Xóa mũi tên của Bootstrap 5 (nếu đang dùng class form-select) */
@@ -173,6 +180,12 @@ select.form-select {
     background-image: none !important; /* Bắt buộc để xóa icon mặc định của BS5 */
     /* Reset lại padding bên phải cho cân đối vì đã bỏ icon (mặc định của BS5 là khoảng 2.25rem) */
     padding-right: 0.75rem !important;
+    transition: all 0.2s ease;
+    text-align: center;
+    -webkit-user-select: text; /* Allow text selection in inputs */
+    user-select: text;
+    touch-action: manipulation; /* ✅ Allow zoom but block double-tap zoom */
+    pointer-events: auto; /* ✅ Ensure input is clickable */
 }
 
 /* ─── GRID UTILITY ─── */
@@ -291,8 +304,7 @@ select.form-select {
 
 /* --- FORM CONTROLS --- */
 /* Input form cũng cần đồng bộ nền để dễ đọc */
-.form-control,
-.form-select {
+.form-control {
     /* background-color: var(--input-bg); */
     background-color: transparent;
     color: var(--text-color);

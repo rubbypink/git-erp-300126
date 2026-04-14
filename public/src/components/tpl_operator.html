@@ -120,7 +120,7 @@
 </template>
 
 <template id="tmpl-form">
-  <form id="main-form" class="gap-2 mt-0">
+  <form id="main-form" class="w-100 h-100 gap-2 mt-0">
     <div class="card my-2">
       <div class="card-header d-flex justify-content-between bg-primary bg-gradient bg-opacity-75 text-white py-0" style="cursor: pointer; user-select: none;">
         <div class="flex-grow-1 bg-primary bg-gradient bg-opacity-75 text-white py-0" style="cursor: pointer; user-select: none;" data-bs-toggle="collapse" data-bs-target="#booking_details_collapse" role="button">
@@ -145,12 +145,12 @@
             <li>
               <hr class="dropdown-divider my-1">
             </li>
-            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="Op.Logic.updateDeposit()" title="Cập nhật trạng thái deposit"></a>
-              <i class="fa-solid fa-coins me-2"></i> Cập nhật Deposit
+            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="Op.Logic.updateDeposit()" title="Cập nhật trạng thái deposit">
+                <i class="fa-solid fa-coins me-2"></i> Cập nhật Deposit
               </a>
             </li>
-            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="Op.Logic.updateBkStatus()" title="Cập nhật trạng thái booking"></a>
-              <i class="fa-solid fa-refresh me-2"></i> Cập nhật Trạng thái
+            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="Op.Logic.updateBkStatus()" title="Cập nhật trạng thái booking">
+                <i class="fa-solid fa-refresh me-2"></i> Cập nhật Trạng thái
               </a>
             </li>
             <li><a class="dropdown-item small" href="javascript:void(0)" onclick="Op.Logic.calcGrandTotal()" title="Tính lại tổng tiền booking">
@@ -163,22 +163,22 @@
         </div>
       </div>
       <div class="col-12 collapse show" id="booking_details_collapse" data-bs-parent=".card">
-        <div class="card-body d-flex justify-content-around my-0" id="sub-booking-form">
+        <div class="card-body row justify-content-around mx-0 my-0" id="sub-booking-form">
           <fieldset name="customers" id="fs_customer_info" class="col-12 col-md-4" data-collection="customers">
             <legend>Thông tin Khách Hàng</legend>
-            <div class="col-auto py-0">
+            <div class="py-0">
               <label for="Cust_Name" class="form-label small">Họ và tên</label>
               <input type="text" class="form-control form-control-sm mx-1" id="Cust_Name" data-field="customer_full_name" readonly>
             </div>
-            <div class="col-auto">
+            <div>
               <label for="Cust_Phone" class="form-label small">Số Điện Thoại</label>
               <input type="text" class="form-control form-control-sm phone_number mx-1" id="Cust_Phone" data-field="customer_phone" readonly>
             </div>
-            <div class="col-auto">
+            <div>
               <label for="Cust_Source" class="form-label small">Nguồn</label>
               <select class="form-select form-select-sm" id="Cust_Source" data-field="customer_source" disabled></select>
             </div>
-            <div class="col-auto">
+            <div>
               <label for="BK_Staff" class="form-label small">Nhân viên</label>
               <select class="form-select form-select-sm" id="BK_Staff" data-field="staff_id" disabled></select>
             </div>
@@ -186,38 +186,38 @@
 
           <fieldset class="col-12 col-md-4" name="bookings" id="fs_booking_info" data-collection="bookings">
             <legend>Thông tin Booking</legend>
-            <div class="col-auto"><label class="form-label small fw-bold">Mã Booking</label><input type="text" class="form-control form-control-sm fw-bold text-danger" id="BK_ID" data-field="id" readonly>
+            <div><label class="form-label small fw-bold">Mã Booking</label><input type="text" class="form-control form-control-sm fw-bold text-danger" id="BK_ID" data-field="id" readonly>
             </div>
-            <div class="col-auto"><label class="form-label small">Ngày Đặt</label><input type="date" class="form-control form-control-sm" id="BK_Date" data-field="created_at" readonly></div>
+            <div><label class="form-label small">Ngày Đặt</label><input type="date" class="form-control form-control-sm" id="BK_Date" data-field="created_at" readonly></div>
 
-            <div class="col-auto"><label class="form-label small">Ngày Đi</label><input type="date" class="form-control form-control-sm" id="BK_Start" data-field="start_date" readonly></div>
-            <div class="col-auto"><label class="form-label small">Ngày Về</label><input type="date" class="form-control form-control-sm" id="BK_End" data-field="end_date" readonly></div>
+            <div><label class="form-label small">Ngày Đi</label><input type="date" class="form-control form-control-sm" id="BK_Start" data-field="start_date" readonly></div>
+            <div><label class="form-label small">Ngày Về</label><input type="date" class="form-control form-control-sm" id="BK_End" data-field="end_date" readonly></div>
 
-            <div class="col-auto"><label class="form-label small">Ng Lớn</label><input type="text" class="form-control form-control-sm number" id="BK_Adult" data-field="adults" readonly></div>
-            <div class="col-auto"><label class="form-label small">Trẻ Em</label><input type="text" class="form-control form-control-sm number" id="BK_Child" data-field="children" readonly></div>
+            <div><label class="form-label small">Ng Lớn</label><input type="text" class="form-control form-control-sm number" id="BK_Adult" data-field="adults" readonly></div>
+            <div><label class="form-label small">Trẻ Em</label><input type="text" class="form-control form-control-sm number" id="BK_Child" data-field="children" readonly></div>
 
-            <div class="col-auto">
+            <div class="g-r-100">
               <label for="BK_TourName" class="form-label small">Tên Tour/Combo</label>
               <input type="text" class="form-control form-control-sm" id="BK_TourName" readonly>
             </div>
-            <div class="col-auto"><label class="form-label small">Trạng thái</label>
+            <div><label class="form-label small">Trạng thái</label>
               <input type="text" class="form-control form-control-sm fw-bold bg-warning bg-opacity-25" id="BK_Status" data-field="status" readonly>
             </div>
           </fieldset>
 
           <fieldset class="col-12 col-md-3" data-collection="bookings">
             <legend>Tài Chính & Ghi Chú</legend>
-            <div class="col-auto"><label class="form-label small fw-bold text-primary">Tổng Booking</label><input type="text" class="form-control form-control-sm fw-bold text-end bg-warning number" id="BK_Total" data-field="total_amount" readonly></div>
-            <div class="col-auto"><label class="form-label small fw-bold text-success">Tổng Chi Phí</label><input type="text" class="form-control form-control-sm text-end border-success number" id="BK_TotalCost" readonly></div>
-            <div class="col-auto"><label class="form-label small fw-bold text-danger">Lợi Nhuận</label><input type="text" class="form-control form-control-sm text-end fw-bold text-danger number" id="BK_Balance" readonly></div>
+            <div><label class="form-label small fw-bold text-primary">Tổng Booking</label><input type="text" class="form-control form-control-sm fw-bold text-end bg-warning number" id="BK_Total" data-field="total_amount" readonly></div>
+            <div><label class="form-label small fw-bold text-success">Tổng Chi Phí</label><input type="text" class="form-control form-control-sm text-end border-success number" id="BK_TotalCost" readonly></div>
+            <div><label class="form-label small fw-bold text-danger">Lợi Nhuận</label><input type="text" class="form-control form-control-sm text-end fw-bold text-danger number" id="BK_Balance" readonly></div>
 
-            <div class="col-auto">
+            <div>
               <label class="form-label small">Loại TT</label>
               <select class="form-select form-select-sm" id="BK_PayType" data-field="payment_method" disabled></select>
             </div>
-            <div class="col-auto"><label class="form-label small">Hạn TT</label><input type="date" class="form-control form-control-sm" id="BK_PayDue" data-field="payment_due_date" readonly></div>
-            <div class="col-12 py-0 my-2 g-r-100">
-              <textarea name="BK_Note" class="form-control form-control-sm pt-2 align-middle" id="BK_Note" data-field="note" placeholder="Ghi Chú:" rows="3" readonly></textarea>
+            <div><label class="form-label small">Hạn TT</label><input type="date" class="form-control form-control-sm" id="BK_PayDue" data-field="payment_due_date" readonly></div>
+            <div class="py-0 my-2 g-r-100">
+              <textarea name="BK_Note" class="form-control form-control-sm pt-2 align-middle" id="BK_Note" data-field="note" placeholder="Ghi Chú:" rows="5" readonly></textarea>
             </div>
           </fieldset>
         </div>
@@ -238,8 +238,7 @@
             <i class="fa-solid fa-arrow-right-arrow-left fa-rotate-90"></i> Đảo thứ tự
           </button>
           <button type="button" class="btn btn-sm btn-secondary" id="btn-sync-row" onclick="Op.DB.syncRow(CURRENT_CTX_ROW)"><i class="fa-solid fa-plus"></i> Sync dòng</button>
-          <button type="button" class="btn btn-sm btn-primary" id="btn-add-row" onclick="Op.UI.addDetaiRow()"><i class="fa-solid fa-plus"></i> Thêm
-            dòng</button>
+          <button type="button" class="btn btn-sm btn-primary" id="btn-add-row" onclick="Op.UI.addDetaiRow()"><i class="fa-solid fa-plus"></i> Thêm dòng</button>
         </div>
       </div>
       <div class="table-responsive" id="tbl-booking-form">
