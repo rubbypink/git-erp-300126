@@ -688,7 +688,7 @@ export default class ASelect {
     setValue(rawVal, forceTrigger = true) {
         try {
             if (!document.body.contains(this.el)) {
-                console.warn(`[ASelect Debug - LỖI GHOST DOM KHẮC PHỤC THÀNH CÔNG] Nếu log này còn xuất hiện, bảng thực sự đã bị refresh và element cũ cần dọn rác.`);
+                // console.warn(`[ASelect Debug - LỖI GHOST DOM KHẮC PHỤC THÀNH CÔNG]`);
                 this.destroy();
                 return;
             }
@@ -738,7 +738,10 @@ export default class ASelect {
 
             this.syncUI();
 
+            // [FIX CRITICAL BUG]: CHỈ TRIGGER KHI ĐƯỢC PHÉP
             if (forceTrigger) {
+                // Dispatch native event (Hàm lắng nghe trong initBase sẽ tự bắt cái này
+                // và gọi this.triggerCallback cho đại ca)
                 const changeEvt = new Event('change', { bubbles: true });
                 changeEvt._isInternal = true;
                 this.el.dispatchEvent(changeEvt);
@@ -746,9 +749,8 @@ export default class ASelect {
                 const inputEvt = new Event('input', { bubbles: true });
                 inputEvt._isInternal = true;
                 this.el.dispatchEvent(inputEvt);
-            } else {
-                this.triggerCallback('onChange', this.el.value);
             }
+            // TUYỆT ĐỐI KHÔNG CÓ `else { this.triggerCallback(...) }` Ở ĐÂY NỮA!!!
         } catch (e) {
             console.error(`[ASelect Debug - ERROR] Lỗi trong setValue:`, e);
         }
