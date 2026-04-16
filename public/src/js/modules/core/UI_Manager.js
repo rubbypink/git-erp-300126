@@ -1,5 +1,5 @@
 import { createFormBySchema, loadFormDataSchema } from '/src/js/modules/db/DBSchema.js';
-// import ATable from './ATable.js';
+import ASelect from '@js/components/ASelect.js';
 const _viCollator = new Intl.Collator('vi', { numeric: true, sensitivity: 'base' });
 const _numRegex = /[^0-9.-]+/g;
 var _htmlCache = {};
@@ -471,7 +471,7 @@ const UI_RENDERER = {
                     header: true,
                     headerExtra: [
                         `<div class="btn btn-sm btn-warning shadow-sm p-0" id="datalist-select"">
-        <select id="btn-select-datalist" data-creatable="${CURRENT_USER.role === 'admin' ? 'true' : 'false'}" data-source="A.UI.initBtnSelectDataList"  data-onchange="A.UI.updateTableData();" class="smart-select form-select form-select-sm border-0" style="min-width: 6rem;">
+        <select id="btn-select-datalist" data-creatable="${CURRENT_USER.role === 'admin' ? 'true' : 'false'}" data-source="A.UI.initBtnSelectDataList"  data-onchange="A.UI.updateTableData();" data-editable="true" class="smart-select form-select form-select-sm border-0" style="min-width: 6rem;">
         </select>
       </div>`,
                     ],

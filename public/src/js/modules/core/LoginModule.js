@@ -27,27 +27,27 @@ const AUTH_MANAGER = {
             // ─── TẮT PERSISTENCE TRÊN MOBILE ────────────────────────────────────────
             // Trên mobile/WebView Firestore có thể tự bật offline cache → tắt thủ công
             // clearPersistence() phải gọi TRƯỚC khi bất kỳ Firestore operation nào chạy
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+            // const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
 
-            if (isMobile) {
-                try {
-                    await clearIndexedDbPersistence(getFirestore(this.app));
-                    console.log('📱 Firestore persistence: ĐÃ TẮT (Mobile)');
-                } catch (err) {
-                    // Lỗi này xảy ra nếu Firestore đã có operation đang chạy — bỏ qua
-                    console.warn(`⚠️ clearPersistence thất bại: [${err.code}] ${err.message}`);
-                }
-            }
-            // THÊM ĐOẠN NÀY: Tự động trỏ vào Emulator nếu chạy trên localhost
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                try {
-                    connectFirestoreEmulator(db, '127.0.0.1', 8080);
-                    connectAuthEmulator(this.auth, 'http://127.0.0.1:9099', { disableWarnings: true });
-                    logA('🔥 [DEV MODE] Đã kết nối thành công với Firebase Local Emulator!');
-                } catch (err) {
-                    Opps("Lỗi kết nối Emulator. Đảm bảo bạn đã chạy 'firebase emulators:start'", err);
-                }
-            }
+            // if (isMobile) {
+            //     try {
+            //         await clearIndexedDbPersistence(getFirestore(this.app));
+            //         console.log('📱 Firestore persistence: ĐÃ TẮT (Mobile)');
+            //     } catch (err) {
+            //         // Lỗi này xảy ra nếu Firestore đã có operation đang chạy — bỏ qua
+            //         console.warn(`⚠️ clearPersistence thất bại: [${err.code}] ${err.message}`);
+            //     }
+            // }
+            // // THÊM ĐOẠN NÀY: Tự động trỏ vào Emulator nếu chạy trên localhost
+            // if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            //     try {
+            //         connectFirestoreEmulator(db, '127.0.0.1', 8080);
+            //         connectAuthEmulator(this.auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+            //         logA('🔥 [DEV MODE] Đã kết nối thành công với Firebase Local Emulator!');
+            //     } catch (err) {
+            //         Opps("Lỗi kết nối Emulator. Đảm bảo bạn đã chạy 'firebase emulators:start'", err);
+            //     }
+            // }
             // ─────────────────────────────────────────────────────────────────────────
 
             return this.app;

@@ -9,6 +9,7 @@ export default class MODULELOADER {
         this.#config.disabledModules = (disabledModules || []).map((m) => m);
         this.registry = {
             Database: () => import('/src/js/modules/db/DBManager.js').then((m) => m.default),
+            MigrationHelper: () => import('/src/js/modules/db/MigrationHelper.js').then((m) => m.default),
             Event: () => import('@core/EventManager.js').then((m) => m.default),
             UI: () => import('@core/UI_Manager.js').then((m) => m.default),
             Logic: () => import('@core/LogicBase.js').then((m) => m.default),

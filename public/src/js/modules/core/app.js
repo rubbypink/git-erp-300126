@@ -628,7 +628,7 @@ class Application {
                 this.#moduleManager = new MODULELOADER(this, this.#config.disabledModules);
                 await this.#moduleManager.loadCoreModules();
                 await this.#modules['Database'].init();
-                // await this._call('Event', 'init');
+                await this._call('Event', 'init');
 
                 // 2. Fetch user profile — timeout 15s tránh treo vô hạn trên mobile
                 let docSnap;
@@ -760,6 +760,12 @@ class Application {
             console.warn('[PostBoot] Module load error:', e.message);
         }
         await SECURITY_MANAGER.cleanDOM(document);
+        // f. Event manager — instance đã tồn tại từ #modules init, chỉ cần gọi init()
+        // try {
+        //     this._call('Event', 'init');
+        // } catch (e) {
+        //     console.warn('[PostBoot] EventManager:', e.message);
+        // }
         // e. Cả UI modules + data đã sẵn sàng → render UI với data
         if (typeof handleServerData === 'function') {
             try {
@@ -781,12 +787,6 @@ class Application {
             console.warn('[PostBoot] StateProxy.hookSetters:', e.message);
         }
 
-        // f. Event manager — instance đã tồn tại từ #modules init, chỉ cần gọi init()
-        try {
-            this._call('Event', 'init');
-        } catch (e) {
-            console.warn('[PostBoot] EventManager:', e.message);
-        }
         mgr.loadAsyncModules(CURRENT_USER.role);
         L._('✅ App ready', 'success');
         window.dispatchEvent(new CustomEvent('app-ready'));

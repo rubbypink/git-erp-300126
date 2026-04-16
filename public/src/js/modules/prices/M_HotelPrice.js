@@ -6,7 +6,6 @@
  */
 
 import { getFirestore, doc, runTransaction } from 'firebase/firestore';
-import { runMigrateFieldData } from '../db/migration-helper.js';
 import { PriceCalculator } from './PriceCalculator.js';
 
 class HotelPriceManager {
@@ -786,13 +785,13 @@ class HotelPriceManager {
             if (!isConfirmed) return;
 
             this.toggleLoading(true);
-
+            const MigrationHelper = () => import('/src/js/modules/db/MigrationHelper.js').then((m) => m.default);
             // 4. Thực thi Migration (Batch Update)
             for (const m of mappings) {
                 L._(`🔄 Đang migrate: ${m.oldName} -> ${m.newName}...`);
                 // Cập nhật booking_details và operator_entries
-                await runMigrateFieldData('booking_details', 'service_name', m.oldName, m.newName);
-                await runMigrateFieldData('operator_entries', 'service_name', m.oldName, m.newName);
+                await MigrationHelper.runMigrateFieldData('booking_details', 'service_name', m.oldName, m.newName);
+                await MigrationHelper.runMigrateFieldData('operator_entries', 'service_name', m.oldName, m.newName);
             }
 
             // 5. Cập nhật danh sách rooms cho Hotel (Atomic Transaction)

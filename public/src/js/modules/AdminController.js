@@ -7,8 +7,8 @@ import { getFirestore, collection, doc, getDoc, getDocs, query, limit, writeBatc
 import { getApp } from 'firebase/app';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
-import * as AT from './db/migration-helper.js';
-window.AT = AT;
+// import * as AT from './db/MigrationHelper.js';
+// window.AT = AT;
 import NavBarMenuController from '/src/js//components/M_NavBarResponsive.js';
 
 // =============================================================================
@@ -456,7 +456,7 @@ class AdminController {
 
         this.isFilterMode = false;
         this.selectedCollectionIndex = null;
-        this.migration = AT.migrationHelper;
+        this.migration = null;
         this._initialized = false;
         this.temp = null;
     }
@@ -825,7 +825,8 @@ class AdminController {
 
     async changeFieldName(path, oldName, newName) {
         try {
-            const result = await migrationHelper.migrateField(path, oldName, newName);
+            if (!this.migration) this.migration = await import('@db/MigrationHelper.js');
+            const result = await this.migration.migrateField(path, oldName, newName);
 
             L._('✅ Field migrated successfully:', result.data);
             showAlert('✅ Đã migrate field thành công!', 'success', 'THÀNH CÔNG');
@@ -1283,7 +1284,7 @@ window.o = async function (fn) {
  *
  * Usage:
  *   1. Ensure user is logged in
- *   2. Call: migrationHelper.migrateField(...)
+ *   2. Call: MigrationHelper.migrateField(...)
  *   3. Monitor progress in console
  * ═════════════════════════════════════════════════════════════════════════
  */

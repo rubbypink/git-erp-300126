@@ -112,6 +112,12 @@
     }
 }
 
+.smart-option.highlight,
+.smart-create-btn.highlight {
+    background-color: #f8f9fa; /* Màu nền xám nhạt hoặc màu của hệ thống đại ca */
+    color: #0d6efd; /* Màu chữ */
+}
+
 /* Thiết lập mặc định con trỏ chuột cho tất cả các element bị khóa nhập liệu */
 input[readonly],
 textarea[readonly],
