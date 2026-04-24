@@ -37,7 +37,7 @@ export default class ErpHeaderMenu {
         } catch (error) {
             console.error('[9 Trip ERP] Lỗi khởi tạo Header Menu:', error);
         }
-        // $('[data-bs-target="#tab-admin-dashboard"]')?.click();
+        // $('[data-bs-toggle="tab" data-bs-target="#tab-admin-dashboard"]')?.click();
     }
 
     /**
@@ -218,18 +218,40 @@ export default class ErpHeaderMenu {
                         ${this._getNotificationWidgetHTML()}
 
                         <div class="erp-header flex-center d-lg-none ms-1">
-                            <button class="btn btn-light btn-sm d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" style="width: 36px; height: 36px; border-radius: 50%;">
-                                <i class="fa-solid fa-bars text-primary"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end mt-2 shadow-lg border-0">
-                                <li class="dropdown-header fw-bold text-primary">CHUYỂN TRANG</li>
-                                <li><button class="dropdown-item py-2" data-bs-target="#tab-dashboard" onclick="A.UI.activateTab('tab-dashboard')"><i class="fa-solid fa-chart-line text-warning w-20px"></i> Dashboard</button></li>
-                                <li><button class="dropdown-item py-2" data-bs-target="#tab-form" onclick="A.UI.activateTab('tab-form')"><i class="fa-solid fa-file-pen text-secondary w-20px"></i> Booking</button></li>
-                                <li><button class="dropdown-item py-2" data-bs-target="#tab-data-tbl" onclick="A.UI.activateTab('tab-data-tbl')"><i class="fa-solid fa-list text-secondary w-20px"></i> Bảng Data</button></li>
-                                <li><button class="dropdown-item py-2" data-bs-target="#tab-price-pkg" onclick="A.UI.activateTab('tab-price-pkg')"><i class="fa-solid fa-list text-secondary w-20px"></i> Danh sách</button></li>                                
-                                <li class="admin-only"><button class="dropdown-item py-2 text-danger fw-bold" data-bs-target="#tab-admin-dashboard" onclick="A.UI.activateTab('tab-admin-dashboard')"><i class="fa-solid fa-user-shield w-20px"></i> Admin Dashboard</button></li>
-                            </ul>
-                        </div>
+                        <button class="btn btn-light btn-sm d-flex align-items-center justify-content-center" type="button" data-bs-toggle="dropdown" style="width: 36px; height: 36px; border-radius: 50%;">
+                            <i class="fa-solid fa-bars text-primary"></i>
+                        </button>
+                        
+                        <ul class="dropdown-menu dropdown-menu-end mt-2 shadow-lg border-0">
+                            <li class="dropdown-header fw-bold text-primary">CHUYỂN TRANG</li>
+                            
+                            <li>
+                                <button class="dropdown-item py-2" type="button" onclick="A.UI.activateTab('tab-dashboard')">
+                                    <i class="fa-solid fa-chart-line text-warning w-20px"></i> Dashboard
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item py-2" type="button" onclick="A.UI.activateTab('tab-form')">
+                                    <i class="fa-solid fa-file-pen text-secondary w-20px"></i> Booking
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item py-2" type="button" onclick="A.UI.activateTab('tab-data-tbl')">
+                                    <i class="fa-solid fa-list text-secondary w-20px"></i> Bảng Data
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item py-2" type="button" onclick="A.UI.activateTab('tab-price-pkg')">
+                                    <i class="fa-solid fa-list text-secondary w-20px"></i> Danh sách
+                                </button>
+                            </li>                                
+                            <li class="admin-only">
+                                <button class="dropdown-item py-2 text-danger fw-bold" type="button" onclick="A.UI.activateTab('tab-admin-dashboard')">
+                                    <i class="fa-solid fa-user-shield w-20px"></i> Quản Lý Dashboard
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
                     </div>
                 </div>
             </nav>
@@ -257,24 +279,24 @@ export default class ErpHeaderMenu {
         return `
             <ul class="nav nav-tabs border-0" id="mainTabs" role="tablist">
                 <li class="nav-item">
-                    <button class="nav-link active fw-bold border-0 bg-transparent" data-bs-target="#tab-dashboard" onclick="A.UI.activateTab('tab-dashboard')">
+                    <button class="nav-link active fw-bold border-0 bg-transparent" data-bs-toggle="tab" data-bs-target="#tab-dashboard" >
                         <i class="fa-solid fa-chart-line text-warning"></i> Dashboard
                     </button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-target="#tab-form" onclick="A.UI.activateTab('tab-form')">Booking</button>
+                    <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-toggle="tab" data-bs-target="#tab-form" >Booking</button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-target="#tab-data-tbl" onclick="A.UI.activateTab('tab-data-tbl')">Bảng Data</button>
+                    <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-toggle="tab" data-bs-target="#tab-data-tbl" >Bảng Data</button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-target="#tab-tour-price" onclick="A.UI.activateTab('tab-tour-price')">Bảng Giá</button>
+                    <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-toggle="tab" data-bs-target="#tab-tour-price" >Bảng Giá</button>
                 </li>                
                 <li class="nav-item op-only">
-                    <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-target="#tab-price-pkg" onclick="A.UI.activateTab('tab-price-pkg')">Quản Lý Giá</button>
+                    <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-toggle="tab" data-bs-target="#tab-price-pkg" >Quản Lý Giá</button>
                 </li>
                 <li class="nav-item admin-only">
-                    <button class="nav-link text-warning border-0 bg-transparent main-tabs-btn" data-bs-target="#tab-admin-dashboard" onclick="A.UI.activateTab('tab-admin-dashboard')">
+                    <button class="nav-link text-warning border-0 bg-transparent main-tabs-btn" data-bs-toggle="tab" data-bs-target="#tab-admin-dashboard" >
                         <i class="fa-solid fa-user-shield"></i> Admin
                     </button>
                 </li>

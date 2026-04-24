@@ -107,12 +107,15 @@ class SalesModule {
                     }
                 }
 
-                if (!getE('main-form')) A.UI.activateTab('tab-form');
+                // Helper First: Kích hoạt tab qua Helper hệ thống để an toàn trên Mobile
+                if (!getE('main-form') && typeof A !== 'undefined' && A.UI) {
+                    A.UI.activateTab('tab-form');
+                }
+
                 if (finalBkData) HD.setFormData('sub-booking-form', finalBkData);
 
                 let tbody = getE('detail-tbody');
                 if (!tbody) {
-                    A.UI.activateTab('tab-form');
                     tbody = getE('detail-tbody');
                 }
 
@@ -120,7 +123,7 @@ class SalesModule {
                     tbody.innerHTML = '';
                     tbody.style.display = 'none';
                 } else {
-                    return;
+                    return; // Chốt chặn rủi ro: Thoát nếu DOM chưa sẵn sàng
                 }
 
                 // Chuẩn hóa customerData
@@ -144,17 +147,26 @@ class SalesModule {
                 if (detailsArr.length > 0) {
                     const sortedDetails = SalesModule.Logic.sortDetailsData(detailsArr);
                     // GHOST MODE: Không cần await addDetailRow, cứ để nó chạy ngầm
-                    SalesModule.UI.addDetailRow(sortedDetails);
+                    await SalesModule.UI.addDetailRow(sortedDetails);
                 }
 
                 tbody.style.display = 'table-row-group';
                 SalesModule.Logic.calcGrandTotal();
 
-                try {
-                    const tabTrigger = document.querySelector('#mainTabs button[data-bs-target="#tab-form"]');
-                    if (tabTrigger) bootstrap.Tab.getOrCreateInstance(tabTrigger).show();
-                    if (typeof A.UI.toggleContextUI === 'function') A.UI.toggleContextUI('tab-form');
-                } catch (e) {}
+                // XỬ LÝ LỖI MOBILE TAB SWITCH:
+                // try {
+                //     // Ưu tiên dùng Event Helper thay vì ép DOM của Bootstrap
+                //     if (typeof A !== 'undefined' && A.UI && typeof A.UI.activateTab === 'function') {
+                //         A.UI.activateTab('tab-form');
+                //     } else if (window.bootstrap) {
+                //         // Tìm TẤT CẢ trigger và chọn cái đang hiển thị (offsetParent !== null) trên Mobile
+                //         const tabTriggers = document.querySelectorAll('[data-bs-target="#tab-form"]');
+                //         const activeTrigger = Array.from(tabTriggers).find((el) => el.offsetParent !== null) || tabTriggers[0];
+                //         if (activeTrigger) bootstrap.Tab.getOrCreateInstance(activeTrigger).show();
+                //     }
+                // } catch (tabErr) {
+                //     L.log('SalesModule: Bỏ qua lỗi chuyển Tab UI trên Mobile', tabErr);
+                // }
             } catch (e) {
                 L.log('SalesModule.UI.loadBookingToUI Error:', e);
             } finally {
@@ -200,7 +212,7 @@ class SalesModule {
                 data-source="hotels" 
                 data-searchable="true" 
                 data-field="hotel_name" 
-                data-onchange='SalesModule.Logic.onLocationChange(getE("${tr.id}"));'
+                data-onchange='SalesModule.Logic.onLocationChange(getE("${tr.id}").querySelector("[data-field=hotel_name]"));'
             >
                 <option value="">- Vui lòng chọn -</option>
             </select>
@@ -381,10 +393,9 @@ class SalesModule {
         onLocationChange: async (el, resetName = true) => {
             const tr = getE(el)?.closest('tr');
             if (!tr) return false;
-            if (getVal('[data-field="service_type"]', tr) === 'Phòng') {
-                if (resetName) setVal('[data-field="service_name"]', '', tr);
-                return await SalesModule.UI.updateServiceSelect(tr, el.value);
-            }
+
+            if (resetName) setVal('[data-field="service_name"]', '', tr);
+            return await SalesModule.UI.updateServiceSelect(tr, getVal(el));
         },
 
         autoFillRowData: (idx) => {
@@ -433,11 +444,24 @@ class SalesModule {
         },
 
         calcGrandTotal: () => {
-            let grandTotal = 0;
-            $$('[data-field="total"]', getE('detail-tbody')).forEach((el) => (grandTotal += getNum(el)));
-            setVal('BK_Total', grandTotal);
-            setVal('BK_Balance', grandTotal - getNum('BK_Deposit'));
-            SalesModule.Logic.updateBkStatus();
+            try {
+                let grandTotal = 0;
+                const tbody = getE('detail-tbody');
+
+                // CHỐT CHẶN: Nếu DOM chưa được render (thường gặp trên mobile khi chuyển tab), thoát ngay lập tức để chống lỗi Cannot read properties of null
+                if (!tbody) {
+                    L.log('SalesModule: detail-tbody chưa sẵn sàng trên DOM', 'DEBUG');
+                    return;
+                }
+
+                $$('[data-field="total"]', tbody).forEach((el) => (grandTotal += getNum(el)));
+
+                setVal('BK_Total', grandTotal);
+                setVal('BK_Balance', grandTotal - getNum('BK_Deposit'));
+                SalesModule.Logic.updateBkStatus();
+            } catch (e) {
+                L.log('SalesModule.Logic.calcGrandTotal Error:', e);
+            }
         },
 
         updateBkStatus: (force = false) => {
@@ -666,7 +690,7 @@ class SalesModule {
                 const phoneEl = custFieldset.querySelector('[data-field="customer_phone"]');
                 const nameEl = custFieldset.querySelector('[data-field="customer_full_name"]');
                 let phoneInput = getVal(phoneEl);
-                phoneInput = phoneInput.replace(/\D/g, '');
+                phoneInput = String(phoneInput).replace(/\D/g, '');
                 const nameInput = getVal(nameEl).trim() || '';
 
                 if (!customerData && phoneInput.length < 3 && nameInput.length < 3) return;

@@ -377,7 +377,7 @@ export default class ASelect {
       ${
           this.isSearchable
               ? `
-        <div class="p-2 border-bottom sticky-top bg-white">
+        <div class="p-2 border-bottom sticky-top bg-light ">
           <input type="text" class="form-control form-control-sm smart-search-input" placeholder="Tìm kiếm..." autocomplete="off">
         </div>`
               : ''
@@ -564,6 +564,7 @@ export default class ASelect {
             this.dropdown.setAttribute('data-smart-id', this.uid);
             this.dropdown.dataset.activeSmartId = this.uid;
             // Nạp nội dung HTML siêu nhẹ đã cache
+            if (!this._cachedHTML) this.renderDropdownContent();
             this.dropdown.innerHTML = this._cachedHTML || '';
 
             // Query ô Search sau khi nạp HTML

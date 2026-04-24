@@ -335,22 +335,22 @@ const UI_RENDERER = {
 
         if (!lists) return;
 
-        const fillSelect = (elmId, dataArray) => {
-            const el = getE(elmId);
-            if (!el) return;
-            el.innerHTML = '<option value="">--Chọn--</option>';
-            if (!Array.isArray(dataArray) && typeof dataArray === 'object') {
-                dataArray = Object.entries(dataArray).map(([key, value]) => ({ id: key, name: value }));
-            }
-            if (Array.isArray(dataArray)) {
-                dataArray.forEach((item) => {
-                    let opt = document.createElement('option');
-                    opt.value = item.name ? item.name : item.id || item;
-                    opt.text = item.name ? item.name : item;
-                    el.appendChild(opt);
-                });
-            }
-        };
+        // const fillSelect = (elmId, dataArray) => {
+        //     const el = getE(elmId);
+        //     if (!el) return;
+        //     el.innerHTML = '<option value="">--Chọn--</option>';
+        //     if (!Array.isArray(dataArray) && typeof dataArray === 'object') {
+        //         dataArray = Object.entries(dataArray).map(([key, value]) => ({ id: key, name: value }));
+        //     }
+        //     if (Array.isArray(dataArray)) {
+        //         dataArray.forEach((item) => {
+        //             let opt = document.createElement('option');
+        //             opt.value = item.name ? item.name : item.id || item;
+        //             opt.text = item.name ? item.name : item;
+        //             el.appendChild(opt);
+        //         });
+        //     }
+        // };
         const fillDataList = (elmId, dataArray) => {
             const el = getE(elmId);
             if (!el) return;
@@ -363,9 +363,9 @@ const UI_RENDERER = {
             }
         };
 
-        fillSelect('BK_Staff', lists.staff);
-        fillSelect('Cust_Source', lists.source);
-        fillSelect('BK_PayType', lists.payment);
+        // fillSelect('BK_Staff', lists.staff);
+        // fillSelect('Cust_Source', lists.source);
+        // fillSelect('BK_PayType', lists.payment);
         fillDataList('list-tours', lists.tours);
 
         const customers = Object.values(APP_DATA.customers ?? {});
@@ -395,17 +395,26 @@ const UI_RENDERER = {
         }
         this.isSetupTabForm = true;
     },
-
     // =========================================================================
-    // 3. TAB & CONTEXT HELPERS
+    // 3. TAB & CONTEXT HELPERS (TỐI ƯU HÓA THEO NATIVE BOOTSTRAP EVENT)
     // =========================================================================
 
     activateTab: function (targetTabId) {
-        this.selectTab(targetTabId);
-        this.toggleContextUI(targetTabId);
+        // Tìm TẤT CẢ các phần tử có thể kích hoạt tab này
+        const triggers = document.querySelectorAll(`[data-bs-target="#${targetTabId}"], [href="#${targetTabId}"]`);
+
+        // Tìm phần tử ĐANG THỰC SỰ HIỂN THỊ (offsetParent !== null)
+        const visibleTrigger = Array.from(triggers).find((el) => el.offsetParent !== null) || triggers[0];
+
+        if (visibleTrigger && typeof bootstrap !== 'undefined') {
+            bootstrap.Tab.getOrCreateInstance(visibleTrigger).show();
+        } else {
+            L.log(`activateTab: Không tìm thấy trigger hợp lệ cho ${targetTabId}`);
+        }
     },
 
     toggleContextUI: function (targetTabIdOrIndex) {
+        // HÀM NÀY CHỈ CÒN NHIỆM VỤ ẨN/HIỆN PHẦN TỬ NGỮ CẢNH (CONTEXT UI)
         try {
             const activeTabIndex = isNaN(Number(targetTabIdOrIndex)) ? TAB_INDEX_BY_ID[String(targetTabIdOrIndex)] : Number(targetTabIdOrIndex);
             const els = document.querySelectorAll('[data-ontabs]');
@@ -413,111 +422,122 @@ const UI_RENDERER = {
                 els.forEach((el) => el.classList.add('d-none'));
                 return;
             }
+
             els.forEach((el) => {
                 const allowedTabs = (el.dataset.ontabs || '').trim().split(/\s+/).filter(Boolean).map(Number) || el.dataset.ontabs === targetTabIdOrIndex;
                 el.classList.toggle('d-none', !allowedTabs.includes(activeTabIndex));
             });
-
-            if (activeTabIndex === TAB_INDEX_BY_ID['tab-form']) {
-                CURRENT_TABLE_KEY = 'bookings';
-                if (typeof setMany === 'function' && typeof getVal === 'function') {
-                    if (getE('BK_Start') === '' || getVal('BK_Date') === '') {
-                        setMany(['BK_Date', 'BK_Start', 'BK_End'], new Date());
-                        setVal('BK_Staff', CURRENT_USER.uid);
-                    }
-                }
-            } else if (activeTabIndex === TAB_INDEX_BY_ID['tab-dashboard']) {
-                A.Event?.trigger('btn-dash-update', 'click');
-            }
         } catch (e) {
-            Opps('Lỗi trong toggleContextUI: ', e);
+            L.log('Lỗi trong toggleContextUI: ', e);
         }
     },
 
     selectTab: function (targetTabId) {
-        this.lazyLoad(targetTabId);
-        const navBtn = document.querySelector(`button[data-bs-target="#${targetTabId}"]`) || document.querySelector(`.nav-link[data-bs-target="#${targetTabId}"]`);
-        if (navBtn) bootstrap.Tab.getOrCreateInstance(navBtn).show();
-        const tabEl = getE(targetTabId);
+        // HÀM NÀY CHỈ CÒN NHIỆM VỤ SETUP STATE VÀ RENDER DATA BÊN TRONG TAB
+        try {
+            if (typeof this.lazyLoad === 'function') this.lazyLoad(targetTabId);
+        } catch (e) {
+            L._('selectTab: Lỗi lazyLoad', e);
+        }
+
+        if (targetTabId === 'tab-form') {
+            CURRENT_TABLE_KEY = 'bookings';
+            if (typeof setMany === 'function' && typeof getVal === 'function') {
+                if (getE('BK_Start') && getVal('BK_Date') === '') {
+                    const now = formatDateForInput(new Date());
+                    setMany(['BK_Date', 'BK_Start', 'BK_End'], now);
+
+                    setVal('BK_Staff', CURRENT_USER.uid);
+                }
+            }
+        } else if (targetTabId === 'tab-dashboard') {
+            A.Event?.trigger('btn-dash-update', 'click');
+        }
+
+        // 2. Setup Logic & Render Data cho từng Tab (Loại bỏ toàn bộ các lệnh ẩn/hiện d-none thừa)
         switch (targetTabId) {
             case 'tab-theme-content':
-                setClass($(targetTabId), 'd-none', false);
-                setClass($('#tab-shortcut-content'), 'd-none', true);
-                A.Modal.setSaveHandler(saveThemeSettings, 'Áp Dụng Theme');
-                A.Modal.setResetHandler(THEME_MANAGER.resetToDefault, 'Đặt Lại');
+                // Chú ý: Vì tab-shortcut-content không phải là Tab chuẩn của Bootstrap nên vẫn cần d-none ở đây
+                if (getE('tab-shortcut-content')) getE('tab-shortcut-content').classList.add('d-none');
+                if (window.A && window.A.Modal) {
+                    A.Modal.setSaveHandler(typeof saveThemeSettings !== 'undefined' ? saveThemeSettings : null, 'Áp Dụng Theme');
+                    A.Modal.setResetHandler(window.THEME_MANAGER?.resetToDefault, 'Đặt Lại');
+                }
                 break;
-            case 'tab-shortcut-content':
-                setClass($(targetTabId), 'd-none', false);
-                setClass($('#tab-theme-content'), 'd-none', true);
-                A.ShortKey.renderSettingsForm();
-                A.Modal.setFooter(false);
-                break;
-            case 'tab-adm-users':
-                setClass($(targetTabId), 'd-none', false);
-                A.AdminConsole.modal.setFooter(true);
-                A.AdminConsole.modal.setSaveHandler(A.AdminConsole?.saveUser, 'Lưu User');
-                A.AdminConsole.modal.setResetHandler(() => {
-                    getE('users-form').reset();
-                    getE('form-created-at').valueAsDate = new Date();
-                }, 'Nhập Lại');
-                A.AdminConsole.loadUsersData();
-                break;
-            case 'tab-data-tbl':
-                if (getE('tbl-tab-data-tbl')) break;
 
-                this.createTable('tab-data-tbl', {
-                    colName: 'bookings',
-                    data: APP_DATA['bookings'] || [],
-                    header: true,
-                    headerExtra: [
-                        `<div class="btn btn-sm btn-warning shadow-sm p-0" id="datalist-select"">
-        <select id="btn-select-datalist" data-creatable="${CURRENT_USER.role === 'admin' ? 'true' : 'false'}" data-source="A.UI.initBtnSelectDataList"  data-onchange="A.UI.updateTableData();" data-editable="true" class="smart-select form-select form-select-sm border-0" style="min-width: 6rem;">
-        </select>
-      </div>`,
-                    ],
-                    contextMenu: false,
-                    draggable: true,
-                    pageSize: 50,
-                    zoom: true,
-                    sorter: true,
-                    title: `DANH SÁCH DATA`,
-                    footer: true,
-                    groupBy: true,
-                    fs: 0.7,
-                });
-                setTimeout(() => {
-                    getE('btn-select-datalist')
-                        .querySelectorAll('options')
-                        .forEach((opt) => {
-                            if (opt.value && opt.value === 'bookings') {
-                                opt.selected = true;
-                                getE('btn-select-datalist').dispatchEvent(new Event('change'));
-                            }
-                        });
-                }, 500);
+            case 'tab-shortcut-content':
+                if (getE('tab-theme-content')) getE('tab-theme-content').classList.add('d-none');
+                if (window.A?.ShortKey) A.ShortKey.renderSettingsForm();
+                if (window.A?.Modal) A.Modal.setFooter(false);
                 break;
+
+            case 'tab-adm-users':
+                if (window.A?.AdminConsole) {
+                    A.AdminConsole.modal.setFooter(true);
+                    A.AdminConsole.modal.setSaveHandler(A.AdminConsole.saveUser, 'Lưu User');
+                    A.AdminConsole.modal.setResetHandler(() => {
+                        if (getE('users-form')) getE('users-form').reset();
+                        if (getE('form-created-at')) getE('form-created-at').valueAsDate = new Date();
+                    }, 'Nhập Lại');
+                    A.AdminConsole.loadUsersData();
+                }
+                break;
+
+            case 'tab-data-tbl':
+                if (getE('tbl-tab-data-tbl')) break; // Đã render rồi thì thôi
+                if (typeof this.createTable === 'function') {
+                    this.createTable('tab-data-tbl', {
+                        colName: 'bookings',
+                        data: window.APP_DATA?.['bookings'] || [],
+                        header: true,
+                        headerExtra: [
+                            `<div class="btn btn-sm btn-warning shadow-sm p-0" id="datalist-select">
+                            <select id="btn-select-datalist" data-creatable="${window.CURRENT_USER?.role === 'admin' ? 'true' : 'false'}" data-source="A.UI.initBtnSelectDataList"  data-onchange="A.UI.updateTableData();" data-editable="true" class="smart-select form-select form-select-sm border-0" style="min-width: 6rem;">
+                            </select>
+                            </div>`,
+                        ],
+                        contextMenu: false,
+                        draggable: true,
+                        pageSize: 50,
+                        zoom: true,
+                        sorter: true,
+                        title: `DANH SÁCH DATA`,
+                        footer: true,
+                        groupBy: true,
+                        fs: 0.7,
+                    });
+                    setTimeout(() => {
+                        const sel = getE('btn-select-datalist');
+                        if (sel) {
+                            sel.querySelectorAll('option').forEach((opt) => {
+                                if (opt.value === 'bookings') {
+                                    opt.selected = true;
+                                    sel.dispatchEvent(new Event('change'));
+                                }
+                            });
+                        }
+                    }, 500);
+                }
+                break;
+
             case 'tab-price-pkg':
-                if (A.PriceManager) {
-                    A.PriceManager.init('tab-price-pkg');
-                }
+                if (window.A?.PriceManager) A.PriceManager.init('tab-price-pkg');
                 break;
+
             case 'tab-tour-price':
-                if (A.TourPrice) {
-                    A.TourPrice.init();
-                }
+                if (window.A?.TourPrice) A.TourPrice.init();
                 break;
+
             case 'tab-adm-app-config':
-                A.AdminConsole.modal.setFooter(false);
+                if (window.A?.AdminConsole?.modal) A.AdminConsole.modal.setFooter(false);
                 break;
+
             default:
-                setClass($(targetTabId), 'd-none', false);
+                // Các tab không cần chuẩn bị data thì pass
+                break;
         }
-        setTimeout(() => {
-            const input = tabEl?.querySelector('input:not([disabled]):not([readonly]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]):not([readonly])');
-            if (input && input.offsetParent !== null) input.focus();
-            document.dispatchEvent(new CustomEvent('tabchange', { detail: { tabId: targetTabId } }));
-        }, 100);
     },
+    // =========================================================================
 
     generateGridColsFromObject: function (collectionName) {
         const headerObj = A.DB.schema.createHeaderFromFields(collectionName);
@@ -642,14 +662,14 @@ const UI_RENDERER = {
         try {
             const modalContent = await this.renderTemplate(null, tmplId);
 
-            A.Modal.render(modalContent, title, opts);
+            const modal = await A.Modal.render(modalContent, title, opts);
             if (btnSaveHandler) {
                 A.Modal.setSaveHandler(btnSaveHandler, 'Lưu');
             }
             if (btnResetHandler) {
                 A.Modal.setResetHandler(btnResetHandler);
             } else A.Modal.setResetHandler(this.resetForm, 'Đặt Lại');
-            return A.Modal;
+            return modal;
         } catch (e) {
             Opps('Lỗi trong renderModal: ', e);
         }

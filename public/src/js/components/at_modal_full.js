@@ -393,6 +393,7 @@ class DynamicModal {
 
     // Helpers lấy DOM bằng ID của Node
     _getEl(id) {
+        if (!id && this.id) id = this.id;
         return document.getElementById(id);
     }
     _getBody(id) {
@@ -537,6 +538,7 @@ class DynamicModal {
             const newId = `dynamic-modal-${nextNum}`;
 
             activeNode = this.#createNode(newId);
+            this.id = newId;
             this.#stack.push(activeNode);
         }
 

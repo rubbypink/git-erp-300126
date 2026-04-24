@@ -22,6 +22,22 @@ class EventManager {
 
         try {
             // 1. Gắn events từ các module con
+            // Lắng nghe sự kiện chuyển tab của Bootstrap trên toàn bộ Document
+            document.addEventListener('show.bs.tab', function (event) {
+                // Tab BẮT ĐẦU chuyển -> Đổi Context UI ngay lập tức
+                const targetId = event.target.getAttribute('data-bs-target')?.replace('#', '');
+                if (targetId && window.A?.UI?.toggleContextUI) {
+                    setTimeout(() => A.UI.toggleContextUI(targetId), 100);
+                }
+            });
+
+            document.addEventListener('shown.bs.tab', function (event) {
+                // Tab ĐÃ CHUYỂN XONG (Hết Animation) -> Đổ data vào
+                const targetId = event.target.getAttribute('data-bs-target')?.replace('#', '');
+                if (targetId && window.A?.UI?.selectTab) {
+                    A.UI.selectTab(targetId);
+                }
+            });
             this._setupServerActionEvents();
             // this._setupGridFilterEvents();
             this._setupSearchEvents();
@@ -638,6 +654,19 @@ class EventManager {
     }
 
     async setupGlobalEvents() {
+        // this.on(document,'show.bs.tab', (e) => {
+        //     const targetId = event.target.getAttribute('data-bs-target')?.replace('#', '');
+        //     if (targetId && window.A?.UI?.toggleContextUI) {
+        //         A.UI.toggleContextUI(targetId);
+        //     }
+        // });
+        // this.on(document,'shown.bs.tab', (e) => {
+        //     const targetId = event.target.getAttribute('data-bs-target')?.replace('#', '');
+        //     if (targetId && window.A?.UI?.selectTab) {
+        //         A.UI.selectTab(targetId);
+        //     }
+        // });
+
         window.addEventListener('beforeunload', () => {
             A.DB.stopNotificationsListener();
             L._('[EventManager] ✅ Đã hủy tất cả subscription');

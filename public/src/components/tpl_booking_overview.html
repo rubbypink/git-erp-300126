@@ -5,590 +5,590 @@
   ===================================================================== -->
 
 <style>
-  /* ── Mobile-first Layout ────────────────────────────────────── */
-  .bkov-wrap {
-    height: 100%;
-    font-size: 0.85rem;
-    width: 100%;
-    margin: 0 auto;
-  }
+    /* ── Mobile-first Layout ────────────────────────────────────── */
+    .bkov-wrap {
+        height: 100%;
+        font-size: 0.85rem;
+        width: 100%;
+        margin: 0 auto;
+    }
 
-  /* ★ FIX: Override main.css fieldset grid — bkov dùng layout riêng */
-  .bkov-wrap fieldset,
-  .bkov-wrap fieldset.info-group {
-    display: block !important;
-    grid-template-columns: none !important;
-    border: none;
-    padding: 0;
-    margin: 0 0 0.75rem 0;
-  }
+    /* ★ FIX: Override main.css fieldset grid — bkov dùng layout riêng */
+    .bkov-wrap fieldset,
+    .bkov-wrap fieldset.info-group {
+        display: block !important;
+        grid-template-columns: none !important;
+        border: none;
+        padding: 0;
+        margin: 0 0 0.75rem 0;
+    }
 
-  .bkov-wrap fieldset>legend {
-    float: none !important;
-  }
+    .bkov-wrap fieldset > legend {
+        float: none !important;
+    }
 
-  /* ── Sticky Header ──────────────────────────────────────────── */
-  .bkov-header {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    background: linear-gradient(135deg, #2c3e6b 0%, #3a5998 100%);
-    color: #fff;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.35rem 0.35rem 0 0;
-  }
+    /* ── Sticky Header ──────────────────────────────────────────── */
+    .bkov-header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: linear-gradient(135deg, #2c3e6b 0%, #3a5998 100%);
+        color: #fff;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.35rem 0.35rem 0 0;
+    }
 
-  .bkov-header .bkov-summary {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem 1rem;
-    font-size: 0.8rem;
-  }
+    .bkov-header .bkov-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem 1rem;
+        font-size: 0.8rem;
+    }
 
-  .bkov-header .bkov-summary-label {
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    opacity: 0.7;
-    letter-spacing: 0.5px;
-  }
+    .bkov-header .bkov-summary-label {
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        opacity: 0.7;
+        letter-spacing: 0.5px;
+    }
 
-  .bkov-header .bkov-summary-value {
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+    .bkov-header .bkov-summary-value {
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 
-  .bkov-header .bkov-price-badge {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 0.25rem;
-    padding: 0.25rem 0.5rem;
-    font-weight: 700;
-    font-size: 0.9rem;
-    white-space: nowrap;
-  }
+    .bkov-header .bkov-price-badge {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        font-weight: 700;
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
 
-  /* ── Nav Tabs (Scrollable on mobile) ────────────────────────── */
-  .bkov-tabs {
-    position: sticky;
-    top: 0;
-    z-index: 15;
-    background: #fff;
-    border-bottom: 2px solid #dee2e6;
-  }
-
-  .bkov-tabs .nav-link {
-    font-size: 0.75rem;
-    padding: 0.4rem 0.6rem;
-    white-space: nowrap;
-    color: #555;
-    border: none;
-    border-bottom: 2px solid transparent;
-    border-radius: 0;
-    transition:
-      color 0.15s,
-      border-color 0.15s;
-  }
-
-  .bkov-tabs .nav-link.active {
-    color: #2c3e6b;
-    font-weight: 600;
-    border-bottom-color: #2c3e6b;
-    background: transparent;
-  }
-
-  .bkov-tabs .nav-link:hover:not(.active) {
-    color: #2c3e6b;
-    border-bottom-color: #aab;
-  }
-
-  /* ── Tab Content ────────────────────────────────────────────── */
-  .bkov-content {
-    padding: 0.75rem;
-    min-height: 40vh;
-    flex: 1 1 auto;
-    overflow-y: auto;
-  }
-
-  .bkov-content .info-group-title {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    font-weight: 700;
-    color: #6c757d;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid #e9ecef;
-    padding-bottom: 0.25rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .bkov-content .info-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
-    margin-bottom: 0.35rem;
-  }
-
-  .bkov-content .info-cell {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .bkov-content .info-cell.full-width {
-    grid-column: 1 / -1;
-  }
-
-  .bkov-content .info-label {
-    font-size: 0.65rem;
-    color: #6c757d;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-  }
-
-  .bkov-content .form-control-sm,
-  .bkov-content .form-select-sm {
-    font-size: 0.8rem;
-    padding: 0.2rem 0.4rem;
-  }
-
-  /* Details table (mobile scroll) */
-  .bkov-detail-table {
-    font-size: 0.75rem;
-  }
-
-  .bkov-detail-table th {
-    font-size: 0.68rem;
-    white-space: nowrap;
-    position: sticky;
-    top: 0;
-    z-index: 5;
-  }
-
-  .bkov-detail-table td {
-    vertical-align: middle;
-  }
-
-  /* Transaction table */
-  .bkov-txn-table th,
-  .bkov-txn-table td {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.4rem;
-  }
-
-  /* ── Footer Actions ─────────────────────────────────────────── */
-  .bkov-footer {
-    position: sticky;
-    bottom: 0;
-    z-index: 15;
-    background: #f8f9fa;
-    border-top: 1px solid #dee2e6;
-    padding: 0.5rem 0.75rem;
-  }
-
-  /* ── Stats Card ─────────────────────────────────────────────── */
-  .bkov-stat-card {
-    background: #fff;
-    border-radius: 0.5rem;
-    padding: 0.75rem;
-    border: 1px solid #e9ecef;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-  .bkov-stat-label {
-    font-size: 0.65rem;
-    color: #6c757d;
-    text-transform: uppercase;
-    font-weight: 600;
-    margin-bottom: 0.25rem;
-  }
-  .bkov-stat-value {
-    font-size: 1.1rem;
-    font-weight: 700;
-    line-height: 1.2;
-  }
-
-  /* ── Responsive: Tablet+ ────────────────────────────────────── */
-  @media (min-width: 576px) {
-    .bkov-content .info-row {
-      grid-template-columns: 1fr 1fr 1fr;
+    /* ── Nav Tabs (Scrollable on mobile) ────────────────────────── */
+    .bkov-tabs {
+        position: sticky;
+        top: 0;
+        z-index: 15;
+        background: #fff;
+        border-bottom: 2px solid #dee2e6;
     }
 
     .bkov-tabs .nav-link {
-      font-size: 0.8rem;
-      padding: 0.5rem 0.75rem;
+        font-size: 0.75rem;
+        padding: 0.4rem 0.6rem;
+        white-space: nowrap;
+        color: #555;
+        border: none;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        transition:
+            color 0.15s,
+            border-color 0.15s;
     }
-  }
 
-  @media (min-width: 768px) {
-    .bkov-content .info-row {
-      grid-template-columns: repeat(4, 1fr);
+    .bkov-tabs .nav-link.active {
+        color: #2c3e6b;
+        font-weight: 600;
+        border-bottom-color: #2c3e6b;
+        background: transparent;
     }
-  }
+
+    .bkov-tabs .nav-link:hover:not(.active) {
+        color: #2c3e6b;
+        border-bottom-color: #aab;
+    }
+
+    /* ── Tab Content ────────────────────────────────────────────── */
+    .bkov-content {
+        padding: 0.75rem;
+        min-height: 40vh;
+        flex: 1 1 auto;
+        overflow-y: auto;
+    }
+
+    .bkov-content .info-group-title {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: #6c757d;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid #e9ecef;
+        padding-bottom: 0.25rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .bkov-content .info-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .bkov-content .info-cell {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .bkov-content .info-cell.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .bkov-content .info-label {
+        font-size: 0.65rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .bkov-content .form-control-sm,
+    .bkov-content .form-select-sm {
+        font-size: 0.8rem;
+        padding: 0.2rem 0.4rem;
+    }
+
+    /* Details table (mobile scroll) */
+    .bkov-detail-table {
+        font-size: 0.75rem;
+    }
+
+    .bkov-detail-table th {
+        font-size: 0.68rem;
+        white-space: nowrap;
+        position: sticky;
+        top: 0;
+        z-index: 5;
+    }
+
+    .bkov-detail-table td {
+        vertical-align: middle;
+    }
+
+    /* Transaction table */
+    .bkov-txn-table th,
+    .bkov-txn-table td {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.4rem;
+    }
+
+    /* ── Footer Actions ─────────────────────────────────────────── */
+    .bkov-footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 15;
+        background: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        padding: 0.5rem 0.75rem;
+    }
+
+    /* ── Stats Card ─────────────────────────────────────────────── */
+    .bkov-stat-card {
+        background: #fff;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        border: 1px solid #e9ecef;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .bkov-stat-label {
+        font-size: 0.65rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    .bkov-stat-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    /* ── Responsive: Tablet+ ────────────────────────────────────── */
+    @media (min-width: 576px) {
+        .bkov-content .info-row {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+
+        .bkov-tabs .nav-link {
+            font-size: 0.8rem;
+            padding: 0.5rem 0.75rem;
+        }
+    }
+
+    @media (min-width: 768px) {
+        .bkov-content .info-row {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
 </style>
 
 <div class="bkov-wrap" id="bkov-root" data-collection="bookings">
-  <!-- ══════════════════════════════════════════════════════════
+    <!-- ══════════════════════════════════════════════════════════
          1. STICKY HEADER: Booking Summary + Action Menu
          ══════════════════════════════════════════════════════════ -->
-  <div class="bkov-header">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <!-- Summary Info -->
-      <div class="bkov-summary flex-grow-1">
-        <div class="d-flex flex-wrap align-items-center justify-content-evenly w-100 px-md-5">
-          <div>
-            <div class="bkov-summary-label">Khách Hàng</div>
-            <div class="bkov-summary-value" id="bkov-h-customer">—</div>
-          </div>
-          <div>
-            <div class="bkov-summary-label">Mã Booking</div>
-            <div class="bkov-summary-value" id="bkov-h-id">—</div>
-          </div>
-          <div>
-            <div class="bkov-summary-label">Ngày đặt</div>
-            <div class="bkov-summary-value" id="bkov-h-date">—</div>
-          </div>
-          <div>
-            <div class="bkov-summary-label">Trạng thái</div>
-            <div class="bkov-summary-value">
-              <at-status><span id="bkov-h-status">—</span></at-status>
+    <div class="bkov-header">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <!-- Summary Info -->
+            <div class="bkov-summary flex-grow-1">
+                <div class="d-flex flex-wrap align-items-center justify-content-evenly w-100 px-md-5">
+                    <div>
+                        <div class="bkov-summary-label">Khách Hàng</div>
+                        <div class="bkov-summary-value" id="bkov-h-customer">—</div>
+                    </div>
+                    <div>
+                        <div class="bkov-summary-label">Mã Booking</div>
+                        <div class="bkov-summary-value" id="bkov-h-id">—</div>
+                    </div>
+                    <div>
+                        <div class="bkov-summary-label">Ngày đặt</div>
+                        <div class="bkov-summary-value" id="bkov-h-date">—</div>
+                    </div>
+                    <div>
+                        <div class="bkov-summary-label">Trạng thái</div>
+                        <div class="bkov-summary-value">
+                            <at-status><span id="bkov-h-status">—</span></at-status>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Price Badge + Action Buttons -->
-      <div class="d-flex align-items-center gap-2 flex-shrink-0">
-        <div class="bkov-price-badge">
-          <i class="fa-solid fa-coins me-1"></i>
-          <span id="bkov-h-total" class="number">0</span>
-          <small class="ms-1 opacity-75">VND</small>
-        </div>
+            <!-- Price Badge + Action Buttons -->
+            <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                <div class="bkov-price-badge">
+                    <i class="fa-solid fa-coins me-1"></i>
+                    <span id="bkov-h-total" class="number">0</span>
+                    <small class="ms-1 opacity-75">VND</small>
+                </div>
 
-        <!-- Action Dropdown -->
-        <div class="btn-group btn-group-sm">
-          <button type="button" class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Tác vụ">
-            <i class="fa-solid fa-ellipsis-vertical"></i>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end shadow-sm" id="bkov-action-menu">
-            <li>
-              <a class="dropdown-item small" href="javascript:void(0)" data-action="bkov-btn-save-all"> <i class="fa-solid fa-save me-2 text-primary"></i> Lưu Tất Cả </a>
-            </li>
-            <li>
-              <hr class="dropdown-divider my-1" />
-            </li>
-            <li>
-              <a class="dropdown-item small" href="javascript:void(0)" data-action="confirm-email"> <i class="fa-solid fa-envelope me-2 text-primary"></i> Tạo Xác Nhận Booking </a>
-            </li>
-            <li>
-              <a class="dropdown-item small" href="javascript:void(0)" data-action="create-contract"> <i class="fa-solid fa-arrow-up-right-from-square me-2"></i> Tạo Hợp Đồng </a>
-            </li>
-            <li>
-              <hr class="dropdown-divider my-1" />
-            </li>
-            <li>
-              <a class="dropdown-item small" href="javascript:void(0)" data-action="update-payment"> <i class="fa-solid fa-credit-card me-2 text-success"></i> Cập Nhật Thanh Toán </a>
-            </li>
-            <li>
-              <a class="dropdown-item small" href="javascript:void(0)" data-action="recalc-total"> <i class="fa-solid fa-calculator me-2 text-warning"></i> Tính Lại Tổng </a>
-            </li>
-            <li>
-              <hr class="dropdown-divider my-1" />
-            </li>
-            <li>
-              <a class="dropdown-item small" href="javascript:void(0)" data-action="export-pdf"> <i class="fa-solid fa-file-pdf me-2 text-danger"></i> Xuất PDF </a>
-            </li>
-          </ul>
+                <!-- Action Dropdown -->
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Tác vụ">
+                        <i class="fa-solid fa-ellipsis-vertical"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" id="bkov-action-menu">
+                        <li>
+                            <a class="dropdown-item small" href="javascript:void(0)" data-action="bkov-btn-save-all"> <i class="fa-solid fa-save me-2 text-primary"></i> Lưu Tất Cả </a>
+                        </li>
+                        <li>
+                            <hr class="dropdown-divider my-1" />
+                        </li>
+                        <li>
+                            <a class="dropdown-item small" href="javascript:void(0)" data-action="confirm-email"> <i class="fa-solid fa-envelope me-2 text-primary"></i> Tạo Xác Nhận Booking </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item small" href="javascript:void(0)" data-action="create-contract"> <i class="fa-solid fa-arrow-up-right-from-square me-2"></i> Tạo Hợp Đồng </a>
+                        </li>
+                        <li>
+                            <hr class="dropdown-divider my-1" />
+                        </li>
+                        <li>
+                            <a class="dropdown-item small" href="javascript:void(0)" data-action="update-payment"> <i class="fa-solid fa-credit-card me-2 text-success"></i> Cập Nhật Thanh Toán </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item small" href="javascript:void(0)" data-action="recalc-total"> <i class="fa-solid fa-calculator me-2 text-warning"></i> Tính Lại Tổng </a>
+                        </li>
+                        <li>
+                            <hr class="dropdown-divider my-1" />
+                        </li>
+                        <li>
+                            <a class="dropdown-item small" href="javascript:void(0)" data-action="export-pdf"> <i class="fa-solid fa-file-pdf me-2 text-danger"></i> Xuất PDF </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 
-  <!-- ══════════════════════════════════════════════════════════
+    <!-- ══════════════════════════════════════════════════════════
          2. NAV TABS (Scrollable on mobile)
          ══════════════════════════════════════════════════════════ -->
-  <nav class="bkov-tabs">
-    <ul class="nav nav-tabs border-0 flex-nowrap overflow-auto" id="bkov-nav-tabs" role="tablist" style="-webkit-overflow-scrolling: touch; scrollbar-width: none">
-      <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="bkov-tab-detail" data-bs-toggle="tab" data-bs-target="#bkov-pane-detail" type="button" role="tab"><i class="fa-solid fa-info-circle me-1 d-none d-sm-inline"></i>Chi tiết</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="bkov-tab-customer" data-bs-toggle="tab" data-bs-target="#bkov-pane-customer" type="button" role="tab"><i class="fa-solid fa-user me-1 d-none d-sm-inline"></i>Khách hàng</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="bkov-tab-services" data-bs-toggle="tab" data-bs-target="#bkov-pane-services" type="button" role="tab"><i class="fa-solid fa-concierge-bell me-1 d-none d-sm-inline"></i>Dịch vụ</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="bkov-tab-payment" data-bs-toggle="tab" data-bs-target="#bkov-pane-payment" type="button" role="tab"><i class="fa-solid fa-credit-card me-1 d-none d-sm-inline"></i>Thanh toán</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="bkov-tab-notes" data-bs-toggle="tab" data-bs-target="#bkov-pane-notes" type="button" role="tab"><i class="fa-solid fa-sticky-note me-1 d-none d-sm-inline"></i>Ghi chú</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="bkov-tab-history" data-bs-toggle="tab" data-bs-target="#bkov-pane-history" type="button" role="tab"><i class="fa-solid fa-clock-rotate-left me-1 d-none d-sm-inline"></i>Lịch sử</button>
-      </li>
-    </ul>
-  </nav>
+    <nav class="bkov-tabs">
+        <ul class="nav nav-tabs border-0 flex-nowrap overflow-auto" id="bkov-nav-tabs" role="tablist" style="-webkit-overflow-scrolling: touch; scrollbar-width: none">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="bkov-tab-detail" data-bs-target="#bkov-pane-detail" type="button" role="tab"><i class="fa-solid fa-info-circle me-1 d-none d-sm-inline"></i>Chi tiết</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="bkov-tab-customer" data-bs-target="#bkov-pane-customer" type="button" role="tab"><i class="fa-solid fa-user me-1 d-none d-sm-inline"></i>Khách hàng</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="bkov-tab-services" data-bs-target="#bkov-pane-services" type="button" role="tab"><i class="fa-solid fa-concierge-bell me-1 d-none d-sm-inline"></i>Dịch vụ</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="bkov-tab-payment" data-bs-target="#bkov-pane-payment" type="button" role="tab"><i class="fa-solid fa-credit-card me-1 d-none d-sm-inline"></i>Thanh toán</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="bkov-tab-notes" data-bs-target="#bkov-pane-notes" type="button" role="tab"><i class="fa-solid fa-sticky-note me-1 d-none d-sm-inline"></i>Ghi chú</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="bkov-tab-history" data-bs-target="#bkov-pane-history" type="button" role="tab"><i class="fa-solid fa-clock-rotate-left me-1 d-none d-sm-inline"></i>Lịch sử</button>
+            </li>
+        </ul>
+    </nav>
 
-  <!-- ══════════════════════════════════════════════════════════
+    <!-- ══════════════════════════════════════════════════════════
          3. TAB CONTENT
          ══════════════════════════════════════════════════════════ -->
-  <div class="tab-content bkov-content" id="bkov-tab-content">
-    <!-- ────── TAB: Chi tiết (Booking + Customer Summary) ────── -->
-    <div class="tab-pane fade show active" id="bkov-pane-detail" role="tabpanel">
-      <fieldset class="info-group" data-collection="bookings">
-        <div class="info-group-title"><i class="fa-solid fa-bookmark me-1"></i>Thông Tin Booking</div>
-        <div class="info-row">
-          <div class="info-cell">
-            <span class="info-label">Mã Booking</span>
-            <input type="text" class="form-control form-control-sm fw-bold text-danger" id="bkov-f-id" data-field="id" readonly />
-          </div>
-          <div class="info-cell">
-            <span class="info-label">Ngày đặt</span>
-            <input type="date" class="form-control form-control-sm" id="bkov-f-created" data-field="created_at" readonly />
-          </div>
-          <div class="info-cell">
-            <span class="info-label">Ngày đi</span>
-            <input type="date" class="form-control form-control-sm" id="bkov-f-start" data-field="start_date" />
-          </div>
-          <div class="info-cell">
-            <span class="info-label">Ngày về</span>
-            <input type="date" class="form-control form-control-sm" id="bkov-f-end" data-field="end_date" />
-          </div>
-        </div>
-        <div class="info-row">
-          <div class="info-cell">
-            <span class="info-label">Người lớn</span>
-            <input type="text" inputmode="numeric" class="form-control form-control-sm number" id="bkov-f-adult" data-field="adults" value="1" />
-          </div>
-          <div class="info-cell">
-            <span class="info-label">Trẻ em</span>
-            <input type="text" inputmode="numeric" class="form-control form-control-sm number" id="bkov-f-child" data-field="children" value="0" />
-          </div>
-          <div class="info-cell">
-            <span class="info-label">Trạng thái</span>
-            <at-status class="input-group" style="height: fit-content">
-              <input type="text" class="form-control form-control-sm fw-bold bg-opacity-25 border-0" id="bkov-f-status" data-field="status" readonly value="Đặt Lịch" />
-            </at-status>
-          </div>
-          <div class="info-cell">
-            <span class="info-label">Nhân viên</span>
-            <select class="smart-select form-select-sm" id="bkov-f-staff" data-field="staff_id" data-source="users" data-searchable="true"></select>
-          </div>
-        </div>
-        <div class="info-row">
-          <div class="info-cell">
-            <span class="info-label">Tổng Booking</span>
-            <input type="text" class="form-control form-control-sm fw-bold text-end bg-warning number" id="bkov-f-total" data-field="total_amount" readonly value="0" />
-          </div>
-          <div class="info-cell">
-            <span class="info-label">Đặt cọc</span>
-            <input type="text" class="form-control form-control-sm text-end border-success number" id="bkov-f-deposit" data-field="deposit_amount" value="0" />
-          </div>
-          <div class="info-cell">
-            <span class="info-label">Còn lại</span>
-            <input type="text" class="form-control form-control-sm text-end fw-bold text-danger number" id="bkov-f-balance" data-field="balance_amount" readonly value="0" />
-          </div>
-          <div class="info-cell">
-            <span class="info-label">Phương thức TT</span>
-            <select class="smart-select form-select-sm" id="bkov-f-paytype" data-field="payment_method" data-source="APP_DATA.lists.payment"></select>
-          </div>
-        </div>
-      </fieldset>
+    <div class="tab-content bkov-content" id="bkov-tab-content">
+        <!-- ────── TAB: Chi tiết (Booking + Customer Summary) ────── -->
+        <div class="tab-pane fade show active" id="bkov-pane-detail" role="tabpanel">
+            <fieldset class="info-group" data-collection="bookings">
+                <div class="info-group-title"><i class="fa-solid fa-bookmark me-1"></i>Thông Tin Booking</div>
+                <div class="info-row">
+                    <div class="info-cell">
+                        <span class="info-label">Mã Booking</span>
+                        <input type="text" class="form-control form-control-sm fw-bold text-danger" id="bkov-f-id" data-field="id" readonly />
+                    </div>
+                    <div class="info-cell">
+                        <span class="info-label">Ngày đặt</span>
+                        <input type="date" class="form-control form-control-sm" id="bkov-f-created" data-field="created_at" readonly />
+                    </div>
+                    <div class="info-cell">
+                        <span class="info-label">Ngày đi</span>
+                        <input type="date" class="form-control form-control-sm" id="bkov-f-start" data-field="start_date" />
+                    </div>
+                    <div class="info-cell">
+                        <span class="info-label">Ngày về</span>
+                        <input type="date" class="form-control form-control-sm" id="bkov-f-end" data-field="end_date" />
+                    </div>
+                </div>
+                <div class="info-row">
+                    <div class="info-cell">
+                        <span class="info-label">Người lớn</span>
+                        <input type="text" inputmode="numeric" class="form-control form-control-sm number" id="bkov-f-adult" data-field="adults" value="1" />
+                    </div>
+                    <div class="info-cell">
+                        <span class="info-label">Trẻ em</span>
+                        <input type="text" inputmode="numeric" class="form-control form-control-sm number" id="bkov-f-child" data-field="children" value="0" />
+                    </div>
+                    <div class="info-cell">
+                        <span class="info-label">Trạng thái</span>
+                        <at-status class="input-group" style="height: fit-content">
+                            <input type="text" class="form-control form-control-sm fw-bold bg-opacity-25 border-0" id="bkov-f-status" data-field="status" readonly value="Đặt Lịch" />
+                        </at-status>
+                    </div>
+                    <div class="info-cell">
+                        <span class="info-label">Nhân viên</span>
+                        <select class="smart-select form-select-sm" id="bkov-f-staff" data-field="staff_id" data-source="users" data-searchable="true"></select>
+                    </div>
+                </div>
+                <div class="info-row">
+                    <div class="info-cell">
+                        <span class="info-label">Tổng Booking</span>
+                        <input type="text" class="form-control form-control-sm fw-bold text-end bg-warning number" id="bkov-f-total" data-field="total_amount" readonly value="0" />
+                    </div>
+                    <div class="info-cell">
+                        <span class="info-label">Đặt cọc</span>
+                        <input type="text" class="form-control form-control-sm text-end border-success number" id="bkov-f-deposit" data-field="deposit_amount" value="0" />
+                    </div>
+                    <div class="info-cell">
+                        <span class="info-label">Còn lại</span>
+                        <input type="text" class="form-control form-control-sm text-end fw-bold text-danger number" id="bkov-f-balance" data-field="balance_amount" readonly value="0" />
+                    </div>
+                    <div class="info-cell">
+                        <span class="info-label">Phương thức TT</span>
+                        <select class="smart-select form-select-sm" id="bkov-f-paytype" data-field="payment_method" data-source="APP_DATA.lists.payment"></select>
+                    </div>
+                </div>
+            </fieldset>
 
-      <!-- Quick Service Summary -->
-      <div class="info-group">
-        <div class="info-group-title"><i class="fa-solid fa-concierge-bell me-1"></i>Tóm Tắt Dịch Vụ</div>
-        <div id="bkov-services-summary" class="mt-2">
-          <!-- Dynamically populated by JS -->
+            <!-- Quick Service Summary -->
+            <div class="info-group">
+                <div class="info-group-title"><i class="fa-solid fa-concierge-bell me-1"></i>Tóm Tắt Dịch Vụ</div>
+                <div id="bkov-services-summary" class="mt-2">
+                    <!-- Dynamically populated by JS -->
+                </div>
+            </div>
         </div>
-      </div>
+
+        <!-- ────── TAB: Khách hàng ────────────────────────────────── -->
+        <div class="tab-pane fade" id="bkov-pane-customer" role="tabpanel">
+            <fieldset class="info-group" data-collection="customers">
+                <div class="info-group-title"><i class="fa-solid fa-user me-1"></i>Thông Tin Khách Hàng</div>
+                <input type="hidden" id="bkov-c-id" data-field="id" />
+                <div class="info-row">
+                    <div class="info-cell full-width">
+                        <span class="info-label">Họ và tên (*)</span>
+                        <input type="text" class="form-control form-control-sm" id="bkov-c-name" data-field="full_name" placeholder="Họ tên khách" required />
+                    </div>
+                </div>
+                <div class="info-row">
+                    <div class="info-cell">
+                        <span class="info-label">Ngày sinh</span>
+                        <input type="date" class="form-control form-control-sm" id="bkov-c-dob" data-field="dob" />
+                    </div>
+                    <div class="info-cell">
+                        <span class="info-label">Số CCCD/Passport</span>
+                        <input type="text" class="form-control form-control-sm" id="bkov-c-idcard" data-field="id_card" />
+                    </div>
+                    <div class="info-cell">
+                        <span class="info-label">Ngày cấp</span>
+                        <input type="date" class="form-control form-control-sm" id="bkov-c-idcard-date" data-field="id_card_date" />
+                    </div>
+                </div>
+                <div class="info-row">
+                    <div class="info-cell">
+                        <span class="info-label">Số điện thoại (*)</span>
+                        <input type="text" class="form-control form-control-sm phone_number" id="bkov-c-phone" data-field="phone" placeholder="SĐT" required />
+                    </div>
+                    <div class="info-cell">
+                        <span class="info-label">Email</span>
+                        <input type="email" class="form-control form-control-sm" id="bkov-c-email" data-field="email" placeholder="Email" />
+                    </div>
+                    <div class="info-cell">
+                        <span class="info-label">Nguồn khách</span>
+                        <select class="smart-select form-select-sm" id="bkov-c-source" data-field="source" data-source="APP_DATA.lists.source"></select>
+                    </div>
+                </div>
+                <div class="info-row">
+                    <div class="info-cell full-width">
+                        <span class="info-label">Địa chỉ</span>
+                        <input type="text" class="form-control form-control-sm" id="bkov-c-addr" data-field="address" placeholder="Địa chỉ" />
+                    </div>
+                </div>
+                <div class="info-row">
+                    <div class="info-cell">
+                        <span class="info-label">Tổng chi tiêu</span>
+                        <input type="text" class="form-control form-control-sm number" id="bkov-c-total-spend" data-field="total_spend" readonly />
+                    </div>
+                </div>
+            </fieldset>
+        </div>
+
+        <!-- ────── TAB: Dịch vụ (Booking Details Table) ───────────── -->
+        <div class="tab-pane fade" id="bkov-pane-services" role="tabpanel">
+            <div class="info-group">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="info-group-title mb-0"><i class="fa-solid fa-list me-1"></i>Chi Tiết Dịch Vụ</div>
+                    <button type="button" class="btn btn-sm btn-primary" data-action="bkov-btn-add-service"><i class="fa-solid fa-plus me-1"></i>Thêm</button>
+                </div>
+                <div class="table-responsive" style="max-height: 50vh; overflow-y: auto">
+                    <table class="table table-bordered table-sm table-hover mb-0 bkov-detail-table" id="bkov-tbl-services">
+                        <thead class="table-secondary text-center align-middle">
+                            <!-- Rendered by JS -->
+                        </thead>
+                        <tbody id="bkov-services-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ────── TAB: Thanh toán (Transactions) ─────────────────── -->
+        <div class="tab-pane fade" id="bkov-pane-payment" role="tabpanel">
+            <!-- Stats Overview -->
+            <div class="row g-2 mb-3">
+                <div class="col-6 col-md-4 col-lg-2">
+                    <div class="bkov-stat-card border-start border-4 border-primary">
+                        <div class="bkov-stat-label">Tổng Booking</div>
+                        <div class="bkov-stat-value text-primary" id="bkov-pay-total">0</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <div class="bkov-stat-card border-start border-4 border-success">
+                        <div class="bkov-stat-label">Đã Thanh Toán</div>
+                        <div class="bkov-stat-value text-success" id="bkov-pay-paid">0</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <div class="bkov-stat-card border-start border-4 border-danger">
+                        <div class="bkov-stat-label">Còn Lại</div>
+                        <div class="bkov-stat-value text-danger" id="bkov-pay-remain">0</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <div class="bkov-stat-card border-start border-4 border-info">
+                        <div class="bkov-stat-label">Tổng Thu (IN)</div>
+                        <div class="bkov-stat-value text-info" id="bkov-pay-total-in">0</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <div class="bkov-stat-card border-start border-4 border-warning">
+                        <div class="bkov-stat-label">Tổng Chi (OUT)</div>
+                        <div class="bkov-stat-value text-warning" id="bkov-pay-total-out">0</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-4 col-lg-2">
+                    <div class="bkov-stat-card border-start border-4 border-dark">
+                        <div class="bkov-stat-label">Số Dư (Net)</div>
+                        <div class="bkov-stat-value text-dark" id="bkov-pay-balance">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transaction History -->
+            <div class="info-group mt-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="info-group-title mb-0"><i class="fa-solid fa-receipt me-1"></i>Lịch Sử Giao Dịch</div>
+                    <button type="button" class="btn btn-sm btn-outline-success" data-action="bkov-btn-add-trans"><i class="fa-solid fa-plus me-1"></i>Thêm GD</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover table-striped mb-0 bkov-txn-table">
+                        <thead class="table-light text-center align-middle">
+                            <tr>
+                                <th>Ngày</th>
+                                <th>Loại</th>
+                                <th>Số tiền</th>
+                                <th>Nguồn tiền</th>
+                                <th>Mô tả</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bkov-payment-list" class="text-center align-middle">
+                            <!-- Rendered by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ────── TAB: Ghi chú ───────────────────────────────────── -->
+        <div class="tab-pane fade" id="bkov-pane-notes" role="tabpanel">
+            <fieldset class="info-group">
+                <div class="info-group-title"><i class="fa-solid fa-sticky-note me-1"></i>Ghi Chú Booking</div>
+                <textarea class="form-control form-control-sm w-100" id="bkov-f-note" data-field="note" rows="5" placeholder="Nhập ghi chú tổng quan cho booking..."></textarea>
+            </fieldset>
+
+            <!-- Internal Notes -->
+            <div class="info-group mt-3">
+                <div class="info-group-title mb-2"><i class="fa-solid fa-comments me-1"></i>Ghi Chú Nội Bộ</div>
+                <div id="bkov-notes-list" class="d-flex flex-column gap-2 border rounded p-2 bg-light" style="max-height: 30vh; overflow-y: auto">
+                    <!-- Rendered by JS -->
+                </div>
+                <div class="input-group input-group-sm mt-2">
+                    <input type="text" class="form-control" id="bkov-note-input" placeholder="Thêm ghi chú nội bộ..." />
+                    <button class="btn btn-primary" type="button" data-action="bkov-btn-add-note">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ────── TAB: Lịch sử hoạt động ────────────────────────── -->
+        <div class="tab-pane fade" id="bkov-pane-history" role="tabpanel">
+            <div class="info-group">
+                <div class="info-group-title"><i class="fa-solid fa-clock-rotate-left me-1"></i>Nhật Ký Hoạt Động</div>
+                <div id="bkov-history-list" class="d-flex flex-column gap-1 border rounded p-2 bg-light" style="max-height: 50vh; overflow-y: auto">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- ────── TAB: Khách hàng ────────────────────────────────── -->
-    <div class="tab-pane fade" id="bkov-pane-customer" role="tabpanel">
-      <fieldset class="info-group" data-collection="customers">
-        <div class="info-group-title"><i class="fa-solid fa-user me-1"></i>Thông Tin Khách Hàng</div>
-        <input type="hidden" id="bkov-c-id" data-field="id" />
-        <div class="info-row">
-          <div class="info-cell full-width">
-            <span class="info-label">Họ và tên (*)</span>
-            <input type="text" class="form-control form-control-sm" id="bkov-c-name" data-field="full_name" placeholder="Họ tên khách" required />
-          </div>
-        </div>
-        <div class="info-row">
-          <div class="info-cell">
-            <span class="info-label">Ngày sinh</span>
-            <input type="date" class="form-control form-control-sm" id="bkov-c-dob" data-field="dob" />
-          </div>
-          <div class="info-cell">
-            <span class="info-label">Số CCCD/Passport</span>
-            <input type="text" class="form-control form-control-sm" id="bkov-c-idcard" data-field="id_card" />
-          </div>
-          <div class="info-cell">
-            <span class="info-label">Ngày cấp</span>
-            <input type="date" class="form-control form-control-sm" id="bkov-c-idcard-date" data-field="id_card_date" />
-          </div>
-        </div>
-        <div class="info-row">
-          <div class="info-cell">
-            <span class="info-label">Số điện thoại (*)</span>
-            <input type="text" class="form-control form-control-sm phone_number" id="bkov-c-phone" data-field="phone" placeholder="SĐT" required />
-          </div>
-          <div class="info-cell">
-            <span class="info-label">Email</span>
-            <input type="email" class="form-control form-control-sm" id="bkov-c-email" data-field="email" placeholder="Email" />
-          </div>
-          <div class="info-cell">
-            <span class="info-label">Nguồn khách</span>
-            <select class="smart-select form-select-sm" id="bkov-c-source" data-field="source" data-source="APP_DATA.lists.source"></select>
-          </div>
-        </div>
-        <div class="info-row">
-          <div class="info-cell full-width">
-            <span class="info-label">Địa chỉ</span>
-            <input type="text" class="form-control form-control-sm" id="bkov-c-addr" data-field="address" placeholder="Địa chỉ" />
-          </div>
-        </div>
-        <div class="info-row">
-          <div class="info-cell">
-            <span class="info-label">Tổng chi tiêu</span>
-            <input type="text" class="form-control form-control-sm number" id="bkov-c-total-spend" data-field="total_spend" readonly />
-          </div>
-        </div>
-      </fieldset>
-    </div>
-
-    <!-- ────── TAB: Dịch vụ (Booking Details Table) ───────────── -->
-    <div class="tab-pane fade" id="bkov-pane-services" role="tabpanel">
-      <div class="info-group">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <div class="info-group-title mb-0"><i class="fa-solid fa-list me-1"></i>Chi Tiết Dịch Vụ</div>
-          <button type="button" class="btn btn-sm btn-primary" data-action="bkov-btn-add-service"><i class="fa-solid fa-plus me-1"></i>Thêm</button>
-        </div>
-        <div class="table-responsive" style="max-height: 50vh; overflow-y: auto">
-          <table class="table table-bordered table-sm table-hover mb-0 bkov-detail-table" id="bkov-tbl-services">
-            <thead class="table-secondary text-center align-middle">
-              <!-- Rendered by JS -->
-            </thead>
-            <tbody id="bkov-services-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ────── TAB: Thanh toán (Transactions) ─────────────────── -->
-    <div class="tab-pane fade" id="bkov-pane-payment" role="tabpanel">
-      <!-- Stats Overview -->
-      <div class="row g-2 mb-3">
-        <div class="col-6 col-md-4 col-lg-2">
-          <div class="bkov-stat-card border-start border-4 border-primary">
-            <div class="bkov-stat-label">Tổng Booking</div>
-            <div class="bkov-stat-value text-primary" id="bkov-pay-total">0</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-          <div class="bkov-stat-card border-start border-4 border-success">
-            <div class="bkov-stat-label">Đã Thanh Toán</div>
-            <div class="bkov-stat-value text-success" id="bkov-pay-paid">0</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-          <div class="bkov-stat-card border-start border-4 border-danger">
-            <div class="bkov-stat-label">Còn Lại</div>
-            <div class="bkov-stat-value text-danger" id="bkov-pay-remain">0</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-          <div class="bkov-stat-card border-start border-4 border-info">
-            <div class="bkov-stat-label">Tổng Thu (IN)</div>
-            <div class="bkov-stat-value text-info" id="bkov-pay-total-in">0</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-          <div class="bkov-stat-card border-start border-4 border-warning">
-            <div class="bkov-stat-label">Tổng Chi (OUT)</div>
-            <div class="bkov-stat-value text-warning" id="bkov-pay-total-out">0</div>
-          </div>
-        </div>
-        <div class="col-6 col-md-4 col-lg-2">
-          <div class="bkov-stat-card border-start border-4 border-dark">
-            <div class="bkov-stat-label">Số Dư (Net)</div>
-            <div class="bkov-stat-value text-dark" id="bkov-pay-balance">0</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Transaction History -->
-      <div class="info-group mt-3">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <div class="info-group-title mb-0"><i class="fa-solid fa-receipt me-1"></i>Lịch Sử Giao Dịch</div>
-          <button type="button" class="btn btn-sm btn-outline-success" data-action="bkov-btn-add-trans"><i class="fa-solid fa-plus me-1"></i>Thêm GD</button>
-        </div>
-        <div class="table-responsive">
-          <table class="table table-sm table-hover table-striped mb-0 bkov-txn-table">
-            <thead class="table-light text-center align-middle">
-              <tr>
-                <th>Ngày</th>
-                <th>Loại</th>
-                <th>Số tiền</th>
-                <th>Nguồn tiền</th>
-                <th>Mô tả</th>
-                <th>Trạng thái</th>
-              </tr>
-            </thead>
-            <tbody id="bkov-payment-list" class="text-center align-middle">
-              <!-- Rendered by JS -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ────── TAB: Ghi chú ───────────────────────────────────── -->
-    <div class="tab-pane fade" id="bkov-pane-notes" role="tabpanel">
-      <fieldset class="info-group">
-        <div class="info-group-title"><i class="fa-solid fa-sticky-note me-1"></i>Ghi Chú Booking</div>
-        <textarea class="form-control form-control-sm w-100" id="bkov-f-note" data-field="note" rows="5" placeholder="Nhập ghi chú tổng quan cho booking..."></textarea>
-      </fieldset>
-
-      <!-- Internal Notes -->
-      <div class="info-group mt-3">
-        <div class="info-group-title mb-2"><i class="fa-solid fa-comments me-1"></i>Ghi Chú Nội Bộ</div>
-        <div id="bkov-notes-list" class="d-flex flex-column gap-2 border rounded p-2 bg-light" style="max-height: 30vh; overflow-y: auto">
-          <!-- Rendered by JS -->
-        </div>
-        <div class="input-group input-group-sm mt-2">
-          <input type="text" class="form-control" id="bkov-note-input" placeholder="Thêm ghi chú nội bộ..." />
-          <button class="btn btn-primary" type="button" data-action="bkov-btn-add-note">
-            <i class="fa-solid fa-paper-plane"></i>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ────── TAB: Lịch sử hoạt động ────────────────────────── -->
-    <div class="tab-pane fade" id="bkov-pane-history" role="tabpanel">
-      <div class="info-group">
-        <div class="info-group-title"><i class="fa-solid fa-clock-rotate-left me-1"></i>Nhật Ký Hoạt Động</div>
-        <div id="bkov-history-list" class="d-flex flex-column gap-1 border rounded p-2 bg-light" style="max-height: 50vh; overflow-y: auto">
-          <!-- Rendered by JS -->
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════════════════════
+    <!-- ══════════════════════════════════════════════════════════
          4. FOOTER ACTIONS (Context-aware per tab)
          ══════════════════════════════════════════════════════════ -->
-  <div class="bkov-footer d-flex justify-content-between align-items-center">
-    <div class="d-flex gap-2">
-      <button type="button" class="btn btn-sm btn-outline-secondary" data-action="bkov-btn-close"><i class="fa-solid fa-times me-1"></i>Đóng</button>
-      <button type="button" class="btn btn-sm btn-outline-info" data-action="bkov-btn-reload-tab"><i class="fa-solid fa-sync me-1"></i>Tải lại</button>
+    <div class="bkov-footer d-flex justify-content-between align-items-center">
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-action="bkov-btn-close"><i class="fa-solid fa-times me-1"></i>Đóng</button>
+            <button type="button" class="btn btn-sm btn-outline-info" data-action="bkov-btn-reload-tab"><i class="fa-solid fa-sync me-1"></i>Tải lại</button>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-primary px-4" data-action="bkov-btn-save-tab"><i class="fa-solid fa-save me-1"></i>Lưu Tab</button>
+        </div>
     </div>
-    <div class="d-flex gap-2">
-      <button type="button" class="btn btn-sm btn-primary px-4" data-action="bkov-btn-save-tab"><i class="fa-solid fa-save me-1"></i>Lưu Tab</button>
-    </div>
-  </div>
 </div>
