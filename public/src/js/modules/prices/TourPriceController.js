@@ -71,6 +71,7 @@ export default class TourPrice {
             // 1. Render nội dung vào ModalFull (Tắt footer mặc định)
             A.Modal.render(template.content.cloneNode(true), 'THIẾT LẬP CẤU THÀNH GIÁ GỐC', {
                 footer: false,
+                size: 'modal-fullscreen',
             });
             A.Modal.show();
 

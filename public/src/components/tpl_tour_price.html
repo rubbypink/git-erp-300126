@@ -37,8 +37,8 @@
         <main class="tour-price-content flex-grow-1 overflow-auto p-0 bkg-light d-flex justify-content-center">
             <article id="tp-a4-document" class="a4-page shadow-lg py-3 px-5 d-flex flex-column" data-view-mode="1">
                 <!-- Logo & Brand (Cố định - Không zoom) -->
-                <div class="text-center mb-2">
-                    <img id="tp-logo-toggle" src="src/images/favicon.webp" alt="9 Trip Logo" class="brand-logo mb-0 cursor-pointer" style="height: 65px" />
+                <div class="text-center mb-0">
+                    <img id="tp-logo-toggle" src="src/images/favicon.webp" alt="9 Trip Logo" class="brand-logo mb-0 cursor-pointer" style="height: 100px" />
                     <div class="brand-name text-uppercase italic fw-bold small text-muted mt-0" style="font-size: 0.5rem; letter-spacing: 2px">Công ty TNHH 9 Trip Phú Quốc</div>
                 </div>
 
@@ -206,7 +206,7 @@
                 </div>
 
                 <!-- Contact Bar (Cố định - Không zoom) -->
-                <footer class="doc-footer border-top border-primary pt-1 mt-auto">
+                <footer class="doc-footer border-top border-primary py-2 mt-auto">
                     <div class="d-flex justify-content-between align-items-center small text-primary fw-bold" style="font-size: 0.7rem">
                         <span>Công ty TNHH 9 Trip Phú Quốc</span>
                         <span><i class="fa-solid fa-phone me-1"></i> (84) 0877.901.901</span>
@@ -218,9 +218,8 @@
     </div>
 </template>
 
-<!-- Template cho Modal Giá Gốc (Giữ nguyên logic input) -->
 <template id="tmpl-tp-modal-base">
-    <div class="tp-modal-content p-3">
+    <div class="tp-modal-content p-3 w-100 h-100">
         <!-- Tour Info Section -->
         <div class="card shadow-sm border-0 mb-3 rounded-3">
             <div class="card-body p-3">

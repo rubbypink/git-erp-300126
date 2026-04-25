@@ -113,6 +113,11 @@ Sử dụng 2 bộ màu hài hòa phổ biến nhất
 
 .card-body {
     background-color: var(--hover-bg);
+    color: var(--text-color);
+}
+.card-header {
+    background-color: var(--popup-bg);
+    color: var(--popup-text);
 }
 
 .bkg-light {
