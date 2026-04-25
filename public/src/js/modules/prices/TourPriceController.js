@@ -373,8 +373,9 @@ export default class TourPrice {
             if (!results || !info) return;
 
             // 1. Tiêu đề & Thông tin chung (Đồng bộ Format 1)
-            setText('tp-doc-title-f2', `[ƯU ĐÃI] TOUR "${data.tour_name || 'CHƯA ĐẶT TÊN'}"`);
+            setText('tp-doc-title-f2', `[ƯU ĐÃI] "${data.tour_name || 'CHƯA ĐẶT TÊN'}"`);
             setText('tp-doc-duration-f2', info.duration ? `(${info.duration})` : '');
+            setText('tp-doc-list-price-f2', info.list_price ? formatNumber(info.list_price) : '');
 
             // Lấy giá bán "Chỉ từ" (thường là giá thấp nhất trong bảng giá bán người lớn)
             const minSelling = results.selling_adult.length > 0 ? Math.min(...results.selling_adult.map((s) => s.price)) : 0;
@@ -810,7 +811,7 @@ export default class TourPrice {
      */
     _renderFormat1(results, info) {
         // 1. Thông tin chung
-        setText('tp-doc-title', `[ƯU ĐÃI] TOUR "${this.currentData.tour_name || 'CHƯA ĐẶT TÊN'}" 💖`);
+        setText('tp-doc-title', `[ƯU ĐÃI] "${this.currentData.tour_name || 'CHƯA ĐẶT TÊN'}" 💖`);
         setText('tp-doc-duration', info.duration ? `(${info.duration})` : '');
         setText('tp-doc-list-price', info.list_price ? formatNumber(info.list_price) : '');
 

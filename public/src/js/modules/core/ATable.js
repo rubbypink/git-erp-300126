@@ -48,7 +48,7 @@ export default class ATable {
         // 5. Khởi tạo dữ liệu nếu có
         if (this.options.data && this.containerId) {
             this.init(this.options.data);
-        }
+        } else return this;
     }
 
     /**
@@ -533,7 +533,7 @@ export default class ATable {
           <div class="dropdown-menu border-0 shadow-sm">
               <button class="dropdown-item py-2 at-download-excel" type="button"><i class="fa-solid fa-file-excel text-success w-20px"></i> File Excel</button>
               <button class="dropdown-item py-2 at-download-pdf" type="button"><i class="fa-solid fa-file-pdf text-danger w-20px"></i> File PDF</button>
-              <button class="dropdown-item py-2 at-reload-data" type="button"><i class="fa-solid fa-sync-alt"></i> Cập Nhật Dữ Liệu</button>
+              <button class="dropdown-item py-2 at-reload-data" type="button"><i class="fa-solid fa-sync-alt"></i> Reload Data</button>
           </div>
       </div>`;
         }
@@ -1057,6 +1057,17 @@ export default class ATable {
 
     _resolveFieldConfigs() {
         if (Object.keys(this.state.fieldConfigs).length > 0) return;
+        if (this.options.customfieldConfigs) {
+            this.state.fieldConfigs = this.options.customfieldConfigs;
+            if (this.options.customfieldConfigs) {
+                this.state.fieldConfigs = this.options.customfieldConfigs;
+                // ✅ Thêm dòng này:
+                this.state.allFieldsOrder = Object.keys(this.options.customfieldConfigs);
+                return;
+            }
+
+            return;
+        }
 
         const { colName, hiddenField } = this.options;
         if (colName && DB_SCHEMA[colName]) {

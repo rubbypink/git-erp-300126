@@ -774,6 +774,7 @@ class DynamicModal {
         const btn = el.querySelector('.btn-fullscreen');
         const dialog = el.querySelector('.modal-dialog');
         if (!btn || !dialog) return;
+        const content = el.querySelector('.modal-content');
 
         // ★ MỚI VỪA MỞ LÊN -> CANH GIỮA (Không animate để hiện ra là đứng ngay giữa luôn)
         el.addEventListener(
@@ -782,6 +783,8 @@ class DynamicModal {
                 if (!node.fullscreen && !dialog.classList.contains('modal-fullscreen')) {
                     if (node.draggable && typeof node.draggable.resetPosition === 'function') {
                         node.draggable.resetPosition(false);
+                        content.style.height = '100%';
+                        content.style.width = '100%';
                     }
                 }
             },
@@ -806,10 +809,13 @@ class DynamicModal {
                 dialog.style.paddingBottom = '';
                 dialog.style.transform = '';
                 btn.querySelector('i').className = 'fa-solid fa-expand';
+                content.style.height = '100%';
+                content.style.width = '100%';
             } else {
                 dialog.classList.add('modal-fullscreen');
                 dialog.style.width = '100vw';
                 dialog.style.height = '100vh';
+
                 dialog.style.paddingBottom = '0';
                 dialog.style.transform = 'none';
                 btn.querySelector('i').className = 'fa-solid fa-compress';

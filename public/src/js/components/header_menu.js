@@ -232,7 +232,7 @@ export default class ErpHeaderMenu {
                             </li>
                             <li>
                                 <button class="dropdown-item py-2" type="button" onclick="A.UI.activateTab('tab-form')">
-                                    <i class="fa-solid fa-file-pen text-secondary"></i> BookingX
+                                    <i class="fa-solid fa-file-pen text-secondary"></i> Booking
                                 </button>
                             </li>
                             <li>
@@ -241,8 +241,13 @@ export default class ErpHeaderMenu {
                                 </button>
                             </li>
                             <li>
+                                <button class="dropdown-item py-2" type="button" onclick="A.UI.activateTab('tab-tour-price')">
+                                    <i class="fa-solid fa-file-pen text-secondary"></i> Giá Tour/CB
+                                </button>
+                            </li>
+                            <li class="op-only">
                                 <button class="dropdown-item py-2" type="button" onclick="A.UI.activateTab('tab-price-pkg')">
-                                    <i class="fa-solid fa-list text-secondary w-20px"></i> Danh sách
+                                    <i class="fa-solid fa-list text-secondary w-20px"></i> Bảng Giá
                                 </button>
                             </li>                                
                             <li class="admin-only">
@@ -273,8 +278,6 @@ export default class ErpHeaderMenu {
         `;
     }
 
-    // --- CÁC HÀM TRÍCH XUẤT HTML THÀNH PHẦN (Giữ nguyên ID và Class cũ) ---
-
     _getNavTabsHTML() {
         return `
             <ul class="nav nav-tabs border-0" id="mainTabs" role="tablist">
@@ -290,7 +293,7 @@ export default class ErpHeaderMenu {
                     <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-toggle="tab" data-bs-target="#tab-data-tbl" >Bảng Data</button>
                 </li>
                 <li class="nav-item">
-                    <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-toggle="tab" data-bs-target="#tab-tour-price" >Bảng Giá</button>
+                    <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-toggle="tab" data-bs-target="#tab-tour-price" >Giá Tour/CB</button>
                 </li>                
                 <li class="nav-item op-only">
                     <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-toggle="tab" data-bs-target="#tab-price-pkg" >Quản Lý Giá</button>
