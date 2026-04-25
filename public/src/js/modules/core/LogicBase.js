@@ -324,7 +324,7 @@ export default class LogicBase {
     static async openSettingsModal() {
         try {
             await A.UI.renderTemplate('body', 'tmpl-download-library');
-            await A.Modal.render(getE('tmpl-settings-form'), 'Cài Đặt Chung', { size: 'modal-xl' });
+            await A.Modal.render(getE('tmpl-settings-form'), 'Cài Đặt Chung', { size: 'modal-fullscreen' });
             await A.Modal.show(
                 null,
                 null,

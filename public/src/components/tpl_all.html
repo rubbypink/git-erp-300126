@@ -116,243 +116,118 @@
             </div>
 
             <div class="tab-pane fade" id="tab-theme-content" role="tabpanel">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="d-inline-flex fw-bold text-primary mb-1 border-bottom pb-2">1. Giao Diện & Phông Chữ</h6>
-                    <button id="theme-toggle" class="btn btn-light btn-sm" onclick="toggleTheme()">
-                        <i class="fa-solid fa-moon"></i>
-                    </button>
-                </div>
-                <form id="themes-form" class="row border-end bg-opacity-50 pb-3">
-                    <div class="col-3">
-                        <label class="form-label small fw-bold">Bộ chủ đề mẫu (Theme)</label>
-
-                        <select class="form-select form-select-sm fw-bold text-primary" id="st-theme-preset" onchange="applyThemePresetFromForm(this.value)">
-                            <option value="light">🔵 9Trip Standard (Mặc định)</option>
-                            <option value="dark">⚫ Hiện Đại (Dark/Modern)</option>
-                            <option value="minimal">⚪ Tối Giản (Minimalist)</option>
-                            <option value="warm">🟠 Ấm Áp (Cozy)</option>
-                            <option value="custom">🔧 Tùy chỉnh (Custom)</option>
-                        </select>
-
-                        <div class="form-text small fst-italic">Chọn nhanh bộ màu và khoảng cách.</div>
-                    </div>
-
-                    <div class="col-3">
-                        <label class="form-label small fw-bold">Phông chữ</label>
-
-                        <select class="form-select form-select-sm" id="st-font-family">
-                            <option value="'Segoe UI', sans-serif">Segoe UI (Window Standard)</option>
-
-                            <option value="'Roboto', sans-serif">Roboto (Google)</option>
-
-                            <option value="'Inter', sans-serif">Inter (Clean)</option>
-
-                            <option value="'Merriweather', serif">Merriweather (Serif)</option>
-                        </select>
-                    </div>
-
-                    <div class="col-3">
-                        <label class="form-label small fw-bold">Cỡ chữ (px)</label>
-
-                        <div class="d-flex align-items-center gap-2">
-                            <input type="range" class="form-range" min="11" max="16" step="1" id="st-font-range" oninput="document.getElementById('st-font-size').value = this.value" />
-
-                            <input type="number" class="form-control form-control-sm text-center fw-bold" id="st-font-size" value="13" style="width: 50px" readonly />
-                        </div>
-                    </div>
-
-                    <div class="col-3">
-                        <label class="form-label small fw-bold">Logo App</label>
-
-                        <div class="d-flex align-items-center gap-2">
-                            <div class="border p-1 rounded d-flex justify-content-center align-items-center" style="width: 40px; height: 40px">
-                                <img id="st-logo-preview" src="" style="max-width: 100%; max-height: 100%" />
-                            </div>
-
-                            <input type="file" class="form-control form-control-sm" id="st-logo-upload" accept="image/*" onchange="previewLogo()" />
-                        </div>
-                    </div>
-                </form>
-
-                <div class="col-12 p-3 scrollable-area" style="max-height: 70vh; overflow-y: auto">
-                    <h6 class="fw-bold text-success mb-3 border-bottom pb-2">2. Bảng Màu & Thành Phần (Chi tiết)</h6>
-
-                    <div class="row g-2 mb-1">
-                        <div class="col-12">
-                            <small class="text-muted fw-bold text-uppercase">Màu Nền (Background & Header)</small>
+                <div class="p-3 scrollable-area" style="overflow-y: auto; max-height: 75vh">
+                    <!-- Section 1: Chủ đề chính -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-12 d-flex justify-content-between align-items-center border-bottom pb-2">
+                            <h6 class="fw-bold text-primary mb-0"><i class="fa-solid fa-palette me-2"></i>1. Chọn Chủ Đề (Theme)</h6>
+                            <button id="theme-toggle" class="btn btn-outline-secondary btn-sm rounded-pill" onclick="toggleTheme()" title="Chuyển nhanh">
+                                <i class="fa-solid fa-circle-half-stroke"></i>
+                            </button>
                         </div>
 
-                        <div class="col-3">
-                            <label class="small">App Background</label>
-                            <div class="input-group input-group-sm">
-                                <input type="color" class="form-control form-control-color" id="st-app-bg" value="#f8f9fa" />
-
-                                <input type="text" class="form-control" id="st-app-bg-text" readonly />
-                            </div>
+                        <div class="col-md-6 col-lg-4">
+                            <label class="form-label small fw-bold">Bộ chủ đề mẫu</label>
+                            <select class="form-select form-select-sm fw-bold border-primary" id="st-theme-preset" onchange="applyThemePresetFromForm(this.value)">
+                                <option value="system">🌓 Theo Hệ Thống (Mặc định)</option>
+                                <option value="minimal">⚪ Tối Giản (Minimalist)</option>
+                                <option value="warm">🟠 Ấm Áp (Cozy)</option>
+                                <option value="custom">🔧 Tùy chỉnh (Custom)</option>
+                            </select>
+                            <div class="form-text x-small">Tự động áp dụng bảng màu và phông chữ phối sẵn.</div>
                         </div>
 
-                        <div class="col-3">
-                            <label class="small">Header/Footer</label>
-
-                            <div class="input-group input-group-sm">
-                                <input type="color" class="form-control form-control-color" id="st-header-bg" value="#ffffff" />
-
-                                <input type="text" class="form-control" id="st-header-bg-text" readonly />
-                            </div>
-                        </div>
-                        <div class="col-3">
-                            <label class="small">Header Bảng</label>
-
-                            <div class="input-group input-group-sm">
-                                <input type="color" class="form-control form-control-color" id="st-tbl-head-bg" />
-
-                                <input type="text" class="form-control" id="st-tbl-head-bg-text" readonly />
-                            </div>
+                        <div class="col-md-6 col-lg-4">
+                            <label class="form-label small fw-bold">Phông chữ</label>
+                            <select class="form-select form-select-sm" id="st-font-family">
+                                <option value="'Segoe UI', sans-serif">Segoe UI (Mặc định)</option>
+                                <option value="'Roboto', sans-serif">Roboto (Hiện đại)</option>
+                                <option value="'Inter', sans-serif">Inter (Sắc nét)</option>
+                                <option value="'Merriweather', serif">Merriweather (Cổ điển)</option>
+                            </select>
                         </div>
 
-                        <div class="col-3">
-                            <label class="small">Chữ Tiêu Đề</label>
-
-                            <div class="input-group input-group-sm">
-                                <input type="color" class="form-control form-control-color" id="st-tbl-head-text" />
-                                <input type="text" class="form-control" id="st-tbl-head-text-text" readonly />
+                        <div class="col-md-6 col-lg-4">
+                            <label class="form-label small fw-bold">Logo & Thương hiệu</label>
+                            <div class="d-flex align-items-center gap-2 border rounded p-1 bg-light">
+                                <img id="st-logo-preview" src="" class="bkg-light border rounded" style="width: 32px; height: 32px; object-fit: contain" />
+                                <input type="file" class="form-control form-control-sm border-0 bg-transparent" id="st-logo-upload" accept="image/*" onchange="previewLogo()" />
                             </div>
                         </div>
                     </div>
 
-                    <div class="row g-2 mb-1">
-                        <div class="col-12">
-                            <small class="text-muted fw-bold text-uppercase">Màu Nút Bấm (Button)</small>
-                        </div>
+                    <!-- Section 2: Màu sắc chi tiết (Chỉ hiện khi Custom/Minimal/Warm) -->
+                    <div id="custom-color-section">
+                        <h6 class="fw-bold text-success mb-3 border-bottom pb-2"><i class="fa-solid fa-sliders me-2"></i>2. Tùy Chỉnh Màu Sắc</h6>
 
-                        <div class="col-2">
-                            <label class="small text-primary fw-bold">Primary</label>
-                            <input type="color" class="form-control form-control-color w-100" id="st-btn-primary" />
-                        </div>
-
-                        <div class="col-2">
-                            <label class="small text-success fw-bold">Success</label>
-                            <input type="color" class="form-control form-control-color w-100" id="st-btn-success" />
-                        </div>
-
-                        <div class="col-2">
-                            <label class="small text-danger fw-bold">Danger</label>
-                            <input type="color" class="form-control form-control-color w-100" id="st-btn-danger" />
-                        </div>
-
-                        <div class="col-2">
-                            <label class="small text-info fw-bold">Info</label>
-                            <input type="color" class="form-control form-control-color w-100" id="st-btn-info" />
-                        </div>
-
-                        <div class="col-2">
-                            <label class="small text-secondary fw-bold">Secondary</label>
-                            <input type="color" class="form-control form-control-color w-100" id="st-btn-secondary" />
-                        </div>
-                    </div>
-
-                    <div class="row g-2 mb-1">
-                        <div class="col-12">
-                            <small class="text-muted fw-bold text-uppercase border-top pt-2 d-block mt-2">Thanh Điều Hướng (Tabs & Nav)</small>
-                        </div>
-
-                        <div class="col-6">
-                            <label class="small fw-bold text-primary">Tab Đang chọn (Active)</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text small">Nền</span>
-                                <input type="color" class="form-control form-control-color" id="st-tab-active-bg" />
-                                <span class="input-group-text small">Chữ</span>
-                                <input type="color" class="form-control form-control-color" id="st-tab-active-text" />
+                        <div class="row g-2">
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <div class="card p-2 border-0 shadow-sm bg-light">
+                                    <label class="x-small fw-bold mb-1">Màu Chủ Đạo</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="color" class="form-control form-control-color w-100" id="st-primary-color" title="Primary Color" />
+                                        <input type="text" class="form-control x-small text-center p-0" id="st-primary-color-text" readonly />
+                                    </div>
+                                </div>
                             </div>
-                        </div>
 
-                        <div class="col-6">
-                            <label class="small fw-bold text-secondary">Tab Chưa chọn</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text small">Nền</span>
-                                <input type="color" class="form-control form-control-color" id="st-tab-inactive-bg" />
-                                <span class="input-group-text small">Chữ</span>
-                                <input type="color" class="form-control form-control-color" id="st-tab-inactive-text" />
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <div class="card p-2 border-0 shadow-sm bg-light">
+                                    <label class="x-small fw-bold mb-1">Nền Ứng Dụng</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="color" class="form-control form-control-color w-100" id="st-app-bg" title="App Background" />
+                                        <input type="text" class="form-control x-small text-center p-0" id="st-app-bg-text" readonly />
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <div class="row g-2">
-                        <div class="col-12">
-                            <small class="text-muted fw-bold text-uppercase border-top pt-2 d-block mt-2">Thành phần phụ (Input/Card/Btn-Light)</small>
-                        </div>
-
-                        <div class="col-6">
-                            <label class="small">Nền an toàn (Glass BG)</label>
-                            <div class="input-group input-group-sm">
-                                <input type="color" class="form-control form-control-color" id="st-glass-bg" />
-                                <input type="text" class="form-control" id="st-glass-bg-text" readonly />
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <div class="card p-2 border-0 shadow-sm bg-light">
+                                    <label class="x-small fw-bold mb-1">Header/Footer</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="color" class="form-control form-control-color w-100" id="st-header-bg" title="Header Background" />
+                                        <input type="text" class="form-control x-small text-center p-0" id="st-header-bg-text" readonly />
+                                    </div>
+                                </div>
                             </div>
-                        </div>
 
-                        <div class="col-6">
-                            <label class="small">Màu chữ (Glass Text)</label>
-                            <div class="input-group input-group-sm">
-                                <input type="color" class="form-control form-control-color" id="st-glass-text" />
-                                <input type="text" class="form-control" id="st-glass-text-text" readonly />
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <div class="card p-2 border-0 shadow-sm bg-light">
+                                    <label class="x-small fw-bold mb-1">Màu Chữ Chính</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="color" class="form-control form-control-color w-100" id="st-text-color" title="Text Color" />
+                                        <input type="text" class="form-control x-small text-center p-0" id="st-text-color-text" readonly />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <div class="card p-2 border-0 shadow-sm bg-light">
+                                    <label class="x-small fw-bold mb-1">Nền Card/Modal</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="color" class="form-control form-control-color w-100" id="st-surface-color" title="Surface Color" />
+                                        <input type="text" class="form-control x-small text-center p-0" id="st-surface-color-text" readonly />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="row g-2 mt-2">
-                        <div class="col-12">
-                            <small class="text-muted fw-bold text-uppercase border-top pt-2 d-block mt-2">Màu Bổ Sung (Extra Colors)</small>
-                        </div>
-
-                        <div class="col-6">
-                            <label class="small">Text Color (Chữ Chính)</label>
-                            <div class="input-group input-group-sm">
-                                <input type="color" class="form-control form-control-color" id="st-text-color" />
-                                <input type="text" class="form-control" id="st-text-color-text" readonly />
-                            </div>
-                        </div>
-
-                        <div class="col-6">
-                            <label class="small">Border Color</label>
-                            <div class="input-group input-group-sm">
-                                <input type="color" class="form-control form-control-color" id="st-border-color" />
-                                <input type="text" class="form-control" id="st-border-color-text" readonly />
-                            </div>
-                        </div>
-
-                        <div class="col-6">
-                            <label class="small">Surface Color (Card/Modal)</label>
-                            <div class="input-group input-group-sm">
-                                <input type="color" class="form-control form-control-color" id="st-surface-color" />
-                                <input type="text" class="form-control" id="st-surface-color-text" readonly />
-                            </div>
-                        </div>
-
-                        <div class="col-6">
-                            <label class="small">Hover Background</label>
-                            <div class="input-group input-group-sm">
-                                <input type="color" class="form-control form-control-color" id="st-hover-bg" />
-                                <input type="text" class="form-control" id="st-hover-bg-text" readonly />
-                            </div>
-                        </div>
-
-                        <div class="col-6">
-                            <label class="small">Input Background</label>
-                            <div class="input-group input-group-sm">
-                                <input type="color" class="form-control form-control-color" id="st-input-bg" />
-                                <input type="text" class="form-control" id="st-input-bg-text" readonly />
-                            </div>
-                        </div>
-
-                        <div class="col-6">
-                            <label class="small">Footer Background</label>
-                            <div class="input-group input-group-sm">
-                                <input type="color" class="form-control form-control-color" id="st-footer-bg" />
-                                <input type="text" class="form-control" id="st-footer-bg-text" readonly />
-                            </div>
-                        </div>
-                    </div>
-                    <input type="hidden" id="st-spacing-scale" value="1" />
+                    <!-- Footer Action -->
+                    <!-- <div class="mt-4 pt-3 border-top d-flex gap-2 justify-content-end">
+                        <button
+                            class="btn btn-sm btn-outline-danger px-3"
+                            onclick="
+                                if (confirm('Khôi phục về mặc định hệ thống?')) {
+                                    localStorage.removeItem('app-theme');
+                                    location.reload();
+                                }
+                            "
+                        >
+                            <i class="fa-solid fa-undo me-1"></i> Khôi phục
+                        </button>
+                        <button class="btn btn-sm btn-primary px-4" onclick="saveThemeSettings()"><i class="fa-solid fa-check me-1"></i> Lưu Cài Đặt</button>
+                    </div> -->
                 </div>
             </div>
 
@@ -367,7 +242,7 @@
                         </div>
 
                         <!-- Form Nhập Shortcut Mới -->
-                        <div class="card card-border mb-3 d-none" id="add-shortcut-form-container">
+                        <div class="card card-border mb-3" id="add-shortcut-form-container">
                             <div class="card-body p-3">
                                 <h6 class="fw-bold text-success mb-3"><i class="fa-solid fa-plus-circle me-2"></i>Tạo Phím Tắt Mới</h6>
                                 <div class="row g-2">

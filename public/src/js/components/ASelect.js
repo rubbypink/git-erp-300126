@@ -81,8 +81,6 @@ export default class ASelect {
             ASelect.stats.activeInstances++;
 
             this.dropdown = null;
-
-            // Khởi tạo Base Render (Cực nhanh)
             this.initBase();
             ASelect.initGlobalEvents();
         } catch (e) {
@@ -101,7 +99,7 @@ export default class ASelect {
             // Fast-path Sync
             const fastData = await this.checkSyncData();
             if (fastData) {
-                if (fastData !== true) this.data = this.mapData(fastData);
+                if (fastData !== true) this.data = fastData;
                 if (typeof this.source === 'string') {
                     ASelect.mapCache.set(this.source.trim(), this.data);
                 }
@@ -180,10 +178,10 @@ export default class ASelect {
         if (!data) data = await this.fetchPromise(this.source);
         if (data) {
             setTimeout(() => ASelect.fetchPromises.delete(cacheKey), 1000);
-            return data;
+            return this.mapData(data);
         } else if (data && !cacheKey) {
             // Trường hợp source là mảng/object trực tiếp thì không cache
-            return data;
+            return this.mapData(data);
         }
         return null;
     }

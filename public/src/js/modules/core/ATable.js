@@ -468,7 +468,7 @@ export default class ATable {
         }
 
         const layoutHtml = `
-      <div class="d-flex flex-column h-100 w-100 table-container-wrapper" style="${fsStyle}"><div id="${this.containerId}-header-menu" class="table-header-actions-wrapper flex-center flex-shrink-0" style="z-index: 1060;"></div>
+      <div class="d-flex flex-column h-100 w-100 table-container-wrapper" style="${fsStyle}"><div id="${this.containerId}-header-menu" class="table-header-actions-wrapper flex-center gap-2 flex-shrink-0" style="z-index: 1055;"></div>
         <div id="${this.containerId}-content-area" class="table-responsive w-100 at-table-container flex-grow-1" style="overflow: auto; position: relative;">
           <!-- Table will be rendered here -->
         </div>
@@ -573,8 +573,7 @@ export default class ATable {
         const hiddenFieldsDropdownHtml = this._renderHiddenFieldsDropdown();
 
         headerMenuEl.innerHTML = `
-      <div id="tbl-${this.containerId}-header" class="table-header-actions d-flex align-items-center mb-1 gap-3 p-2" style="z-index: 5;">
-        <button id="${this.containerId}-btn-settings" class="btn btn-sm btn-light border-0 shadow-sm p-0 bg-transparent"><icon class="fas fa-cog"></icon></button>
+      <div id="tbl-${this.containerId}-header" class="table-header-actions flex-center mb-1 gap-3 w-100" style="z-index: 5;">
         <h6 class="mb-0 fw-bold text-primary text-uppercase me-auto">${title || (colName ? window.A?.Lang?.t(colName) : '')}</h6>
         ${extraHtml}
         <div class="group-by-select">${groupByHtml}</div>
@@ -582,12 +581,13 @@ export default class ATable {
         ${downloadHtml}
         ${draggableHtml}
         <div id="hidden-field-select">${hiddenFieldsDropdownHtml}</div>
-        <div class="search-box flex-grow-1" style="max-width: 200px;">
+        <div class="search-box" style="width: 150px;">
           <div class="input-group input-group-sm p-0 bkg-light rounded overflow-hidden shadow-sm border">
             <span class="input-group-text border-0"><i class="fas fa-search text-muted small"></i></span>
             <input type="text" class="form-control form-control-sm bkg-light border-0 ps-0 at-search-input" placeholder="Tìm kiếm nhanh..." style="box-shadow: none;">
           </div>
         </div>
+        <button id="${this.containerId}-btn-settings" class="btn btn-light border-0 shadow-sm p-0 bg-transparent" style="font-size: large;"><icon class="fas fa-cog"></icon></button>
       </div>`;
     }
 
@@ -1955,6 +1955,7 @@ export default class ATable {
             const finalOptions = { ...this.options };
             delete finalOptions.data; // Không đưa data vào form config
             delete finalOptions.onCellChange;
+            if (this.options.headerExtra) delete finalOptions.headerExtra;
 
             finalOptions.colName = this.state?.currentColName || this.options.colName || 'bookings';
 
@@ -1989,7 +1990,7 @@ export default class ATable {
                 if (typeof value === 'boolean') {
                     // Sử dụng form-switch cho boolean
                     inputHtml = `
-                      <div class="col-6 col-md-4 col-lg-3">
+                      <div class="col-6 col-md-4 col-lg-3 p-0">
                           <div class="form-check form-switch h-100 d-flex align-items-center">
                               <input class="form-check-input me-2" type="checkbox" role="switch" 
                                   id="opt_${key}" data-field="${key}" ${value ? 'checked' : ''}>
@@ -2000,7 +2001,7 @@ export default class ATable {
                     // Sử dụng input text/number cho các loại khác
                     const inputType = typeof value === 'number' ? 'number' : 'text';
                     inputHtml = `
-                      <div class="col-12 col-md-6 col-lg-4">
+                      <div class="col-12 col-md-6 col-lg-4 p-0">
                           <div class="form-floating mb-0">
                               <input type="${inputType}" class="form-control form-control-sm shadow-none border-0 border-bottom rounded-0 bg-transparent" 
                                   id="opt_${key}" data-field="${key}" placeholder="${label}" value="${value}">

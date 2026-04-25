@@ -610,7 +610,7 @@ class DBManager {
                 }
             }
 
-            if (this.#debug) L._('[Gatekeeper] Synced data Done', items);
+            // if (this.#debug) L._('[Gatekeeper] Synced data Done', items);
             // Tùy chọn: Phát event báo hiệu UI cập nhật (Ví dụ: Balance vừa đổi)
             // window.dispatchEvent(new CustomEvent('erp-data-synced', { detail: { items } }));
         } catch (error) {

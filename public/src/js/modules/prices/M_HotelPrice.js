@@ -220,13 +220,13 @@ class HotelPriceManager {
             if (!docId) return;
             const parts = docId.split('_'); // Schema mới: HOTELID_PKGID_YEAR
             if (parts.length >= 3) {
-                setVal('hp-sel-hotel', parts[0]);
-                setVal('hp-sel-package', parts[1]);
+                setVal('hp-sel-hotel', parts[0].trim());
+                setVal('hp-sel-package', String(parts[1]).toLowerCase());
                 setVal('hp-sel-year', parts[2]);
 
                 // [OPTIMIZATION] Lấy từ cache thay vì fetch DB
                 const schedule = HotelPriceManager._cache.schedules?.[docId] || (await A.DB.getCollection('hotel_price_schedules', docId));
-                if (schedule?.info?.supplierId) setVal('hp-sel-supplier', schedule.info.supplierId);
+                if (schedule?.info?.suppliers[0]) setVal('hp-sel-supplier', schedule.info.suppliers[0]);
 
                 await this.loadPriceData();
             }

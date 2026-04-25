@@ -22,44 +22,43 @@ Sử dụng 2 bộ màu hài hòa phổ biến nhất
 - Dark: Purple/Gray (Hiện đại, bảo vệ mắt)
 ========================================================================= */
 /* ─── THEME: DARK MODE ─── */
-/* Bộ màu: Purple/Gray - Hiện đại, bảo vệ mắt */
 @media (prefers-color-scheme: dark) {
     :root {
-        --primary-color: #7c3aed; /* Purple - Tạo hành động */
-        --secondary-color: #94a3b8; /* Slate - Phụ vụ */
-        --app-bg: #090d14; /* Xanh đậm - Nền chính */
+        --primary-color: #818cf8; /* Indigo sáng - Nổi bật trên nền tối */
+        --secondary-color: #94a3b8; /* Slate - Trung tính */
+        --app-bg: #0f172a; /* Navy đậm - Nền sâu */
         --header-bg: #1e293b; /* Xanh đen - Header */
-        --main-bg: #343333;
-        --text-color: #f1f1f3; /* Sáng - Văn bản chính */
-        --text-secondary: #c7d6ea; /* Xám sáng - Văn bản phụ (contrast ≥4.5:1 on dark bg) */
-        --border-color: #334155; /* Xám tối - Border */
-        --surface-color: #2d4c7c; /* Xanh đen - Card/Modal */
-        --popup-bg: #e4e4e4; /* Trắng - Popup */
-        --popup-text: #080808; /* Sáng - Popup */
-        --hover-bg: #334155; /* Xám tối - Hover */
-        --input-bg: #1e293b; /* Xanh đen - Input background */
-        --success-color: #4ade80; /* Xanh lá sáng - Thành công */
-        --warning-color: #facc15; /* Vàng sáng - Cảnh báo */
-        --error-color: #c52828; /* Đỏ sáng - Lỗi */
-        --info-color: #3ab7ca; /* Cyan sáng - Thông tin */
+        --main-bg: #0f172a;
+        --text-color: #f8fafc; /* Gần trắng - Dễ đọc */
+        --text-secondary: #94a3b8; /* Xám Slate - Phụ */
+        --border-color: #334155; /* Viền tối */
+        --surface-color: #1e293b; /* Nền Card/Modal */
+        --popup-bg: #1e293b;
+        --popup-text: #f8fafc;
+        --hover-bg: #3f4e63;
+        --input-bg: #0f172a;
+        --success-color: #34d399;
+        --warning-color: #fbbf24;
+        --error-color: #f87171;
+        --info-color: #38bdf8;
 
         /* Table Colors - Dark */
-        --tbl-head-bg: #334155; /* Xám tối - Header table */
-        --tbl-head-text: #dbd6d6; /* Sáng - Text header */
-        --tbl-row-bg: #415068; /* Xanh đen - Row bình thường */
-        --tbl-row-hover: #334155; /* Xám tối - Hover */
-        --tbl-border: #475569; /* Xám trung bình - Border */
+        --tbl-head-bg: #334155;
+        --tbl-head-text: #f8fafc;
+        --tbl-row-bg: #1e293b;
+        --tbl-row-hover: #334155;
+        --tbl-border: #334155;
 
         /* Tab Navigation - Dark */
-        --tab-active-bg: #3f4347;
-        --tab-active-text: #0400ff;
-        --tab-inactive-bg: #1e293b;
+        --tab-active-bg: #334155;
+        --tab-active-text: #818cf8;
+        --tab-inactive-bg: #0f172a;
         --tab-inactive-text: #94a3b8;
 
-        /* Shadow - Dark (tối hơn) */
-        --shadow-sm: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.3);
-        --shadow-md: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.3);
-        --shadow-lg: 0 0.625rem 0.9375rem rgba(0, 0, 0, 0.3);
+        /* Shadow - Dark */
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
     }
 }
 
@@ -67,42 +66,41 @@ Sử dụng 2 bộ màu hài hòa phổ biến nhất
     color-scheme: light dark;
 
     /* ─── LAYOUT GRID CONSTANTS ─── */
-    --grid-cols: 13; /* 13 columns for flexibility */
-    --header-height: 5rem; /* Total header (top-bar + nav-bar) */
-    --footer-height: 4rem; /* Footer height */
+    --grid-cols: 13;
+    --header-height: 5rem;
+    --footer-height: 4rem;
 
     /* ─── THEME: LIGHT MODE (Mặc định) ─── */
-    /* Bộ màu: Blue/Gray - Chuyên nghiệp, dễ đọc */
-    --primary-color: #3b82f6; /* Blue - Tạo hành động */
-    --secondary-color: #64748b; /* Slate Gray - Phụ vụ */
-    --app-bg: #dfd9d9; /* Xám nhạt - Nền sạch */
-    --header-bg: #2c37d1; /* Xanh đậm - Header nổi bật */
-    --main-bg: #fffefe;
-    --text-color: #0f141c; /* Tối - Văn bản chính */
-    --text-secondary: #aab4c2; /* Xám tối - Văn bản phụ (contrast ≥4.5:1) */
-    --border-color: #afb8c4; /* Xám sáng - Border */
-    --surface-color: #f7f7f7; /* Trắng - Card/Modal */
-    --popup-bg: #2b2a2a; /* Trắng - Popup */
-    --popup-text: #e7e7e7; /* Sáng - Popup */
-    --hover-bg: #eaeaeb; /* Xám siêu nhạt - Hover */
-    --input-bg: #e4e4e4; /* Trắng - Input background */
-    --success-color: #10b981; /* Xanh lá - Thành công */
-    --warning-color: #f59e0b; /* Cam - Cảnh báo */
-    --error-color: #ef4444; /* Đỏ - Lỗi */
-    --info-color: #06b6d4; /* Cyan - Thông tin */
+    --primary-color: #2563eb; /* Blue - Chuyên nghiệp */
+    --secondary-color: #64748b; /* Slate Gray */
+    --app-bg: #f8fafc; /* Xám cực nhạt - Sạch sẽ */
+    --header-bg: #1e3a8a; /* Xanh đậm - Tin cậy */
+    --main-bg: #efefef;
+    --text-color: #0f172a; /* Navy tối - Tương phản tốt */
+    --text-secondary: #64748b;
+    --border-color: #e2e8f0;
+    --surface-color: #ffffff;
+    --popup-bg: #ffcecef9;
+    --popup-text: #0f172a;
+    --hover-bg: #fdfbed;
+    --input-bg: #ffffff;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --error-color: #ef4444;
+    --info-color: #0ea5e9;
 
     /* Table Colors - Light */
-    --tbl-head-bg: #bec4cc; /* Xám nhạt - Header table */
-    --tbl-head-text: #030407; /* Tối - Text header */
-    --tbl-row-bg: #ffffff; /* Trắng - Row bình thường */
-    --tbl-row-hover: #f1f5f9; /* Xám siêu nhạt - Hover */
-    --tbl-border: #cbd5e1; /* Xám - Border */
+    --tbl-head-bg: #f1f5f9;
+    --tbl-head-text: #0f172a;
+    --tbl-row-bg: #ffffff;
+    --tbl-row-hover: #f8fafc;
+    --tbl-border: #e2e8f0;
 
     /* Tab Navigation - Light */
-    --tab-active-bg: #f8f2f2;
-    --tab-active-text: #001aff;
-    --tab-inactive-bg: #e2e8f0;
-    --tab-inactive-text: #272b30;
+    --tab-active-bg: #ffffff;
+    --tab-active-text: #2563eb;
+    --tab-inactive-bg: #f1f5f9;
+    --tab-inactive-text: #64748b;
 
     /* Typography & Spacing (in REM) */
     --font-family: 'Segoe UI', sans-serif;
@@ -111,6 +109,10 @@ Sử dụng 2 bộ màu hài hòa phổ biến nhất
     --shadow-sm: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.05);
     --shadow-md: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 0.625rem 0.9375rem rgba(0, 0, 0, 0.1);
+}
+
+.card-body {
+    background-color: var(--hover-bg);
 }
 
 .bkg-light {

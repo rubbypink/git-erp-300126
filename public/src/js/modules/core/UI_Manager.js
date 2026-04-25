@@ -464,7 +464,6 @@ const UI_RENDERER = {
                 break;
 
             case 'tab-theme-content':
-                if (getE('tab-shortcut-content')) getE('tab-shortcut-content').classList.add('d-none');
                 if (window.A?.Modal) {
                     A.Modal.setSaveHandler(typeof saveThemeSettings !== 'undefined' ? saveThemeSettings : null, 'Áp Dụng Theme');
                     A.Modal.setResetHandler(window.THEME_MANAGER?.resetToDefault, 'Đặt Lại');
@@ -472,7 +471,6 @@ const UI_RENDERER = {
                 break;
 
             case 'tab-shortcut-content':
-                if (getE('tab-theme-content')) getE('tab-theme-content').classList.add('d-none');
                 if (window.A?.ShortKey) A.ShortKey.renderSettingsForm();
                 if (window.A?.Modal) A.Modal.setFooter(false);
                 break;
@@ -503,6 +501,7 @@ const UI_RENDERER = {
                             </div>`,
                         ],
                         contextMenu: true,
+                        download: true,
                         draggable: true,
                         pageSize: 50,
                         zoom: false,
@@ -522,7 +521,7 @@ const UI_RENDERER = {
                                 }
                             });
                         }
-                    }, 500);
+                    }, 300);
                 }
                 break;
 

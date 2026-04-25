@@ -332,7 +332,7 @@ class SalesModule {
                 if (!tr) return;
                 const type = (getVal('[data-field="service_type"]', tr) || '').trim();
                 const loc = hotelIdorName ? hotelIdorName : getVal('[data-field="hotel_name"]', tr);
-                L._('🔍 updateServiceSelect: hotel:', loc);
+                // L._('🔍 updateServiceSelect: hotel:', loc);
                 const elName = $('[data-field="service_name"]', tr);
                 if (!elName) return;
 
