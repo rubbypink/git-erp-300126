@@ -25,7 +25,7 @@ export class ModalFull extends HTMLElement {
                         <div class="modal-header border-bottom px-3 py-1" style="max-height: max-content;">
                             <h5 class="modal-title" style="font-weight: bold;">${title}</h5>
                             <div style="display: flex; gap: 0.6rem; align-items: center;">
-                                <button class="btn btn-sm btn-link text-dark btn-minimize px-1" style="font-size: 1.2rem;"><i class="fa-solid fa-minus"></i></button>
+                                <button class="btn btn-sm btn-link  btn-minimize px-1" style="font-size: 1.2rem;"><i class="fa-solid fa-minus"></i></button>
                                 <button type="button" class="btn-resize-modal" id="btnResizeModal" title="Chuyển đổi kích thước" style="border: none; background: none; font-size: 1.2rem; color: #999; cursor: pointer; padding: 0.5rem; display: flex; align-items: center; justify-content: center;">
                                     <i class="fas fa-expand"></i>
                                 </button>
@@ -358,6 +358,7 @@ class DynamicModal {
 
     constructor(appInstance = window.A) {
         this.appInstance = appInstance;
+        this.id = this.#baseId;
         // Khởi tạo Base Modal (Lớp dưới cùng) vào Stack
         this.#stack.push(this.#createNode(this.#baseId));
     }
@@ -428,11 +429,11 @@ class DynamicModal {
                                 <i class="fa-solid fa-sliders me-2"></i>Modal Title
                             </h6>
                             <div class="btn-group gap-2">
-                                <button class="btn btn-sm btn-link text-dark btn-center px-1" title="Canh giữa màn hình">
+                                <button class="btn btn-sm btn-link  btn-center px-1" title="Canh giữa màn hình">
                                     <i class="fa-solid fa-crosshairs"></i>
                                 </button>
-                                <button class="btn btn-sm btn-link text-dark btn-minimize px-1" title="Minimize"><i class="fa-solid fa-minus"></i></button>
-                                <button class="btn btn-sm btn-link text-dark btn-fullscreen px-1" title="Fullscreen"><i class="fa-solid fa-expand"></i></button>
+                                <button class="btn btn-sm btn-link  btn-minimize px-1" title="Minimize"><i class="fa-solid fa-minus"></i></button>
+                                <button class="btn btn-sm btn-link  btn-fullscreen px-1" title="Fullscreen"><i class="fa-solid fa-expand"></i></button>
                                 <button type="button" class="btn btn-sm btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                             </div>
                         </div>

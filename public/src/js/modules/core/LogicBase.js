@@ -117,7 +117,6 @@ export default class LogicBase {
             if (typeof showLoading === 'function') showLoading(false);
         }
     }
-
     static openBatchEdit(dataList, title) {
         LogicBase.CURRENT_BATCH_DATA = JSON.parse(JSON.stringify(dataList));
         A.UI.activateTab('tab-form');
@@ -126,7 +125,6 @@ export default class LogicBase {
         LogicBase.refreshForm();
         const tbody = getE('detail-tbody');
         if (tbody) tbody.innerHTML = '';
-
         if (typeof SYS.runFnByRole === 'function') SYS.runFnByRole('addDetailRow', 'UI', LogicBase.CURRENT_BATCH_DATA);
     }
 
@@ -282,6 +280,11 @@ export default class LogicBase {
         if (!data) return;
         try {
             if (typeof A.UI.initBtnSelectDataList === 'function') A.UI.initBtnSelectDataList(data);
+
+            // Cập nhật datalist cho form nếu form đang mở hoặc đã load
+            if (getE('main-form') && typeof A.UI.setupMainFormUI === 'function') {
+                A.UI.setupMainFormUI(data.lists);
+            }
         } catch (e) {}
         UI_DASH.initDashboard();
     }
@@ -562,4 +565,4 @@ window.onGridRowClick = LogicBase.onGridRowClick;
 window._callServer = LogicBase._callServer;
 window.requestAPI = LogicBase.requestAPI;
 window.reloadPage = LogicBase.reloadPage;
-window.LogicBase = LogicBase;
+window.B = LogicBase;

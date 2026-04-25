@@ -1,403 +1,395 @@
 <template id="tmpl-dashboard">
-  <div class="container-fluid p-0">
-    <div class=" p-2 mb-2 rounded d-flex flex-column align-items-center justify-content-between">
-      <h6 class="m-0 text-uppercase fw-bold text-primary p-2"><i class="fa-solid fa-gauge me-2"></i>Trung Tâm Điều Hành
-        (Operator)
-      </h6>
-      <div class="d-flex align-items-center gap-2">
-        <button class="btn btn-outline-success btn-sm fw-bold" onclick="OperatorController.UI.openFilterDialog()">
-          <i class="fa-solid fa-file-invoice-dollar me-1"></i> Công nợ NCC
-        </button>
-        <span class="small text-muted desktop-only">Giai đoạn:</span>
-        <select id="dash-month-select" class="form-select form-select-sm fw-bold text-primary desktop-only" style="width: 110px;">
-          <option value="" disabled>Tháng...</option>
-        </select>
-        <input type="date" id="dash-filter-from" class="form-control form-control-sm" style="width: 135px;">
-        <input type="date" id="dash-filter-to" class="form-control form-control-sm" style="width: 135px;">
-        <button id="btn-dash-update" class="btn btn-primary btn-sm"><i class="fa-solid fa-rotate"></i> Cập nhật</button>
-      </div>
-    </div>
-    <div class="row g-2 mb-2">
-      <!-- Bảng 1: Missing Supplier -->
-      <div class="col-md-6">
-        <div class="card shadow-sm h-100 border-0 active">
-          <div class="card-header bg-danger bg-gradient bg-opacity-75 text-white py-1 d-flex justify-content-between align-items-center" onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto;">
-            <small class="fw-bold">Dịch Vụ Chưa Có NCC (Missing Supplier)</small>
-            <span class="badge" id="badge-dash-tbl-supplier">0</span>
-          </div>
-          <div class="card-body p-0 border-bottom" style="overflow-y: auto; max-height: 38vh;">
-            <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-missing-supplier" data-collection="operator_entries">
-              <thead class="table-warning sticky-top text-center" style="z-index: 10;">
-                <tr>
-                  <th>SID</th>
-                  <th>Khách Hàng</th>
-                  <th>Loại DV</th>
-                  <th>Dịch Vụ</th>
-                  <th>Check-In</th>
-                  <th>SL</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-      <!-- Bảng 2: Bảng giá mới -->
-      <div class="col-md-6">
-        <div class="card shadow-sm h-100 border-0 active">
-          <div class="card-header bg-primary bg-gradient bg-opacity-75 text-white py-1 d-flex justify-content-between align-items-center" onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto;">
-            <small class="fw-bold">Bảng Giá Mới Cập Nhật</small>
-            <span class="badge" id="badge-dash-tbl-prices">0</span>
-          </div>
-          <div class="card-body p-0 border-bottom" style="overflow-y: auto; max-height: 38vh;">
-            <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-prices" data-collection="hotel_price_schedules">
-              <thead class="table-warning sticky-top text-center" style="z-index: 10;">
-                <tr>
-                  <th>ID</th>
-                  <th>Loại</th>
-                  <th>NCC/Khách Sạn</th>
-                  <th>Năm</th>
-                  <th>Ngày Cập Nhật</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="row g-2">
-      <!-- Bảng 3: Dịch vụ sắp đến (10 ngày) -->
-      <div class="col-md-6">
-        <div class="card shadow-sm h-100 border-0 active">
-          <div class="card-header bg-info bg-gradient bg-opacity-75 text-white fw-bold py-1 d-flex justify-content-between align-items-center" onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto;">
-            <small class="border-start border-4 border-white p-2">Dịch Vụ Sắp Đến (10 Ngày)</small>
-            <span class="badge" id="badge-dash-tbl-upcoming">0</span>
-          </div>
-          <div class="card-body p-0 border-bottom" style="overflow-y: auto; max-height: 38vh;">
-            <table class="table table-sm table-hover table-bordered small mb-0 text-center" id="tbl-dash-upcoming" data-collection="operator_entries">
-              <thead class="table-secondary sticky-top" style="z-index: 10;">
-                <tr class="text-center">
-                  <th>SID</th>
-                  <th>Khách Hàng</th>
-                  <th>Dịch Vụ</th>
-                  <th>Check-In</th>
-                  <th>NCC</th>
-                  <th>Code</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-      <!-- Bảng 4: Công nợ NCC -->
-      <div class="col-md-6">
-        <div class="card shadow-sm h-100 border-0 active">
-          <div class="card-header bg-secondary bg-gradient bg-opacity-75 py-1 border-bottom" onclick="this.parentElement.classList.toggle('active')">
-            <div class="d-flex justify-content-between align-items-center">
-              <small class="fw-bold text-dark border-start border-4 border-warning ps-2">Công Nợ Theo NCC</small>
-              <div class="small fw-bold bg-light text-danger p-2">Còn lại: <span id="sum-supplier-bal">0</span></div>
+    <div class="container-fluid p-0">
+        <div class="p-2 mb-2 rounded d-flex flex-column align-items-center justify-content-between">
+            <h6 class="m-0 text-uppercase fw-bold text-primary p-2"><i class="fa-solid fa-gauge me-2"></i>Trung Tâm Điều Hành (Operator)</h6>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-outline-success btn-sm fw-bold" onclick="OperatorController.UI.openFilterDialog()"><i class="fa-solid fa-file-invoice-dollar me-1"></i> Công nợ NCC</button>
+                <span class="small text-muted desktop-only">Giai đoạn:</span>
+                <select id="dash-month-select" class="form-select form-select-sm fw-bold text-primary desktop-only" style="width: 110px">
+                    <option value="" disabled>Tháng...</option>
+                </select>
+                <input type="date" id="dash-filter-from" class="form-control form-control-sm" style="width: 135px" />
+                <input type="date" id="dash-filter-to" class="form-control form-control-sm" style="width: 135px" />
+                <button id="btn-dash-update" class="btn btn-primary btn-sm"><i class="fa-solid fa-rotate"></i> Cập nhật</button>
             </div>
-          </div>
-          <div class="card-body p-0 border-bottom" style="overflow-y: auto; max-height: 38vh;">
-            <table class="table table-sm table-hover table-striped small mb-0" id="tbl-dash-supplier">
-              <thead class="table-secondary sticky-top" style="z-index: 5;">
-                <tr>
-                  <th>Nhà Cung Cấp</th>
-                  <th class="text-end">Tổng Chi</th>
-                  <th class="text-end">Đã TT</th>
-                  <th class="text-end">Còn Lại</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
         </div>
-      </div>
+        <div class="row g-2 mb-2">
+            <!-- Bảng 1: Missing Supplier -->
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100 border-0 active">
+                    <div class="card-header bg-danger bg-gradient bg-opacity-75 py-1 d-flex justify-content-between align-items-center" onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto">
+                        <small class="fw-bold">Dịch Vụ Chưa Có NCC (Missing Supplier)</small>
+                        <span class="badge" id="badge-dash-tbl-supplier">0</span>
+                    </div>
+                    <div class="card-body p-0 border-bottom" style="overflow-y: auto; max-height: 38vh">
+                        <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-missing-supplier" data-collection="operator_entries">
+                            <thead class="table-warning sticky-top text-center" style="z-index: 10">
+                                <tr>
+                                    <th>SID</th>
+                                    <th>Khách Hàng</th>
+                                    <th>Loại DV</th>
+                                    <th>Dịch Vụ</th>
+                                    <th>Check-In</th>
+                                    <th>SL</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- Bảng 2: Bảng giá mới -->
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100 border-0 active">
+                    <div class="card-header bg-primary bg-gradient bg-opacity-75 py-1 d-flex justify-content-between align-items-center" onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto">
+                        <small class="fw-bold">Bảng Giá Mới Cập Nhật</small>
+                        <span class="badge" id="badge-dash-tbl-prices">0</span>
+                    </div>
+                    <div class="card-body p-0 border-bottom" style="overflow-y: auto; max-height: 38vh">
+                        <table class="table table-sm table-hover table-bordered small mb-0" id="tbl-dash-prices" data-collection="hotel_price_schedules">
+                            <thead class="table-warning sticky-top text-center" style="z-index: 10">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Loại</th>
+                                    <th>NCC/Khách Sạn</th>
+                                    <th>Năm</th>
+                                    <th>Ngày Cập Nhật</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row g-2">
+            <!-- Bảng 3: Dịch vụ sắp đến (10 ngày) -->
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100 border-0 active">
+                    <div class="card-header bg-info bg-gradient bg-opacity-75 fw-bold py-1 d-flex justify-content-between align-items-center" onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto">
+                        <small class="border-start border-4 border-white p-2">Dịch Vụ Sắp Đến (10 Ngày)</small>
+                        <span class="badge" id="badge-dash-tbl-upcoming">0</span>
+                    </div>
+                    <div class="card-body p-0 border-bottom" style="overflow-y: auto; max-height: 38vh">
+                        <table class="table table-sm table-hover table-bordered small mb-0 text-center" id="tbl-dash-upcoming" data-collection="operator_entries">
+                            <thead class="table-secondary sticky-top" style="z-index: 10">
+                                <tr class="text-center">
+                                    <th>SID</th>
+                                    <th>Khách Hàng</th>
+                                    <th>Dịch Vụ</th>
+                                    <th>Check-In</th>
+                                    <th>NCC</th>
+                                    <th>Code</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- Bảng 4: Công nợ NCC -->
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100 border-0 active">
+                    <div class="card-header bg-secondary bg-gradient bg-opacity-75 py-1 border-bottom" onclick="this.parentElement.classList.toggle('active')">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="fw-bold border-start border-4 border-warning ps-2">Công Nợ Theo NCC</small>
+                            <div class="small fw-bold bkg-light text-danger p-2">Còn lại: <span id="sum-supplier-bal">0</span></div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0 border-bottom" style="overflow-y: auto; max-height: 38vh">
+                        <table class="table table-sm table-hover table-striped small mb-0" id="tbl-dash-supplier">
+                            <thead class="table-secondary sticky-top" style="z-index: 5">
+                                <tr>
+                                    <th>Nhà Cung Cấp</th>
+                                    <th class="text-end">Tổng Chi</th>
+                                    <th class="text-end">Đã TT</th>
+                                    <th class="text-end">Còn Lại</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 </template>
 
 <template id="tmpl-form">
-  <form id="main-form" class="w-100 h-100 gap-2 mt-0">
-    <div class="card my-2">
-      <div class="card-header d-flex justify-content-between bg-primary bg-gradient bg-opacity-75 text-white py-0" style="cursor: pointer; user-select: none;">
-        <div class="flex-grow-1 bg-primary bg-gradient bg-opacity-75 text-white py-0" style="cursor: pointer; user-select: none;" data-bs-toggle="collapse" data-bs-target="#booking_details_collapse" role="button">
-          <small class="fw-bold"><i class="fa-solid fa-chevron-down fs-7 me-1"></i>THÔNG TIN BOOKING (OP)</small>
+    <form id="main-form" class="w-100 h-100 gap-2 mt-0">
+        <div class="card my-2">
+            <div class="card-header d-flex justify-content-between bg-primary bg-gradient bg-opacity-75 py-0" style="cursor: pointer; user-select: none">
+                <div class="flex-grow-1 bg-primary bg-gradient bg-opacity-75 py-0" style="cursor: pointer; user-select: none" data-bs-toggle="collapse" data-bs-target="#booking_details_collapse" role="button">
+                    <small class="fw-bold"><i class="fa-solid fa-chevron-down fs-7 me-1"></i>THÔNG TIN BOOKING (OP)</small>
+                </div>
+                <div class="d-flex align-items-center gap-3 ms-auto me-2">
+                    <button type="button" class="btn btn-sm btn-link p-0 opacity-75 hover-opacity-100" onclick="StateProxy.undo()" title="Undo (Ctrl+Z)">
+                        <i class="fa-solid fa-rotate-left fs-6"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-link p-0 opacity-75 hover-opacity-100" onclick="StateProxy.redo()" title="Redo (Ctrl+Y)">
+                        <i class="fa-solid fa-rotate-right fs-6"></i>
+                    </button>
+                </div>
+                <div class="btn-group btn-group-sm my-1 mx-2" role="group">
+                    <button type="button" class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="fa-solid fa-tools"></i> Tác vụ OP</button>
+                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-sm shadow-sm">
+                        <li>
+                            <a class="dropdown-item small" href="javascript:void(0)" onclick="sync()" title="Xem trước & Gửi Xác Nhận Đặt Dịch Vụ (Email/PDF)"> <i class="fa-solid fa-envelope me-2"></i> Gửi Email Xác Nhận </a>
+                        </li>
+                        <li>
+                            <hr class="dropdown-divider my-1" />
+                        </li>
+                        <li>
+                            <a class="dropdown-item small" href="javascript:void(0)" onclick="Op.Logic.updateDeposit()" title="Cập nhật trạng thái deposit"> <i class="fa-solid fa-coins me-2"></i> Cập nhật Deposit </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item small" href="javascript:void(0)" onclick="Op.Logic.updateBkStatus()" title="Cập nhật trạng thái booking"> <i class="fa-solid fa-refresh me-2"></i> Cập nhật Trạng thái </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item small" href="javascript:void(0)" onclick="Op.Logic.calcGrandTotal()" title="Tính lại tổng tiền booking"> <i class="fa-solid fa-calculator me-2"></i> Tính lại Tổng </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item small" href="javascript:void(0)" onclick="A.BookingOverview.open(getVal('BK_ID'))" title="Xem tổng quan booking"> <i class="fa-solid fa-eye me-2"></i> Booking Overview </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-12 collapse show" id="booking_details_collapse" data-bs-parent=".card">
+                <div class="card-body row justify-content-around mx-0 my-0" id="sub-booking-form">
+                    <fieldset name="customers" id="fs_customer_info" class="col-12 col-md-4" data-collection="customers">
+                        <legend>Thông tin Khách Hàng</legend>
+                        <div class="py-0">
+                            <label for="Cust_Name" class="form-label small">Họ và tên</label>
+                            <input type="text" class="form-control form-control-sm mx-1" id="Cust_Name" data-field="customer_full_name" readonly />
+                        </div>
+                        <div>
+                            <label for="Cust_Phone" class="form-label small">Số Điện Thoại</label>
+                            <input type="text" class="form-control form-control-sm phone_number mx-1" id="Cust_Phone" data-field="customer_phone" readonly />
+                        </div>
+                        <div>
+                            <label for="Cust_Source" class="form-label small">Nguồn</label>
+                            <select class="form-select form-select-sm" id="Cust_Source" data-field="customer_source" disabled></select>
+                        </div>
+                        <div>
+                            <label for="BK_Staff" class="form-label small">Nhân viên</label>
+                            <select class="form-select form-select-sm" id="BK_Staff" data-field="staff_id" disabled></select>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="col-12 col-md-4" name="bookings" id="fs_booking_info" data-collection="bookings">
+                        <legend>Thông tin Booking</legend>
+                        <div><label class="form-label small fw-bold">Mã Booking</label><input type="text" class="form-control form-control-sm fw-bold text-danger" id="BK_ID" data-field="id" readonly /></div>
+                        <div><label class="form-label small">Ngày Đặt</label><input type="date" class="form-control form-control-sm" id="BK_Date" data-field="created_at" readonly /></div>
+
+                        <div><label class="form-label small">Ngày Đi</label><input type="date" class="form-control form-control-sm" id="BK_Start" data-field="start_date" readonly /></div>
+                        <div><label class="form-label small">Ngày Về</label><input type="date" class="form-control form-control-sm" id="BK_End" data-field="end_date" readonly /></div>
+
+                        <div><label class="form-label small">Ng Lớn</label><input type="text" class="form-control form-control-sm number" id="BK_Adult" data-field="adults" readonly /></div>
+                        <div><label class="form-label small">Trẻ Em</label><input type="text" class="form-control form-control-sm number" id="BK_Child" data-field="children" readonly /></div>
+
+                        <div class="g-r-100">
+                            <label for="BK_TourName" class="form-label small">Tên Tour/Combo</label>
+                            <input type="text" class="form-control form-control-sm" id="BK_TourName" readonly />
+                        </div>
+                        <div>
+                            <label class="form-label small">Trạng thái</label>
+                            <input type="text" class="form-control form-control-sm fw-bold bg-warning bg-opacity-25" id="BK_Status" data-field="status" readonly />
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="col-12 col-md-3" data-collection="bookings">
+                        <legend>Tài Chính & Ghi Chú</legend>
+                        <div><label class="form-label small fw-bold text-primary">Tổng Booking</label><input type="text" class="form-control form-control-sm fw-bold text-end bg-warning number" id="BK_Total" data-field="total_amount" readonly /></div>
+                        <div><label class="form-label small fw-bold text-success">Tổng Chi Phí</label><input type="text" class="form-control form-control-sm text-end border-success number" id="BK_TotalCost" readonly /></div>
+                        <div><label class="form-label small fw-bold text-danger">Lợi Nhuận</label><input type="text" class="form-control form-control-sm text-end fw-bold text-danger number" id="BK_Balance" readonly /></div>
+
+                        <div>
+                            <label class="form-label small">Loại TT</label>
+                            <select class="form-select form-select-sm" id="BK_PayType" data-field="payment_method" disabled></select>
+                        </div>
+                        <div><label class="form-label small">Hạn TT</label><input type="date" class="form-control form-control-sm" id="BK_PayDue" data-field="payment_due_date" readonly /></div>
+                        <div class="py-0 my-2 g-r-100">
+                            <textarea name="BK_Note" class="form-control form-control-sm pt-2 align-middle" id="BK_Note" data-field="note" placeholder="Ghi Chú:" rows="5" readonly></textarea>
+                        </div>
+                    </fieldset>
+                </div>
+            </div>
         </div>
-        <div class="d-flex align-items-center gap-3 ms-auto me-2">
-          <button type="button" class="btn btn-sm btn-link text-white p-0 opacity-75 hover-opacity-100" onclick="StateProxy.undo()" title="Undo (Ctrl+Z)">
-            <i class="fa-solid fa-rotate-left fs-6"></i>
-          </button>
-          <button type="button" class="btn btn-sm btn-link text-white p-0 opacity-75 hover-opacity-100" onclick="StateProxy.redo()" title="Redo (Ctrl+Y)">
-            <i class="fa-solid fa-rotate-right fs-6"></i>
-          </button>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-info bg-gradient bg-opacity-50 d-flex justify-content-between align-items-center" style="cursor: pointer; user-select: none" data-bs-toggle="collapse" data-bs-target="#service-details-collapse" role="button">
+                <small class="fw-bold"><i class="fa-solid fa-chevron-down fs-7 me-1"></i>CHI TIẾT DỊCH VỤ (OP)</small>
+                <div class="d-inline-flex gap-4 mx-2 rounded justify-content-center desktop-only" onclick="event.stopPropagation()">
+                    <div class="small number">TB Giá NL: <span id="Stats_AvgAdult" class="fw-bold">0</span></div>
+                    <div class="small number">TB Giá TE: <span id="Stats_AvgChild" class="fw-bold">0</span></div>
+                    <div class="small number">Giá Vé NL: <span id="Stats_TransportAdult" class="fw-bold">0</span></div>
+                    <div class="small number">Giá Vé TE: <span id="Stats_TransportChild" class="fw-bold">0</span></div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="reverseDetailsRows()" title="Đảo ngược thứ tự dòng"><i class="fa-solid fa-arrow-right-arrow-left fa-rotate-90"></i> Đảo thứ tự</button>
+                    <button type="button" class="btn btn-sm btn-secondary" id="btn-sync-row" onclick="Op.DB.syncRow(CURRENT_CTX_ROW)"><i class="fa-solid fa-plus"></i> Sync dòng</button>
+                    <button type="button" class="btn btn-sm btn-primary" id="btn-add-row" onclick="Op.UI.addDetaiRow()"><i class="fa-solid fa-plus"></i> Thêm dòng</button>
+                </div>
+            </div>
+            <div class="table-responsive" id="tbl-booking-form">
+                <table class="table table-bordered table-sm mb-0" style="min-width: 1500px" data-collection="operator_entries">
+                    <thead class="table-secondary text-center align-middle small fw-bold text-secondary">
+                        <tr style="font-size: 11px">
+                            <th style="width: 20px">STT</th>
+                            <th style="width: 0" class="d-none">BKID</th>
+                            <th style="width: 0" class="d-none">Khách hàng</th>
+                            <th style="width: 100px">Khách sạn</th>
+                            <th style="width: 80px">Loại DV</th>
+                            <th style="width: 150px">Tên DV</th>
+                            <th style="width: 90px">Check In</th>
+                            <th style="width: 90px">Check Out</th>
+                            <th style="width: 70px">Đêm</th>
+                            <th style="width: 70px">SL</th>
+                            <th style="width: 70px">SL TE</th>
+                            <th style="width: 90px" class="bg-warning bg-opacity-10">Giá Vốn NL</th>
+                            <th style="width: 90px" class="bg-warning bg-opacity-10">Giá Vốn TE</th>
+                            <th style="width: 70px">Phụ thu</th>
+                            <th style="width: 70px">Giảm</th>
+                            <th style="width: 100px" class="text-primary">Doanh Thu</th>
+                            <th style="width: 80px">Code DV</th>
+                            <th style="width: 100px" class="text-danger bg-danger bg-opacity-10">Tổng Chi Phí</th>
+                            <th style="width: 120px" class="bg-danger bg-opacity-10">NCC (supplier)</th>
+                            <th style="width: 120px">Ghi chú</th>
+                            <th style="width: 90px" class="text-success">Đã TT</th>
+                            <th style="width: 90px" class="text-danger">Còn Lại</th>
+                            <th style="width: 20px"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="detail-tbody"></tbody>
+                </table>
+            </div>
         </div>
-        <div class="btn-group btn-group-sm my-1 mx-2" role="group">
-          <button type="button" class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="fa-solid fa-tools"></i> Tác vụ OP
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-sm shadow-sm">
-            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="sync()" title="Xem trước & Gửi Xác Nhận Đặt Dịch Vụ (Email/PDF)">
-                <i class="fa-solid fa-envelope me-2"></i> Gửi Email Xác Nhận
-              </a></li>
-            <li>
-              <hr class="dropdown-divider my-1">
-            </li>
-            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="Op.Logic.updateDeposit()" title="Cập nhật trạng thái deposit">
-                <i class="fa-solid fa-coins me-2"></i> Cập nhật Deposit
-              </a>
-            </li>
-            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="Op.Logic.updateBkStatus()" title="Cập nhật trạng thái booking">
-                <i class="fa-solid fa-refresh me-2"></i> Cập nhật Trạng thái
-              </a>
-            </li>
-            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="Op.Logic.calcGrandTotal()" title="Tính lại tổng tiền booking">
-                <i class="fa-solid fa-calculator me-2"></i> Tính lại Tổng
-              </a></li>
-            <li><a class="dropdown-item small" href="javascript:void(0)" onclick="A.BookingOverview.open(getVal('BK_ID'))" title="Xem tổng quan booking">
-                <i class="fa-solid fa-eye me-2"></i> Booking Overview
-              </a></li>
-          </ul>
-        </div>
-      </div>
-      <div class="col-12 collapse show" id="booking_details_collapse" data-bs-parent=".card">
-        <div class="card-body row justify-content-around mx-0 my-0" id="sub-booking-form">
-          <fieldset name="customers" id="fs_customer_info" class="col-12 col-md-4" data-collection="customers">
-            <legend>Thông tin Khách Hàng</legend>
-            <div class="py-0">
-              <label for="Cust_Name" class="form-label small">Họ và tên</label>
-              <input type="text" class="form-control form-control-sm mx-1" id="Cust_Name" data-field="customer_full_name" readonly>
-            </div>
-            <div>
-              <label for="Cust_Phone" class="form-label small">Số Điện Thoại</label>
-              <input type="text" class="form-control form-control-sm phone_number mx-1" id="Cust_Phone" data-field="customer_phone" readonly>
-            </div>
-            <div>
-              <label for="Cust_Source" class="form-label small">Nguồn</label>
-              <select class="form-select form-select-sm" id="Cust_Source" data-field="customer_source" disabled></select>
-            </div>
-            <div>
-              <label for="BK_Staff" class="form-label small">Nhân viên</label>
-              <select class="form-select form-select-sm" id="BK_Staff" data-field="staff_id" disabled></select>
-            </div>
-          </fieldset>
-
-          <fieldset class="col-12 col-md-4" name="bookings" id="fs_booking_info" data-collection="bookings">
-            <legend>Thông tin Booking</legend>
-            <div><label class="form-label small fw-bold">Mã Booking</label><input type="text" class="form-control form-control-sm fw-bold text-danger" id="BK_ID" data-field="id" readonly>
-            </div>
-            <div><label class="form-label small">Ngày Đặt</label><input type="date" class="form-control form-control-sm" id="BK_Date" data-field="created_at" readonly></div>
-
-            <div><label class="form-label small">Ngày Đi</label><input type="date" class="form-control form-control-sm" id="BK_Start" data-field="start_date" readonly></div>
-            <div><label class="form-label small">Ngày Về</label><input type="date" class="form-control form-control-sm" id="BK_End" data-field="end_date" readonly></div>
-
-            <div><label class="form-label small">Ng Lớn</label><input type="text" class="form-control form-control-sm number" id="BK_Adult" data-field="adults" readonly></div>
-            <div><label class="form-label small">Trẻ Em</label><input type="text" class="form-control form-control-sm number" id="BK_Child" data-field="children" readonly></div>
-
-            <div class="g-r-100">
-              <label for="BK_TourName" class="form-label small">Tên Tour/Combo</label>
-              <input type="text" class="form-control form-control-sm" id="BK_TourName" readonly>
-            </div>
-            <div><label class="form-label small">Trạng thái</label>
-              <input type="text" class="form-control form-control-sm fw-bold bg-warning bg-opacity-25" id="BK_Status" data-field="status" readonly>
-            </div>
-          </fieldset>
-
-          <fieldset class="col-12 col-md-3" data-collection="bookings">
-            <legend>Tài Chính & Ghi Chú</legend>
-            <div><label class="form-label small fw-bold text-primary">Tổng Booking</label><input type="text" class="form-control form-control-sm fw-bold text-end bg-warning number" id="BK_Total" data-field="total_amount" readonly></div>
-            <div><label class="form-label small fw-bold text-success">Tổng Chi Phí</label><input type="text" class="form-control form-control-sm text-end border-success number" id="BK_TotalCost" readonly></div>
-            <div><label class="form-label small fw-bold text-danger">Lợi Nhuận</label><input type="text" class="form-control form-control-sm text-end fw-bold text-danger number" id="BK_Balance" readonly></div>
-
-            <div>
-              <label class="form-label small">Loại TT</label>
-              <select class="form-select form-select-sm" id="BK_PayType" data-field="payment_method" disabled></select>
-            </div>
-            <div><label class="form-label small">Hạn TT</label><input type="date" class="form-control form-control-sm" id="BK_PayDue" data-field="payment_due_date" readonly></div>
-            <div class="py-0 my-2 g-r-100">
-              <textarea name="BK_Note" class="form-control form-control-sm pt-2 align-middle" id="BK_Note" data-field="note" placeholder="Ghi Chú:" rows="5" readonly></textarea>
-            </div>
-          </fieldset>
-        </div>
-      </div>
-    </div>
-
-    <div class="card shadow-sm">
-      <div class="card-header bg-info bg-gradient bg-opacity-50 d-flex justify-content-between align-items-center" style="cursor: pointer; user-select: none;" data-bs-toggle="collapse" data-bs-target="#service-details-collapse" role="button">
-        <small class="fw-bold text-dark"><i class="fa-solid fa-chevron-down fs-7 me-1"></i>CHI TIẾT DỊCH VỤ (OP)</small>
-        <div class="d-inline-flex gap-4 mx-2 rounded justify-content-center desktop-only" onclick="event.stopPropagation();">
-          <div class="small number">TB Giá NL: <span id="Stats_AvgAdult" class="fw-bold">0</span></div>
-          <div class="small number">TB Giá TE: <span id="Stats_AvgChild" class="fw-bold">0</span></div>
-          <div class="small number">Giá Vé NL: <span id="Stats_TransportAdult" class="fw-bold">0</span></div>
-          <div class="small number">Giá Vé TE: <span id="Stats_TransportChild" class="fw-bold">0</span></div>
-        </div>
-        <div class="d-flex gap-2">
-          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="reverseDetailsRows()" title="Đảo ngược thứ tự dòng">
-            <i class="fa-solid fa-arrow-right-arrow-left fa-rotate-90"></i> Đảo thứ tự
-          </button>
-          <button type="button" class="btn btn-sm btn-secondary" id="btn-sync-row" onclick="Op.DB.syncRow(CURRENT_CTX_ROW)"><i class="fa-solid fa-plus"></i> Sync dòng</button>
-          <button type="button" class="btn btn-sm btn-primary" id="btn-add-row" onclick="Op.UI.addDetaiRow()"><i class="fa-solid fa-plus"></i> Thêm dòng</button>
-        </div>
-      </div>
-      <div class="table-responsive" id="tbl-booking-form">
-        <table class="table table-bordered table-sm mb-0" style="min-width: 1500px" data-collection="operator_entries">
-          <thead class="table-secondary text-center align-middle small fw-bold text-secondary">
-            <tr style="font-size: 11px">
-              <th style="width: 20px">STT</th>
-              <th style="width: 0" class="d-none">BKID</th>
-              <th style="width: 0" class="d-none">Khách hàng</th>
-              <th style="width: 100px">Khách sạn</th>
-              <th style="width: 80px">Loại DV</th>
-              <th style="width: 150px">Tên DV</th>
-              <th style="width: 90px">Check In</th>
-              <th style="width: 90px">Check Out</th>
-              <th style="width: 70px">Đêm</th>
-              <th style="width: 70px">SL</th>
-              <th style="width: 70px">SL TE</th>
-              <th style="width: 90px" class="bg-warning bg-opacity-10 text-dark">Giá Vốn NL</th>
-              <th style="width: 90px" class="bg-warning bg-opacity-10 text-dark">Giá Vốn TE</th>
-              <th style="width: 70px">Phụ thu</th>
-              <th style="width: 70px">Giảm</th>
-              <th style="width: 100px" class="text-primary">Doanh Thu</th>
-              <th style="width: 80px">Code DV</th>
-              <th style="width: 100px" class="text-danger bg-danger bg-opacity-10">Tổng Chi Phí</th>
-              <th style="width: 120px" class="bg-danger bg-opacity-10">NCC (supplier)</th>
-              <th style="width: 120px">Ghi chú</th>
-              <th style="width: 90px" class="text-success">Đã TT</th>
-              <th style="width: 90px" class="text-danger">Còn Lại</th>
-              <th style="width: 20px"></th>
-            </tr>
-          </thead>
-          <tbody id="detail-tbody"></tbody>
-        </table>
-      </div>
-    </div>
-  </form>
+    </form>
 </template>
 
 <template id="tmpl-partner-mail">
-  <div class="container-fluid p-3" style="min-width: 30vw">
-    <div class="alert alert-info small mb-3"><i class="fa-solid fa-info-circle"></i> Form gửi thư mời hợp tác (đính kèm
-      GPKD).</div>
+    <div class="container-fluid p-3" style="min-width: 30vw">
+        <div class="alert alert-info small mb-3"><i class="fa-solid fa-info-circle"></i> Form gửi thư mời hợp tác (đính kèm GPKD).</div>
 
-    <form id="form-partner-mail" onsubmit="
-        event.preventDefault();
-        Op.PartnerMail.send();
-      ">
-      <div class="row mb-3 gap-2">
-        <div class="col-md-5">
-          <label class="form-label small fw-bold">Chọn Khách Sạn</label>
-          <select class="form-select form-select-sm" id="pm-name">
-            <option value="">-- Chọn khách sạn --</option>
-          </select>
-        </div>
-        <div class="col-md-5">
-          <label class="form-label small fw-bold">Nhập Tên Khách Sạn</label>
-          <input type="text" class="form-control form-control-sm" id="pm-name-text" placeholder="Khách sạn..." />
-        </div>
-      </div>
-      <div class="col-md-12 mb-3">
-        <label for="pm-email" class="form-label fw-bold small">Email nhận (To) <span class="text-danger">*</span></label>
-        <div class="input-group">
-          <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
-          <input type="text" class="form-control" id="pm-email" placeholder="sales@hotel.com" required />
-        </div>
-      </div>
+        <form
+            id="form-partner-mail"
+            onsubmit="
+                event.preventDefault();
+                Op.PartnerMail.send();
+            "
+        >
+            <div class="row mb-3 gap-2">
+                <div class="col-md-5">
+                    <label class="form-label small fw-bold">Chọn Khách Sạn</label>
+                    <select class="form-select form-select-sm" id="pm-name">
+                        <option value="">-- Chọn khách sạn --</option>
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label small fw-bold">Nhập Tên Khách Sạn</label>
+                    <input type="text" class="form-control form-control-sm" id="pm-name-text" placeholder="Khách sạn..." />
+                </div>
+            </div>
+            <div class="col-md-12 mb-3">
+                <label for="pm-email" class="form-label fw-bold small">Email nhận (To) <span class="text-danger">*</span></label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fa-solid fa-envelope"></i></span>
+                    <input type="text" class="form-control" id="pm-email" placeholder="sales@hotel.com" required />
+                </div>
+            </div>
 
-      <div class="row mb-3 gap-2">
-        <div class="col-md-5">
-          <label for="pm-cc" class="form-label fw-bold small text-muted">CC Email</label>
-          <input type="text" class="form-control form-control-sm" id="pm-cc" placeholder="quanly@hotel.com" />
-        </div>
-        <div class="col-md-5">
-          <label for="pm-bcc" class="form-label fw-bold small text-muted">BCC Email</label>
-          <input type="text" class="form-control form-control-sm" id="pm-bcc" placeholder="Gửi ẩn danh..." />
-        </div>
-      </div>
+            <div class="row mb-3 gap-2">
+                <div class="col-md-5">
+                    <label for="pm-cc" class="form-label fw-bold small text-muted">CC Email</label>
+                    <input type="text" class="form-control form-control-sm" id="pm-cc" placeholder="quanly@hotel.com" />
+                </div>
+                <div class="col-md-5">
+                    <label for="pm-bcc" class="form-label fw-bold small text-muted">BCC Email</label>
+                    <input type="text" class="form-control form-control-sm" id="pm-bcc" placeholder="Gửi ẩn danh..." />
+                </div>
+            </div>
 
-      <div class="form-text text-muted small mb-3 fst-italic">* Các email phân cách nhau bởi dấu chấm phẩy (;).</div>
-    </form>
-  </div>
+            <div class="form-text text-muted small mb-3 fst-italic">* Các email phân cách nhau bởi dấu chấm phẩy (;).</div>
+        </form>
+    </div>
 </template>
 
 <template id="tmpl-operator-filter">
-  <div class="p-3">
-    <div class="mb-3">
-      <label class="form-label fw-bold small">Nhà cung cấp <span class="text-danger">*</span></label>
-      <select id="modal-supplier" class="form-select form-select-sm smart-select" data-source="suppliers">
-        <option value="">-- Chọn Nhà Cung Cấp --</option>
-      </select>
-    </div>
-    <div class="mb-3">
-      <label class="form-label fw-bold small">Giai đoạn</label>
-      <select id="modal-date-preset" class="form-select form-select-sm mb-2">
-        <option value="">-- Chọn mốc thời gian --</option>
-        <option value="Tháng 1">Tháng 1</option>
-        <option value="Tháng 2">Tháng 2</option>
-        <option value="Tháng 3">Tháng 3</option>
-        <option value="Quý 1">Quý 1</option>
-        <option value="Quý 2">Quý 2</option>
-        <option value="Năm Nay">Năm Nay</option>
-        <option value="Tất Cả">Tất Cả</option>
-        <option value="Tùy chọn">Tùy chọn</option>
-      </select>
-      <div class="row g-2">
-        <div class="col-6">
-          <label class="small text-muted">Từ ngày</label>
-          <input type="date" id="modal-start-date" class="form-control form-control-sm">
+    <div class="p-3">
+        <div class="mb-3">
+            <label class="form-label fw-bold small">Nhà cung cấp <span class="text-danger">*</span></label>
+            <select id="modal-supplier" class="form-select form-select-sm smart-select" data-source="suppliers">
+                <option value="">-- Chọn Nhà Cung Cấp --</option>
+            </select>
         </div>
-        <div class="col-6">
-          <label class="small text-muted">Đến ngày</label>
-          <input type="date" id="modal-end-date" class="form-control form-control-sm">
+        <div class="mb-3">
+            <label class="form-label fw-bold small">Giai đoạn</label>
+            <select id="modal-date-preset" class="form-select form-select-sm mb-2">
+                <option value="">-- Chọn mốc thời gian --</option>
+                <option value="Tháng 1">Tháng 1</option>
+                <option value="Tháng 2">Tháng 2</option>
+                <option value="Tháng 3">Tháng 3</option>
+                <option value="Quý 1">Quý 1</option>
+                <option value="Quý 2">Quý 2</option>
+                <option value="Năm Nay">Năm Nay</option>
+                <option value="Tất Cả">Tất Cả</option>
+                <option value="Tùy chọn">Tùy chọn</option>
+            </select>
+            <div class="row g-2">
+                <div class="col-6">
+                    <label class="small text-muted">Từ ngày</label>
+                    <input type="date" id="modal-start-date" class="form-control form-control-sm" />
+                </div>
+                <div class="col-6">
+                    <label class="small text-muted">Đến ngày</label>
+                    <input type="date" id="modal-end-date" class="form-control form-control-sm" />
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 </template>
 
 <template id="tmpl-operator-payment">
-  <div class="container-fluid p-0">
-    <!-- Thống kê tổng quát -->
-    <div id="modal-payment-summary" class="alert alert-primary border-0 shadow-sm mb-3 p-3">
-      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <div>
-          <h6 class="mb-1 fw-bold text-primary"><i class="fa-solid fa-chart-pie me-2"></i>Tổng kết Công nợ: <span id="modal-sup-name" class="text-dark">...</span></h6>
-          <div id="modal-type-stats" class="mb-2 small"></div>
-          <div class="d-flex gap-3 text-muted small">
-            <span>Tổng tiền: <strong id="modal-total-cost" class="text-dark">0</strong></span>
-            <span>Đã thanh toán: <strong id="modal-total-paid" class="text-success">0</strong></span>
-            <span>Còn lại: <strong id="modal-total-debt" class="text-danger fs-6">0</strong></span>
-          </div>
+    <div class="container-fluid p-0">
+        <!-- Thống kê tổng quát -->
+        <div id="modal-payment-summary" class="alert alert-primary border-0 shadow-sm mb-3 p-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div>
+                    <h6 class="mb-1 fw-bold text-primary"><i class="fa-solid fa-chart-pie me-2"></i>Tổng kết Công nợ: <span id="modal-sup-name">...</span></h6>
+                    <div id="modal-type-stats" class="mb-2 small"></div>
+                    <div class="d-flex gap-3 text-muted small">
+                        <span>Tổng tiền: <strong id="modal-total-cost">0</strong></span>
+                        <span>Đã thanh toán: <strong id="modal-total-paid" class="text-success">0</strong></span>
+                        <span>Còn lại: <strong id="modal-total-debt" class="text-danger fs-6">0</strong></span>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-warning" onclick="Op.Supplier.handleUpdateSync()"><i class="fa-solid fa-rotate"></i> Sync</button>
+                    <button type="button" id="btn-modal-pay-all" class="btn btn-sm btn-success fw-bold shadow-sm" onclick="Op.Supplier.handlePayAll()"><i class="fa-solid fa-money-check-dollar"></i> Thanh toán Hết</button>
+                </div>
+            </div>
         </div>
-        <div class="d-flex gap-2">
-          <button type="button" class="btn btn-sm btn-warning" onclick="Op.Supplier.handleUpdateSync()"><i class="fa-solid fa-rotate"></i> Sync</button>
-          <button type="button" id="btn-modal-pay-all" class="btn btn-sm btn-success fw-bold shadow-sm" onclick="Op.Supplier.handlePayAll()"><i class="fa-solid fa-money-check-dollar"></i> Thanh toán Hết</button>
-        </div>
-      </div>
-    </div>
 
-    <!-- Bảng chi tiết -->
-    <div class="table-responsive" style="max-height: 60vh;">
-      <table class="table table-sm table-hover table-bordered small mb-0">
-        <thead class="table-light sticky-top">
-          <tr class="text-center align-middle">
-            <th>STT</th>
-            <th>Booking</th>
-            <th>Dịch vụ</th>
-            <th>Check-in</th>
-            <th>Khách hàng</th>
-            <th>Tổng Chi</th>
-            <th>Đã TT</th>
-            <th>Còn Lại</th>
-            <th>Ghi chú</th>
-          </tr>
-        </thead>
-        <tbody id="modal-payment-tbody">
-          <!-- Dữ liệu sẽ được render ở đây -->
-        </tbody>
-      </table>
+        <!-- Bảng chi tiết -->
+        <div class="table-responsive" style="max-height: 60vh">
+            <table class="table table-sm table-hover table-bordered small mb-0">
+                <thead class="table-light sticky-top">
+                    <tr class="text-center align-middle">
+                        <th>STT</th>
+                        <th>Booking</th>
+                        <th>Dịch vụ</th>
+                        <th>Check-in</th>
+                        <th>Khách hàng</th>
+                        <th>Tổng Chi</th>
+                        <th>Đã TT</th>
+                        <th>Còn Lại</th>
+                        <th>Ghi chú</th>
+                    </tr>
+                </thead>
+                <tbody id="modal-payment-tbody">
+                    <!-- Dữ liệu sẽ được render ở đây -->
+                </tbody>
+            </table>
+        </div>
     </div>
-  </div>
 </template>

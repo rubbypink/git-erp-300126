@@ -868,7 +868,7 @@ class AdminController {
                 title: 'Cấu Hình Hệ Thống',
                 iconHtml: '<i class="fa-solid fa-palette me-2 text-primary"></i>',
                 customClass: 'fw-bold small', // Các class thêm cho thẻ button
-                onClickAttr: "A.UI.selectTab('tab-adm-app-config')", // Hàm onclick cũ
+                onClickAttr: "A.UI.activateTab('tab-adm-app-config')", // Hàm onclick cũ
                 isDefault: true, // Tab kích hoạt đầu tiên
             },
             {
@@ -877,7 +877,7 @@ class AdminController {
                 title: 'Quản Lý Database',
                 iconHtml: '<i class="fa-solid fa-keyboard me-2 text-danger"></i>',
                 customClass: 'fw-bold small',
-                onClickAttr: "A.UI.selectTab('tab-adm-database-control')",
+                onClickAttr: "A.UI.activateTab('tab-adm-database-control')",
             },
             {
                 id: 'tab-users-btn',
@@ -886,7 +886,7 @@ class AdminController {
                 iconHtml: '<i class="fa-solid fa-users me-2 text-success"></i>',
                 customClass: 'fw-bold small',
                 liClass: 'admin-only', // Phân quyền ẩn hiện tab (Gắn vào thẻ <li>)
-                onClickAttr: "A.UI.selectTab('tab-adm-users')",
+                onClickAttr: "A.UI.activateTab('tab-adm-users')",
             },
         ];
         new NavBarMenuController('settings-navbar-container', settingsTabConfig);

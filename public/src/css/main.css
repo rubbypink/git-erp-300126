@@ -16,11 +16,52 @@
 }
 
 /* =========================================================================
-       COLOR SCHEME: LIGHT & DARK THEMES
-       Sử dụng 2 bộ màu hài hòa phổ biến nhất
-       - Light: Blue/Gray (Professional, dễ nhìn)
-       - Dark: Purple/Gray (Hiện đại, bảo vệ mắt)
-       ========================================================================= */
+COLOR SCHEME: LIGHT & DARK THEMES
+Sử dụng 2 bộ màu hài hòa phổ biến nhất
+- Light: Blue/Gray (Professional, dễ nhìn)
+- Dark: Purple/Gray (Hiện đại, bảo vệ mắt)
+========================================================================= */
+/* ─── THEME: DARK MODE ─── */
+/* Bộ màu: Purple/Gray - Hiện đại, bảo vệ mắt */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --primary-color: #7c3aed; /* Purple - Tạo hành động */
+        --secondary-color: #94a3b8; /* Slate - Phụ vụ */
+        --app-bg: #090d14; /* Xanh đậm - Nền chính */
+        --header-bg: #1e293b; /* Xanh đen - Header */
+        --main-bg: #343333;
+        --text-color: #f1f1f3; /* Sáng - Văn bản chính */
+        --text-secondary: #c7d6ea; /* Xám sáng - Văn bản phụ (contrast ≥4.5:1 on dark bg) */
+        --border-color: #334155; /* Xám tối - Border */
+        --surface-color: #2d4c7c; /* Xanh đen - Card/Modal */
+        --popup-bg: #e4e4e4; /* Trắng - Popup */
+        --popup-text: #080808; /* Sáng - Popup */
+        --hover-bg: #334155; /* Xám tối - Hover */
+        --input-bg: #1e293b; /* Xanh đen - Input background */
+        --success-color: #4ade80; /* Xanh lá sáng - Thành công */
+        --warning-color: #facc15; /* Vàng sáng - Cảnh báo */
+        --error-color: #c52828; /* Đỏ sáng - Lỗi */
+        --info-color: #3ab7ca; /* Cyan sáng - Thông tin */
+
+        /* Table Colors - Dark */
+        --tbl-head-bg: #334155; /* Xám tối - Header table */
+        --tbl-head-text: #dbd6d6; /* Sáng - Text header */
+        --tbl-row-bg: #415068; /* Xanh đen - Row bình thường */
+        --tbl-row-hover: #334155; /* Xám tối - Hover */
+        --tbl-border: #475569; /* Xám trung bình - Border */
+
+        /* Tab Navigation - Dark */
+        --tab-active-bg: #3f4347;
+        --tab-active-text: #0400ff;
+        --tab-inactive-bg: #1e293b;
+        --tab-inactive-text: #94a3b8;
+
+        /* Shadow - Dark (tối hơn) */
+        --shadow-sm: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.3);
+        --shadow-md: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.3);
+        --shadow-lg: 0 0.625rem 0.9375rem rgba(0, 0, 0, 0.3);
+    }
+}
 
 :root {
     color-scheme: light dark;
@@ -34,10 +75,11 @@
     /* Bộ màu: Blue/Gray - Chuyên nghiệp, dễ đọc */
     --primary-color: #3b82f6; /* Blue - Tạo hành động */
     --secondary-color: #64748b; /* Slate Gray - Phụ vụ */
-    --app-bg: #e6e6e6; /* Xám nhạt - Nền sạch */
+    --app-bg: #dfd9d9; /* Xám nhạt - Nền sạch */
     --header-bg: #2c37d1; /* Xanh đậm - Header nổi bật */
+    --main-bg: #fffefe;
     --text-color: #0f141c; /* Tối - Văn bản chính */
-    --text-secondary: #3b4450; /* Xám tối - Văn bản phụ (contrast ≥4.5:1) */
+    --text-secondary: #aab4c2; /* Xám tối - Văn bản phụ (contrast ≥4.5:1) */
     --border-color: #afb8c4; /* Xám sáng - Border */
     --surface-color: #f7f7f7; /* Trắng - Card/Modal */
     --popup-bg: #2b2a2a; /* Trắng - Popup */
@@ -71,47 +113,10 @@
     --shadow-lg: 0 0.625rem 0.9375rem rgba(0, 0, 0, 0.1);
 }
 
-/* ─── THEME: DARK MODE ─── */
-/* Bộ màu: Purple/Gray - Hiện đại, bảo vệ mắt */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --primary-color: #7c3aed; /* Purple - Tạo hành động */
-        --secondary-color: #94a3b8; /* Slate - Phụ vụ */
-        --app-bg: #0f172a; /* Xanh đậm - Nền chính */
-        --header-bg: #1e293b; /* Xanh đen - Header */
-        --text-color: #e5e5e6; /* Sáng - Văn bản chính */
-        --text-secondary: #8e9aaa; /* Xám sáng - Văn bản phụ (contrast ≥4.5:1 on dark bg) */
-        --border-color: #334155; /* Xám tối - Border */
-        --surface-color: #2d4c7c; /* Xanh đen - Card/Modal */
-        --popup-bg: #e4e4e4; /* Trắng - Popup */
-        --popup-text: #080808; /* Sáng - Popup */
-        --hover-bg: #334155; /* Xám tối - Hover */
-        --input-bg: #1e293b; /* Xanh đen - Input background */
-        --success-color: #4ade80; /* Xanh lá sáng - Thành công */
-        --warning-color: #facc15; /* Vàng sáng - Cảnh báo */
-        --error-color: #c52828; /* Đỏ sáng - Lỗi */
-        --info-color: #3ab7ca; /* Cyan sáng - Thông tin */
-
-        /* Table Colors - Dark */
-        --tbl-head-bg: #334155; /* Xám tối - Header table */
-        --tbl-head-text: #dbd6d6; /* Sáng - Text header */
-        --tbl-row-bg: #415068; /* Xanh đen - Row bình thường */
-        --tbl-row-hover: #334155; /* Xám tối - Hover */
-        --tbl-border: #475569; /* Xám trung bình - Border */
-
-        /* Tab Navigation - Dark */
-        --tab-active-bg: #3f4347;
-        --tab-active-text: #0400ff;
-        --tab-inactive-bg: #1e293b;
-        --tab-inactive-text: #94a3b8;
-
-        /* Shadow - Dark (tối hơn) */
-        --shadow-sm: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.3);
-        --shadow-md: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.3);
-        --shadow-lg: 0 0.625rem 0.9375rem rgba(0, 0, 0, 0.3);
-    }
+.bkg-light {
+    background-color: var(--main-bg);
+    color: var(--text-color);
 }
-
 .smart-option.highlight,
 .smart-create-btn.highlight {
     background-color: #f8f9fa; /* Màu nền xám nhạt hoặc màu của hệ thống đại ca */
@@ -142,6 +147,21 @@ fieldset {
     /* FIX: Chống fieldset phình to cứng đầu do min-content mặc định của trình duyệt */
     min-width: 0;
     width: auto; /* Để block element tự giãn đầy thay vì fix cứng 100% */
+}
+
+@media (max-width: 767.98px) {
+    fieldset {
+        grid-template-columns: repeat(2, 1fr);
+        padding: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    fieldset {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+        padding: 0.5rem;
+    }
 }
 
 /* Fix lỗi tràn nội dung (text/placeholder quá dài) bên trong các ô grid */
@@ -350,7 +370,7 @@ select.form-select {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    max-width: 8rem; /* Giới hạn chiều rộng tối đa */
+    max-width: 15rem; /* Giới hạn chiều rộng tối đa */
     height: 2.5rem; /* Chiều cao cố định cho .btn */
     padding: 0.5rem;
     white-space: nowrap;
@@ -363,7 +383,7 @@ select.form-select {
     height: 2rem; /* Chiều cao cố định cho .btn-sm */
     padding: 0.5rem;
     font-size: 0.75rem;
-    max-width: 8rem;
+    max-width: 12rem;
 }
 
 /* [9TRIP-UPDATE] Table Optimization: Hợp nhất quy tắc, scroll 2 chiều cho tbody, mobile responsive */
@@ -385,10 +405,11 @@ thead {
     z-index: 10;
 }
 
-/* Cho phép tbody scroll 2 chiều */
-tbody {
-    overflow: auto; /* Scroll cả 2 chiều */
-    /* width: 100%; */
+/* Cho phép tbody scroll 2 chiều trên Desktop */
+@media (min-width: 992px) {
+    tbody {
+        overflow: auto; /* Scroll cả 2 chiều */
+    }
 }
 
 /* Đảm bảo tr, th, td hiển thị đúng khi tbody là block */
@@ -756,14 +777,36 @@ td input.form-control-sm {
 /* --- 5. TAB FORM (NHẬP LIỆU) --- */
 #tab-form {
     overflow-x: hidden;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     height: 100%;
     padding-bottom: 0.625rem;
+    /* Tối ưu render cho mobile */
+    contain: layout style;
 }
+
+/* Bảng nhập liệu chính */
+.erp-table-form {
+    min-width: 1300px;
+}
+
+@media (max-width: 991.98px) {
+    .erp-table-form {
+        /* Trên mobile nhỏ hơn tablet, giảm min-width để tránh vỡ layout quá nặng */
+        min-width: 1000px;
+    }
+}
+
 #detail-tbody {
-    overflow: auto;
     -webkit-overflow-scrolling: touch;
     padding-bottom: 1.5rem;
+}
+
+/* Chỉ cho phép tbody scroll trên desktop khi cần */
+@media (min-width: 992px) {
+    #detail-tbody {
+        overflow: auto;
+    }
 }
 
 /* --- 6. CÁC THÀNH PHẦN KHÁC (TABLE, BUTTON...) --- */
@@ -836,7 +879,7 @@ body.dark-theme .chrome-trigger-btn:focus {
 .modal-content {
     /* Giữ !important để đè style mặc định của Bootstrap modal-body */
     flex: 1 1 auto !important;
-    overflow: auto; /* Tự động hiện thanh cuộn nếu bạn thu nhỏ quá */
+    /* overflow: auto; */
     -webkit-overflow-scrolling: touch;
     min-height: 0; /* Fix lỗi flexbox trên một số trình duyệt Safari/cũ */
     max-height: 100vh;

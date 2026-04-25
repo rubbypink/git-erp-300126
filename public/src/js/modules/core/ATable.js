@@ -12,40 +12,49 @@ import { Sortable, TableResizeManager } from '/src/js/libs/ui_helper.js';
 
 export default class ATable {
     static instances = new Map();
+    /**
+     * Lấy instance của ATable từ ID hoặc element
+     */
     static getInstance(idOrEl) {
-        let containerId = idOrEl;
-        if (typeof idOrEl === 'HtmlElement') containerId = idOrEl.id;
-        if (!container) return null;
-        if (ASelect.instances.has(containerId)) {
-            const instance = ASelect.instances.get(containerId);
-            return instance;
-        }
-        return null;
+        let containerId = typeof idOrEl === 'string' ? idOrEl : idOrEl?.id;
+        if (!containerId) return null;
+        return ATable.instances.get(containerId) || null;
     }
 
     constructor(containerId, options = {}) {
         // 1. Kiểm tra instance đã tồn tại chưa
         if (ATable.instances.has(containerId)) {
             const existing = ATable.instances.get(containerId);
-            existing.options = { ...existing.options, ...options };
-
-            if (options.headerExtra && String(options.headerExtra) !== 'false') {
-                existing.state.headerExtra = Array.isArray(options.headerExtra) ? options.headerExtra : [options.headerExtra];
-            } else if (existing.options.headerExtra) {
-                existing.state.headerExtra = [$('.at-header-extra', existing.container)?.innerHTML];
-            }
-
-            if (existing.options.data) {
-                return existing.init(existing.options.data);
-            }
-
+            existing.updateOptions(options);
             return existing;
         }
 
+        // 2. Khởi tạo thuộc tính cơ bản
         this.containerId = containerId;
         this.container = getE(containerId);
         if (this.container) this.container.getInstance = () => this;
 
+        // 3. Khởi tạo Options & State
+        this._initOptions(options);
+        this._initState();
+
+        if (!this.container) {
+            console.warn(`[ATable] Container #${containerId} not found`);
+        }
+
+        // 4. Đăng ký instance vào registry
+        ATable.instances.set(containerId, this);
+
+        // 5. Khởi tạo dữ liệu nếu có
+        if (this.options.data && this.containerId) {
+            this.init(this.options.data);
+        }
+    }
+
+    /**
+     * Khởi tạo các tùy chọn cấu hình
+     */
+    _initOptions(options = {}) {
         this.options = {
             mode: 'replace',
             colName: '',
@@ -65,10 +74,15 @@ export default class ATable {
             title: '',
             onCellChange: null,
             data: null,
-            hiddenField: false, // Mặc định không hiển thị field ẩn
+            hiddenField: false,
             ...options,
         };
+    }
 
+    /**
+     * Khởi tạo trạng thái nội bộ
+     */
+    _initState() {
         this.state = {
             fullData: [],
             filteredData: [],
@@ -77,28 +91,14 @@ export default class ATable {
             groupByField: this.options.groupByField || null,
             currentPage: 1,
             fieldConfigs: {},
-            hiddenFields: {}, // Khởi tạo state.hiddenFields
-            allFieldsOrder: [], // Lưu thứ tự gốc của các cột
+            hiddenFields: {},
+            allFieldsOrder: [],
+            dictionaries: {},
             isSecondary: false,
             currentColName: '',
             zoomLevel: 1,
             headerExtra: Array.isArray(this.options.headerExtra) ? this.options.headerExtra : this.options.headerExtra ? [this.options.headerExtra] : [],
         };
-
-        if (!this.container) {
-            console.warn(`[ATable] Container #${containerId} not found`);
-        }
-        // if (CURRENT_USER && CURRENT_USER?.role === 'admin') {
-        //   this.options.editable = true;
-        //   this.options.draggable = false;
-        // }
-
-        // Đăng ký instance vào registry
-        ATable.instances.set(containerId, this);
-
-        if (this.options.data && this.containerId) {
-            this.init(this.options.data);
-        }
     }
 
     /**
@@ -468,11 +468,11 @@ export default class ATable {
         }
 
         const layoutHtml = `
-      <div class="d-flex flex-column h-100 w-100 table-container-wrapper" style="${fsStyle}"><div id="${this.containerId}-header-menu" class="table-header-actions-wrapper" style="z-index: 5;"></div>
+      <div class="d-flex flex-column h-100 w-100 table-container-wrapper" style="${fsStyle}"><div id="${this.containerId}-header-menu" class="table-header-actions-wrapper flex-center flex-shrink-0" style="z-index: 1060;"></div>
         <div id="${this.containerId}-content-area" class="table-responsive w-100 at-table-container flex-grow-1" style="overflow: auto; position: relative;">
           <!-- Table will be rendered here -->
         </div>
-        <div id="${this.containerId}-pagination-area" class="flex-shrink-0 bg-white border-top pb-1">
+        <div id="${this.containerId}-pagination-area" class="flex-shrink-0 bkg-light border-top pb-1">
           <!-- Pagination will be rendered here -->
         </div>
       </div>`;
@@ -583,9 +583,9 @@ export default class ATable {
         ${draggableHtml}
         <div id="hidden-field-select">${hiddenFieldsDropdownHtml}</div>
         <div class="search-box flex-grow-1" style="max-width: 200px;">
-          <div class="input-group input-group-sm p-0 bg-white rounded overflow-hidden shadow-sm border">
+          <div class="input-group input-group-sm p-0 bkg-light rounded overflow-hidden shadow-sm border">
             <span class="input-group-text border-0"><i class="fas fa-search text-muted small"></i></span>
-            <input type="text" class="form-control form-control-sm bg-light border-0 ps-0 at-search-input" placeholder="Tìm kiếm nhanh..." style="box-shadow: none;">
+            <input type="text" class="form-control form-control-sm bkg-light border-0 ps-0 at-search-input" placeholder="Tìm kiếm nhanh..." style="box-shadow: none;">
           </div>
         </div>
       </div>`;
@@ -626,7 +626,7 @@ export default class ATable {
         <button class="btn btn-sm btn-light border shadow-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
           <i class="fas fa-columns"></i>
         </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 bg-light fs-2" style="overflow: hidden; min-width: 200px; max-height: 400px; overflow-y: auto;">
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 bkg-light fs-2" style="overflow: hidden; min-width: 200px; max-height: 400px; overflow-y: auto;">
           <li class="dropdown-header sticky-top py-1 fw-bold border-bottom mb-1 d-flex justify-content-between align-items-center" style="z-index: 10;">
             <span class="small">Hiển thị cột</span>
             <button class="btn btn-xs btn-primary at-apply-fields" title="Áp dụng thay đổi">
@@ -716,7 +716,6 @@ export default class ATable {
               .map((h) => {
                   let val = item[h] !== undefined && item[h] !== null ? item[h] : '';
                   const config = fieldConfigs[h] || {};
-                  // MỚI: Quét và parse JSON ngay lập tức trước khi làm bất cứ thứ gì khác
                   val = this._tryParseJSON(val);
 
                   if ((config.type === 'date' || config.name?.split('_').includes('at')) && val) val = formatDateISO(val);
@@ -729,24 +728,20 @@ export default class ATable {
                       return this._renderEditableCell(h, val, config);
                   }
 
-                  // Code mới: Xử lý hiển thị dữ liệu dạng object
-                  const isHtml = config.type === 'html' || config.html === true;
-
-                  let displayVal = '';
-
-                  if (config.dataSource && val) {
-                      const dict = this.state.dictionaries[config.dataSource];
-                      if (dict && dict[String(val)]) {
-                          displayVal = dict[String(val)];
-                      }
+                  // Xử lý field type select hoặc có dataSource
+                  if (config.type === 'select' || config.tag === 'select' || config.dataSource) {
+                      return this._renderSelectCell(h, val, config);
                   }
+
+                  const isHtml = config.type === 'html' || config.html === true;
+                  let displayVal = String(val);
 
                   const isLong = !isHtml && displayVal.length > 50;
                   const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
                   const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
                   const firstCell = h === 'id' || h === 'uid';
 
-                  return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''} ${firstCell ? 'drag-handle' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${isHtml ? escapeHtml(shortVal) : displayVal || val}</td>`;
+                  return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''} ${firstCell ? 'drag-handle' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${isHtml ? escapeHtml(shortVal) : displayVal}</td>`;
               })
               .join('')}
         </tr>`;
@@ -812,15 +807,12 @@ export default class ATable {
                         return this._renderEditableCell(h, val, config);
                     }
 
-                    let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
-
-                    if (config.dataSource && val) {
-                        const dict = this.state.dictionaries[config.dataSource];
-                        if (dict && dict[String(val)]) {
-                            displayVal = dict[String(val)];
-                        }
+                    // Xử lý field type select hoặc có dataSource
+                    if (config.type === 'select' || config.tag === 'select' || config.dataSource) {
+                        return this._renderSelectCell(h, val, config);
                     }
 
+                    let displayVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
                     const isLong = displayVal.length > 50;
                     const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
                     const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
@@ -833,6 +825,28 @@ export default class ATable {
         });
 
         return html;
+    }
+
+    /**
+     * Render ô chứa dữ liệu dạng Select (Hiển thị tên thay vì ID)
+     */
+    _renderSelectCell(field, val, config) {
+        let displayVal = String(val);
+        if (config.dataSource) {
+            const dict = this.state.dictionaries[config.dataSource];
+            if (dict && dict[String(val)]) {
+                displayVal = dict[String(val)];
+            }
+        } else if (config.options) {
+            const opt = config.options.find((o) => String(o.id || o.uid || o) === String(val));
+            if (opt) displayVal = opt.name || opt.text || opt.displayName || opt;
+        }
+
+        const isLong = displayVal.length > 50;
+        const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
+        const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
+
+        return `<td data-field="${field}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${escapeHtml(shortVal)}</td>`;
     }
 
     _renderEditableCell(field, val, config) {
@@ -863,7 +877,14 @@ export default class ATable {
                 inputHtml = `<select class="${fullClass} ${smartClass}" data-field="${field}" ${selectAttrs}></select>`;
             } else {
                 const options = config.options || [];
-                const optionsHtml = options.map((opt) => `<option value="${opt.id || opt.uid || opt}" ${String(opt.name || opt.text || opt.displayName || opt) === String(val) ? 'selected' : ''}>${opt.name || opt.text || opt.displayName || opt}</option>`).join('');
+                const optionsHtml = options
+                    .map((opt) => {
+                        const optId = String(opt.id || opt.uid || opt);
+                        const optName = opt.name || opt.text || opt.displayName || opt;
+                        const isSelected = String(optId) === String(val);
+                        return `<option value="${optId}" ${isSelected ? 'selected' : ''}>${optName}</option>`;
+                    })
+                    .join('');
                 inputHtml = `<select class="${fullClass}" data-field="${field}" ${selectAttrs}>${optionsHtml}</select>`;
             }
         } else if (tag === 'textarea') {
@@ -898,7 +919,7 @@ export default class ATable {
                     const uniqueCount = new Set(items.map((item) => item[h]).filter((v) => v !== undefined && v !== null && v !== '')).size;
                     result = `<div class="small text-muted"></div><div class="text-success">${uniqueCount}</div>`;
                 }
-                return `<td class="bg-light sticky-bottom" style="bottom: 0; z-index: 2;">${result}</td>`;
+                return `<td class="bkg-light sticky-bottom" style="bottom: 0; z-index: 4;">${result}</td>`;
             })
             .join('')}
       </tr>`;
@@ -1087,6 +1108,10 @@ export default class ATable {
         }
     }
 
+    /**
+     * Lọc dữ liệu theo từ khóa
+     * @param {string} keyword - Từ khóa tìm kiếm
+     */
     filter(keyword) {
         const kw = keyword.toLowerCase().trim();
         if (!kw) {
@@ -1103,6 +1128,10 @@ export default class ATable {
         this.refresh();
     }
 
+    /**
+     * Sắp xếp dữ liệu theo cột
+     * @param {string} field - Tên trường cần sắp xếp
+     */
     sort(field) {
         const { sort, filteredData } = this.state;
         const dir = sort.field === field && sort.dir === 'asc' ? 'desc' : 'asc';
@@ -1114,11 +1143,19 @@ export default class ATable {
         this.refresh();
     }
 
+    /**
+     * Gom nhóm dữ liệu theo trường
+     * @param {string} field - Tên trường cần gom nhóm
+     */
     groupBy(field) {
         this.state.groupByField = field || null;
         this.refresh();
     }
 
+    /**
+     * Chuyển đến trang chỉ định
+     * @param {number} page - Số trang
+     */
     goToPage(page) {
         const pageSize = this.options.pageSize || 25;
         const totalPages = Math.ceil(this.state.filteredData.length / pageSize) || 1;
@@ -1130,6 +1167,10 @@ export default class ATable {
         this.refresh();
     }
 
+    /**
+     * Phóng to/thu nhỏ bảng nội dung
+     * @param {number} direction - Hướng thay đổi (1: phóng to, -1: thu nhỏ)
+     */
     zoom(direction) {
         const step = 0.1;
         let newLevel = this.state.zoomLevel + direction * step;
@@ -1198,12 +1239,66 @@ export default class ATable {
     }
 
     /**
+     * Cập nhật ẩn hiện các thành phần trên Header Menu dựa trên options
+     */
+    _updateHeaderVisibility() {
+        const headerMenuEl = getE(`${this.containerId}-header-menu`);
+        if (!headerMenuEl) return;
+
+        const { groupBy, download, zoom, hiddenField, header } = this.options;
+
+        // Header chính
+        const headerEl = getE(`tbl-${this.containerId}-header`, headerMenuEl);
+        if (headerEl) headerEl.classList.toggle('d-none', !header);
+
+        // GroupBy
+        const groupBySelect = headerMenuEl.querySelector('.group-by-select');
+        if (groupBySelect) {
+            groupBySelect.classList.toggle('d-none', !groupBy);
+            if (groupBy) this._renderGroupByBtn(true);
+        }
+
+        // Download
+        const downloadGroup = headerMenuEl.querySelector('.at-download-group');
+        if (downloadGroup) downloadGroup.classList.toggle('d-none', !download);
+
+        // Zoom
+        const zoomGroup = headerMenuEl.querySelector('.at-zoom-group');
+        if (zoomGroup) zoomGroup.classList.toggle('d-none', !zoom);
+
+        // Hidden Fields
+        const hiddenFieldContainer = getE('hidden-field-select', headerMenuEl);
+        if (hiddenFieldContainer) {
+            hiddenFieldContainer.classList.toggle('d-none', !hiddenField);
+            if (hiddenField) this._renderHiddenFieldsDropdown(true);
+        }
+    }
+
+    /**
      * Cập nhật headerExtra và render lại menu
      */
     updateHeaderExtra(newExtra) {
         try {
             this.state.headerExtra = Array.isArray(newExtra) ? newExtra : newExtra ? [newExtra] : [];
-            this._renderHeaderMenu();
+
+            // Tối ưu: Chỉ cập nhật nội dung container extra thay vì render lại toàn bộ menu
+            const extraEl = this.container?.querySelector('.at-header-extra');
+            if (extraEl) {
+                const content = this.state.headerExtra
+                    .map((item) => {
+                        if (typeof item === 'string') {
+                            const el = document.getElementById(item);
+                            if (el && el.tagName === 'TEMPLATE') return el.innerHTML;
+                            return item;
+                        }
+                        if (item instanceof HTMLElement) return item.outerHTML;
+                        return '';
+                    })
+                    .join('');
+                extraEl.innerHTML = content;
+            } else {
+                this._renderHeaderMenu();
+            }
         } catch (error) {
             console.error('[ATable] updateHeaderExtra error:', error);
         }
@@ -1277,6 +1372,10 @@ export default class ATable {
     //   }
     // }
 
+    /**
+     * Tải dữ liệu bảng về máy
+     * @param {string} type - Định dạng file ('excel' hoặc 'pdf')
+     */
     async download(type = 'excel') {
         try {
             const { colName, title } = this.options;
@@ -1409,6 +1508,10 @@ export default class ATable {
         }
     }
 
+    /**
+     * Cập nhật dữ liệu mới cho bảng
+     * @param {Array|Object} newData - Mảng dữ liệu hoặc Object map
+     */
     updateData(newData) {
         this.state.fullData = Array.isArray(newData) ? newData : Object.values(newData);
         this.state.filteredData = [...this.state.fullData];
@@ -1416,19 +1519,57 @@ export default class ATable {
         this.filter(searchVal);
     }
 
+    /**
+     * Lấy toàn bộ dữ liệu hiện tại trong RAM
+     */
     getData() {
         return this.state.fullData;
     }
-    updateOptions(options = {}) {
-        let existingExtra;
-        if (!options.headerExtra) {
-            existingExtra = this.container.querySelector('.at-header-extra')?.innerHTML;
-            this.state.headerExtra = [existingExtra];
+    /**
+     * Cập nhật các tùy chọn cấu hình và refresh bảng
+     */
+    async updateOptions(options = {}) {
+        const prevColName = this.options.colName;
+
+        // 1. Xử lý headerExtra: giữ nguyên nội dung hiện tại nếu không cung cấp mới
+        if (options.headerExtra === undefined) {
+            const existingExtraEl = this.container?.querySelector('.at-header-extra');
+            if (existingExtraEl) {
+                this.state.headerExtra = [existingExtraEl.innerHTML];
+            }
+        } else if (options.headerExtra === false || options.headerExtra === 'false') {
+            this.state.headerExtra = [];
+        } else {
+            this.state.headerExtra = Array.isArray(options.headerExtra) ? options.headerExtra : [options.headerExtra];
         }
+
+        // 2. Cập nhật options
         this.options = { ...this.options, ...options };
-        this.init(this.options.data, this.options.colName);
+
+        // 3. Cập nhật hiển thị Header (ẩn/hiện components)
+        this._updateHeaderVisibility();
+
+        // 4. Nếu thay đổi Collection -> Resolve lại cấu hình
+        if (options.colName && options.colName !== prevColName) {
+            this.state.fieldConfigs = {};
+            this.state.hiddenFields = {};
+            this.state.allFieldsOrder = [];
+            this._resolveFieldConfigs();
+            await this._prefetchDictionaries();
+        }
+
+        // 5. Cập nhật dữ liệu nếu có
+        if (options.data !== undefined) {
+            this.updateData(options.data);
+        }
+
+        // 6. Refresh nội dung bảng
+        this.refresh();
     }
 
+    /**
+     * Hủy instance và dọn dẹp bộ nhớ/sự kiện
+     */
     destroy() {
         if (this.containerId) {
             ATable.instances.delete(this.containerId);
@@ -1479,7 +1620,7 @@ export default class ATable {
             // Chỉ truyền tên field. Element cha <tr> đã có sẵn data-item (ID).
             return `
         <td data-field="${field}" class="at-object-cell text-center align-middle">
-          <div class="d-inline-flex align-items-center gap-2 border rounded px-2 py-1 bg-light shadow-sm">
+          <div class="d-inline-flex align-items-center gap-2 border rounded px-2 py-1 bkg-light shadow-sm">
             <span class="small text-muted cursor-help" data-bs-toggle="tooltip" title="${escapeHtml(summary)}">
               <i class="fas ${icon} me-1 text-secondary"></i> ${typeText}
             </span>
@@ -1499,7 +1640,7 @@ export default class ATable {
      */
     _buildNestedObjectHtml(obj, depth = 0) {
         L._(`[ATable] _buildNestedObjectHtml: ${JSON.stringify(obj)}`);
-        if (obj === null || obj === undefined) return '<span class="badge bg-light text-muted border">null</span>';
+        if (obj === null || obj === undefined) return '<span class="badge bkg-light text-muted border">null</span>';
         if (typeof obj !== 'object') return `<span class="fw-medium">${escapeHtml(String(obj))}</span>`;
 
         // 1. XỬ LÝ MẢNG (ARRAY)
@@ -1508,12 +1649,12 @@ export default class ATable {
 
             // Nếu là mảng giá trị đơn (string, number) -> Dùng badge cho gọn
             if (typeof obj[0] !== 'object' || obj[0] === null) {
-                return obj.map((v) => `<span class="badge bg-info text-dark border me-1 mb-1 shadow-sm">${A.Lang?.t(v) || escapeHtml(String(v))}</span>`).join('');
+                return obj.map((v) => `<span class="badge bg-info  border me-1 mb-1 shadow-sm">${A.Lang?.t(v) || escapeHtml(String(v))}</span>`).join('');
             }
 
             // Nếu là mảng Object -> Vẽ bảng
             const keys = Array.from(new Set(obj.flatMap((o) => Object.keys(o || {}))));
-            let html = `<div class="table-responsive bg-white rounded border mt-1 mb-2 shadow-sm">
+            let html = `<div class="table-responsive bkg-light rounded border mt-1 mb-2 shadow-sm">
                     <table class="table table-sm table-hover table-bordered mb-0" style="font-size: 0.7rem;">`;
             html += `<thead class="table-light text-nowrap"><tr>${keys.map((k) => `<th class="text-secondary fw-bold">${escapeHtml(k)}</th>`).join('')}</tr></thead><tbody>`;
             html += obj.map((row) => `<tr>${keys.map((k) => `<td>${this._buildNestedObjectHtml(row[k], depth + 1)}</td>`).join('')}</tr>`).join('');
@@ -1533,7 +1674,7 @@ export default class ATable {
 
             html += `
         <tr class="border-bottom border-light">
-          <th class="text-nowrap fw-bold text-dark align-top pt-2" style="width: 1%; padding-left: 0.5rem; background-color: rgba(0,0,0,0.02);">
+          <th class="text-nowrap fw-bold  align-top pt-2" style="width: 1%; padding-left: 0.5rem; background-color: rgba(0,0,0,0.02);">
             ${isComplex ? `<i class="fas fa-layer-group text-primary me-2 small"></i>` : `<i class="fas fa-caret-right text-muted me-2 small"></i>`} 
             ${escapeHtml(val)}
           </th>
@@ -1675,7 +1816,7 @@ export default class ATable {
         const supplierName = APP_DATA.suppliers[globalSupplier]?.name || globalSupplier;
 
         // 3. Render HTML
-        let html = `<div class="table-responsive bg-white rounded shadow-sm border" style="max-height: 75vh; overflow-y: auto;">
+        let html = `<div class="table-responsive bkg-light rounded shadow-sm border" style="max-height: 75vh; overflow-y: auto;">
                   <table class="table table-bordered table-hover table-sm align-middle mb-0 text-nowrap" style="font-size: 0.75rem;">`;
 
         // HEADER
@@ -1703,7 +1844,7 @@ export default class ATable {
             const displayGroup = window.A?.Lang?.t(groupVal) || groupVal;
             let groupExtraInfo = '';
             if (parentKey === 'periodId' && periodData[groupVal]) {
-                groupExtraInfo = ` <span class="badge bg-white text-primary ms-2">${periodData[groupVal].sDate} - ${periodData[groupVal].eDate}</span>`;
+                groupExtraInfo = ` <span class="badge bkg-light text-primary ms-2">${periodData[groupVal].sDate} - ${periodData[groupVal].eDate}</span>`;
             }
             // Dòng Cha (Group)
             html += `<tr class="table-active">
@@ -1719,7 +1860,7 @@ export default class ATable {
                 const displayRoom = roomObj?.name || roomVal;
 
                 let rowHtml = `<tr>
-                         <td class="fw-bold text-start ps-3 bg-light" style="border-right: 2px solid #dee2e6;">
+                         <td class="fw-bold text-start ps-3 bkg-light" style="border-right: 2px solid #dee2e6;">
                            ${displayRoom}
                          </td>`;
 
@@ -1752,7 +1893,7 @@ export default class ATable {
                 </div>
               </td>`;
                     } else {
-                        rowHtml += `<td class="text-center bg-light opacity-50"><i class="fas fa-minus small"></i></td>`;
+                        rowHtml += `<td class="text-center bkg-light opacity-50"><i class="fas fa-minus small"></i></td>`;
                     }
                 });
                 rowHtml += `</tr>`;
@@ -1807,45 +1948,23 @@ export default class ATable {
     }
 
     /**
-     * Tạo form cấu hình từ đối tượng options (Dành cho ATable hoặc các module UI)
-     * @param {Object} options - Đối tượng chứa các cấu hình
-     * @returns {string} - Chuỗi HTML của form
+     * Tạo form cấu hình từ đối tượng options hiện tại
      */
-    generateOptionsForm(options) {
+    generateOptionsForm() {
         try {
-            const defaultOptions = {
-                mode: 'replace',
-                colName: '',
-                pageSize: 25,
-                sorter: true,
-                fs: 12,
-                header: true,
-                footer: true,
-                groupBy: false,
-                editable: false,
-                draggable: false,
-                download: false,
-                contextMenu: false,
-                zoom: false,
-                style: 'auto',
-                title: '',
-                onCellChange: null,
-                data: null,
-                hiddenField: false,
-            };
+            const finalOptions = { ...this.options };
+            delete finalOptions.data; // Không đưa data vào form config
+            delete finalOptions.onCellChange;
 
-            // Merge options với default
-            const finalOptions = { ...defaultOptions, ...this.options };
-            finalOptions.colName = this.state?.currentColName ?? 'bookings';
+            finalOptions.colName = this.state?.currentColName || this.options.colName || 'bookings';
 
             // Bản đồ nhãn tiếng Việt
             const labels = {
-                mode: 'Chế độ Render',
                 colName: 'Tên Collection',
                 pageSize: 'Số hàng hiển thị',
                 sorter: 'Sorter',
                 fs: 'Cỡ chữ (px)',
-                header: 'Hiện tiêu đề',
+                header: 'Header Menu',
                 footer: 'Hiện chân trang',
                 groupBy: 'Group By',
                 editable: 'Editable',
@@ -1853,12 +1972,11 @@ export default class ATable {
                 download: 'Tính Năng Download',
                 contextMenu: 'Tạo Context Menu',
                 zoom: 'Tính Năng Zoom',
-                style: 'Style Class Custom',
                 title: 'Tiêu đề',
                 hiddenField: 'Tính năng Ẩn Cột',
             };
 
-            let html = `<form id="full-settings-form" class="options-form container-fluid p-2 bg-light rounded border shadow-sm">
+            let html = `<form id="full-settings-form" class="options-form container-fluid p-2 bkg-light rounded border shadow-sm">
                           <div class="row g-3">`;
 
             for (const [key, value] of Object.entries(finalOptions)) {
@@ -1904,6 +2022,9 @@ export default class ATable {
             return `<div class="alert alert-danger">Lỗi khi tạo form cấu hình.</div>`;
         }
     }
+    /**
+     * Thu thập giá trị từ form cấu hình và cập nhật instance
+     */
     _updateSettings() {
         try {
             const form = document.getElementById('full-settings-form');
@@ -1914,7 +2035,13 @@ export default class ATable {
 
             inputs.forEach((input) => {
                 const field = input.dataset.field;
-                settings[field] = input.value;
+                if (input.type === 'checkbox') {
+                    settings[field] = input.checked;
+                } else if (input.type === 'number') {
+                    settings[field] = parseFloat(input.value);
+                } else {
+                    settings[field] = input.value;
+                }
             });
             this.state.settings = settings;
             this.updateOptions(settings);

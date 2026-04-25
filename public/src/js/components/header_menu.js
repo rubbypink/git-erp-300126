@@ -155,7 +155,7 @@ export default class ErpHeaderMenu {
                 #notificationPanel,
                 #notificationPanel .notification-footer,
                 #notificationPanel .bg-secondary,
-                #notificationPanel .bg-light,
+                #notificationPanel .bkg-light,
                 #notificationList {
                     background-color: transparent !important; /* Ép trong suốt hoàn toàn */
                     border-color: rgba(0, 0, 0, 0.06) !important; /* Viền phân cách mềm đi */
@@ -163,7 +163,7 @@ export default class ErpHeaderMenu {
     
                 /* 3. Tăng tối đa độ tương phản cho Text để dễ đọc */
                 #notificationPanel h6, 
-                #notificationPanel .text-dark {
+                #notificationPanel . {
                     color: #1a1d20 !important; /* Chữ đen đậm nét */
                     font-weight: 700 !important;
                 }
@@ -232,7 +232,7 @@ export default class ErpHeaderMenu {
                             </li>
                             <li>
                                 <button class="dropdown-item py-2" type="button" onclick="A.UI.activateTab('tab-form')">
-                                    <i class="fa-solid fa-file-pen text-secondary w-20px"></i> Booking
+                                    <i class="fa-solid fa-file-pen text-secondary"></i> BookingX
                                 </button>
                             </li>
                             <li>
@@ -262,7 +262,7 @@ export default class ErpHeaderMenu {
         return `
             <div class="d-flex align-items-center gap-2">
                 <form class="form-inline m-0 d-none d-md-block">
-                    <div class="input-group input-group-sm flex-center gap-0 bg-white rounded overflow-hidden shadow-sm">
+                    <div class="input-group input-group-sm flex-center gap-0 bkg-light rounded overflow-hidden shadow-sm">
                         <input type="text" id="global-search" class="form-control border-0" placeholder="Tìm kiếm..." oninput="if(typeof initGlobalTableSearch === 'function') initGlobalTableSearch()" style="box-shadow: none; width: 150px;">
                         <button class="btn btn-light text-primary border-0" type="button" onclick="if(typeof initGlobalTableSearch === 'function') initGlobalTableSearch()">
                             <i class="fa-solid fa-search"></i>
@@ -485,8 +485,8 @@ export default class ErpHeaderMenu {
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger shadow-sm d-none" id="notificationBadge" style="font-size: 0.65rem; border: 2px solid white;">0</span>
                 </button>
                 <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-2" id="notificationPanel" style="width: 340px; max-height: 80vh; overflow: hidden; border-radius: 12px; z-index: 1050;">
-                    <div class="px-3 py-3 border-bottom bg-light d-flex justify-content-between align-items-center">
-                        <h6 class="m-0 fw-bold text-dark">Thông báo <span class="badge bg-primary ms-1" id="notificationHeaderCount">0</span></h6>
+                    <div class="px-3 py-3 border-bottom bkg-light d-flex justify-content-between align-items-center">
+                        <h6 class="m-0 fw-bold ">Thông báo <span class="badge bg-primary ms-1" id="notificationHeaderCount">0</span></h6>
                     </div>
                     <div id="notificationList" class="notification-list custom-scrollbar" style="max-height: 350px; overflow-y: auto;">
                         <div id="notificationEmptyState" class="d-flex flex-column align-items-center justify-content-center py-5 text-muted">
@@ -494,7 +494,7 @@ export default class ErpHeaderMenu {
                             <p class="small mb-0">Không có thông báo mới</p>
                         </div>
                     </div>
-                    <div class="border-top bg-light p-2 d-flex justify-content-between">
+                    <div class="border-top bkg-light p-2 d-flex justify-content-between">
                         <button class="btn btn-sm btn-link text-decoration-none text-muted" id="markAllReadBtn"><i class="fa-solid fa-check-double"></i> Đã đọc</button>
                         <div>
                             <button class="btn btn-sm btn-link text-decoration-none text-muted" id="reloadNotifs">Tải lại</button>

@@ -414,7 +414,7 @@ export default class TourPrice {
 
                         return `
             <tr>
-              <td class="fw-bold bg-light">${row.label}</td>
+              <td class="fw-bold bkg-light">${row.label}</td>
               ${pricesHtml}
               ${adultPriceHtml}
             </tr>
@@ -851,7 +851,7 @@ export default class TourPrice {
 
                     return `
           <tr>
-            <td class="fw-bold bg-light">${row.label}</td>
+            <td class="fw-bold bkg-light">${row.label}</td>
             ${pricesHtml}
             ${adultPriceHtml}
           </tr>

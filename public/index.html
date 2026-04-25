@@ -1,163 +1,164 @@
 <!doctype html>
 <html lang="vi">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.1, user-scalable=no" />
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.1, user-scalable=no" />
+        <title>9 Trip Phu Quoc - Du Lịch Dễ Dàng...</title>
+        <meta name="description" content="9 Trip Phu Quoc - Thương hiệu du lịch chất lượng hàng đầu tại Đảo Ngọc Phú Quốc!" />
+        <meta name="keywords" content="9 Trip Phu Quoc, Tour Phú Quốc, khách sạn Phú Quốc, dịch vụ du lịch Phú Quốc" />
+        <meta name="author" content="Công ty TNHH 9 Trip Phú Quốc" />
 
-  <title>9 Trip Phu Quoc - Du Lịch Dễ Dàng...</title>
-  <meta name="description" content="9 Trip Phu Quoc - Thương hiệu du lịch chất lượng hàng đầu tại Đảo Ngọc Phú Quốc!" />
-  <meta name="keywords" content="9 Trip Phu Quoc, Tour Phú Quốc, khách sạn Phú Quốc, dịch vụ du lịch Phú Quốc" />
-  <meta name="author" content="Công ty TNHH 9 Trip Phú Quốc" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="9 Trip Phu Quoc - Tour Du lịch Ưu Đãi - Chất Lượng Hàng Đầu" />
+        <meta property="og:description" content="Truy cập 9 Trip để khám phá các gói tour/combo du lịch ưu đãi nhất 2026." />
+        <meta property="og:url" content="https://9tripphuquoc.com/" />
+        <meta property="og:image" content="/src/images/favicon.webp" />
+        <meta property="og:site_name" content="9 Trip Phu Quoc" />
+        <link rel="icon" type="image/webp" href="/src/images/favicon.webp" />
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" />
+        <!-- animate.css: chỉ dùng cho loading screen → load async, không block render -->
+        <link
+            rel="preload"
+            href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+            as="style"
+            onload="
+                this.onload = null;
+                this.rel = 'stylesheet';
+            "
+        />
+        <noscript>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+        </noscript>
+        <link rel="stylesheet" href="/src/css/main.css" />
+        <link rel="stylesheet" href="/src/css/notification-panel.css" />
+    </head>
 
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content="9 Trip Phu Quoc - Tour Du lịch Ưu Đãi - Chất Lượng Hàng Đầu" />
-  <meta property="og:description" content="Truy cập 9 Trip để khám phá các gói tour/combo du lịch ưu đãi nhất 2026." />
-  <meta property="og:url" content="https://9tripphuquoc.com/" />
-  <meta property="og:image" content="/src/images/favicon.webp" />
-  <meta property="og:site_name" content="9 Trip Phu Quoc" />
-  <link rel="icon" type="image/webp" href="/src/images/favicon.webp" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" />
-  <!-- animate.css: chỉ dùng cho loading screen → load async, không block render -->
-  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" as="style" onload="
-        this.onload = null;
-        this.rel = 'stylesheet';
-      " />
-  <noscript>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
-  </noscript>
-  <link rel="stylesheet" href="/src/css/main.css" />
-  <link rel="stylesheet" href="/src/css/notification-panel.css" />
-</head>
+    <body>
+        <div id="app-launcher" class="d-none justify-content-center align-items-center vh-100 vw-100 flex-column">
+            <img src="/src/images/favicon.webp" height="300" class="mb-3 animate__animated animate__pulse animate__infinite" />
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-3 text-muted fw-bold">ĐANG KHỞI CHẠY HỆ THỐNG...</p>
+        </div>
+        <div class="app-container d-none" style="opacity: 0; transition: opacity 0.9s" id="main-app">
+            <div class="app-header shadow-sm my-0 p-0 border-bottom">
+                <div class="nav-container" id="nav-container"></div>
+            </div>
+            <div class="app-content px-1">
+                <div class="tab-content px-1" id="main-tab-content">
+                    <div class="tab-pane active" id="tab-dashboard"></div>
+                    <div class="tab-pane m-1" id="tab-form"></div>
+                    <div class="tab-pane m-1" id="tab-price-pkg"></div>
+                    <div class="tab-pane m-1" id="tab-data-tbl"></div>
+                    <div class="tab-pane m-1" id="tab-tour-price"></div>
+                    <div class="tab-pane admin-only" id="tab-admin-dashboard"></div>
+                </div>
+            </div>
+        </div>
+        <script type="module" src="/src/js/libs/utils.js"></script>
+        <script>
+            const GAS_API_URL = 'https://script.google.com/macros/s/AKfycby_54qWXvDLG3Jm6s-jAH75S6dO1L6X1rmHrnqJ5I2CQBw4QQa1t3u4QKcEA98kI8qV/exec';
+            var CURRENT_USER = {
+                role: 'sale',
+                email: '',
+                level: 1,
+                maskedRole: '',
+                profile: {},
+            };
+            var JS_MANIFEST = {
+                sale: [],
+                op: [],
+                acc: ['@acc/controller_accountant.js'],
+                acc_thenice: ['@acc/controller_accountant.js'],
+            };
+            var TEMPLATE_MANIFEST = {
+                base: ['tmpl-dashboard', 'tmpl-form'],
+                sale: ['tmpl-confirmation-modal'],
+                op: ['tmpl-partner-mail'],
+                acc: ['tmpl-report', 'tmpl-acc-footer-bar'],
+                acc_thenice: ['tmpl-report', 'tmpl-acc-footer-bar'],
+            };
+            // =========================================================================
+            // 1. GLOBAL UI VARIABLES (CHỈ KHAI BÁO BIẾN UI TẠI ĐÂY)
+            // =========================================================================
+            var isMobile;
+            var APP_URL = {
+                baseUrl: 'https://script.google.com/macros/s/AKfycbyKK7O71jsyamCcBaeCMA0lio1YdQ_onGrUz1X1IYY/exec',
+                devUrl: 'https://script.google.com/macros/s/AKfycbyKK7O71jsyamCcBaeCMA0lio1YdQ_onGrUz1X1IYY/dev',
+            };
+            var APP_DATA = {};
 
-<body>
-  <div id="app-launcher" class="d-none justify-content-center align-items-center vh-100 vw-100 flex-column">
-    <img src="/src/images/favicon.webp" height="300" class="mb-3 animate__animated animate__pulse animate__infinite" />
-    <div class="spinner-border text-primary" role="status"></div>
-    <p class="mt-3 text-muted fw-bold">ĐANG KHỞI CHẠY HỆ THỐNG...</p>
-  </div>
-  <div class="app-container d-none" style="opacity: 0; transition: opacity 0.9s" id="main-app">
-    <div class="app-header shadow-sm my-0 p-0 border-bottom">
-      <div class="nav-container" id="nav-container"></div>
-    </div>
-    <div class="app-content px-1">
-      <div class="tab-content px-1" id="main-tab-content">
-        <div class="tab-pane fade show active" id="tab-dashboard"></div>
-        <div class="tab-pane fade" id="tab-form"></div>
-        <div class="tab-pane fade m-1" id="tab-price-pkg"></div>
-        <div class="tab-pane fade m-1" id="tab-data-tbl"></div>
-        <div class="tab-pane fade m-1" id="tab-tour-price"></div>
-        <div class="tab-pane fade admin-only" id="tab-admin-dashboard"></div>
-      </div>
-    </div>
-  </div>
-  <script type="module" src="/src/js/libs/utils.js"></script>
-  <script>
-    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycby_54qWXvDLG3Jm6s-jAH75S6dO1L6X1rmHrnqJ5I2CQBw4QQa1t3u4QKcEA98kI8qV/exec';
-    var CURRENT_USER = {
-      role: 'sale',
-      email: '',
-      level: 1,
-      maskedRole: '',
-      profile: {},
-    };
-    var JS_MANIFEST = {
-      sale: [],
-      op: [],
-      acc: ['@acc/controller_accountant.js'],
-      acc_thenice: ['@acc/controller_accountant.js'],
-    };
-    var TEMPLATE_MANIFEST = {
-      base: ['tmpl-dashboard', 'tmpl-form'],
-      sale: ['tmpl-confirmation-modal'],
-      op: ['tmpl-partner-mail'],
-      acc: ['tmpl-report', 'tmpl-acc-footer-bar'],
-      acc_thenice: ['tmpl-report', 'tmpl-acc-footer-bar'],
-    };
-    // =========================================================================
-    // 1. GLOBAL UI VARIABLES (CHỈ KHAI BÁO BIẾN UI TẠI ĐÂY)
-    // =========================================================================
-    var isMobile;
-    var APP_URL = {
-      baseUrl: 'https://script.google.com/macros/s/AKfycbyKK7O71jsyamCcBaeCMA0lio1YdQ_onGrUz1X1IYY/exec',
-      devUrl: 'https://script.google.com/macros/s/AKfycbyKK7O71jsyamCcBaeCMA0lio1YdQ_onGrUz1X1IYY/dev',
-    };
-    var APP_DATA = {};
+            var ROLE_DATA = {
+                sale: 'booking_details',
+                sale_sup: 'booking_details',
+                manager: 'booking_details',
+                op: 'operator_entries',
+                acc: 'transactions',
+                admin: 'booking_details',
+            };
+            var CR_COLLECTION = ''; // Collection hiện tại dựa trên role người dùng
 
-    var ROLE_DATA = {
-      sale: 'booking_details',
-      sale_sup: 'booking_details',
-      manager: 'booking_details',
-      op: 'operator_entries',
-      acc: 'transactions',
-      admin: 'booking_details',
-    };
-    var CR_COLLECTION = ''; // Collection hiện tại dựa trên role người dùng
+            var testValue;
 
-    var testValue;
+            // =========================================================================
+            // CONFIG: DATA TABLE MAPPING
+            // Định nghĩa các bảng dữ liệu và tên hiển thị Tiếng Việt tương ứng
+            // =========================================================================
 
+            // Cấu hình Retry — overridable via Admin Settings
+            const MAX_RETRIES = window.A?.getConfig?.('max_retries') ?? 3;
+            const RETRY_DELAY = window.A?.getConfig?.('retry_delay_ms') ?? 2000;
+            var retryCount = 0; // Biến đếm số lần đã thử
+            var CURRENT_TABLE_KEY = '';
+            // Biến toàn cục tạm để lưu tham chiếu hàng đang được click chuột phải
+            // (Cần gán biến này khi sự kiện 'contextmenu' trên tr được kích hoạt)
+            var CURRENT_ROW_DATA = null; // Data của hàng đang chọn
 
+            const TABLE_HIDDEN_FIELDS = {
+                bookings: ['created_at', 'customer_id', 'history', 'note_internal'],
+                booking_details: ['id', 'booking_id'],
+                operator_entries: ['id', 'booking_id', 'customer_full_name'],
+                customers: ['created_at'],
+                suppliers: ['created_at'],
+                users: ['created_at'],
+                hotels: ['created_at'],
+                hotel_price_schedules: ['created_at'],
+                service_price_schedules: ['created_at'],
+            };
 
-    // =========================================================================
-    // CONFIG: DATA TABLE MAPPING
-    // Định nghĩa các bảng dữ liệu và tên hiển thị Tiếng Việt tương ứng
-    // =========================================================================
+            const TAB_INDEX_BY_ID = {
+                'tab-dashboard': 1,
+                'tab-form': 2,
+                'tab-price-pkg': 3,
+                'tab-data-tbl': 4,
+                'tab-tour-price': 5,
+                'tab-admin-dashboard': 6,
+            };
 
-    // Cấu hình Retry — overridable via Admin Settings
-    const MAX_RETRIES = window.A?.getConfig?.('max_retries') ?? 3;
-    const RETRY_DELAY = window.A?.getConfig?.('retry_delay_ms') ?? 2000;
-    var retryCount = 0; // Biến đếm số lần đã thử
-    var CURRENT_TABLE_KEY = '';
-    // Biến toàn cục tạm để lưu tham chiếu hàng đang được click chuột phải
-    // (Cần gán biến này khi sự kiện 'contextmenu' trên tr được kích hoạt)
-    var CURRENT_ROW_DATA = null; // Data của hàng đang chọn
+            /**
+             * CẤU HÌNH CỘT NGÀY CHO TỪNG BẢNG (QUAN TRỌNG)
+             * Key: Tên bảng (CURRENT_TABLE_KEY)
+             * Value: Index của cột ngày (Bắt đầu từ 0). Nếu bảng không có cột ngày, để null.
+             */
+            const TABLE_DATE_CONFIG = {
+                bookings: 6, // Bảng Bookings: Ngày ở cột 6
+                booking_details: 5, // Bảng Details: Ngày ở cột 5
+                operator_entries: 6,
+                transactions: 1, // Ví dụ bảng SP: Ngày nhập ở cột 2
+                customers: null, // Bảng Khách hàng: Không lọc theo ngày
+                users: null, // Bảng Tài Khoản: Không lọc theo ngày
+                hotels: null, // Bảng Khách Sạn: Không lọc theo ngày
+                hotel_price_schedules: null, // Bảng Giá Khách Sạn: Không lọc theo ngày
+                service_price_schedules: null, // Bảng Giá Dịch Vụ: Không lọc theo ngày
+            };
 
-    const TABLE_HIDDEN_FIELDS = {
-      bookings: ['created_at', 'customer_id', 'history', 'note_internal'],
-      booking_details: ['id', 'booking_id'],
-      operator_entries: ['id', 'booking_id', 'customer_full_name'],
-      customers: ['created_at'],
-      suppliers: ['created_at'],
-      users: ['created_at'],
-      hotels: ['created_at'],
-      hotel_price_schedules: ['created_at'],
-      service_price_schedules: ['created_at'],
-    };
-
-    const TAB_INDEX_BY_ID = {
-      'tab-dashboard': 1,
-      'tab-form': 2,
-      'tab-price-pkg': 3,
-      'tab-data-tbl': 4,
-      'tab-tour-price': 5,
-      'tab-admin-dashboard': 6,
-    };
-
-    /**
-     * CẤU HÌNH CỘT NGÀY CHO TỪNG BẢNG (QUAN TRỌNG)
-     * Key: Tên bảng (CURRENT_TABLE_KEY)
-     * Value: Index của cột ngày (Bắt đầu từ 0). Nếu bảng không có cột ngày, để null.
-     */
-    const TABLE_DATE_CONFIG = {
-      bookings: 6, // Bảng Bookings: Ngày ở cột 6
-      booking_details: 5, // Bảng Details: Ngày ở cột 5
-      operator_entries: 6,
-      transactions: 1, // Ví dụ bảng SP: Ngày nhập ở cột 2
-      customers: null, // Bảng Khách hàng: Không lọc theo ngày
-      users: null, // Bảng Tài Khoản: Không lọc theo ngày
-      hotels: null, // Bảng Khách Sạn: Không lọc theo ngày
-      hotel_price_schedules: null, // Bảng Giá Khách Sạn: Không lọc theo ngày
-      service_price_schedules: null, // Bảng Giá Dịch Vụ: Không lọc theo ngày
-    };
-
-    // Global State cho Context Menu
-    var CURRENT_CTX_ID = null; // ID của dòng (SID)
-    var CURRENT_CTX_ROW = null; // Element dòng (TR)
-  </script>
-  <script type="module" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script type="module" src="/src/js/modules/core/app.js"></script>
-</body>
-
+            // Global State cho Context Menu
+            var CURRENT_CTX_ID = null; // ID của dòng (SID)
+            var CURRENT_CTX_ROW = null; // Element dòng (TR)
+        </script>
+        <script type="module" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <script type="module" src="/src/js/modules/core/app.js"></script>
+    </body>
 </html>

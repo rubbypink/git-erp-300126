@@ -423,7 +423,7 @@ export default class ErpFooterMenu {
         container.className = 'erp-footer-wrapper bg-transparent';
         container.innerHTML = `
               <div class="erp-footer-search d-none d-lg-block me-auto">
-                <div class="input-group input-group-sm flex-center gap-0 bg-white rounded overflow-hidden shadow-sm border" style="border-color: var(--bs-border-color) !important;">
+                <div class="input-group input-group-sm flex-center gap-0 bkg-light rounded overflow-hidden shadow-sm border" style="border-color: var(--bs-border-color) !important;">
                     <input type="text" id="booking-search" class="form-control border-0" placeholder="Tìm Booking..." style="box-shadow: none; width: 180px;">
                     <button class="btn btn-light text-primary border-0" type="button" onclick="if(typeof handleBookingSearch === 'function') handleBookingSearch()">
                         <i class="fa-solid fa-search"></i>
@@ -550,7 +550,7 @@ export default class ErpFooterMenu {
                         .split(' ')
                         .filter((c) => c.includes('only') || c === 'd-none')
                         .join(' ');
-                    mobileBtn.className = `d-flex align-items-center gap-2 text-dark ${roleClasses}`;
+                    mobileBtn.className = `d-flex align-items-center gap-2  ${roleClasses}`;
                     mobileBtn.innerHTML = subBtn.iconClass ? `<i class="${subBtn.iconClass}"></i> <span>${subBtn.label || 'Admin Action'}</span>` : `<span>${subBtn.label || 'Admin Action'}</span>`;
                     Object.keys(subBtn.attributes || {}).forEach((key) => mobileBtn.setAttribute(key, subBtn.attributes[key]));
                     mobileBtn.addEventListener('click', (e) => {
@@ -567,7 +567,7 @@ export default class ErpFooterMenu {
                     .split(' ')
                     .filter((c) => c.includes('only') || c === 'd-none')
                     .join(' ');
-                mobileBtn.className = `d-flex align-items-center gap-2 text-dark ${roleClasses}`;
+                mobileBtn.className = `d-flex align-items-center gap-2  ${roleClasses}`;
                 mobileBtn.innerHTML = iconClass ? `<i class="${iconClass}"></i> <span>${safeLabel || 'Admin Action'}</span>` : `<span>${safeLabel || 'Admin Action'}</span>`;
                 Object.keys(attributes).forEach((key) => mobileBtn.setAttribute(key, attributes[key]));
                 mobileBtn.addEventListener('click', (e) => {
@@ -616,7 +616,7 @@ export function renderRoleBasedFooterButtons(userRole, footerInstance) {
                     if (typeof A.UI.activateTab === 'function') A.UI.activateTab('tab-form');
                     refreshForm();
                 },
-                attributes: { 'data-bs-target': '#tab-form', 'data-ontabs': '1 3 4' },
+                attributes: { 'data-ontabs': '1 3 4' },
             },
             {
                 id: 'btn-new-customer',

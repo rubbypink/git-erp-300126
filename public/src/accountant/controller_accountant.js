@@ -258,19 +258,19 @@ class AccountantController {
             const name = fund.name || fund.id || 'Quỹ ẩn';
 
             html += `
-            <div class="d-flex justify-content-between align-items-center p-2 mb-2 rounded-3 border border-light bg-light transition-hover fund-item-row">
+            <div class="d-flex justify-content-between align-items-center p-2 mb-2 rounded-3 border border-light bkg-light transition-hover fund-item-row">
                 <div class="d-flex align-items-center overflow-hidden me-2">
                     <div class="${iconBg} bg-opacity-10 p-2 rounded-circle d-flex me-2">
                         <i class="fas ${iconFa} ${iconText}"></i>
                     </div>
                     <div class="d-flex flex-column fund-account" data-item="${fund.id}">
-                        <span class="text-dark fw-bold small text-truncate" title="${name}">${name}</span>
+                        <span class=" fw-bold small text-truncate" title="${name}">${name}</span>
                         ${fund.account_no ? `<span class="text-muted" style="font-size:0.65rem;"><i class="fas fa-credit-card me-1"></i>${fund.account_no}</span>` : `<span class="text-muted" style="font-size:0.65rem;">Tiền mặt</span>`}
                     </div>
                 </div>
                 
                 <div class="d-flex flex-column align-items-end justify-content-center" style="min-width: max-content;">
-                    <span class="fw-bold text-dark small mb-1">${formatCurrency(balance)}</span>
+                    <span class="fw-bold  small mb-1">${formatCurrency(balance)}</span>
                     <div class="commit-btn-container"></div>
                 </div>
             </div>`;
@@ -440,7 +440,7 @@ class AccountantController {
                     </td>
                     <td class="small text-muted">${item.category || '-'}</td>
                     <td class="small">
-                        ${item.booking_id ? `<span class="badge bg-info text-white">${item.booking_id}</span>` : '-'}
+                        ${item.booking_id ? `<span class="badge bg-info ">${item.booking_id}</span>` : '-'}
                     </td>
                     <td class="small">${fundName}</td>
                     <td>${statusBadge}</td>
@@ -699,15 +699,15 @@ class AccountantController {
                 ${
                     isEdit
                         ? `
-                <div class="mb-3 p-2 bg-light border-bottom">
+                <div class="mb-3 p-2 bkg-light border-bottom">
                     <div class="mb-2">
                         <label class="form-label fw-bold text-muted small">ID Giao Dịch</label>
-                        <div class="form-control form-control-sm bg-white small" readonly>${existingData?.id || 'Auto-gen'}</div>
+                        <div class="form-control form-control-sm bkg-light small" readonly>${existingData?.id || 'Auto-gen'}</div>
                         <input type="hidden" data-field="id" value="${existingData?.id || ''}">
                     </div>
                     <div>
                         <label class="form-label fw-bold text-muted small">Loại GD</label>
-                        <div class="form-control form-control-sm bg-white small" readonly>${mode === 'IN' ? '📥 Phiếu Thu' : '📤 Phiếu Chi'}</div>
+                        <div class="form-control form-control-sm bkg-light small" readonly>${mode === 'IN' ? '📥 Phiếu Thu' : '📤 Phiếu Chi'}</div>
                         <input type="hidden" data-field="type" value="${mode}">
                     </div>
                 </div>
@@ -756,7 +756,7 @@ class AccountantController {
                 </div>
 
                 <!-- Section 4: Optional Fields -->
-                <div class="mb-3 p-2 border rounded bg-light">
+                <div class="mb-3 p-2 border rounded bkg-light">
                     <label class="form-label fw-bold text-primary small">🔗 Booking ID (Liên kết)</label>
                     <input type="text" class="form-control form-control-sm w-100" data-field="booking_id" 
                         value="${existingData?.booking_id || ''}" placeholder="VD: BK-2023-001..." 
@@ -799,15 +799,15 @@ class AccountantController {
                 ${
                     isEdit
                         ? `
-                <div class="mb-0 p-2 bg-light border-top">
+                <div class="mb-0 p-2 bkg-light border-top">
                     <div class="mb-2">
                         <label class="form-label fw-bold text-muted small">✏️ Tạo bởi</label>
-                        <div class="form-control form-control-sm bg-white small" readonly>${existingData?.created_by || 'Hệ thống'}</div>
+                        <div class="form-control form-control-sm bkg-light small" readonly>${existingData?.created_by || 'Hệ thống'}</div>
                         <input type="hidden" data-field="created_by" value="${existingData?.created_by || currentUser}">
                     </div>
                     <div>
                         <label class="form-label fw-bold text-muted small">🕐 Ngày tạo</label>
-                        <div class="form-control form-control-sm bg-white small" readonly>${existingData?.created_at ? formatDate(existingData.created_at) : new Date().toISOString().split('T')[0]}</div>
+                        <div class="form-control form-control-sm bkg-light small" readonly>${existingData?.created_at ? formatDate(existingData.created_at) : new Date().toISOString().split('T')[0]}</div>
                         <input type="hidden" data-field="created_at" value="${existingData?.created_at || new Date().toISOString()}">
                     </div>
                 </div>
@@ -1052,7 +1052,7 @@ class AccountantController {
 
             // Modal header
             const modalHeader = document.createElement('div');
-            modalHeader.className = 'modal-header bg-light border-bottom';
+            modalHeader.className = 'modal-header bkg-light border-bottom';
             modalHeader.innerHTML = `
                 <h5 class="modal-title" id="reportModalLabel">
                     <i class="fas fa-file-invoice text-success me-2"></i> Báo Cáo Giao Dịch
@@ -1306,7 +1306,7 @@ class AccountantController {
                         </td>
                         <td><div class="text-truncate" style="max-width: 200px;" title="${trans.description || ''}">${trans.description || ''}</div></td>
                         <td class="small">${trans.category || ''}</td>
-                        <td class="small">${trans.booking_id ? `<span class="badge bg-info text-white">${trans.booking_id}</span>` : '-'}</td>
+                        <td class="small">${trans.booking_id ? `<span class="badge bg-info ">${trans.booking_id}</span>` : '-'}</td>
                         <td class="small">${trans.fund_source || '-'}</td>
                         <td class="text-center small">
                             <span class="badge ${trans.status === 'Completed' ? 'bg-success' : 'bg-warning'}">

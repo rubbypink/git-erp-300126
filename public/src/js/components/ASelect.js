@@ -52,6 +52,7 @@ export default class ASelect {
             this.uid = 'as_' + Math.random().toString(36).substr(2, 9);
             this.state = 'BASE'; // Trạng thái: BASE -> UPGRADING -> UPGRADED
             this._isUpgrading = false;
+            this._syncGuard = false; // [TỐI ƯU] Flag chống loop vô hạn khi đồng bộ DOM
             this.actionQueue = [];
             this.data = [];
 
@@ -108,15 +109,11 @@ export default class ASelect {
                 if (this.state === 'BASE') this.scheduleUpgrade();
             }
 
-            // Sync 2 chiều
+            // [TỐI ƯU] Lắng nghe sự kiện native một lần duy nhất
             this.el.addEventListener('change', (e) => {
-                if (e._isInternal) {
-                    this.triggerCallback('onChange', this.el.value);
-                    return;
-                }
-
-                if (this.state === 'UPGRADED' && String(this.el.dataset.val) !== String(this.el.value)) {
-                    this.setValue(this.el.value, false);
+                // Đồng bộ UI ngay lập tức khi giá trị thay đổi (từ bất kỳ nguồn nào)
+                if (this.state === 'UPGRADED') {
+                    this.syncUI();
                 }
                 this.triggerCallback('onChange', this.el.value);
             });
@@ -277,6 +274,9 @@ export default class ASelect {
     }
 
     renderNativeOptions() {
+        if (this._syncGuard) return;
+        this._syncGuard = true;
+
         let currentVal = this.el.dataset.val || this.el.value || this.initialValue;
 
         if (currentVal && !this.data.find((d) => String(d.id) === String(currentVal))) {
@@ -306,6 +306,7 @@ export default class ASelect {
         if (this.el.value !== String(currentVal)) {
             this.el.value = currentVal;
         }
+        this._syncGuard = false;
     }
 
     upgrade() {
@@ -370,6 +371,7 @@ export default class ASelect {
 
         // An toàn nội dung
         const formatStr = (str) => (typeof escapeHtml === 'function' ? escapeHtml(str) : str);
+
         if (this.isCreatable) this.isSearchable = true;
 
         // [TỐI ƯU 2]: Lưu String HTML siêu nhẹ vào biến thay vì nhồi vào DOM
@@ -377,18 +379,18 @@ export default class ASelect {
       ${
           this.isSearchable
               ? `
-        <div class="p-2 border-bottom sticky-top bg-light ">
+        <div class="p-2 border-bottom sticky-top bkg-light ">
           <input type="text" class="form-control form-control-sm smart-search-input" placeholder="Tìm kiếm..." autocomplete="off">
         </div>`
               : ''
       }
       <ul class="list-unstyled mb-0 smart-list-container">
-        ${this.data.map((item) => `<li class="dropdown-item cursor-pointer smart-option" data-value="${formatStr(item.id)}">${formatStr(item.text)}</li>`).join('')}
+        ${this.data.map((item) => `<li class="dropdown-item cursor-pointer smart-option " data-value="${formatStr(item.id)}">${formatStr(item.text)}</li>`).join('')}
       </ul>
       ${
           this.isCreatable
               ? `
-        <div class="p-2 border-top bg-light d-none smart-create-wrapper">
+        <div class="p-2 border-top bkg-light d-none smart-create-wrapper ">
           <button class="btn btn-sm btn-primary w-100 smart-create-btn">
             <i class="bi bi-plus-circle me-1"></i>Tạo mới: <span class="create-keyword fw-bold"></span>
           </button>
@@ -458,7 +460,7 @@ export default class ASelect {
     handleKeyboard(e) {
         try {
             // 1. Chỉ xử lý các phím điều hướng và Enter/Esc. Bỏ qua các phím gõ chữ (search)
-            const validKeys = ['ArrowDown', 'ArrowUp', 'Enter', 'Escape'];
+            const validKeys = ['ArrowDown', 'ArrowUp', 'Enter', 'Escape', ' '];
             if (!validKeys.includes(e.key)) return;
 
             // 2. NGĂN CHẶN trình duyệt cuộn trang khi bấm phím lên/xuống/enter
@@ -527,6 +529,17 @@ export default class ASelect {
         }
     }
 
+    /**
+     * Reset highlight về phần tử đầu tiên trong danh sách đang hiển thị
+     */
+    _resetHighlightToTop() {
+        if (!this.dropdown) return;
+        const visibleItems = Array.from(this.dropdown.querySelectorAll('.smart-option:not(.d-none), .smart-create-btn:not(.d-none)'));
+        if (visibleItems.length > 0) {
+            this._updateHighlight(visibleItems, 0);
+        }
+    }
+
     openDropdown() {
         try {
             if (!this.toggleBtn) return; // An toàn nếu DOM chưa sẵn sàng
@@ -544,7 +557,7 @@ export default class ASelect {
                 globalDropdown.id = 'smart-global-dropdown';
                 // CHÚ Ý TÊN CLASS: Có 'smart-dropdown-menu' để Global Event nhận diện
                 globalDropdown.className = 'dropdown-menu shadow p-0 smart-dropdown-menu';
-                globalDropdown.style.cssText = 'max-height: 50vh; overflow: hidden; overflow-y: auto; z-index: 9999; position: fixed; display: none; min-width:120px; width: fit-content; max-width: 250px;';
+                globalDropdown.style.cssText = 'max-height: 50vh; overflow: hidden; overflow-y: auto; z-index: 1060; position: fixed; display: none; min-width:120px; width: fit-content; max-width: 250px;';
                 document.body.appendChild(globalDropdown);
             }
 
@@ -665,13 +678,12 @@ export default class ASelect {
         if (!this.toggleState) return;
         this.toggleState = false;
 
-        // Ẩn Global Dropdown
-        if (this.dropdown) {
-            this.dropdown.style.display = 'none';
-        }
+        // Ẩn Global Dropdown nếu mình đang là thằng nắm quyền
         if (this.dropdown && this.dropdown.dataset.activeSmartId === this.uid) {
             this.dropdown.style.display = 'none';
+            this.dropdown.dataset.activeSmartId = '';
         }
+
         // Trả lại UI trạng thái đóng
         if (this.wrapper) this.wrapper.classList.remove('is-open');
 
@@ -687,27 +699,33 @@ export default class ASelect {
     }
 
     setValue(rawVal, forceTrigger = true) {
+        if (this._syncGuard) return;
+        this._syncGuard = true;
+
         try {
             if (!document.body.contains(this.el)) {
-                // console.warn(`[ASelect Debug - LỖI GHOST DOM KHẮC PHỤC THÀNH CÔNG]`);
                 this.destroy();
                 return;
             }
 
             let val = rawVal === null || rawVal === undefined ? '' : String(rawVal).trim();
 
+            // Guard chống loop tối thượng
             if (String(this.el.value) === val && String(this.el.dataset.val) === val) {
-                return; // Chống loop
+                return;
             }
 
             this.el.dataset.val = val;
 
             if (this.state !== 'UPGRADED') {
-                this.actionQueue.push(() => this.setValue(val, forceTrigger));
+                this.actionQueue.push(() => {
+                    this._syncGuard = false; // Reset trước khi gọi lại
+                    this.setValue(val, forceTrigger);
+                });
                 return;
             }
 
-            let options = Array.from(this.el.options);
+            let options = [...this.el.options];
             let targetIdx = options.findIndex((opt) => String(opt.value) === val);
 
             if (targetIdx === -1 && val !== '') {
@@ -741,19 +759,18 @@ export default class ASelect {
 
             // [FIX CRITICAL BUG]: CHỈ TRIGGER KHI ĐƯỢC PHÉP
             if (forceTrigger) {
-                // Dispatch native event (Hàm lắng nghe trong initBase sẽ tự bắt cái này
-                // và gọi this.triggerCallback cho đại ca)
-                const changeEvt = new Event('change', { bubbles: true });
-                changeEvt._isInternal = true;
-                this.el.dispatchEvent(changeEvt);
-
-                const inputEvt = new Event('input', { bubbles: true });
-                inputEvt._isInternal = true;
-                this.el.dispatchEvent(inputEvt);
+                // Dispatch event để các module khác nhận biết sự thay đổi
+                this.el.dispatchEvent(new Event('change', { bubbles: true }));
+                this.el.dispatchEvent(new Event('input', { bubbles: true }));
             }
-            // TUYỆT ĐỐI KHÔNG CÓ `else { this.triggerCallback(...) }` Ở ĐÂY NỮA!!!
         } catch (e) {
-            console.error(`[ASelect Debug - ERROR] Lỗi trong setValue:`, e);
+            console.error(`[ASelect] setValue Error:`, e);
+        } finally {
+            // [TỐI ƯU TỐI THƯỢNG] Reset guard bằng microtask
+            // Đảm bảo MutationObserver đã chạy xong trước khi mở khóa
+            queueMicrotask(() => {
+                this._syncGuard = false;
+            });
         }
     }
 
@@ -767,9 +784,11 @@ export default class ASelect {
             textEl.innerHTML = typeof escapeHtml === 'function' ? escapeHtml(text) : text;
         }
 
-        this.dropdown.querySelectorAll('.smart-option').forEach((opt) => {
-            opt.classList.toggle('active', String(opt.dataset.value) === currentVal);
-        });
+        if (this.dropdown && this.dropdown.dataset.smartId === this.uid) {
+            this.dropdown.querySelectorAll('.smart-option').forEach((opt) => {
+                opt.classList.toggle('active', String(opt.dataset.value) === currentVal);
+            });
+        }
     }
 
     async triggerCallback(type, value) {
@@ -789,21 +808,30 @@ export default class ASelect {
         try {
             if (this.state === 'DESTROYED' || this._isUpgrading) return;
 
-            if (this.dropdown) {
-                this.dropdown.remove(); // Tối ưu: Vanilla JS trực tiếp remove node
+            // Nếu dropdown đang mở là của mình, đóng nó lại
+            if (this.dropdown && this.dropdown.dataset.activeSmartId === this.uid) {
+                this.closeDropdown();
             }
 
             if (this.wrapper && this.wrapper.parentNode) {
                 this.el.classList.remove('d-none');
+                this.el.dataset.smartInit = '';
+                this.el.removeAttribute('data-smart-id');
                 this.wrapper.parentNode.insertBefore(this.el, this.wrapper);
-                this.wrapper.remove(); // Tối ưu dọn dẹp bộ nhớ
+                this.wrapper.remove();
             }
 
             if (this._outsideClickRef) {
                 document.removeEventListener('click', this._outsideClickRef);
+                this._outsideClickRef = null;
             }
             if (this._scrollRef) {
                 window.removeEventListener('scroll', this._scrollRef, true);
+                this._scrollRef = null;
+            }
+
+            if (this._debounceTimer) {
+                clearTimeout(this._debounceTimer);
             }
 
             ASelect.instances.delete(this.uid);
@@ -865,7 +893,7 @@ export default class ASelect {
                 const inst = ASelect.getInstance(target);
 
                 if (mutation.type === 'attributes' && (mutation.attributeName === 'data-val' || mutation.attributeName === 'value')) {
-                    if (inst && typeof inst.setValue === 'function') {
+                    if (inst && !inst._syncGuard && typeof inst.setValue === 'function') {
                         const newVal = String(target.getAttribute(mutation.attributeName) || '').trim();
                         const currentVal = String(inst.el.value || '');
                         const currentDataVal = String(inst.el.dataset.val || '');
@@ -878,8 +906,8 @@ export default class ASelect {
                 }
 
                 if (mutation.type === 'childList' && target.tagName === 'SELECT' && target.classList.contains('smart-select')) {
-                    if (inst && !inst._isUpgrading) {
-                        inst.data = inst.mapData(Array.from(target.options).map((opt) => ({ id: opt.value, text: opt.text })));
+                    if (inst && !inst._isUpgrading && !inst._syncGuard) {
+                        inst.data = inst.mapData([...target.options].map((opt) => ({ id: opt.value, text: opt.text })));
                         inst.renderDropdownContent();
                         inst.syncUI();
                     }
@@ -980,7 +1008,7 @@ export default class ASelect {
             true
         ); // Lazy = true
 
-        // 3. GÕ TÌM KIẾM
+        // 3. GÕ TÌM KIẾM (Debounce 100ms)
         A.Event.on(
             '.smart-search-input',
             'input',
@@ -988,30 +1016,33 @@ export default class ASelect {
                 const instance = ASelect.getInstance(e.target);
                 if (!instance) return;
 
-                const kw = e.target.value.toLowerCase().trim();
-                const items = instance.dropdown.querySelectorAll('.smart-option');
-                let found = 0;
+                if (instance._debounceTimer) clearTimeout(instance._debounceTimer);
+                instance._debounceTimer = setTimeout(() => {
+                    const kw = e.target.value.toLowerCase().trim();
+                    const items = instance.dropdown.querySelectorAll('.smart-option');
+                    let found = 0;
 
-                items.forEach((item) => {
-                    const match = item.textContent.toLowerCase().includes(kw);
-                    item.classList.toggle('d-none', !match);
-                    if (match) found++;
-                });
+                    items.forEach((item) => {
+                        const match = item.textContent.toLowerCase().includes(kw);
+                        item.classList.toggle('d-none', !match);
+                        if (match) found++;
+                    });
 
-                if (instance.isCreatable) {
-                    const createWrap = instance.dropdown.querySelector('.smart-create-wrapper');
-                    if (createWrap) {
-                        if (kw && found === 0) {
-                            createWrap.classList.remove('d-none');
-                            const kwEl = createWrap.querySelector('.create-keyword');
-                            if (kwEl) kwEl.textContent = kw;
-                        } else {
-                            createWrap.classList.add('d-none');
+                    if (instance.isCreatable) {
+                        const createWrap = instance.dropdown.querySelector('.smart-create-wrapper');
+                        if (createWrap) {
+                            if (kw && found === 0) {
+                                createWrap.classList.remove('d-none');
+                                const kwEl = createWrap.querySelector('.create-keyword');
+                                if (kwEl) kwEl.textContent = kw;
+                            } else {
+                                createWrap.classList.add('d-none');
+                            }
                         }
                     }
-                }
 
-                if (typeof instance._resetHighlightToTop === 'function') instance._resetHighlightToTop();
+                    if (typeof instance._resetHighlightToTop === 'function') instance._resetHighlightToTop();
+                }, 100);
             },
             true
         ); // Lazy = true

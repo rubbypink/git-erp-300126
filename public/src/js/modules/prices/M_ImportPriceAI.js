@@ -82,7 +82,7 @@ export default class PriceImportAI {
     _buildUI() {
         return `
       <div class="ai-import-wrapper d-flex flex-column h-100" style="min-height: 80vh;">
-          <div class="action-bar p-3 bg-light border-bottom sticky-top shadow-sm d-flex flex-wrap gap-2 align-items-center">
+          <div class="action-bar p-3 bkg-light border-bottom sticky-top shadow-sm d-flex flex-wrap gap-2 align-items-center">
               
               <div class="input-group input-group-sm" style="max-width: 200px;">
                   <span class="input-group-text"><i class="fa-solid fa-layer-group"></i></span>
@@ -93,7 +93,7 @@ export default class PriceImportAI {
               </div>
 
               <div class="input-group input-group-sm" style="max-width: 250px;">
-                  <span class="input-group-text bg-info text-white"><i class="fa-solid fa-clock-rotate-left"></i></span>
+                  <span class="input-group-text bg-info "><i class="fa-solid fa-clock-rotate-left"></i></span>
                   <select id="ai-history-select" class="form-select">
                       <option value="">-- Lịch sử trích xuất --</option>
                   </select>
@@ -129,8 +129,8 @@ export default class PriceImportAI {
               <p class="mt-2 text-muted fw-bold blink-text">🤖 AI đang đọc và phân tích tài liệu (hỗ trợ cả PDF & Ảnh)... Vui lòng đợi...</p>
           </div>
 
-          <div class="flex-grow-1 p-0 overflow-auto bg-white d-flex flex-column">
-              <div id="ai-hotel-info-container" class="d-none bg-light p-3 border-bottom shadow-sm"></div>
+          <div class="flex-grow-1 p-0 overflow-auto bkg-light d-flex flex-column">
+              <div id="ai-hotel-info-container" class="d-none bkg-light p-3 border-bottom shadow-sm"></div>
 
               <div id="ai-data-grid-container" class="flex-grow-1 w-100 p-2">
                   <div class="text-center text-muted p-5 border border-dashed rounded m-3">

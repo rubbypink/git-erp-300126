@@ -6,13 +6,13 @@
         <div class="card-header nav-container px-3 border-bottom">
             <ul class="nav nav-tabs" id="settingTabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active fw-bold small" id="tab-settings-btn" onclick="A.UI.selectTab('tab-settings-content')" data-bs-toggle="tab" data-bs-target="#tab-settings-content" type="button" role="tab"><i class="fa-solid fa-cog me-2 text-success"></i>Cài Đặt</button>
+                    <button class="nav-link active fw-bold small" id="tab-settings-btn" data-bs-toggle="tab" data-bs-target="#tab-settings-content" type="button" role="tab"><i class="fa-solid fa-cog me-2 text-success"></i>Cài Đặt</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link fw-bold small" id="tab-theme-btn" onclick="A.UI.selectTab('tab-theme-content')" data-bs-toggle="tab" data-bs-target="#tab-theme-content" type="button" role="tab"><i class="fa-solid fa-palette me-2 text-primary"></i>Giao Diện & Màu Sắc</button>
+                    <button class="nav-link fw-bold small" id="tab-theme-btn" data-bs-toggle="tab" data-bs-target="#tab-theme-content" type="button" role="tab"><i class="fa-solid fa-palette me-2 text-primary"></i>Giao Diện & Màu Sắc</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link fw-bold small" id="tab-shortcut-btn" onclick="A.UI.selectTab('tab-shortcut-content')" data-bs-toggle="tab" data-bs-target="#tab-shortcut-content" type="button" role="tab"><i class="fa-solid fa-keyboard me-2 text-danger"></i>Phím Tắt (Hotkeys)</button>
+                    <button class="nav-link fw-bold small" id="tab-shortcut-btn" data-bs-toggle="tab" data-bs-target="#tab-shortcut-content" type="button" role="tab"><i class="fa-solid fa-keyboard me-2 text-danger"></i>Phím Tắt (Hotkeys)</button>
                 </li>
             </ul>
         </div>
@@ -356,7 +356,7 @@
                 </div>
             </div>
 
-            <div class="tab-pane fade d-none" id="tab-shortcut-content" role="tabpanel">
+            <div class="tab-pane fade" id="tab-shortcut-content" role="tabpanel">
                 <div class="card shadow-sm border-0">
                     <div class="card-body">
                         <h6 class="fw-bold text-danger border-bottom pb-2 mb-3"><i class="bi bi-command me-2"></i>Cấu hình phím tắt</h6>
@@ -428,7 +428,7 @@
 <template id="tmpl-price-pkg">
     <div class="card h-100 d-flex flex-column border-0 shadow-sm">
         <!-- Header: Mobile First - Stacked by default, Row on SM+ -->
-        <div class="card-header py-1 flex-shrink-0 bg-white border-bottom"></div>
+        <div class="card-header py-1 flex-shrink-0 bkg-light border-bottom"></div>
         <div class="card-body p-0 flex-grow-1 position-relative mt-2" style="overflow: hidden">
             <div id="tbl-container-tab2" class="flex-grow-1 overflow-hidden d-flex flex-column"></div>
         </div>
@@ -478,11 +478,11 @@
 
         <div class="container mt-5">
             <div class="card shadow-sm border-0">
-                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <div class="card-header bg-dark d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="fas fa-terminal me-2"></i>System Execute Console</h5>
                     <span class="badge bg-success">Async/Await Supported</span>
                 </div>
-                <div class="card-body bg-white">
+                <div class="card-body bkg-light">
                     <div class="form-group mb-3">
                         <label for="admin-run-input" class="form-label fw-bold">Javascript Code (Thực thi trực tiếp):</label>
                         <textarea id="admin-run-input" class="form-control font-monospace text-primary" rows="6" placeholder="Ví dụ 1 dòng: Object.values(APP_DATA.lists)&#10;Ví dụ nhiều dòng:&#10;let data = await API.get('users');&#10;return data;"></textarea>
@@ -534,7 +534,7 @@
 
                     <div class="form-group w-100">
                         <label class="form-label fw-bold">Kết quả hiển thị (Tree View):</label>
-                        <div id="admin-run-output" class="p-3 bg-dark border rounded font-monospace text-light shadow-inner" style="min-height: 150px; overflow-x: auto">
+                        <div id="admin-run-output" class="p-3 bg-dark border rounded font-monospace shadow-inner" style="min-height: 150px; overflow-x: auto">
                             <span class="text-secondary fst-italic">Waiting for execution...</span>
                         </div>
                     </div>

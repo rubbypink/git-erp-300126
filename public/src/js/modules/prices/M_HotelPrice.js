@@ -80,27 +80,27 @@ class HotelPriceManager {
       <style>
         .hp-matrix-table { border-collapse: separate; border-spacing: 0; }
         .hp-matrix-table th.sticky-left, .hp-matrix-table td.sticky-left { 
-          position: sticky; left: 0; z-index: 2; border-right: 2px solid #dee2e6 !important;
+          position: sticky; left: 0; border-right: 2px solid #dee2e6 !important;
         }
-        .hp-matrix-table th.sticky-top { position: sticky; top: 0; z-index: 3; }
+        .hp-matrix-table th.sticky-top { position: sticky; top: 0;}
         .hp-price-input:focus { background-color: #fff3cd !important; outline: none; }
         .hp-metadata-row { background-color: #e7f1ff !important; color: #0c4128; font-weight: 600; }
         .hp-room-name-input:focus { background-color: #e7f1ff !important; outline: none; }
       </style>
       <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <div class="card-header bkg-light py-3 border-bottom d-flex justify-content-between align-items-center">
           <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-table me-2"></i>Bảng Giá Khách Sạn</h5>
-          <div class="d-flex gap-2">
+          <div class="flex-center gap-2">
             <select id="hp-quick-select" data-source="hotel_price_schedules" class="smart-select form-select form-select-sm" style="width: 200px;"><option value="">-- Bảng giá đã lưu --</option></select>
-            <button id="hp-btn-clear-form" class="btn btn-outline-secondary btn-sm px-3"><i class="bi bi-eraser me-1"></i>Xóa Form</button>
-            <button id="hp-btn-delete-db" class="btn btn-outline-danger btn-sm px-3"><i class="bi bi-trash me-1"></i>Xóa Bảng Giá</button>
-            <button id="hp-btn-map-rooms" class="btn btn-outline-warning btn-sm px-3"><i class="bi bi-shuffle me-1"></i>Map Rooms</button>
-            <button id="hp-btn-update-hotel" class="btn btn-outline-primary btn-sm px-3"><i class="bi bi-building-up me-1"></i>Cập nhật Khách Sạn</button>
-            <button id="hp-btn-save" class="btn btn-success btn-sm px-3"><i class="bi bi-save me-1"></i>Lưu Bảng Giá</button>
+            <button id="hp-btn-clear-form" class="btn btn-outline-secondary btn-sm "><i class="bi bi-eraser me-1"></i>Xóa Form</button>
+            <button id="hp-btn-delete-db" class="btn btn-outline-danger btn-sm "><i class="bi bi-trash me-1"></i>Xóa Bảng Giá</button>
+            <button id="hp-btn-map-rooms" class="btn btn-outline-warning btn-sm "><i class="bi bi-shuffle me-1"></i>Map Rooms</button>
+            <button id="hp-btn-update-hotel" class="btn btn-outline-primary btn-sm "><i class="bi bi-building-up me-1"></i>Cập nhật Khách Sạn</button>
+            <button id="hp-btn-save" class="btn btn-success btn-sm "><i class="bi bi-save me-1"></i>Lưu Bảng Giá</button>
           </div>
         </div>
         <div class="card-body p-0 d-flex flex-column">
-          <div class="bg-light p-3 border-bottom">
+          <div class="bkg-light p-3 border-bottom">
             <div class="row g-2">
               <div class="col-md-3">
                 <select id="hp-sel-supplier" class="form-select form-select-sm shadow-sm"></select>
@@ -126,7 +126,7 @@ class HotelPriceManager {
             </div>
           </div>
           <div id="hp-matrix-wrapper" class="flex-grow-1 overflow-auto position-relative" style="min-height: 400px;">
-            <div id="hp-loading" class="position-absolute w-100 h-100 d-none justify-content-center align-items-center bg-white bg-opacity-75" style="z-index: 10;">
+            <div id="hp-loading" class="position-absolute w-100 h-100 d-none justify-content-center align-items-center bkg-light bg-opacity-75" style="z-index: 10;">
               <div class="spinner-border text-primary"></div>
             </div>
             <div id="hp-table-container" class="p-2"></div>
@@ -215,7 +215,7 @@ class HotelPriceManager {
             }
         });
 
-        getE('hp-quick-select').addEventListener('change', async (e) => {
+        $('#hp-quick-select').addEventListener('change', async (e) => {
             const docId = e.target.value;
             if (!docId) return;
             const parts = docId.split('_'); // Schema mới: HOTELID_PKGID_YEAR
@@ -314,7 +314,7 @@ class HotelPriceManager {
             }
 
             let html = `
-        <table class="table table-sm table-bordered align-middle text-center bg-white shadow-sm hp-matrix-table" style="font-size: 0.85rem;">
+        <table class="table table-sm table-bordered align-middle text-center bkg-light shadow-sm hp-matrix-table" style="font-size: 0.85rem;">
           <thead class="table-dark sticky-top">
             ${metadataHtml}
             <tr>
@@ -332,7 +332,7 @@ class HotelPriceManager {
                 const roomDisplayName = roomsMap[roomId] || roomId;
                 html += `
           <tr>
-            <td class="text-start fw-bold sticky-left bg-white shadow-sm p-0">
+            <td class="text-start fw-bold sticky-left bkg-light shadow-sm p-0">
               <input type="text" class="form-control form-control-sm border-0 fw-bold hp-room-name-input" data-room-id="${roomId}" value="${roomDisplayName}" style="background: transparent;">
             </td>
             ${activePeriods
@@ -505,6 +505,7 @@ class HotelPriceManager {
 
             const payload = {
                 id: docId,
+                name: `${hotel.name || ''} - ${yearNum}`,
                 info: {
                     hotelId,
                     hotelName: hotel ? hotel.name : hotelId,
@@ -513,7 +514,7 @@ class HotelPriceManager {
                     suppliers: Array.from(allSuppliers),
                     status: 'actived',
                     updatedAt: new Date().getTime(),
-                    updatedBy: CURRENT_USER?.name || 'system',
+                    updatedBy: CURRENT_USER?.name || 'AI',
                     viewConfig: this.state.viewConfig,
                 },
                 priceData: mergedPriceData,

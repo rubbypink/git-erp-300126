@@ -75,7 +75,7 @@ class NavBarMenuController {
                             class="nav-link ${btnClass} ${isActive ? 'active' : ''}" 
                             id="${tab.id}" 
                             data-bs-target="${tab.targetId}" 
-                            
+                            data-bs-toggle="tab" 
                             type="button" 
                             role="tab" 
                             aria-selected="${isActive}"

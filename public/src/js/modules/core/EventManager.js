@@ -27,7 +27,7 @@ class EventManager {
                 // Tab BẮT ĐẦU chuyển -> Đổi Context UI ngay lập tức
                 const targetId = event.target.getAttribute('data-bs-target')?.replace('#', '');
                 if (targetId && window.A?.UI?.toggleContextUI) {
-                    setTimeout(() => A.UI.toggleContextUI(targetId), 100);
+                    setTimeout(() => A.UI.toggleContextUI(targetId), 150);
                 }
             });
 
@@ -697,7 +697,7 @@ class EventManager {
                 bookingId = idMatch[1]; // Lấy đúng 5 chữ số đầu tiên làm booking_id
             }
 
-            LogicBase.onGridRowClick(bookingId, 'bookings');
+            B.onGridRowClick(bookingId, 'bookings');
         };
 
         this.on(

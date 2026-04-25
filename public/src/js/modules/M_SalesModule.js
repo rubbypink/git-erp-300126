@@ -5,8 +5,6 @@
  * =========================================================================
  */
 
-import DB_MANAGER from '/src/js/modules/db/DBManager.js';
-
 class SalesModule {
     // ─── 1. CONFIGURATION ──────────────────────────────────────────────
     static Config = {
@@ -31,6 +29,7 @@ class SalesModule {
         hotels: null,
         lists: null,
         isInitialized: false,
+        _loadRetryCount: 0, // Đếm số lần retry load form
     };
 
     /**
@@ -56,13 +55,13 @@ class SalesModule {
         try {
             // 1. Đồng bộ lists
             if (!this.State.lists || force) {
-                const lists = window.APP_DATA?.lists || (await DB_MANAGER.local.get('app_config', 'lists')) || {};
+                const lists = window.APP_DATA?.lists || (await A.DB.local.get('app_config', 'lists')) || {};
                 if (Object.keys(lists).length > 0) this.State.lists = lists;
             }
 
             // 2. Đồng bộ hotels
             if (!this.State.hotels || force) {
-                const hotels = window.APP_DATA?.hotels || (await DB_MANAGER.local.getCollection('hotels')) || [];
+                const hotels = window.APP_DATA?.hotels || (await A.DB.local.getCollection('hotels')) || [];
                 if (hotels.length > 0) this.State.hotels = Array.isArray(hotels) ? hotels : Object.values(hotels);
             }
 
@@ -93,6 +92,27 @@ class SalesModule {
                 StateProxy.clearSession();
                 StateProxy.suppressAutoBinding();
             }
+            // Nếu chưa có form, mở tab, chờ 150ms rồi GỌI LẠI CHÍNH NÓ VÀ RETURN (Rất quan trọng)
+            if (!getE('main-form')) {
+                // CHỐT CHẶN: Giới hạn số lần retry để tránh treo app trên mobile (max 10 lần ~ 1.5s)
+                if (SalesModule.State._loadRetryCount > 10) {
+                    SalesModule.State._loadRetryCount = 0;
+                    L.log('SalesModule: loadBookingToUI timeout - main-form not found', 'error');
+                    if (typeof showLoading === 'function') showLoading(false);
+                    return;
+                }
+
+                SalesModule.State._loadRetryCount++;
+                if (typeof A.UI?.activateTab === 'function') A.UI.activateTab('tab-form');
+
+                setTimeout(() => {
+                    SalesModule.UI.loadBookingToUI(bkData, customerData, detailsData);
+                }, 150);
+                return; // THOÁT NGAY LẬP TỨC! Không chạy code bên dưới khi DOM chưa sẵn sàng.
+            }
+
+            // Reset retry count khi đã tìm thấy form
+            SalesModule.State._loadRetryCount = 0;
 
             try {
                 // Chuẩn hóa bkData
@@ -107,15 +127,11 @@ class SalesModule {
                     }
                 }
 
-                // Helper First: Kích hoạt tab qua Helper hệ thống để an toàn trên Mobile
-                if (!getE('main-form') && typeof A !== 'undefined' && A.UI) {
-                    A.UI.activateTab('tab-form');
-                }
-
                 if (finalBkData) HD.setFormData('sub-booking-form', finalBkData);
 
                 let tbody = getE('detail-tbody');
                 if (!tbody) {
+                    await new Promise((resolve) => setTimeout(resolve, 150));
                     tbody = getE('detail-tbody');
                 }
 
@@ -123,6 +139,7 @@ class SalesModule {
                     tbody.innerHTML = '';
                     tbody.style.display = 'none';
                 } else {
+                    L._('sale.UI.loadBookingToUI: No detail-tbody found');
                     return; // Chốt chặn rủi ro: Thoát nếu DOM chưa sẵn sàng
                 }
 
@@ -147,26 +164,10 @@ class SalesModule {
                 if (detailsArr.length > 0) {
                     const sortedDetails = SalesModule.Logic.sortDetailsData(detailsArr);
                     // GHOST MODE: Không cần await addDetailRow, cứ để nó chạy ngầm
-                    await SalesModule.UI.addDetailRow(sortedDetails);
+                    SalesModule.UI.addDetailRow(sortedDetails);
                 }
-
                 tbody.style.display = 'table-row-group';
                 SalesModule.Logic.calcGrandTotal();
-
-                // XỬ LÝ LỖI MOBILE TAB SWITCH:
-                // try {
-                //     // Ưu tiên dùng Event Helper thay vì ép DOM của Bootstrap
-                //     if (typeof A !== 'undefined' && A.UI && typeof A.UI.activateTab === 'function') {
-                //         A.UI.activateTab('tab-form');
-                //     } else if (window.bootstrap) {
-                //         // Tìm TẤT CẢ trigger và chọn cái đang hiển thị (offsetParent !== null) trên Mobile
-                //         const tabTriggers = document.querySelectorAll('[data-bs-target="#tab-form"]');
-                //         const activeTrigger = Array.from(tabTriggers).find((el) => el.offsetParent !== null) || tabTriggers[0];
-                //         if (activeTrigger) bootstrap.Tab.getOrCreateInstance(activeTrigger).show();
-                //     }
-                // } catch (tabErr) {
-                //     L.log('SalesModule: Bỏ qua lỗi chuyển Tab UI trên Mobile', tabErr);
-                // }
             } catch (e) {
                 L.log('SalesModule.UI.loadBookingToUI Error:', e);
             } finally {
@@ -185,103 +186,109 @@ class SalesModule {
 
                 const isArray = Array.isArray(data);
                 const dataList = isArray ? data : [data];
-                const fragment = document.createDocumentFragment();
 
                 const lists = SalesModule.State.lists || window.APP_DATA?.lists || (await A.DB.local.get('app_config', 'lists')) || {};
                 const optsType = Object.values(lists.types || {})
                     .map((x) => `<option value="${x}">${x}</option>`)
                     .join('');
 
-                for (const rowData of dataList) {
-                    SalesModule.State.detailRowCount++;
-                    const idx = SalesModule.State.detailRowCount;
+                // Render theo lô (batch) để không block main thread trên mobile
+                const batchSize = 3;
+                for (let i = 0; i < dataList.length; i += batchSize) {
+                    const fragment = document.createDocumentFragment();
+                    const batch = dataList.slice(i, i + batchSize);
 
-                    const tr = document.createElement('tr');
-                    tr.id = `row-${idx}`;
-                    tr.setAttribute('data-row', idx);
-                    tr.innerHTML = `
-            <td class="text-center text-muted align-middle">${idx} <input type="hidden" data-field="id"></td>
-            <td>
-              <select class="form-select form-select-sm" data-field="service_type" onchange="SalesModule.Logic.onTypeChange(this)">
-              <option value="">-</option>${optsType}
-              </select>
-            </td>
-            <td>
-            <select 
-                class="smart-select form-select form-select-sm" 
-                data-source="hotels" 
-                data-searchable="true" 
-                data-field="hotel_name" 
-                data-onchange='SalesModule.Logic.onLocationChange(getE("${tr.id}").querySelector("[data-field=hotel_name]"));'
-            >
-                <option value="">- Vui lòng chọn -</option>
-            </select>
-        
-            </td>
-            <td>
-              <select class="form-select form-select-sm" data-field="service_name">
-                <option value="">-</option>
-              </select>
-            </td>
-            <td><input type="date" class="form-control form-control-sm" data-field="check_in" onchange="SalesModule.Logic.autoSetOrCalcDate(this.value, ${idx})" style="cursor:pointer"></td>
-            <td><input type="date" class="form-control form-control-sm" data-field="check_out" onchange="SalesModule.Logic.calcRow(${idx})"></td>
-            <td><input type="number" class="form-control form-control-sm number bg-light text-center" data-field="nights" readonly></td>
-            <td><input type="number" class="form-control form-control-sm number" data-field="quantity" value="1"></td>
-            <td>
-              <div class="input-group input-group-sm">
-                <input type="number" class="form-control number" data-field="unit_price" placeholder="-">
-                <button class="btn btn-outline-secondary px-1" type="button" onclick="SalesModule.Logic.lookupPrice(${idx})" title="Tra cứu giá">
-                  <i class="bi bi-search"></i>
-                </button>
-              </div>
-            </td>
-            <td><input type="number" class="form-control form-control-sm number" data-field="child_qty" placeholder="-"></td>
-            <td><input type="number" class="form-control form-control-sm number" data-field="child_price" placeholder="-"></td>
-            <td><input type="number" class="form-control form-control-sm number" data-field="surcharge" placeholder="-"></td>
-            <td><input type="number" class="form-control form-control-sm number" data-field="discount" placeholder="-"></td>
-            <td><input type="text" class="form-control form-control-sm number fw-bold text-end" data-field="total" readonly data-val="0"></td>
-            <td><input type="text" class="form-control form-control-sm" data-field="ref_code"></td>
-            <td><input type="text" class="form-control form-control-sm" data-field="note"></td>
-            <td class="text-center align-middle"><i class="fa-solid fa-times text-danger" style="cursor:pointer" onclick="SalesModule.UI.removeRow(${idx})"></i></td>
-          `;
+                    for (const rowData of batch) {
+                        SalesModule.State.detailRowCount++;
+                        const idx = SalesModule.State.detailRowCount;
 
-                    fragment.appendChild(tr);
+                        const tr = document.createElement('tr');
+                        tr.id = `row-${idx}`;
+                        tr.setAttribute('data-row', idx);
+                        tr.innerHTML = `
+                <td class="text-center text-muted align-middle">${idx} <input type="hidden" data-field="id"></td>
+                <td>
+                  <select class="form-select form-select-sm" data-field="service_type" onchange="SalesModule.Logic.onTypeChange(this)">
+                  <option value="">-</option>${optsType}
+                  </select>
+                </td>
+                <td>
+                <select 
+                    class="smart-select form-select form-select-sm" 
+                    data-source="hotels" 
+                    data-searchable="true" 
+                    data-field="hotel_name" 
+                    data-onchange='SalesModule.Logic.onLocationChange(getE("${tr.id}").querySelector("[data-field=hotel_name]"));'
+                >
+                    <option value="">- Vui lòng chọn -</option>
+                </select>
+            
+                </td>
+                <td>
+                  <select class="form-select form-select-sm" data-field="service_name">
+                    <option value="">-</option>
+                  </select>
+                </td>
+                <td><input type="date" class="form-control form-control-sm" data-field="check_in" onchange="SalesModule.Logic.autoSetOrCalcDate(this.value, ${idx})" style="cursor:pointer"></td>
+                <td><input type="date" class="form-control form-control-sm" data-field="check_out" onchange="SalesModule.Logic.calcRow(${idx})"></td>
+                <td><input type="number" class="form-control form-control-sm number bkg-light text-center" data-field="nights" readonly></td>
+                <td><input type="number" class="form-control form-control-sm number" data-field="quantity" value="1"></td>
+                <td>
+                  <div class="input-group input-group-sm">
+                    <input type="number" class="form-control number" data-field="unit_price" placeholder="-">
+                    <button class="btn btn-outline-secondary px-1" type="button" onclick="SalesModule.Logic.lookupPrice(${idx})" title="Tra cứu giá">
+                      <i class="bi bi-search"></i>
+                    </button>
+                  </div>
+                </td>
+                <td><input type="number" class="form-control form-control-sm number" data-field="child_qty" placeholder="-"></td>
+                <td><input type="number" class="form-control form-control-sm number" data-field="child_price" placeholder="-"></td>
+                <td><input type="number" class="form-control form-control-sm number" data-field="surcharge" placeholder="-"></td>
+                <td><input type="number" class="form-control form-control-sm number" data-field="discount" placeholder="-"></td>
+                <td><input type="text" class="form-control form-control-sm number fw-bold text-end" data-field="total" readonly data-val="0"></td>
+                <td><input type="text" class="form-control form-control-sm" data-field="ref_code"></td>
+                <td><input type="text" class="form-control form-control-sm" data-field="note"></td>
+                <td class="text-center align-middle"><i class="fa-solid fa-times text-danger" style="cursor:pointer" onclick="SalesModule.UI.removeRow(${idx})"></i></td>
+              `;
 
-                    // GHOST MODE: Gán giá trị tự nhiên, ASelect sẽ tự "đuổi kịp"
-                    if (rowData) {
-                        // Gán ID và Type trước
-                        setVal('[data-field="id"]', rowData.id || '', tr);
-                        setVal('[data-field="service_type"]', rowData.service_type, tr);
+                        fragment.appendChild(tr);
 
-                        // Gán Hotel Name - ASelect (Ghost) sẽ tự động cập nhật UI khi value này thay đổi
-                        setVal('[data-field="hotel_name"]', rowData.hotel_name, tr);
+                        // GHOST MODE: Gán giá trị tự nhiên, ASelect sẽ tự "đuổi kịp"
+                        if (rowData) {
+                            setVal('[data-field="id"]', rowData.id || '', tr);
+                            setVal('[data-field="service_type"]', rowData.service_type, tr);
+                            setVal('[data-field="hotel_name"]', rowData.hotel_name, tr);
 
-                        // Nạp danh sách dịch vụ chi tiết
-                        SalesModule.UI.updateServiceSelect(tr, rowData.hotel_name).then(() => {
-                            setVal('[data-field="service_name"]', rowData.service_name, tr);
-                        });
+                            SalesModule.UI.updateServiceSelect(tr, rowData.hotel_name).then(() => {
+                                setVal('[data-field="service_name"]', rowData.service_name, tr);
+                            });
 
-                        // Gán các trường còn lại
-                        setVal('[data-field="check_in"]', rowData.check_in, tr);
-                        setVal('[data-field="check_out"]', rowData.check_out, tr);
-                        setVal('[data-field="nights"]', rowData.nights, tr);
-                        setVal('[data-field="quantity"]', rowData.quantity, tr);
-                        setVal('[data-field="unit_price"]', rowData.unit_price, tr);
-                        setVal('[data-field="child_qty"]', rowData.child_qty, tr);
-                        setVal('[data-field="child_price"]', rowData.child_price, tr);
-                        setVal('[data-field="surcharge"]', rowData.surcharge, tr);
-                        setVal('[data-field="discount"]', rowData.discount, tr);
-                        setVal('[data-field="ref_code"]', rowData.ref_code, tr);
-                        setVal('[data-field="note"]', rowData.note, tr);
+                            setVal('[data-field="check_in"]', rowData.check_in, tr);
+                            setVal('[data-field="check_out"]', rowData.check_out, tr);
+                            setVal('[data-field="nights"]', rowData.nights, tr);
+                            setVal('[data-field="quantity"]', rowData.quantity, tr);
+                            setVal('[data-field="unit_price"]', rowData.unit_price, tr);
+                            setVal('[data-field="child_qty"]', rowData.child_qty, tr);
+                            setVal('[data-field="child_price"]', rowData.child_price, tr);
+                            setVal('[data-field="surcharge"]', rowData.surcharge, tr);
+                            setVal('[data-field="discount"]', rowData.discount, tr);
+                            setVal('[data-field="ref_code"]', rowData.ref_code, tr);
+                            setVal('[data-field="note"]', rowData.note, tr);
 
-                        SalesModule.Logic.calcRow(tr);
-                    } else if (idx === 1) {
-                        setVal('[data-field="service_type"]', 'Phòng', tr);
-                        SalesModule.Logic.onTypeChange(tr, true);
+                            SalesModule.Logic.calcRow(tr);
+                        } else if (idx === 1) {
+                            setVal('[data-field="service_type"]', 'Phòng', tr);
+                            SalesModule.Logic.onTypeChange(tr, true);
+                        }
+                    }
+
+                    tbody.appendChild(fragment);
+
+                    // Giải phóng main thread giữa các lô nếu có nhiều dòng (trên mobile)
+                    if (dataList.length > batchSize) {
+                        await new Promise((resolve) => requestAnimationFrame(resolve));
                     }
                 }
-
-                tbody.appendChild(fragment);
             } catch (e) {
                 L.log('SalesModule.UI.addDetailRow Error:', e);
             }
@@ -554,13 +561,13 @@ class SalesModule {
                         title: '<h5 class="fw-bold mb-0 text-primary"><i class="bi bi-search me-2"></i>Tùy chọn tra cứu giá</h5>',
                         html: `
               <div class="mt-3 text-start">
-                <label class="form-label fw-bold text-dark small mb-1">Gói giá áp dụng</label>
+                <label class="form-label fw-bold  small mb-1">Gói giá áp dụng</label>
                 <select id="swal-pkg-id" class="form-select form-select-sm shadow-sm border-primary">
                   ${pkgOptions}
                 </select>
               </div>
               <div class="mt-3 text-start">
-                <label class="form-label fw-bold text-dark small mb-1">Loại giá (Rate Type)</label>
+                <label class="form-label fw-bold  small mb-1">Loại giá (Rate Type)</label>
                 <select id="swal-rate-type" class="form-select form-select-sm shadow-sm border-primary">
                   ${rateOptions}
                 </select>
@@ -623,7 +630,7 @@ class SalesModule {
                             - Đơn giá bình quân: <b class="text-danger">${formatNumber(price)} /đêm</b><br/>
                             - Tổng ${result.nightCount} đêm: <b>${formatNumber(result.totalPrice)}</b><br/><br/>
                             <b>Chi tiết từng đêm:</b><br/>
-                            <div class="small text-muted p-2 bg-light border rounded" style="max-height: 120px; overflow-y: auto;">
+                            <div class="small text-muted p-2 bkg-light border rounded" style="max-height: 120px; overflow-y: auto;">
                                 ${result.details_price.replace(/\n/g, '<br/>')}
                             </div><br/>
                             <i class="text-secondary">Bạn có muốn áp dụng giá này vào form không?</i>
@@ -811,10 +818,10 @@ class SalesModule {
                     if (typeof showLoading === 'function') showLoading(true, 'Đang tìm kiếm trong kho lưu trữ...');
                     try {
                         // Kiểm tra xem booking có tồn tại trong archived_bookings không
-                        const bkRes = await DB_MANAGER.runQuery('archived_bookings', 'id', '==', bkId);
+                        const bkRes = await A.DB.runQuery('archived_bookings', 'id', '==', bkId);
                         if (bkRes && bkRes.length > 0) {
                             // Nếu có, lấy chi tiết từ archived_booking_details
-                            const detailsRes = await DB_MANAGER.runQuery('archived_booking_details', 'booking_id', '==', bkId);
+                            const detailsRes = await A.DB.runQuery('archived_booking_details', 'booking_id', '==', bkId);
                             if (detailsRes && detailsRes.length > 0) {
                                 sourceDetails = detailsRes;
                             }
@@ -1180,7 +1187,7 @@ class SalesModule {
 
                 let saveResult = null;
                 if (Object.keys(bookings || {}).filter((k) => k !== 'id').length > 0) {
-                    saveResult = await DB_MANAGER.saveRecord('bookings', bookings);
+                    saveResult = await A.DB.saveRecord('bookings', bookings);
                     if (saveResult?.success && bookings.status !== 'Hủy') {
                         if (!bookingId && window.A?.NotificationManager) {
                             window.NotificationManager.sendToAll('NEW BOOKING', `Booking mới: ${saveResult.id} - ${bookings.staff_id}`);
@@ -1193,7 +1200,7 @@ class SalesModule {
                                 if (!d.booking_id) d.booking_id = resolvedBkId;
                                 return Object.values(d);
                             });
-                            await DB_MANAGER.batchSave('booking_details', details);
+                            await A.DB.batchSave('booking_details', details);
                         }
 
                         await SalesModule.DB.saveCustomer();
@@ -1252,7 +1259,7 @@ class SalesModule {
                 }
 
                 if (typeof showLoading === 'function') showLoading(true, 'Đang lưu khách hàng...');
-                const res = await DB_MANAGER.saveRecord('customers', data);
+                const res = await A.DB.saveRecord('customers', data);
                 if (res?.id) {
                     const oldId = getVal('[data-field="customer_id"]');
                     if (!oldId || oldId != res.id) setVal('[data-field="customer_id"]', res.id);
@@ -1315,7 +1322,7 @@ class SalesModule {
             try {
                 const bkId = getVal('BK_ID');
                 if (!bkId) return 0;
-                const result = await DB_MANAGER.runQuery('transactions', 'booking_id', '==', bkId);
+                const result = await A.DB.runQuery('transactions', 'booking_id', '==', bkId);
                 if (!result || !Array.isArray(result)) {
                     setVal('BK_Deposit', 0);
                     return 0;
@@ -1342,14 +1349,14 @@ class SalesModule {
                 });
 
                 if (typeof setBtnLoading === 'function') setBtnLoading('btn-save-batch', true);
-                const res = await DB_MANAGER.batchSave('booking_details', booking_details);
+                const res = await A.DB.batchSave('booking_details', booking_details);
                 if (typeof setBtnLoading === 'function') setBtnLoading('btn-save-batch', false);
 
                 if (res) {
                     if (typeof logA === 'function') logA('Lưu thành công!', 'success');
                     if (typeof loadDataFromFirebase === 'function') loadDataFromFirebase();
                     if (typeof refreshForm === 'function') refreshForm();
-                    if (typeof activateTab === 'function') activateTab('tab-form');
+                    if (typeof A.UI?.activateTab === 'function') A.UI.activateTab('tab-form');
                 }
             } catch (e) {
                 L.log('SalesModule.DB.saveBatchDetails Error:', e);

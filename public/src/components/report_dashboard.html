@@ -1,155 +1,155 @@
 <div class="container-fluid p-3 report-container">
-  <div class="card shadow-sm mb-3 d-print-none">
-    <div class="card-body p-2 d-flex flex-wrap gap-2 align-items-center justify-content-between">
-      <div class="d-flex flex-wrap gap-2 align-items-center">
-        <div class="input-group input-group-sm" style="width: 280px">
-          <span class="input-group-text fw-bold text-primary"><i class="fas fa-chart-pie"></i></span>
-          <select class="form-select fw-bold text-primary" id="rpt-type-select" onchange="ReportModule.changeReportType(this.value)">
-            <optgroup class="sales-only" label="1. SALES (Kinh Doanh)">
-              <option value="SALES_GENERAL">Doanh Thu Tổng Hợp</option>
-              <option value="SALES_SERVICES">Chi tiết theo Dịch vụ</option>
-              <option value="SALES_MATRIX_STAFF">Doanh Thu NV Chi tiết</option>
-            </optgroup>
-            <optgroup class="op-only" label="2. OPERATOR (Điều Hành)">
-              <option value="OP_GENERAL">Tổng hợp Điều hành</option>
-              <option value="OP_DEBT_DETAIL">Công nợ chi tiết NCC</option>
-            </optgroup>
-            <optgroup class="acc-only" label="3. FINANCIAL (Tài Chính)">
-              <option value="FIN_GENERAL">Tổng hợp Lợi nhuận</option>
-              <option value="FIN_BY_TYPE">Lợi nhuận theo Loại DV</option>
-            </optgroup>
-            <optgroup class="admin-only" label="4. Admin Reports (Error & Debug)">
-              <option value="ERROR_PAYMENT">Lỗi Booking Thiếu Thanh Toán</option>
-              <option value="ERROR_SYNC_SA">Lỗi Sync Sales-Acc</option>
-              <option value="ERROR_BOOKING_DETAILS">Lỗi Booking Details</option>
-              <option value="ERROR_SYNC_SO">Lỗi Sync Sales-Op</option>
-              <option value="ERROR_CANCELLED_BOOKING">Lỗi Cập Nhật Booking Đã Hủy</option>
-            </optgroup>
-          </select>
-        </div>
+    <div class="card shadow-sm mb-3 d-print-none">
+        <div class="card-body p-2 d-flex flex-wrap gap-2 align-items-center justify-content-between">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <div class="input-group input-group-sm" style="width: 280px">
+                    <span class="input-group-text fw-bold text-primary"><i class="fas fa-chart-pie"></i></span>
+                    <select class="form-select fw-bold text-primary" id="rpt-type-select" onchange="ReportModule.changeReportType(this.value)">
+                        <optgroup class="sales-only" label="1. SALES (Kinh Doanh)">
+                            <option value="SALES_GENERAL">Doanh Thu Tổng Hợp</option>
+                            <option value="SALES_SERVICES">Chi tiết theo Dịch vụ</option>
+                            <option value="SALES_MATRIX_STAFF">Doanh Thu NV Chi tiết</option>
+                        </optgroup>
+                        <optgroup class="op-only" label="2. OPERATOR (Điều Hành)">
+                            <option value="OP_GENERAL">Tổng hợp Điều hành</option>
+                            <option value="OP_DEBT_DETAIL">Công nợ chi tiết NCC</option>
+                        </optgroup>
+                        <optgroup class="acc-only" label="3. FINANCIAL (Tài Chính)">
+                            <option value="FIN_GENERAL">Tổng hợp Lợi nhuận</option>
+                            <option value="FIN_BY_TYPE">Lợi nhuận theo Loại DV</option>
+                        </optgroup>
+                        <optgroup class="admin-only" label="4. Admin Reports (Error & Debug)">
+                            <option value="ERROR_PAYMENT">Lỗi Booking Thiếu Thanh Toán</option>
+                            <option value="ERROR_SYNC_SA">Lỗi Sync Sales-Acc</option>
+                            <option value="ERROR_BOOKING_DETAILS">Lỗi Booking Details</option>
+                            <option value="ERROR_SYNC_SO">Lỗi Sync Sales-Op</option>
+                            <option value="ERROR_CANCELLED_BOOKING">Lỗi Cập Nhật Booking Đã Hủy</option>
+                        </optgroup>
+                    </select>
+                </div>
 
-        <fieldset class="d-lg-flex gap-2 align-items-center p-2" style="min-width: 35vw">
-          <select class="form-select form-select-sm" id="rpt-date-type" style="width: max-content">
-            <option value="created_at">Ngày Đặt</option>
-            <option value="start_date">Ngày Đi</option>
-          </select>
-          <input type="date" id="rpt-date-from" class="form-control form-control-sm" />
-          <span class="d-none text-muted">-</span>
-          <input type="date" id="rpt-date-to" class="form-control form-control-sm" />
-          <select class="form-select form-select-sm" id="rpt-date-field" style="width: max-content" onchange="ReportModule.setQuickDate()">
-            <option value="Hôm nay">Hôm nay</option>
-            <option value="Tuần này">Tuần này</option>
-            <option value="Tháng này" selected>Tháng này</option>
-            <option value="Quý 1">Quý 1</option>
-            <option value="Quý 2">Quý 2</option>
-            <option value="Quý 3">Quý 3</option>
-            <option value="Quý 4">Quý 4</option>
-            <option value="Năm trước">Năm trước</option>
-            <option value="Năm nay">Năm nay</option>
-            <option value="all">Tất cả</option>
-            <option value="custom">Tùy chọn ngày...</option>
-          </select>
-          <button class="btn btn-primary btn-sm" onclick="ReportModule.refreshData()" title="Xem báo cáo" style="min-width: 2.5rem">
-            <i class="fas fa-filter"></i>
-          </button>
-        </fieldset>
-      </div>
-    </div>
-  </div>
-
-  <div class="row g-3 mb-3" id="rpt-kpi-area">
-    <div class="col-md-3 col-6">
-      <div class="card bg-primary h-100 shadow-sm">
-        <div class="card-body">
-          <h6 class="card-title text-dark small text-uppercase">Tổng Doanh Thu</h6>
-          <h3 class="fw-bold mb-0" id="kpi-1">0</h3>
-          <small id="kpi-sub-1">---</small>
+                <fieldset class="d-lg-flex gap-2 align-items-center p-2" style="min-width: 35vw">
+                    <select class="form-select form-select-sm" id="rpt-date-type" style="width: max-content">
+                        <option value="created_at">Ngày Đặt</option>
+                        <option value="start_date">Ngày Đi</option>
+                    </select>
+                    <input type="date" id="rpt-date-from" class="form-control form-control-sm" />
+                    <span class="d-none text-muted">-</span>
+                    <input type="date" id="rpt-date-to" class="form-control form-control-sm" />
+                    <select class="form-select form-select-sm" id="rpt-date-field" style="width: max-content" onchange="ReportModule.setQuickDate()">
+                        <option value="Hôm nay">Hôm nay</option>
+                        <option value="Tuần này">Tuần này</option>
+                        <option value="Tháng này" selected>Tháng này</option>
+                        <option value="Quý 1">Quý 1</option>
+                        <option value="Quý 2">Quý 2</option>
+                        <option value="Quý 3">Quý 3</option>
+                        <option value="Quý 4">Quý 4</option>
+                        <option value="Năm trước">Năm trước</option>
+                        <option value="Năm nay">Năm nay</option>
+                        <option value="all">Tất cả</option>
+                        <option value="custom">Tùy chọn ngày...</option>
+                    </select>
+                    <button class="btn btn-primary btn-sm" onclick="ReportModule.refreshData()" title="Xem báo cáo" style="min-width: 2.5rem">
+                        <i class="fas fa-filter"></i>
+                    </button>
+                </fieldset>
+            </div>
         </div>
-      </div>
-    </div>
-    <div class="col-md-3 col-6">
-      <div class="card bg-success h-100 shadow-sm">
-        <div class="card-body">
-          <h6 class="card-title text-dark small text-uppercase">Lợi Nhuận Gộp</h6>
-          <h3 class="fw-bold mb-0" id="kpi-2">0</h3>
-          <small id="kpi-sub-2">---</small>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3 col-6">
-      <div class="card bg-warning h-100 shadow-sm">
-        <div class="card-body">
-          <h6 class="card-title text-dark small text-uppercase">Công Nợ Phải Thu</h6>
-          <h3 class="fw-bold mb-0" id="kpi-3">0</h3>
-          <small id="kpi-sub-3">---</small>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3 col-6">
-      <div class="card bg-danger h-100 shadow-sm">
-        <div class="card-body">
-          <h6 class="card-title text-dark small text-uppercase">Công Nợ Phải Trả</h6>
-          <h3 class="fw-bold mb-0" id="kpi-4">0</h3>
-          <small id="kpi-sub-4">---</small>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card shadow-sm mb-3">
-    <div class="card-header py-2 cursor-pointer" style="cursor: pointer" onclick="ReportModule.toggleCharts()" title="Click để ẩn/hiện biểu đồ">
-      <div class="d-flex justify-content-between align-items-center">
-        <h6 class="mb-0 fw-bold text-primary"><i class="fas fa-chart-line me-2"></i>BIỂU ĐỒ THỐNG KÊ</h6>
-        <i class="fas fa-chevron-up text-muted" id="chart-toggle-icon"></i>
-      </div>
     </div>
 
-    <div class="card-body collapse" id="rpt-chart-container">
-      <div class="row g-3">
-        <div class="col-md-8">
-          <div style="height: 300px; position: relative">
-            <canvas id="rpt-chart-main"></canvas>
-          </div>
+    <div class="row g-3 mb-3" id="rpt-kpi-area">
+        <div class="col-md-3 col-6">
+            <div class="card bg-primary h-100 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title small text-uppercase">Tổng Doanh Thu</h6>
+                    <h3 class="fw-bold mb-0" id="kpi-1">0</h3>
+                    <small id="kpi-sub-1">---</small>
+                </div>
+            </div>
         </div>
-        <div class="col-md-4">
-          <div style="height: 300px; position: relative; display: flex; justify-content: center">
-            <canvas id="rpt-chart-pie"></canvas>
-          </div>
+        <div class="col-md-3 col-6">
+            <div class="card bg-success h-100 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title small text-uppercase">Lợi Nhuận Gộp</h6>
+                    <h3 class="fw-bold mb-0" id="kpi-2">0</h3>
+                    <small id="kpi-sub-2">---</small>
+                </div>
+            </div>
         </div>
-      </div>
+        <div class="col-md-3 col-6">
+            <div class="card bg-warning h-100 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title small text-uppercase">Công Nợ Phải Thu</h6>
+                    <h3 class="fw-bold mb-0" id="kpi-3">0</h3>
+                    <small id="kpi-sub-3">---</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card bg-danger h-100 shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title small text-uppercase">Công Nợ Phải Trả</h6>
+                    <h3 class="fw-bold mb-0" id="kpi-4">0</h3>
+                    <small id="kpi-sub-4">---</small>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <!-- Container cho ATable -->
-  <div id="rpt-table-container" class="card shadow-sm border-0" style="min-height: 400px;">
-    <div class="card-body p-0 d-flex flex-column h-100">
-      <!-- ATable sẽ được inject vào đây -->
-      <div class="text-center p-5 text-muted">
-        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
-        <p>Đang tải dữ liệu báo cáo...</p>
-      </div>
+    <div class="card shadow-sm mb-3">
+        <div class="card-header py-2 cursor-pointer" style="cursor: pointer" onclick="ReportModule.toggleCharts()" title="Click để ẩn/hiện biểu đồ">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold text-primary"><i class="fas fa-chart-line me-2"></i>BIỂU ĐỒ THỐNG KÊ</h6>
+                <i class="fas fa-chevron-up text-muted" id="chart-toggle-icon"></i>
+            </div>
+        </div>
+
+        <div class="card-body collapse" id="rpt-chart-container">
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <div style="height: 300px; position: relative">
+                        <canvas id="rpt-chart-main"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div style="height: 300px; position: relative; display: flex; justify-content: center">
+                        <canvas id="rpt-chart-pie"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
+
+    <!-- Container cho ATable -->
+    <div id="rpt-table-container" class="card shadow-sm border-0" style="min-height: 400px">
+        <div class="card-body p-0 d-flex flex-column h-100">
+            <!-- ATable sẽ được inject vào đây -->
+            <div class="text-center p-5 text-muted">
+                <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                <p>Đang tải dữ liệu báo cáo...</p>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
-  @media print {
-    .d-print-none {
-      display: none !important;
-    }
+    @media print {
+        .d-print-none {
+            display: none !important;
+        }
 
-    .card {
-      border: none !important;
-      box-shadow: none !important;
-    }
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
 
-    .modal-fullscreen .modal-body {
-      overflow: visible !important;
-    }
+        .modal-fullscreen .modal-body {
+            overflow: visible !important;
+        }
 
-    .report-container {
-      width: 100%;
-      padding: 0;
+        .report-container {
+            width: 100%;
+            padding: 0;
+        }
     }
-  }
 </style>

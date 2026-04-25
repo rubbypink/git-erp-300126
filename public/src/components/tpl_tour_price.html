@@ -1,727 +1,713 @@
 <template id="tmpl-tour-price">
-  <div class="tour-price-container d-flex flex-column h-100 animate__animated animate__fadeIn">
-    <!-- Header Section (UI Controls - Hidden when printing) -->
-    <header class="tour-price-header card shadow-sm mb-1 border-0 rounded-3 d-print-none">
-      <div class="card-body p-1 d-flex align-items-center gap-3 flex-wrap">
-        <div class="d-flex align-items-center gap-2 me-auto">
-          <div class="icon-box bg-primary-soft p-2 rounded-3">
-            <i class="fa-solid fa-tags text-primary fs-5"></i>
-          </div>
-          <div>
-            <h5 class="mb-0 fw-bold text-dark">QUẢN LÝ BẢNG GIÁ TOUR</h5>
-            <p class="text-muted small mb-0">Tra cứu và thiết lập giá bán tour/combo</p>
-          </div>
-        </div>
-
-        <div class="d-flex align-items-center gap-2">
-          <div class="input-group input-group-sm shadow-sm border-dark bg-secondary rounded-3" style="min-width: 200px;">
-            <select id="tp-tour-select" data-source="tour_prices" data-onchange='A.TourPrice.loadData(getVal("tp-tour-select"));' class="smart-select form-select border-0  ps-0">
-              <option value="">-- Chọn Tour/Combo --</option>
-            </select>
-          </div>
-
-          <div class="btn-group btn-group-sm gap-2 shadow-sm" style="min-width: 220px;">
-            <button id="tp-btn-open-base" class="btn btn-sm btn-warning op-only fw-bold" title="Quản lý Giá Gốc (OP/Admin)">
-              <i class="fa-solid fa-calculator me-1"></i> Giá Gốc
-            </button>
-            <button id="tp-btn-export" class="btn btn-sm btn-primary fw-bold" title="Xuất PDF">
-              <i class="fa-solid fa-file-pdf me-1"></i> Xuất PDF
-            </button>
-            <button id="tp-btn-export-image" class="btn btn-sm btn-success fw-bold" title="Tải Ảnh">
-              <i class="fa-solid fa-image me-1"></i> Tải Ảnh
-            </button>
-          </div>
-          <div class="input-group input-group-sm me-2 border rounded-2 overflow-hidden shadow-sm d-none d-md-flex justify-content-center" style="max-width: fit-content;">
-            <button id="tp-btn-zoom-out" class="btn btn-sm btn-light border-0" title="Thu nhỏ"><i class="fa-solid fa-minus"></i></button>
-            <span id="tp-zoom-text" class="input-group-text bg-light border-0 fw-bold small px-1" style="min-width: 30px; justify-content: center;">100%</span>
-            <button id="tp-btn-zoom-in" class="btn btn-sm btn-light border-0" title="Phóng to"><i class="fa-solid fa-plus"></i></button>
-          </div>
-        </div>
-      </div>
-    </header>
-    <!-- Main Content Section (A4 Document Preview) -->
-    <main class="tour-price-content flex-grow-1 overflow-auto p-0 bg-light d-flex justify-content-center">
-      <article id="tp-a4-document" class="a4-page shadow-lg py-3 px-5 d-flex flex-column" data-view-mode="1">
-        <!-- Logo & Brand (Cố định - Không zoom) -->
-        <div class="text-center mb-2">
-          <img id="tp-logo-toggle" src="src/images/favicon.webp" alt="9 Trip Logo" class="brand-logo mb-0 cursor-pointer" style="height: 65px;">
-          <div class="brand-name text-uppercase italic fw-bold small text-muted mt-0" style="font-size: 0.5rem; letter-spacing: 2px;">Công ty TNHH 9 Trip Phú Quốc </div>
-        </div>
-
-        <!-- Nội dung có thể Zoom (Sử dụng flex-grow-1) -->
-        <div class="a4-zoom-wrapper flex-grow-1 d-flex flex-column">
-          <!-- Format 1: Bảng giá ưu đãi -->
-          <div id="tp-view-1">
-            <!-- Tour Title & Subtitle -->
-            <div class="text-center mb-2">
-              <h2 id="tp-doc-title" class="doc-title fw-bold mb-0 text-uppercase">[ƯU ĐÃI] TOUR "KHÁM PHÁ ĐẢO NGỌC THIÊN ĐƯỜNG"</h2>
-              <p id="tp-doc-duration" class="doc-subtitle italic text-muted mb-0">(4 Ngày 3 Đêm Trọn Gói)</p>
-
-              <div class="price-highlight">
-                <span id="tp-doc-list-price" class="inline-flex strikethrough italic text-muted fs-5 m-0">4.890</span><span class="inline-flex strikethrough italic text-muted fs-5 mb-0">.000/Khách</span>
-                <div class="main-price-box mt-0">
-                  <span class="fw-bold fs-3 text-underline">CHỈ TỪ: </span>
-                  <span id="tp-doc-selling-price" class="fw-bold fs-2 text-danger">4.190</span>
-                  <span class="fw-bold fs-2 text-danger">.000/Khách</span>
+    <div class="tour-price-container d-flex flex-column h-100 animate__animated animate__fadeIn">
+        <!-- Header Section (UI Controls - Hidden when printing) -->
+        <header class="tour-price-header card shadow-sm mb-1 border-0 rounded-3 d-print-none">
+            <div class="card-body p-1 d-flex align-items-center gap-3 flex-wrap">
+                <div class="d-flex align-items-center gap-2 me-auto">
+                    <div class="icon-box bg-primary-soft p-2 rounded-3">
+                        <i class="fa-solid fa-tags text-primary fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0 fw-bold">QUẢN LÝ BẢNG GIÁ TOUR</h5>
+                        <p class="text-muted small mb-0">Tra cứu và thiết lập giá bán tour/combo</p>
+                    </div>
                 </div>
-              </div>
-            </div>
 
-            <!-- Table 1: Bảng Giá Ưu Đãi -->
-            <section class="mb-3">
-              <div class="d-flex justify-content-between align-items-end mb-1">
-                <span class="fw-bold text-dark small"><i class="fa-solid fa-star text-warning me-1"></i>Bảng Giá Ưu Đãi</span>
-                <span class="italic text-muted" style="font-size: 0.65rem;">Đơn vị tính: 1.000 VND</span>
-              </div>
-              <table class="table align-middle text-center doc-table mb-0">
-                <thead class="table-secondary">
-                  <tr class="bg-grey-header">
-                    <th width="30%">Số Người Lớn</th>
-                    <th width="35%">Mức Giảm Giá<br><small class="italic fw-normal">(mỗi khách)</small></th>
-                    <th width="35%">Giá Bán Ưu Đãi<br><small class="italic fw-normal">(mỗi khách)</small></th>
-                  </tr>
-                </thead>
-                <tbody id="tp-doc-adult-body">
-                  <!-- Rendered by JS -->
-                </tbody>
-              </table>
-            </section>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="input-group input-group-sm shadow-sm border-dark bg-secondary rounded-3" style="min-width: 200px">
+                        <select id="tp-tour-select" data-source="tour_prices" data-onchange='A.TourPrice.loadData(getVal("tp-tour-select"));' class="smart-select form-select border-0 ps-0">
+                            <option value="">-- Chọn Tour/Combo --</option>
+                        </select>
+                    </div>
 
-            <!-- Table 2: Phụ Thu Trẻ Em -->
-            <section class="mb-3">
-              <div class="mb-1 fw-bold text-dark small"><i class="fa-solid fa-child text-primary me-1"></i>Giá Trẻ Em</div>
-              <table class="table align-middle text-center doc-table mb-0">
-                <thead class=table-secondary>
-                  <tr class="bg-grey-header">
-                    <th width="20%">Tuổi/Chiều Cao</th>
-                    <th width="20%">Từ 2-3 tuổi</th>
-                    <th width="20%">Từ 4-5 tuổi</th>
-                    <th width="20%">Từ 6-11 tuổi</th>
-                    <th width="20%">Từ 12 tuổi</th>
-                  </tr>
-                </thead>
-                <tbody id="tp-doc-child-body">
-                  <!-- Rendered by JS -->
-                </tbody>
-              </table>
-            </section>
-
-            <!-- Section 3: Lưu Ý (2 Columns) -->
-            <section class="mb-3">
-              <div class="row g-0 doc-note-box">
-                <!-- Left: Ghi chú & Quy định -->
-                <div class="col-7 border-end border-dark">
-                  <div class="bg-danger-soft text-center py-1 border-bottom border-dark">
-                    <h6 class="mb-0 fw-bold small">*** GHI CHÚ & QUY ĐỊNH ***</h6>
-                  </div>
-                  <div id="tp-doc-notes" class="p-2 small lh-sm" style="font-size: 0.75rem;">
-                    <!-- Rendered by JS -->
-                  </div>
+                    <div class="btn-group btn-group-sm gap-2 shadow-sm" style="min-width: 220px">
+                        <button id="tp-btn-open-base" class="btn btn-sm btn-warning op-only fw-bold" title="Quản lý Giá Gốc (OP/Admin)"><i class="fa-solid fa-calculator me-1"></i> Giá Gốc</button>
+                        <button id="tp-btn-export" class="btn btn-sm btn-primary fw-bold" title="Xuất PDF"><i class="fa-solid fa-file-pdf me-1"></i> Xuất PDF</button>
+                        <button id="tp-btn-export-image" class="btn btn-sm btn-success fw-bold" title="Tải Ảnh"><i class="fa-solid fa-image me-1"></i> Tải Ảnh</button>
+                    </div>
+                    <div class="input-group input-group-sm me-2 border rounded-2 overflow-hidden shadow-sm d-none d-md-flex justify-content-center" style="max-width: fit-content">
+                        <button id="tp-btn-zoom-out" class="btn btn-sm btn-light border-0" title="Thu nhỏ"><i class="fa-solid fa-minus"></i></button>
+                        <span id="tp-zoom-text" class="input-group-text bkg-light border-0 fw-bold small px-1" style="min-width: 30px; justify-content: center">100%</span>
+                        <button id="tp-btn-zoom-in" class="btn btn-sm btn-light border-0" title="Phóng to"><i class="fa-solid fa-plus"></i></button>
+                    </div>
                 </div>
-                <!-- Right: Phụ thu -->
-                <div class="col-5">
-                  <div class="bg-danger-soft text-center py-1 border-bottom border-dark">
-                    <h6 class="mb-0 fw-bold small">*** PHỤ THU LỄ/TẾT ***</h6>
-                  </div>
-                  <div id="tp-doc-surcharges" class="p-2 small lh-sm" style="font-size: 0.75rem;">
-                    <!-- Rendered by JS -->
-                  </div>
+            </div>
+        </header>
+        <!-- Main Content Section (A4 Document Preview) -->
+        <main class="tour-price-content flex-grow-1 overflow-auto p-0 bkg-light d-flex justify-content-center">
+            <article id="tp-a4-document" class="a4-page shadow-lg py-3 px-5 d-flex flex-column" data-view-mode="1">
+                <!-- Logo & Brand (Cố định - Không zoom) -->
+                <div class="text-center mb-2">
+                    <img id="tp-logo-toggle" src="src/images/favicon.webp" alt="9 Trip Logo" class="brand-logo mb-0 cursor-pointer" style="height: 65px" />
+                    <div class="brand-name text-uppercase italic fw-bold small text-muted mt-0" style="font-size: 0.5rem; letter-spacing: 2px">Công ty TNHH 9 Trip Phú Quốc</div>
                 </div>
-              </div>
-            </section>
 
-            <!-- Footer Message -->
-            <div class="text-center mb-2">
-              <h5 class="italic fw-bold text-dark mb-0">Cám ơn Quý Khách đã tin tưởng và lựa chọn 9 Trip 💖💖💖</h5>
-            </div>
-          </div>
-          <!-- Format 2: Bảng giá bán (Style Modal Base) -->
-          <div id="tp-view-2" class="justify-content-center align-items-center gap-3 px-4">
-            <div class="text-center mb-0">
-              <h2 id="tp-doc-title-f2" class="doc-title fw-bold mb-0 text-uppercase">[ƯU ĐÃI] TOUR "KHÁM PHÁ ĐẢO NGỌC THIÊN ĐƯỜNG"</h2>
-              <p id="tp-doc-duration-f2" class="doc-subtitle italic text-muted mb-0">(4 Ngày 3 Đêm Trọn Gói)</p>
-              <div class="price-highlight">
-                <span id="tp-doc-list-price-f2" class="inline-flex strikethrough italic text-muted fs-5 m-0">4.890</span><span class="inline-flex strikethrough italic text-muted fs-5 mb-0">.000/Khách</span>
-                <div class="main-price-box mt-0">
-                  <span class="fw-bold fs-3 text-underline">CHỈ TỪ: </span>
-                  <span id="tp-doc-selling-price-f2" class="fw-bold fs-2 text-danger">4.190</span>
-                  <span class="fw-bold fs-2 text-danger">.000/Khách</span>
+                <!-- Nội dung có thể Zoom (Sử dụng flex-grow-1) -->
+                <div class="a4-zoom-wrapper flex-grow-1 d-flex flex-column">
+                    <!-- Format 1: Bảng giá ưu đãi -->
+                    <div id="tp-view-1">
+                        <!-- Tour Title & Subtitle -->
+                        <div class="text-center mb-2">
+                            <h2 id="tp-doc-title" class="doc-title fw-bold mb-0 text-uppercase">[ƯU ĐÃI] TOUR "KHÁM PHÁ ĐẢO NGỌC THIÊN ĐƯỜNG"</h2>
+                            <p id="tp-doc-duration" class="doc-subtitle italic text-muted mb-0">(4 Ngày 3 Đêm Trọn Gói)</p>
+
+                            <div class="price-highlight">
+                                <span id="tp-doc-list-price" class="inline-flex strikethrough italic text-muted fs-5 m-0">4.890</span><span class="inline-flex strikethrough italic text-muted fs-5 mb-0">.000/Khách</span>
+                                <div class="main-price-box mt-0">
+                                    <span class="fw-bold fs-3 text-underline">CHỈ TỪ: </span>
+                                    <span id="tp-doc-selling-price" class="fw-bold fs-2 text-danger">4.190</span>
+                                    <span class="fw-bold fs-2 text-danger">.000/Khách</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Table 1: Bảng Giá Ưu Đãi -->
+                        <section class="mb-3">
+                            <div class="d-flex justify-content-between align-items-end mb-1">
+                                <span class="fw-bold small"><i class="fa-solid fa-star text-warning me-1"></i>Bảng Giá Ưu Đãi</span>
+                                <span class="italic text-muted" style="font-size: 0.65rem">Đơn vị tính: 1.000 VND</span>
+                            </div>
+                            <table class="table align-middle text-center doc-table mb-0">
+                                <thead class="table-secondary">
+                                    <tr class="bg-grey-header">
+                                        <th width="30%">Số Người Lớn</th>
+                                        <th width="35%">Mức Giảm Giá<br /><small class="italic fw-normal">(mỗi khách)</small></th>
+                                        <th width="35%">Giá Bán Ưu Đãi<br /><small class="italic fw-normal">(mỗi khách)</small></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tp-doc-adult-body">
+                                    <!-- Rendered by JS -->
+                                </tbody>
+                            </table>
+                        </section>
+
+                        <!-- Table 2: Phụ Thu Trẻ Em -->
+                        <section class="mb-3">
+                            <div class="mb-1 fw-bold small"><i class="fa-solid fa-child text-primary me-1"></i>Giá Trẻ Em</div>
+                            <table class="table align-middle text-center doc-table mb-0">
+                                <thead class="table-secondary">
+                                    <tr class="bg-grey-header">
+                                        <th width="20%">Tuổi/Chiều Cao</th>
+                                        <th width="20%">Từ 2-3 tuổi</th>
+                                        <th width="20%">Từ 4-5 tuổi</th>
+                                        <th width="20%">Từ 6-11 tuổi</th>
+                                        <th width="20%">Từ 12 tuổi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tp-doc-child-body">
+                                    <!-- Rendered by JS -->
+                                </tbody>
+                            </table>
+                        </section>
+
+                        <!-- Section 3: Lưu Ý (2 Columns) -->
+                        <section class="mb-3">
+                            <div class="row g-0 doc-note-box">
+                                <!-- Left: Ghi chú & Quy định -->
+                                <div class="col-7 border-end border-dark">
+                                    <div class="bg-danger-soft text-center py-1 border-bottom border-dark">
+                                        <h6 class="mb-0 fw-bold small">*** GHI CHÚ & QUY ĐỊNH ***</h6>
+                                    </div>
+                                    <div id="tp-doc-notes" class="p-2 small lh-sm" style="font-size: 0.75rem">
+                                        <!-- Rendered by JS -->
+                                    </div>
+                                </div>
+                                <!-- Right: Phụ thu -->
+                                <div class="col-5">
+                                    <div class="bg-danger-soft text-center py-1 border-bottom border-dark">
+                                        <h6 class="mb-0 fw-bold small">*** PHỤ THU LỄ/TẾT ***</h6>
+                                    </div>
+                                    <div id="tp-doc-surcharges" class="p-2 small lh-sm" style="font-size: 0.75rem">
+                                        <!-- Rendered by JS -->
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Footer Message -->
+                        <div class="text-center mb-2">
+                            <h5 class="italic fw-bold mb-0">Cám ơn Quý Khách đã tin tưởng và lựa chọn 9 Trip 💖💖💖</h5>
+                        </div>
+                    </div>
+                    <!-- Format 2: Bảng giá bán (Style Modal Base) -->
+                    <div id="tp-view-2" class="justify-content-center align-items-center gap-3 px-4">
+                        <div class="text-center mb-0">
+                            <h2 id="tp-doc-title-f2" class="doc-title fw-bold mb-0 text-uppercase">[ƯU ĐÃI] TOUR "KHÁM PHÁ ĐẢO NGỌC THIÊN ĐƯỜNG"</h2>
+                            <p id="tp-doc-duration-f2" class="doc-subtitle italic text-muted mb-0">(4 Ngày 3 Đêm Trọn Gói)</p>
+                            <div class="price-highlight">
+                                <span id="tp-doc-list-price-f2" class="inline-flex strikethrough italic text-muted fs-5 m-0">4.890</span><span class="inline-flex strikethrough italic text-muted fs-5 mb-0">.000/Khách</span>
+                                <div class="main-price-box mt-0">
+                                    <span class="fw-bold fs-3 text-underline">CHỈ TỪ: </span>
+                                    <span id="tp-doc-selling-price-f2" class="fw-bold fs-2 text-danger">4.190</span>
+                                    <span class="fw-bold fs-2 text-danger">.000/Khách</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bảng Giá Ưu Đãi (Người lớn) -->
+                        <div class="card shadow-sm border-0 mb-0 rounded-3 overflow-hidden border-primary w-100">
+                            <div class="card-header bg-primary py-2 fw-bold d-flex align-items-center justify-content-between">
+                                <span><i class="fa-solid fa-star me-2"></i> BẢNG GIÁ ƯU ĐÃI</span>
+                                <span class="italic fw-normal" style="font-size: 0.65rem">Đơn vị tính: 1.000 VND</span>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-0 text-center align-middle doc-table-f2">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="30%">Số Người Lớn</th>
+                                            <th width="35%">Mức Giảm Giá<br /><small class="italic fw-normal">(mỗi khách)</small></th>
+                                            <th width="35%" class="text-primary">Giá Bán Ưu Đãi<br /><small class="italic fw-normal">(mỗi khách)</small></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tp-doc-adult-body-f2"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Bảng Giá Trẻ Em -->
+                        <div class="card shadow-sm border-0 mb-0 rounded-3 overflow-hidden border-success w-100">
+                            <div class="card-header bg-success py-2 fw-bold"><i class="fa-solid fa-child me-2"></i> GIÁ TRẺ EM</div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0 text-center align-middle doc-table-f2">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="20%">Tuổi/Chiều Cao</th>
+                                            <th width="20%">Từ 2-3 tuổi</th>
+                                            <th width="20%">Từ 4-5 tuổi</th>
+                                            <th width="20%">Từ 6-11 tuổi</th>
+                                            <th width="20%">Từ 12 tuổi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tp-doc-child-body-f2"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Section: Lưu Ý & Phụ Thu -->
+                        <div class="row g-3 mb-0 w-100">
+                            <div class="col-7">
+                                <div class="card shadow-sm border-0 h-100 rounded-3 overflow-hidden border-dark">
+                                    <div class="card-header bg-dark py-2 fw-bold text-center">*** GHI CHÚ & QUY ĐỊNH ***</div>
+                                    <div id="tp-doc-notes-f2" class="card-body p-2 small lh-sm" style="font-size: 0.75rem"></div>
+                                </div>
+                            </div>
+                            <div class="col-5">
+                                <div class="card shadow-sm border-0 h-100 rounded-3 overflow-hidden border-danger">
+                                    <div class="card-header bg-danger py-2 fw-bold text-center"><i class="fa-solid fa-calendar-plus me-2"></i> PHỤ THU LỄ/TẾT</div>
+                                    <div id="tp-doc-surcharges-f2" class="card-body p-2 small lh-sm" style="font-size: 0.75rem"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-center mt-0 pb-0">
+                            <h5 class="italic fw-bold mb-0">Cám ơn Quý Khách đã tin tưởng và lựa chọn 9 Trip 💖💖💖</h5>
+                        </div>
+                    </div>
                 </div>
-              </div>
-            </div>
 
-            <!-- Bảng Giá Ưu Đãi (Người lớn) -->
-            <div class="card shadow-sm border-0 mb-0 rounded-3 overflow-hidden border-primary w-100">
-              <div class="card-header bg-primary text-white py-2 fw-bold d-flex align-items-center justify-content-between">
-                <span><i class="fa-solid fa-star me-2"></i> BẢNG GIÁ ƯU ĐÃI</span>
-                <span class="italic fw-normal" style="font-size: 0.65rem;">Đơn vị tính: 1.000 VND</span>
-              </div>
-              <div class="table-responsive">
-                <table class="table table-sm table-hover mb-0 text-center align-middle doc-table-f2">
-                  <thead class="table-light">
-                    <tr>
-                      <th width="30%">Số Người Lớn</th>
-                      <th width="35%">Mức Giảm Giá<br><small class="italic fw-normal">(mỗi khách)</small></th>
-                      <th width="35%" class="text-primary">Giá Bán Ưu Đãi<br><small class="italic fw-normal">(mỗi khách)</small></th>
-                    </tr>
-                  </thead>
-                  <tbody id="tp-doc-adult-body-f2"></tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Bảng Giá Trẻ Em -->
-            <div class="card shadow-sm border-0 mb-0 rounded-3 overflow-hidden border-success w-100">
-              <div class="card-header bg-success text-white py-2 fw-bold">
-                <i class="fa-solid fa-child me-2"></i> GIÁ TRẺ EM
-              </div>
-              <div class="table-responsive">
-                <table class="table table-sm table-bordered mb-0 text-center align-middle doc-table-f2">
-                  <thead class="table-light">
-                    <tr>
-                      <th width="20%">Tuổi/Chiều Cao</th>
-                      <th width="20%">Từ 2-3 tuổi</th>
-                      <th width="20%">Từ 4-5 tuổi</th>
-                      <th width="20%">Từ 6-11 tuổi</th>
-                      <th width="20%">Từ 12 tuổi</th>
-                    </tr>
-                  </thead>
-                  <tbody id="tp-doc-child-body-f2"></tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Section: Lưu Ý & Phụ Thu -->
-            <div class="row g-3 mb-0 w-100">
-              <div class="col-7">
-                <div class="card shadow-sm border-0 h-100 rounded-3 overflow-hidden border-dark">
-                  <div class="card-header bg-dark text-white py-2 fw-bold text-center">
-                    *** GHI CHÚ & QUY ĐỊNH ***
-                  </div>
-                  <div id="tp-doc-notes-f2" class="card-body p-2 small lh-sm" style="font-size: 0.75rem;"></div>
-                </div>
-              </div>
-              <div class="col-5">
-                <div class="card shadow-sm border-0 h-100 rounded-3 overflow-hidden border-danger">
-                  <div class="card-header bg-danger text-white py-2 fw-bold text-center">
-                    <i class="fa-solid fa-calendar-plus me-2"></i> PHỤ THU LỄ/TẾT
-                  </div>
-                  <div id="tp-doc-surcharges-f2" class="card-body p-2 small lh-sm" style="font-size: 0.75rem;"></div>
-                </div>
-              </div>
-            </div>
-
-            <div class="text-center mt-0 pb-0">
-              <h5 class="italic fw-bold text-dark mb-0">Cám ơn Quý Khách đã tin tưởng và lựa chọn 9 Trip 💖💖💖</h5>
-            </div>
-          </div>
-        </div>
-
-        <!-- Contact Bar (Cố định - Không zoom) -->
-        <footer class="doc-footer border-top border-primary pt-1 mt-auto">
-          <div class="d-flex justify-content-between align-items-center small text-primary fw-bold" style="font-size: 0.7rem;">
-            <span>Công ty TNHH 9 Trip Phú Quốc</span>
-            <span><i class="fa-solid fa-phone me-1"></i> (84) 0877.901.901</span>
-            <span><i class="fa-solid fa-globe me-1"></i> info@9tripphuquoc.com</span>
-          </div>
-        </footer>
-      </article>
-    </main>
-  </div>
+                <!-- Contact Bar (Cố định - Không zoom) -->
+                <footer class="doc-footer border-top border-primary pt-1 mt-auto">
+                    <div class="d-flex justify-content-between align-items-center small text-primary fw-bold" style="font-size: 0.7rem">
+                        <span>Công ty TNHH 9 Trip Phú Quốc</span>
+                        <span><i class="fa-solid fa-phone me-1"></i> (84) 0877.901.901</span>
+                        <span><i class="fa-solid fa-globe me-1"></i> info@9tripphuquoc.com</span>
+                    </div>
+                </footer>
+            </article>
+        </main>
+    </div>
 </template>
 
 <!-- Template cho Modal Giá Gốc (Giữ nguyên logic input) -->
 <template id="tmpl-tp-modal-base">
-  <div class="tp-modal-content p-3">
-    <!-- Tour Info Section -->
-    <div class="card shadow-sm border-0 mb-3 rounded-3">
-      <div class="card-body p-3">
-        <div class="row g-3">
-          <div class="col-md-2">
-            <label class="form-label small fw-bold text-muted mb-1">Mã Tour (ID)</label>
-            <input type="text" id="tp-base-id" class="form-control form-control-sm fw-bold text-danger" placeholder="TOUR_CODE">
-          </div>
-          <div class="col-md-4">
-            <label class="form-label small fw-bold text-muted mb-1">Tên Tour</label>
-            <input type="text" id="tp-base-name" class="form-control form-control-sm fw-bold" placeholder="Nhập tên tour...">
-          </div>
-          <div class="col-md-2">
-            <label class="form-label small fw-bold text-muted mb-1">Thời lượng</label>
-            <input type="text" id="tp-base-duration" class="form-control form-control-sm" placeholder="VD: 3N2Đ">
-          </div>
-          <div class="col-md-2">
-            <label class="form-label small fw-bold text-muted mb-1">Giá Niêm Yết</label>
-            <input type="text" id="tp-base-list-price" class="form-control form-control-sm number fw-bold text-primary">
-          </div>
-          <div class="col-md-2">
-            <label class="form-label small fw-bold text-muted mb-1">Trạng thái</label>
-            <select id="tp-base-status" class="form-select form-select-sm fw-bold">
-              <option value="draft">NHÁP</option>
-              <option value="published">CÔNG BỐ</option>
-            </select>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label small fw-bold text-muted mb-1">Câu Hook (Quảng cáo)</label>
-            <input type="text" id="tp-base-hook" class="form-control form-control-sm" placeholder="VD: Tour hot nhất mùa hè...">
-          </div>
-          <div class="col-md-3">
-            <label class="form-label small fw-bold text-muted mb-1">Lợi nhuận NL (Dự kiến)</label>
-            <div class="input-group input-group-sm">
-              <input type="text" id="tp-base-profit-adult" class="form-control number fw-bold text-success">
-              <span class="input-group-text">₫</span>
+    <div class="tp-modal-content p-3">
+        <!-- Tour Info Section -->
+        <div class="card shadow-sm border-0 mb-3 rounded-3">
+            <div class="card-body p-3">
+                <div class="row g-3">
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold text-muted mb-1">Mã Tour (ID)</label>
+                        <input type="text" id="tp-base-id" class="form-control form-control-sm fw-bold text-danger" placeholder="TOUR_CODE" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold text-muted mb-1">Tên Tour</label>
+                        <input type="text" id="tp-base-name" class="form-control form-control-sm fw-bold" placeholder="Nhập tên tour..." />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold text-muted mb-1">Thời lượng</label>
+                        <input type="text" id="tp-base-duration" class="form-control form-control-sm" placeholder="VD: 3N2Đ" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold text-muted mb-1">Giá Niêm Yết</label>
+                        <input type="text" id="tp-base-list-price" class="form-control form-control-sm number fw-bold text-primary" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold text-muted mb-1">Trạng thái</label>
+                        <select id="tp-base-status" class="form-select form-select-sm fw-bold">
+                            <option value="draft">NHÁP</option>
+                            <option value="published">CÔNG BỐ</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-muted mb-1">Câu Hook (Quảng cáo)</label>
+                        <input type="text" id="tp-base-hook" class="form-control form-control-sm" placeholder="VD: Tour hot nhất mùa hè..." />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold text-muted mb-1">Lợi nhuận NL (Dự kiến)</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" id="tp-base-profit-adult" class="form-control number fw-bold text-success" />
+                            <span class="input-group-text">₫</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold text-muted mb-1">Lợi nhuận TE (Dự kiến)</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" id="tp-base-profit-child" class="form-control number fw-bold text-success" />
+                            <span class="input-group-text">₫</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label small fw-bold text-muted mb-1">Lợi nhuận TE (Dự kiến)</label>
-            <div class="input-group input-group-sm">
-              <input type="text" id="tp-base-profit-child" class="form-control number fw-bold text-success">
-              <span class="input-group-text">₫</span>
-            </div>
-          </div>
         </div>
-      </div>
+
+        <div class="row g-3">
+            <!-- Left Column: Input Tables -->
+            <div class="col-xl-8">
+                <!-- 1. Khách sạn -->
+                <div class="card shadow-sm border-0 mb-3 rounded-3 overflow-hidden">
+                    <div class="card-header py-2 fw-bold text-success d-flex align-items-center justify-content-between">
+                        <span><i class="fa-solid fa-hotel me-2"></i> 1. KHÁCH SẠN</span>
+                        <button class="btn btn-xs btn-outline-success py-0" onclick="A.TourPrice.addRow('hotel')"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered mb-0 text-center align-middle" style="font-size: 0.7rem">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="25%">Tên Khách Sạn</th>
+                                    <th width="12%">Đơn Giá</th>
+                                    <th width="8%">Đêm</th>
+                                    <th width="12%">Trẻ Em</th>
+                                    <th width="12%">ExtraBed</th>
+                                    <th width="12%">PT Cao Điểm</th>
+                                    <th width="12%">PT Lễ Tết</th>
+                                    <th width="5%"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tp-table-hotel-body"></tbody>
+                            <tfoot class="table-light fw-bold">
+                                <tr>
+                                    <td class="text-end">GIÁ 1 KHÁCH:</td>
+                                    <td class="p-0"><input type="text" id="tp-foot-hotel-adult" class="form-control form-control-sm border-0 bg-transparent fw-bold text-primary number p-0 text-center" readonly value="0" /></td>
+                                    <td></td>
+                                    <td class="p-0"><input type="text" id="tp-foot-hotel-child" class="form-control form-control-sm border-0 bg-transparent fw-bold text-success number p-0 text-center" readonly value="0" /></td>
+                                    <td class="text-end small">
+                                        <span class="ms-2"><input type="text" id="tp-foot-hotel-single" class="d-inline-block border-0 bg-transparent fw-bold text-danger number p-0 text-center" style="width: 80px" readonly value="0" /></span>
+                                    </td>
+                                    <td class="p-0"><input type="text" id="tp-foot-hotel-peak" class="form-control form-control-sm border-0 bg-transparent fw-bold text-danger number p-0 text-center" readonly value="0" /></td>
+                                    <td class="p-0"><input type="text" id="tp-foot-hotel-holiday" class="form-control form-control-sm border-0 bg-transparent fw-bold text-danger number p-0 text-center" readonly value="0" /></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 2. Dịch vụ Riêng -->
+                <div class="card shadow-sm border-0 mb-3 rounded-3 overflow-hidden">
+                    <div class="card-header py-2 fw-bold text-success d-flex align-items-center justify-content-between">
+                        <span><i class="fa-solid fa-user-shield me-2"></i> 2. DỊCH VỤ RIÊNG</span>
+                        <button class="btn btn-xs btn-outline-success py-0" onclick="A.TourPrice.addRow('private')"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered mb-0 text-center align-middle" style="font-size: 0.7rem">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="15%">Loại DV</th>
+                                    <th width="25%">Tên DV</th>
+                                    <th width="15%">Người Lớn</th>
+                                    <th width="15%">Trẻ Em</th>
+                                    <th width="15%">Cao Điểm</th>
+                                    <th width="15%">Lễ Tết</th>
+                                    <th width="5%"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tp-table-private-body"></tbody>
+                            <tfoot class="table-light fw-bold">
+                                <tr>
+                                    <td colspan="2" class="text-end">TỔNG CỘNG:</td>
+                                    <td class="p-0"><input type="text" id="tp-foot-private-adult" class="form-control form-control-sm border-0 bg-transparent fw-bold text-primary number p-0 text-center" readonly value="0" /></td>
+                                    <td class="p-0"><input type="text" id="tp-foot-private-child" class="form-control form-control-sm border-0 bg-transparent fw-bold text-success number p-0 text-center" readonly value="0" /></td>
+                                    <td class="p-0"><input type="text" id="tp-foot-private-peak" class="form-control form-control-sm border-0 bg-transparent fw-bold text-danger number p-0 text-center" readonly value="0" /></td>
+                                    <td class="p-0"><input type="text" id="tp-foot-private-holiday" class="form-control form-control-sm border-0 bg-transparent fw-bold text-danger number p-0 text-center" readonly value="0" /></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 3. Dịch vụ Chung -->
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card shadow-sm border-0 mb-3 rounded-3 overflow-hidden">
+                            <div class="card-header py-2 fw-bold text-success d-flex align-items-center justify-content-between">
+                                <span><i class="fa-solid fa-users-gear me-2"></i> 3. DỊCH VỤ CHUNG</span>
+                                <button class="btn btn-xs btn-outline-success py-0" onclick="A.TourPrice.addRow('common')"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0 text-center align-middle" style="font-size: 0.7rem">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="20%">Loại</th>
+                                            <th width="30%">Tên DV</th>
+                                            <th width="25%">Đơn Giá</th>
+                                            <th width="20%">SL</th>
+                                            <th width="5%"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tp-table-common-body"></tbody>
+                                    <tfoot class="table-light fw-bold">
+                                        <tr>
+                                            <td colspan="2" class="text-end">TỔNG:</td>
+                                            <td colspan="2" class="p-0"><input type="text" id="tp-foot-common-total" class="form-control form-control-sm border-0 bg-transparent fw-bold text-primary number p-0 text-center" readonly value="0" /></td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <!-- 4. Xe -->
+                        <div class="card shadow-sm border-0 mb-3 rounded-3 overflow-hidden">
+                            <div class="card-header py-2 fw-bold text-success d-flex align-items-center justify-content-between">
+                                <span><i class="fa-solid fa-car me-2"></i> 4. XE</span>
+                                <button class="btn btn-xs btn-outline-success py-0" onclick="A.TourPrice.addRow('car')"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0 text-center align-middle" style="font-size: 0.7rem">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="30%">Tên DV</th>
+                                            <th width="13%">7c</th>
+                                            <th width="13%">16c</th>
+                                            <th width="13%">29c</th>
+                                            <th width="13%">35c</th>
+                                            <th width="13%">45c</th>
+                                            <th width="5%"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tp-table-car-body"></tbody>
+                                    <tfoot class="table-light fw-bold">
+                                        <tr>
+                                            <td class="text-end">TỔNG CHỖ:</td>
+                                            <td class="p-0"><input type="text" id="tp-foot-car-7" class="form-control form-control-sm border-0 bg-transparent fw-bold number p-0 text-center" readonly value="0" /></td>
+                                            <td class="p-0"><input type="text" id="tp-foot-car-16" class="form-control form-control-sm border-0 bg-transparent fw-bold number p-0 text-center" readonly value="0" /></td>
+                                            <td class="p-0"><input type="text" id="tp-foot-car-29" class="form-control form-control-sm border-0 bg-transparent fw-bold number p-0 text-center" readonly value="0" /></td>
+                                            <td class="p-0"><input type="text" id="tp-foot-car-35" class="form-control form-control-sm border-0 bg-transparent fw-bold number p-0 text-center" readonly value="0" /></td>
+                                            <td class="p-0"><input type="text" id="tp-foot-car-45" class="form-control form-control-sm border-0 bg-transparent fw-bold number p-0 text-center" readonly value="0" /></td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-muted mb-1">Lưu ý Tour</label>
+                        <textarea id="tp-base-notes" class="form-control form-control-sm" rows="4" placeholder="Nhập lưu ý..."></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-muted mb-1">Quy định Tour</label>
+                        <textarea id="tp-base-regulations" class="form-control form-control-sm" rows="4" placeholder="VD: Áp dụng tối thiểu 2 người lớn..."></textarea>
+                    </div>
+                </div>
+
+                <div class="mt-3 d-flex justify-content-end gap-2">
+                    <button class="btn btn-secondary btn-sm fw-bold" onclick="A.TourPrice.calculatePrices()"><i class="fa-solid fa-calculator me-1"></i> TẠO GIÁ</button>
+                    <button class="btn btn-success btn-sm fw-bold" onclick="A.TourPrice.saveData()"><i class="fa-solid fa-save me-1"></i> LƯU BẢNG GIÁ</button>
+                    <button class="btn btn-outline-secondary btn-sm fw-bold" onclick="A.TourPrice.clearData()"><i class="fa-solid fa-eraser me-1"></i> XÓA DỮ LIỆU</button>
+                    <button class="btn btn-danger btn-sm fw-bold" onclick="A.TourPrice.deletePrice()"><i class="fa-solid fa-trash me-1"></i> XÓA BẢNG GIÁ</button>
+                </div>
+            </div>
+
+            <!-- Right Column: Result Tables -->
+            <div class="col-xl-4">
+                <!-- Bảng giá gốc người lớn -->
+                <div class="card shadow-sm border-0 mb-3 rounded-3 overflow-hidden border-primary">
+                    <div class="card-header bg-primary py-2 fw-bold d-flex align-items-center justify-content-between">
+                        <span><i class="fa-solid fa-chart-line me-2"></i> GIÁ GỐC NGƯỜI LỚN</span>
+                    </div>
+                    <div class="table-responsive" style="max-height: 400px">
+                        <table class="table table-sm table-hover mb-0 text-center align-middle" style="font-size: 0.85rem">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Số NL</th>
+                                    <th>Giá Gốc</th>
+                                    <th class="text-primary">Giá Bán</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tp-table-base-adult-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Bảng giá gốc trẻ em -->
+                <div class="card shadow-sm border-0 mb-3 rounded-3 overflow-hidden border-success">
+                    <div class="card-header bg-success py-2 fw-bold"><i class="fa-solid fa-child me-2"></i> GIÁ GỐC TRẺ EM</div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered mb-0 text-center align-middle" style="font-size: 0.75rem">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Độ tuổi</th>
+                                    <th>2-3t</th>
+                                    <th>4-5t</th>
+                                    <th>6-11t</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tp-table-base-child-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Bảng phụ thu -->
+                <div class="card shadow-sm border-0 mb-3 rounded-3 overflow-hidden border-danger">
+                    <div class="card-header bg-danger py-2 fw-bold"><i class="fa-solid fa-calendar-plus me-2"></i> PHỤ THU CAO ĐIỂM/LỄ TẾT</div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered mb-0 text-center align-middle" style="font-size: 0.85rem">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Loại Khách</th>
+                                    <th class="text-danger">Cao Điểm</th>
+                                    <th class="text-danger">Lễ Tết</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tp-table-surcharge-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <datalist id="dl-hotels"></datalist>
+        <datalist id="dl-service-types"></datalist>
+        <datalist id="dl-service-names"></datalist>
     </div>
-
-    <div class="row g-3">
-      <!-- Left Column: Input Tables -->
-      <div class="col-xl-8">
-        <!-- 1. Khách sạn -->
-        <div class="card shadow-sm border-0 mb-3 rounded-3 overflow-hidden">
-          <div class="card-header py-2 fw-bold text-success d-flex align-items-center justify-content-between">
-            <span><i class="fa-solid fa-hotel me-2"></i> 1. KHÁCH SẠN</span>
-            <button class="btn btn-xs btn-outline-success py-0" onclick="A.TourPrice.addRow('hotel')"><i class="fa-solid fa-plus"></i></button>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered mb-0 text-center align-middle" style="font-size: 0.7rem;">
-              <thead class="table-light">
-                <tr>
-                  <th width="25%">Tên Khách Sạn</th>
-                  <th width="12%">Đơn Giá</th>
-                  <th width="8%">Đêm</th>
-                  <th width="12%">Trẻ Em</th>
-                  <th width="12%">ExtraBed</th>
-                  <th width="12%">PT Cao Điểm</th>
-                  <th width="12%">PT Lễ Tết</th>
-                  <th width="5%"></th>
-                </tr>
-              </thead>
-              <tbody id="tp-table-hotel-body"></tbody>
-              <tfoot class="table-light fw-bold">
-                <tr>
-                  <td class="text-end">GIÁ 1 KHÁCH:</td>
-                  <td class="p-0"><input type="text" id="tp-foot-hotel-adult" class="form-control form-control-sm border-0 bg-transparent fw-bold text-primary number p-0 text-center" readonly value="0"></td>
-                  <td></td>
-                  <td class="p-0"><input type="text" id="tp-foot-hotel-child" class="form-control form-control-sm border-0 bg-transparent fw-bold text-success number p-0 text-center" readonly value="0"></td>
-                  <td class="text-end small"><span class="ms-2"><input type="text" id="tp-foot-hotel-single" class="d-inline-block border-0 bg-transparent fw-bold text-danger number p-0 text-center" style="width: 80px;" readonly value="0"></span></td>
-                  <td class="p-0"><input type="text" id="tp-foot-hotel-peak" class="form-control form-control-sm border-0 bg-transparent fw-bold text-danger number p-0 text-center" readonly value="0"></td>
-                  <td class="p-0"><input type="text" id="tp-foot-hotel-holiday" class="form-control form-control-sm border-0 bg-transparent fw-bold text-danger number p-0 text-center" readonly value="0"></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-
-        <!-- 2. Dịch vụ Riêng -->
-        <div class="card shadow-sm border-0 mb-3 rounded-3 overflow-hidden">
-          <div class="card-header py-2 fw-bold text-success d-flex align-items-center justify-content-between">
-            <span><i class="fa-solid fa-user-shield me-2"></i> 2. DỊCH VỤ RIÊNG</span>
-            <button class="btn btn-xs btn-outline-success py-0" onclick="A.TourPrice.addRow('private')"><i class="fa-solid fa-plus"></i></button>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered mb-0 text-center align-middle" style="font-size: 0.7rem;">
-              <thead class="table-light">
-                <tr>
-                  <th width="15%">Loại DV</th>
-                  <th width="25%">Tên DV</th>
-                  <th width="15%">Người Lớn</th>
-                  <th width="15%">Trẻ Em</th>
-                  <th width="15%">Cao Điểm</th>
-                  <th width="15%">Lễ Tết</th>
-                  <th width="5%"></th>
-                </tr>
-              </thead>
-              <tbody id="tp-table-private-body"></tbody>
-              <tfoot class="table-light fw-bold">
-                <tr>
-                  <td colspan="2" class="text-end">TỔNG CỘNG:</td>
-                  <td class="p-0"><input type="text" id="tp-foot-private-adult" class="form-control form-control-sm border-0 bg-transparent fw-bold text-primary number p-0 text-center" readonly value="0"></td>
-                  <td class="p-0"><input type="text" id="tp-foot-private-child" class="form-control form-control-sm border-0 bg-transparent fw-bold text-success number p-0 text-center" readonly value="0"></td>
-                  <td class="p-0"><input type="text" id="tp-foot-private-peak" class="form-control form-control-sm border-0 bg-transparent fw-bold text-danger number p-0 text-center" readonly value="0"></td>
-                  <td class="p-0"><input type="text" id="tp-foot-private-holiday" class="form-control form-control-sm border-0 bg-transparent fw-bold text-danger number p-0 text-center" readonly value="0"></td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-
-        <!-- 3. Dịch vụ Chung -->
-        <div class="row g-3">
-          <div class="col-md-6">
-            <div class="card shadow-sm border-0 mb-3 rounded-3 overflow-hidden">
-              <div class="card-header py-2 fw-bold text-success d-flex align-items-center justify-content-between">
-                <span><i class="fa-solid fa-users-gear me-2"></i> 3. DỊCH VỤ CHUNG</span>
-                <button class="btn btn-xs btn-outline-success py-0" onclick="A.TourPrice.addRow('common')"><i class="fa-solid fa-plus"></i></button>
-              </div>
-              <div class="table-responsive">
-                <table class="table table-sm table-bordered mb-0 text-center align-middle" style="font-size: 0.7rem;">
-                  <thead class="table-light">
-                    <tr>
-                      <th width="20%">Loại</th>
-                      <th width="30%">Tên DV</th>
-                      <th width="25%">Đơn Giá</th>
-                      <th width="20%">SL</th>
-                      <th width="5%"></th>
-                    </tr>
-                  </thead>
-                  <tbody id="tp-table-common-body"></tbody>
-                  <tfoot class="table-light fw-bold">
-                    <tr>
-                      <td colspan="2" class="text-end">TỔNG:</td>
-                      <td colspan="2" class="p-0"><input type="text" id="tp-foot-common-total" class="form-control form-control-sm border-0 bg-transparent fw-bold text-primary number p-0 text-center" readonly value="0"></td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-6">
-            <!-- 4. Xe -->
-            <div class="card shadow-sm border-0 mb-3 rounded-3 overflow-hidden">
-              <div class="card-header py-2 fw-bold text-success d-flex align-items-center justify-content-between">
-                <span><i class="fa-solid fa-car me-2"></i> 4. XE</span>
-                <button class="btn btn-xs btn-outline-success py-0" onclick="A.TourPrice.addRow('car')"><i class="fa-solid fa-plus"></i></button>
-              </div>
-              <div class="table-responsive">
-                <table class="table table-sm table-bordered mb-0 text-center align-middle" style="font-size: 0.7rem;">
-                  <thead class="table-light">
-                    <tr>
-                      <th width="30%">Tên DV</th>
-                      <th width="13%">7c</th>
-                      <th width="13%">16c</th>
-                      <th width="13%">29c</th>
-                      <th width="13%">35c</th>
-                      <th width="13%">45c</th>
-                      <th width="5%"></th>
-                    </tr>
-                  </thead>
-                  <tbody id="tp-table-car-body"></tbody>
-                  <tfoot class="table-light fw-bold">
-                    <tr>
-                      <td class="text-end">TỔNG CHỖ:</td>
-                      <td class="p-0"><input type="text" id="tp-foot-car-7" class="form-control form-control-sm border-0 bg-transparent fw-bold number p-0 text-center" readonly value="0"></td>
-                      <td class="p-0"><input type="text" id="tp-foot-car-16" class="form-control form-control-sm border-0 bg-transparent fw-bold number p-0 text-center" readonly value="0"></td>
-                      <td class="p-0"><input type="text" id="tp-foot-car-29" class="form-control form-control-sm border-0 bg-transparent fw-bold number p-0 text-center" readonly value="0"></td>
-                      <td class="p-0"><input type="text" id="tp-foot-car-35" class="form-control form-control-sm border-0 bg-transparent fw-bold number p-0 text-center" readonly value="0"></td>
-                      <td class="p-0"><input type="text" id="tp-foot-car-45" class="form-control form-control-sm border-0 bg-transparent fw-bold number p-0 text-center" readonly value="0"></td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label small fw-bold text-muted mb-1">Lưu ý Tour</label>
-            <textarea id="tp-base-notes" class="form-control form-control-sm" rows="4" placeholder="Nhập lưu ý..."></textarea>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label small fw-bold text-muted mb-1">Quy định Tour</label>
-            <textarea id="tp-base-regulations" class="form-control form-control-sm" rows="4" placeholder="VD: Áp dụng tối thiểu 2 người lớn..."></textarea>
-          </div>
-        </div>
-
-        <div class="mt-3 d-flex justify-content-end gap-2">
-          <button class="btn btn-secondary btn-sm fw-bold" onclick="A.TourPrice.calculatePrices()"><i class="fa-solid fa-calculator me-1"></i> TẠO GIÁ</button>
-          <button class="btn btn-success btn-sm fw-bold" onclick="A.TourPrice.saveData()"><i class="fa-solid fa-save me-1"></i> LƯU BẢNG GIÁ</button>
-          <button class="btn btn-outline-secondary btn-sm fw-bold" onclick="A.TourPrice.clearData()"><i class="fa-solid fa-eraser me-1"></i> XÓA DỮ LIỆU</button>
-          <button class="btn btn-danger btn-sm fw-bold" onclick="A.TourPrice.deletePrice()"><i class="fa-solid fa-trash me-1"></i> XÓA BẢNG GIÁ</button>
-        </div>
-      </div>
-
-      <!-- Right Column: Result Tables -->
-      <div class="col-xl-4">
-        <!-- Bảng giá gốc người lớn -->
-        <div class="card shadow-sm border-0 mb-3 rounded-3 overflow-hidden border-primary">
-          <div class="card-header bg-primary text-white py-2 fw-bold d-flex align-items-center justify-content-between">
-            <span><i class="fa-solid fa-chart-line me-2"></i> GIÁ GỐC NGƯỜI LỚN</span>
-          </div>
-          <div class="table-responsive" style="max-height: 400px;">
-            <table class="table table-sm table-hover mb-0 text-center align-middle" style="font-size: 0.85rem;">
-              <thead class="table-light sticky-top">
-                <tr>
-                  <th>Số NL</th>
-                  <th>Giá Gốc</th>
-                  <th class="text-primary">Giá Bán</th>
-                </tr>
-              </thead>
-              <tbody id="tp-table-base-adult-body"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Bảng giá gốc trẻ em -->
-        <div class="card shadow-sm border-0 mb-3 rounded-3 overflow-hidden border-success">
-          <div class="card-header bg-success text-white py-2 fw-bold">
-            <i class="fa-solid fa-child me-2"></i> GIÁ GỐC TRẺ EM
-          </div>
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered mb-0 text-center align-middle" style="font-size: 0.75rem;">
-              <thead class="table-light">
-                <tr>
-                  <th>Độ tuổi</th>
-                  <th>2-3t</th>
-                  <th>4-5t</th>
-                  <th>6-11t</th>
-                </tr>
-              </thead>
-              <tbody id="tp-table-base-child-body"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Bảng phụ thu -->
-        <div class="card shadow-sm border-0 mb-3 rounded-3 overflow-hidden border-danger">
-          <div class="card-header bg-danger text-white py-2 fw-bold">
-            <i class="fa-solid fa-calendar-plus me-2"></i> PHỤ THU CAO ĐIỂM/LỄ TẾT
-          </div>
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered mb-0 text-center align-middle" style="font-size: 0.85rem;">
-              <thead class="table-light">
-                <tr>
-                  <th>Loại Khách</th>
-                  <th class="text-danger">Cao Điểm</th>
-                  <th class="text-danger">Lễ Tết</th>
-                </tr>
-              </thead>
-              <tbody id="tp-table-surcharge-body"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <datalist id="dl-hotels"></datalist>
-    <datalist id="dl-service-types"></datalist>
-    <datalist id="dl-service-names"></datalist>
-  </div>
 </template>
 
 <style>
-  /* UI Styles */
-  .bg-primary-soft {
-    background-color: rgba(13, 110, 253, 0.1);
-  }
-
-  .bg-success-soft {
-    background-color: rgba(25, 135, 84, 0.1);
-  }
-
-  .bg-danger-soft {
-    background-color: rgba(220, 53, 69, 0.05);
-  }
-
-  .bg-warning-soft {
-    background-color: rgba(255, 193, 7, 0.05);
-  }
-
-  .btn-xs {
-    padding: 1px 5px;
-    font-size: 0.75rem;
-    line-height: 1.5;
-    border-radius: 3px;
-  }
-
-  .tp-input:focus {
-    background-color: #fff9e6 !important;
-    outline: none;
-    box-shadow: inset 0 0 0 2px #ffc107 !important;
-  }
-
-  .cursor-pointer {
-    cursor: pointer;
-  }
-
-  /* A4 Document Styles */
-  .a4-page {
-    width: 210mm;
-    height: 297mm;
-    margin: 0;
-    padding: 15px auto;
-    background: #fffdf2;
-    /* Vàng nhạt sang trọng */
-    box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: #222;
-    position: relative;
-    overflow: hidden;
-    border: 1px solid #ddd;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .a4-zoom-wrapper {
-    --tp-zoom: 1;
-    transform: scale(var(--tp-zoom));
-    transform-origin: center center;
-    transition: transform 0.2s ease-in-out;
-    width: 100%;
-  }
-
-  /* Container wrapper để hỗ trợ scroll khi zoom */
-  .tour-price-content {
-    perspective: 1000px;
-  }
-
-  /* Toggle View Mode Logic */
-  #tp-a4-document[data-view-mode="1"] #tp-view-1 {
-    display: flex !important;
-    flex-direction: column;
-  }
-
-  #tp-a4-document[data-view-mode="1"] #tp-view-2 {
-    display: none !important;
-  }
-
-  #tp-a4-document[data-view-mode="2"] #tp-view-1 {
-    display: none !important;
-  }
-
-  #tp-a4-document[data-view-mode="2"] #tp-view-2 {
-    display: flex !important;
-    flex-direction: column;
-    flex-grow: 1;
-  }
-
-  .doc-title {
-    font-size: 1.6rem;
-    color: #000;
-    letter-spacing: 0.5px;
-  }
-
-  .doc-subtitle {
-    font-size: 1rem;
-  }
-
-  .strikethrough {
-    text-decoration: line-through;
-  }
-
-  .text-underline {
-    text-decoration: underline;
-  }
-
-  .bg-grey-header {
-    background-color: #f1f3f5 !important;
-  }
-
-  /* Tối ưu Border Table chuẩn A4 */
-  .doc-table {
-    border-collapse: collapse !important;
-    width: 100%;
-    border: 1.5px solid #000 !important;
-    /* Border ngoài đậm hơn */
-    font-size: 0.85rem;
-  }
-
-  .doc-table th,
-  .doc-table td {
-    border: 0.5px solid #666 !important;
-    /* Border trong mờ hơn */
-    padding: 6px;
-    vertical-align: middle;
-  }
-
-  .doc-table thead th {
-    border-bottom: 1.5px solid #000 !important;
-    /* Border dưới header đậm */
-  }
-
-  .doc-table th {
-    font-weight: bold;
-  }
-
-  /* Format 2 Table Specifics */
-  .doc-table-f2 {
-    font-size: 0.75rem;
-    border-collapse: collapse !important;
-    width: 100%;
-  }
-
-  .doc-table-f2 th,
-  .doc-table-f2 td {
-    padding: 4px 6px;
-    border: 0.5px solid #dee2e6 !important;
-  }
-
-  /* Box Lưu ý & Phụ thu */
-  .doc-note-box {
-    border: 1.5px solid #000 !important;
-  }
-
-  .italic {
-    font-style: italic;
-  }
-
-  /* Print Optimization */
-  @media print {
-    body * {
-      visibility: hidden;
+    /* UI Styles */
+    .bg-primary-soft {
+        background-color: rgba(13, 110, 253, 0.1);
     }
 
-    #tp-a4-document,
-    #tp-a4-document * {
-      visibility: visible;
+    .bg-success-soft {
+        background-color: rgba(25, 135, 84, 0.1);
     }
 
-    #tp-a4-document {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 210mm;
-      height: 297mm;
-      margin: 0;
-      padding: 10mm !important;
-      box-shadow: none !important;
-      border: none !important;
-      background: #fffdf2 !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+    .bg-danger-soft {
+        background-color: rgba(220, 53, 69, 0.05);
     }
 
-    .tour-price-container {
-      height: auto !important;
-      overflow: visible !important;
+    .bg-warning-soft {
+        background-color: rgba(255, 193, 7, 0.05);
     }
 
-    .tour-price-content {
-      overflow: visible !important;
-      padding: 0 !important;
-      background: white !important;
+    .btn-xs {
+        padding: 1px 5px;
+        font-size: 0.75rem;
+        line-height: 1.5;
+        border-radius: 3px;
     }
 
-    @page {
-      size: A4;
-      margin: 0;
+    .tp-input:focus {
+        background-color: #fff9e6 !important;
+        outline: none;
+        box-shadow: inset 0 0 0 2px #ffc107 !important;
     }
-  }
 
-  /* Mobile Responsive for Preview */
-  @media (max-width: 210mm) {
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+    /* A4 Document Styles */
     .a4-page {
-      width: 100%;
-      height: auto;
-      min-height: 297mm;
-      padding: 15px !important;
+        width: 210mm;
+        height: 297mm;
+        margin: 0;
+        padding: 15px auto;
+        background: #fffdf2;
+        /* Vàng nhạt sang trọng */
+        box-sizing: border-box;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: #222;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid #ddd;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .a4-zoom-wrapper {
+        --tp-zoom: 1;
+        transform: scale(var(--tp-zoom));
+        transform-origin: center center;
+        transition: transform 0.2s ease-in-out;
+        width: 100%;
+    }
+
+    /* Container wrapper để hỗ trợ scroll khi zoom */
+    .tour-price-content {
+        perspective: 1000px;
+    }
+
+    /* Toggle View Mode Logic */
+    #tp-a4-document[data-view-mode='1'] #tp-view-1 {
+        display: flex !important;
+        flex-direction: column;
+    }
+
+    #tp-a4-document[data-view-mode='1'] #tp-view-2 {
+        display: none !important;
+    }
+
+    #tp-a4-document[data-view-mode='2'] #tp-view-1 {
+        display: none !important;
+    }
+
+    #tp-a4-document[data-view-mode='2'] #tp-view-2 {
+        display: flex !important;
+        flex-direction: column;
+        flex-grow: 1;
     }
 
     .doc-title {
-      font-size: 1.3rem;
+        font-size: 1.6rem;
+        color: #000;
+        letter-spacing: 0.5px;
     }
-  }
+
+    .doc-subtitle {
+        font-size: 1rem;
+    }
+
+    .strikethrough {
+        text-decoration: line-through;
+    }
+
+    .text-underline {
+        text-decoration: underline;
+    }
+
+    .bg-grey-header {
+        background-color: #f1f3f5 !important;
+    }
+
+    /* Tối ưu Border Table chuẩn A4 */
+    .doc-table {
+        border-collapse: collapse !important;
+        width: 100%;
+        border: 1.5px solid #000 !important;
+        /* Border ngoài đậm hơn */
+        font-size: 0.85rem;
+    }
+
+    .doc-table th,
+    .doc-table td {
+        border: 0.5px solid #666 !important;
+        /* Border trong mờ hơn */
+        padding: 6px;
+        vertical-align: middle;
+    }
+
+    .doc-table thead th {
+        border-bottom: 1.5px solid #000 !important;
+        /* Border dưới header đậm */
+    }
+
+    .doc-table th {
+        font-weight: bold;
+    }
+
+    /* Format 2 Table Specifics */
+    .doc-table-f2 {
+        font-size: 0.75rem;
+        border-collapse: collapse !important;
+        width: 100%;
+    }
+
+    .doc-table-f2 th,
+    .doc-table-f2 td {
+        padding: 4px 6px;
+        border: 0.5px solid #dee2e6 !important;
+    }
+
+    /* Box Lưu ý & Phụ thu */
+    .doc-note-box {
+        border: 1.5px solid #000 !important;
+    }
+
+    .italic {
+        font-style: italic;
+    }
+
+    /* Print Optimization */
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+
+        #tp-a4-document,
+        #tp-a4-document * {
+            visibility: visible;
+        }
+
+        #tp-a4-document {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 210mm;
+            height: 297mm;
+            margin: 0;
+            padding: 10mm !important;
+            box-shadow: none !important;
+            border: none !important;
+            background: #fffdf2 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .tour-price-container {
+            height: auto !important;
+            overflow: visible !important;
+        }
+
+        .tour-price-content {
+            overflow: visible !important;
+            padding: 0 !important;
+            background: white !important;
+        }
+
+        @page {
+            size: A4;
+            margin: 0;
+        }
+    }
+
+    /* Mobile Responsive for Preview */
+    @media (max-width: 210mm) {
+        .a4-page {
+            width: 100%;
+            height: auto;
+            min-height: 297mm;
+            padding: 15px !important;
+        }
+
+        .doc-title {
+            font-size: 1.3rem;
+        }
+    }
 </style>

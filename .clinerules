@@ -160,4 +160,4 @@ Sử dụng `SYS.runFn(funcRef, args)` để thực thi các hàm từ chuỗi h
 1. **Luôn đọc DBSchema** trước khi tạo hoặc sửa đổi các trường dữ liệu.
 2. **Sử dụng A object** cho mọi tương tác với hệ thống lõi.
 3. **Tuân thủ Gatekeeper** khi thao tác với dữ liệu.
-4. **Viết code sạch**, có try-catch và comment / document tiếng Việt.
+4. **Viết code sạch**, có try-catch và comment / JS document tiếng Việt.

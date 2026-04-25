@@ -1,15 +1,15 @@
 <template id="tmpl-dashboard">
-    <div class="acc-wrapper container-fluid p-0 pb-5 mb-5 bg-light">
-        <div class="acc-header bg-white d-flex justify-content-between align-items-center px-3 py-3 shadow-sm mb-3">
+    <div class="acc-wrapper container-fluid p-0 pb-5 mb-5 bkg-light">
+        <div class="acc-header bkg-light d-flex justify-content-between align-items-center px-3 py-3 shadow-sm mb-3">
             <div class="d-flex align-items-center">
                 <div class="bg-primary bg-opacity-10 p-2 rounded-circle me-2 d-flex">
                     <i class="fas fa-wallet text-primary fs-5"></i>
                 </div>
-                <h5 class="m-0 fw-bold text-dark">Kế Toán</h5>
+                <h5 class="m-0 fw-bold">Kế Toán</h5>
             </div>
 
             <div class="acc-entity-selector shadow-sm rounded-pill overflow-hidden border border-primary border-opacity-25">
-                <select id="acc-entity-select" class="form-select form-select-sm fw-bold border-0 bg-white text-primary px-3 py-1 cursor-pointer">
+                <select id="acc-entity-select" class="form-select form-select-sm fw-bold border-0 bkg-light text-primary px-3 py-1 cursor-pointer">
                     <option value="9trip">🏢 9 Trip ERP</option>
                     <option value="thenice">🏨 The Nice Hotel</option>
                 </select>
@@ -20,11 +20,11 @@
             <div class="row g-3">
                 <div class="col-12 col-md-6 col-xl-5">
                     <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
-                        <div class="card-header bg-primary bg-gradient text-white d-flex justify-content-between align-items-center p-3 border-0">
+                        <div class="card-header bg-primary bg-gradient d-flex justify-content-between align-items-center p-3 border-0">
                             <span class="text-uppercase small fw-bold tracking-wide"><i class="fas fa-landmark me-2"></i>Tổng Quỹ Thực Tế</span>
                             <span class="fs-4 fw-bolder" id="d-total-fund">0</span>
                         </div>
-                        <div class="card-body p-0 bg-white">
+                        <div class="card-body p-0 bkg-light">
                             <div id="acc-fund-list-container" class="acc-fund-list p-2 custom-scrollbar" style="max-height: 200px; overflow-y: auto">
                                 <div class="text-center text-muted small fst-italic py-4"><i class="fas fa-spinner fa-spin me-1"></i> Đang tải dữ liệu quỹ...</div>
                             </div>
@@ -34,11 +34,11 @@
 
                 <div class="col-12 col-md-6 col-xl-7">
                     <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
-                        <div class="card-header bg-success bg-gradient text-white d-flex justify-content-between align-items-center p-3 border-0">
+                        <div class="card-header bg-success bg-gradient d-flex justify-content-between align-items-center p-3 border-0">
                             <span class="text-uppercase small fw-bold tracking-wide"><i class="fas fa-chart-line me-2"></i>Lãi/Lỗ (Net)</span>
-                            <span class="fs-4 fw-bolder text-white" id="d-net-balance">0</span>
+                            <span class="fs-4 fw-bolder" id="d-net-balance">0</span>
                         </div>
-                        <div class="card-body p-3 bg-white d-flex flex-column justify-content-center">
+                        <div class="card-body p-3 bkg-light d-flex flex-column justify-content-center">
                             <div class="row text-center g-3">
                                 <div class="col-6">
                                     <div class="p-3 bg-success bg-opacity-10 rounded-4 h-100 border border-success border-opacity-25 transition-hover">
@@ -63,17 +63,17 @@
         </div>
 
         <div class="px-3 mb-4">
-            <div class="acc-filter-container bg-white rounded-4 shadow-sm border border-light overflow-hidden">
-                <div class="acc-filter-header bg-light d-flex justify-content-between p-3 border-bottom cursor-pointer transition-hover" onclick="this.parentElement.classList.toggle('active')">
+            <div class="acc-filter-container bkg-light rounded-4 shadow-sm border border-light overflow-hidden">
+                <div class="acc-filter-header bkg-light d-flex justify-content-between p-3 border-bottom cursor-pointer transition-hover" onclick="this.parentElement.classList.toggle('active')">
                     <div class="d-flex align-items-center">
                         <i class="fas fa-filter text-primary me-2"></i>
-                        <span class="fw-bold text-dark me-2">Bộ Lọc Dữ Liệu:</span>
+                        <span class="fw-bold me-2">Bộ Lọc Dữ Liệu:</span>
                         <span id="acc-filter-summary" class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3">Tháng này</span>
                     </div>
                     <i class="fas fa-chevron-down text-muted transition-icon"></i>
                 </div>
 
-                <div class="acc-filter-body p-3 bg-white collapse show">
+                <div class="acc-filter-body p-3 bkg-light collapse show">
                     <div class="row g-3">
                         <div class="col-12 col-md-7 col-lg-8">
                             <label class="acc-label fw-bold small text-muted mb-2">📅 Giai đoạn</label>
@@ -92,9 +92,9 @@
                                 </div>
                                 <div class="col-12 col-sm-8" id="acc-custom-date-row">
                                     <div class="input-group input-group-sm">
-                                        <span class="input-group-text bg-light border-end-0">Từ</span>
+                                        <span class="input-group-text bkg-light border-end-0">Từ</span>
                                         <input type="date" id="acc-filter-start" class="form-control border-start-0 ps-1" readonly />
-                                        <span class="input-group-text bg-light border-end-0 border-start-0">Đến</span>
+                                        <span class="input-group-text bkg-light border-end-0 border-start-0">Đến</span>
                                         <input type="date" id="acc-filter-end" class="form-control border-start-0 ps-1" readonly />
                                     </div>
                                 </div>
@@ -104,7 +104,7 @@
                         <div class="col-12 col-md-5 col-lg-4">
                             <label class="acc-label fw-bold small text-muted mb-2">🔍 Tìm chi tiết</label>
                             <div class="input-group input-group-sm">
-                                <select id="acc-filter-field" class="form-select border-secondary text-dark" style="max-width: 100px">
+                                <select id="acc-filter-field" class="form-select border-secondary" style="max-width: 100px">
                                     <option value="all">Tất cả</option>
                                 </select>
                                 <input type="text" id="acc-filter-value" class="form-control border-secondary" placeholder="Nhập từ khóa..." />
@@ -120,7 +120,7 @@
         </div>
 
         <div class="px-3">
-            <div class="table-responsive bg-white rounded-4 shadow-sm border border-light acc-table-wrapper" style="font-size: 0.8rem">
+            <div class="table-responsive bkg-light rounded-4 shadow-sm border border-light acc-table-wrapper" style="font-size: 0.8rem">
                 <table class="table table-hover align-middle mb-0 text-nowrap" id="acc-transaction-table">
                     <thead class="table-light sticky-top shadow-sm text-muted">
                         <tr>
@@ -154,7 +154,7 @@
     <div class="acc-action-bar position-fixed bottom-0 start-0 w-100 border-top shadow-lg py-2 px-3 d-flex justify-content-between align-items-center" id="acc-footer-bar" style="z-index: 1040; transition: all 0.3s ease">
         <div class="acc-global-search-wrapper position-relative flex-grow-1 me-3" style="max-width: 350px">
             <i class="fas fa-search text-muted position-absolute top-50 start-0 translate-middle-y ms-3"></i>
-            <input type="text" id="acc-global-search" class="form-control form-control-sm ps-5 bg-light border-0 text-truncate rounded-pill shadow-sm" placeholder="Tìm ID, Số tiền, Diễn giải trên trang..." />
+            <input type="text" id="acc-global-search" class="form-control form-control-sm ps-5 bkg-light border-0 text-truncate rounded-pill shadow-sm" placeholder="Tìm ID, Số tiền, Diễn giải trên trang..." />
         </div>
 
         <div class="d-flex gap-2 align-items-center">
@@ -202,9 +202,9 @@
         <div class="acc-report-header d-flex justify-content-between align-items-center px-3 py-2 shadow-sm border-bottom">
             <div class="d-flex align-items-center">
                 <i class="fas fa-file-invoice text-success fs-4 me-2"></i>
-                <h5 class="m-0 fw-bold text-dark">Báo Cáo Giao Dịch</h5>
+                <h5 class="m-0 fw-bold">Báo Cáo Giao Dịch</h5>
             </div>
-            <select id="report-type-select" class="form-select form-select-sm fw-bold border-0 bg-light" style="max-width: 200px">
+            <select id="report-type-select" class="form-select form-select-sm fw-bold border-0 bkg-light" style="max-width: 200px">
                 <option value="all">📊 Tất cả giao dịch</option>
                 <option value="in">📥 Phiếu Thu (IN)</option>
                 <option value="out">📤 Phiếu Chi (OUT)</option>
@@ -212,12 +212,12 @@
             </select>
         </div>
 
-        <div class="px-3 py-2 bg-light">
+        <div class="px-3 py-2 bkg-light">
             <div class="acc-filter-container" style="width: fit-content">
                 <div class="acc-filter-header border rounded" onclick="this.parentElement.classList.toggle('active')" style="pointer-events: auto">
                     <div class="d-flex align-items-center px-2 py-2">
                         <i class="fas fa-filter text-success me-2"></i>
-                        <span class="fw-bold text-dark me-1">Bộ lọc:</span>
+                        <span class="fw-bold me-1">Bộ lọc:</span>
                         <span id="report-filter-summary" class="text-success fw-bold small">Tháng này</span>
                     </div>
                     <i class="fas fa-chevron-down text-muted transition-icon"></i>
@@ -298,6 +298,6 @@
             </table>
         </div>
 
-        <div class="px-3 py-2 bg-light border-top text-muted small text-center">Tổng: <span id="report-total-records" class="fw-bold text-dark">0</span> giao dịch | Thu: <span id="report-total-in" class="fw-bold text-success">0</span> | Chi: <span id="report-total-out" class="fw-bold text-danger">0</span> | Lệch: <span id="report-balance" class="fw-bold">0</span></div>
+        <div class="px-3 py-2 bkg-light border-top text-muted small text-center">Tổng: <span id="report-total-records" class="fw-bold">0</span> giao dịch | Thu: <span id="report-total-in" class="fw-bold text-success">0</span> | Chi: <span id="report-total-out" class="fw-bold text-danger">0</span> | Lệch: <span id="report-balance" class="fw-bold">0</span></div>
     </div>
 </template>

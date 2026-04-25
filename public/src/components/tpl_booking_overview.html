@@ -311,22 +311,22 @@
     <nav class="bkov-tabs">
         <ul class="nav nav-tabs border-0 flex-nowrap overflow-auto" id="bkov-nav-tabs" role="tablist" style="-webkit-overflow-scrolling: touch; scrollbar-width: none">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="bkov-tab-detail" data-bs-target="#bkov-pane-detail" type="button" role="tab"><i class="fa-solid fa-info-circle me-1 d-none d-sm-inline"></i>Chi tiết</button>
+                <button class="nav-link active" id="bkov-tab-detail" data-bs-toggle="tab" data-bs-target="#bkov-pane-detail" type="button" role="tab"><i class="fa-solid fa-info-circle me-1 d-none d-sm-inline"></i>Chi tiết</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="bkov-tab-customer" data-bs-target="#bkov-pane-customer" type="button" role="tab"><i class="fa-solid fa-user me-1 d-none d-sm-inline"></i>Khách hàng</button>
+                <button class="nav-link" id="bkov-tab-customer" data-bs-toggle="tab" data-bs-target="#bkov-pane-customer" type="button" role="tab"><i class="fa-solid fa-user me-1 d-none d-sm-inline"></i>Khách hàng</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="bkov-tab-services" data-bs-target="#bkov-pane-services" type="button" role="tab"><i class="fa-solid fa-concierge-bell me-1 d-none d-sm-inline"></i>Dịch vụ</button>
+                <button class="nav-link" id="bkov-tab-services" data-bs-toggle="tab" data-bs-target="#bkov-pane-services" type="button" role="tab"><i class="fa-solid fa-concierge-bell me-1 d-none d-sm-inline"></i>Dịch vụ</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="bkov-tab-payment" data-bs-target="#bkov-pane-payment" type="button" role="tab"><i class="fa-solid fa-credit-card me-1 d-none d-sm-inline"></i>Thanh toán</button>
+                <button class="nav-link" id="bkov-tab-payment" data-bs-toggle="tab" data-bs-target="#bkov-pane-payment" type="button" role="tab"><i class="fa-solid fa-credit-card me-1 d-none d-sm-inline"></i>Thanh toán</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="bkov-tab-notes" data-bs-target="#bkov-pane-notes" type="button" role="tab"><i class="fa-solid fa-sticky-note me-1 d-none d-sm-inline"></i>Ghi chú</button>
+                <button class="nav-link" id="bkov-tab-notes" data-bs-toggle="tab" data-bs-target="#bkov-pane-notes" type="button" role="tab"><i class="fa-solid fa-sticky-note me-1 d-none d-sm-inline"></i>Ghi chú</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="bkov-tab-history" data-bs-target="#bkov-pane-history" type="button" role="tab"><i class="fa-solid fa-clock-rotate-left me-1 d-none d-sm-inline"></i>Lịch sử</button>
+                <button class="nav-link" id="bkov-tab-history" data-bs-toggle="tab" data-bs-target="#bkov-pane-history" type="button" role="tab"><i class="fa-solid fa-clock-rotate-left me-1 d-none d-sm-inline"></i>Lịch sử</button>
             </li>
         </ul>
     </nav>
@@ -515,7 +515,7 @@
                 <div class="col-6 col-md-4 col-lg-2">
                     <div class="bkov-stat-card border-start border-4 border-dark">
                         <div class="bkov-stat-label">Số Dư (Net)</div>
-                        <div class="bkov-stat-value text-dark" id="bkov-pay-balance">0</div>
+                        <div class="bkov-stat-value" id="bkov-pay-balance">0</div>
                     </div>
                 </div>
             </div>
@@ -556,7 +556,7 @@
             <!-- Internal Notes -->
             <div class="info-group mt-3">
                 <div class="info-group-title mb-2"><i class="fa-solid fa-comments me-1"></i>Ghi Chú Nội Bộ</div>
-                <div id="bkov-notes-list" class="d-flex flex-column gap-2 border rounded p-2 bg-light" style="max-height: 30vh; overflow-y: auto">
+                <div id="bkov-notes-list" class="d-flex flex-column gap-2 border rounded p-2 bkg-light" style="max-height: 30vh; overflow-y: auto">
                     <!-- Rendered by JS -->
                 </div>
                 <div class="input-group input-group-sm mt-2">
@@ -572,7 +572,7 @@
         <div class="tab-pane fade" id="bkov-pane-history" role="tabpanel">
             <div class="info-group">
                 <div class="info-group-title"><i class="fa-solid fa-clock-rotate-left me-1"></i>Nhật Ký Hoạt Động</div>
-                <div id="bkov-history-list" class="d-flex flex-column gap-1 border rounded p-2 bg-light" style="max-height: 50vh; overflow-y: auto">
+                <div id="bkov-history-list" class="d-flex flex-column gap-1 border rounded p-2 bkg-light" style="max-height: 50vh; overflow-y: auto">
                     <!-- Rendered by JS -->
                 </div>
             </div>

@@ -653,7 +653,6 @@ class FloatDraggable {
         document.removeEventListener('touchend', this.dragEnd);
     }
 
-
     /**
      * Canh giữa tuyệt đối (Miễn nhiễm với mọi tàn dư của Resizable)
      */
@@ -1283,7 +1282,7 @@ class WindowMinimizer {
         this.taskItem = document.createElement('div');
 
         // ★ FIX MÀU SẮC: Chuyển sang Nền vàng - Chữ đen - Viền đậm để thu hút sự chú ý
-        this.taskItem.className = 'btn bg-warning text-dark fw-bold erp-task-item shadow-lg border border-warning';
+        this.taskItem.className = 'btn bg-warning  fw-bold erp-task-item shadow-lg border border-warning';
         this.taskItem.title = `Hiển thị: ${title}`;
         this.taskItem.dataset.targetId = this.target.id;
 

@@ -232,10 +232,9 @@ const UI_RENDERER = {
         if (tabId === 'tab-dashboard') {
             // Setup tháng, ngày lọc... (Cần chạy ngay để user thấy form lọc)
             if (typeof UI_DASH.initDashboard === 'function') UI_DASH.initDashboard();
-        }
-        if (tabId === 'tab-form') {
+        } else if (tabId === 'tab-form') {
             this.setupMainFormUI(APP_DATA.lists);
-            this.initTableResizer('detail-tbody');
+            // this.initTableResizer('detail-tbody');
         }
         // if (tabId === 'tab-price-pkg') {
         //   // Vào tab list thì check xem có data chưa để vẽ bảng
@@ -353,44 +352,49 @@ const UI_RENDERER = {
         // };
         const fillDataList = (elmId, dataArray) => {
             const el = getE(elmId);
-            if (!el) return;
-            if (typeof dataArray === 'object') {
-                let uniqueData = [...new Set(Object.values(dataArray))];
+            if (!el || !dataArray) return;
+            try {
+                const dataToProcess = typeof dataArray === 'object' && !Array.isArray(dataArray) ? Object.values(dataArray) : dataArray;
+
+                if (!Array.isArray(dataToProcess)) return;
+
+                const uniqueData = [...new Set(dataToProcess.filter(Boolean))];
                 el.innerHTML = uniqueData.map((item) => `<option value="${item}">`).join('');
-            } else {
-                let uniqueData = [...new Set(dataArray)];
-                el.innerHTML = uniqueData.map((item) => `<option value="${item}">`).join('');
+            } catch (err) {
+                console.warn(`[UI_Manager] fillDataList error for ${elmId}:`, err);
             }
         };
 
-        // fillSelect('BK_Staff', lists.staff);
-        // fillSelect('Cust_Source', lists.source);
-        // fillSelect('BK_PayType', lists.payment);
-        fillDataList('list-tours', lists.tours);
+        if (lists.tours) fillDataList('list-tours', lists.tours);
 
         const customers = Object.values(APP_DATA.customers ?? {});
         if (customers.length > 0) {
             let phones = [];
             let names = [];
-            if (typeof customers[0] === 'object' && !Array.isArray(customers[0])) {
-                phones = customers.map((r) => r.phone).filter(Boolean);
-                names = customers.map((r) => r.full_name).filter(Boolean);
-            } else {
-                const validCustomers = customers.filter((r) => r && r.length > 2);
-                phones = validCustomers.map((r) => r[1]).filter(Boolean);
-                names = validCustomers.map((r) => r[2]).filter(Boolean);
+            try {
+                if (typeof customers[0] === 'object' && !Array.isArray(customers[0])) {
+                    phones = customers.map((r) => r.phone).filter(Boolean);
+                    names = customers.map((r) => r.full_name).filter(Boolean);
+                } else {
+                    const validCustomers = customers.filter((r) => r && r.length > 2);
+                    phones = validCustomers.map((r) => r[1]).filter(Boolean);
+                    names = validCustomers.map((r) => r[2]).filter(Boolean);
+                }
+                fillDataList('list-cust-phones', phones.slice(0, 500));
+                fillDataList('list-cust-names', names.slice(0, 500));
+            } catch (err) {
+                console.warn('[UI_Manager] Error processing customers for datalist:', err);
             }
-            fillDataList('list-cust-phones', phones.slice(0, 500));
-            fillDataList('list-cust-names', names.slice(0, 500));
         }
 
         const tblBookingForm = getE('tbl-booking-form');
         if (tblBookingForm) {
             const thead = tblBookingForm.querySelector('thead');
             if (thead) {
-                const collectionName = CURRENT_USER && CURRENT_USER.role === 'op' ? 'operator_entries' : 'booking_details';
+                const role = (A.getState('user')?.role || CURRENT_USER?.role || '').toLowerCase();
+                const collectionName = ['op', 'operator'].includes(role) ? 'operator_entries' : 'booking_details';
                 const headerHtml = this.renderHeaderHtml(collectionName);
-                if (headerHtml) thead.innerHTML = headerHtml;
+                if (headerHtml) thead.innerHTML = `<tr style="font-size: 11px">${headerHtml}</tr>`;
             }
         }
         this.isSetupTabForm = true;
@@ -436,30 +440,32 @@ const UI_RENDERER = {
         // HÀM NÀY CHỈ CÒN NHIỆM VỤ SETUP STATE VÀ RENDER DATA BÊN TRONG TAB
         try {
             if (typeof this.lazyLoad === 'function') this.lazyLoad(targetTabId);
-        } catch (e) {
-            L._('selectTab: Lỗi lazyLoad', e);
-        }
+        } catch (e) {}
 
-        if (targetTabId === 'tab-form') {
-            CURRENT_TABLE_KEY = 'bookings';
-            if (typeof setMany === 'function' && typeof getVal === 'function') {
-                if (getE('BK_Start') && getVal('BK_Date') === '') {
-                    const now = formatDateForInput(new Date());
-                    setMany(['BK_Date', 'BK_Start', 'BK_End'], now);
-
-                    setVal('BK_Staff', CURRENT_USER.uid);
-                }
-            }
-        } else if (targetTabId === 'tab-dashboard') {
-            A.Event?.trigger('btn-dash-update', 'click');
-        }
-
-        // 2. Setup Logic & Render Data cho từng Tab (Loại bỏ toàn bộ các lệnh ẩn/hiện d-none thừa)
+        // Setup Logic & Render Data cho từng Tab
         switch (targetTabId) {
+            case 'tab-form':
+                // Thiết lập State và Data mặc định cho form
+                window.CURRENT_TABLE_KEY = 'bookings';
+                if (typeof setMany === 'function' && typeof getVal === 'function') {
+                    if (getE('BK_Start') && getVal('BK_Date') === '') {
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        setMany(['BK_Date', 'BK_Start', 'BK_End'], todayStr);
+                        if (window.CURRENT_USER?.uid) {
+                            setVal('BK_Staff', window.CURRENT_USER.uid);
+                        }
+                    }
+                }
+                break;
+
+            case 'tab-dashboard':
+                // Kích hoạt event update Dashboard
+                if (window.A?.Event) window.A.Event.trigger('btn-dash-update', 'click');
+                break;
+
             case 'tab-theme-content':
-                // Chú ý: Vì tab-shortcut-content không phải là Tab chuẩn của Bootstrap nên vẫn cần d-none ở đây
                 if (getE('tab-shortcut-content')) getE('tab-shortcut-content').classList.add('d-none');
-                if (window.A && window.A.Modal) {
+                if (window.A?.Modal) {
                     A.Modal.setSaveHandler(typeof saveThemeSettings !== 'undefined' ? saveThemeSettings : null, 'Áp Dụng Theme');
                     A.Modal.setResetHandler(window.THEME_MANAGER?.resetToDefault, 'Đặt Lại');
                 }
@@ -496,10 +502,10 @@ const UI_RENDERER = {
                             </select>
                             </div>`,
                         ],
-                        contextMenu: false,
+                        contextMenu: true,
                         draggable: true,
                         pageSize: 50,
-                        zoom: true,
+                        zoom: false,
                         sorter: true,
                         title: `DANH SÁCH DATA`,
                         footer: true,
@@ -537,7 +543,6 @@ const UI_RENDERER = {
                 break;
         }
     },
-    // =========================================================================
 
     generateGridColsFromObject: function (collectionName) {
         const headerObj = A.DB.schema.createHeaderFromFields(collectionName);
@@ -560,7 +565,15 @@ const UI_RENDERER = {
             const vnTitle = fieldValue || translate(fieldName);
             let format = matches(vnTitle, 'date') || matches(fieldName, 'date') ? 'date' : matches(vnTitle, 'money') || matches(fieldName, 'money') ? 'money' : 'text';
             let res = { i: fieldName, key: fieldName, t: vnTitle, fmt: format, align: format === 'money' ? 'text-end' : 'text-center' };
-            if (TABLE_HIDDEN_FIELDS[collectionName]?.includes(fieldName)) res.hidden = true;
+
+            // Robust check for hidden fields
+            const hiddenFields = (typeof TABLE_HIDDEN_FIELDS !== 'undefined' && TABLE_HIDDEN_FIELDS[collectionName]) || [];
+            if (hiddenFields.includes(fieldName)) res.hidden = true;
+
+            // Also check schema for hidden attribute
+            const fieldSchema = A.DB.schema[collectionName]?.fields?.find((f) => f.name === fieldName);
+            if (fieldSchema?.attrs?.includes('hidden')) res.hidden = true;
+
             return res;
         });
     },
@@ -568,7 +581,10 @@ const UI_RENDERER = {
     renderHeaderHtml: function (collectionName) {
         this.generateGridColsFromObject(collectionName);
         if (GRID_COLS?.length > 0) {
-            return '<th style="width:50px" class="text-center">#</th>' + GRID_COLS.map((col) => `<th class="${col.hidden ? 'd-none ' : 'text-center'}" data-field="${col.key}">${col.t}</th>`).join('');
+            let html = '<th style="width:50px" class="text-center">#</th>';
+            html += GRID_COLS.map((col) => `<th class="${col.hidden ? 'd-none ' : 'text-center'}" data-field="${col.key}">${col.t}</th>`).join('');
+            html += '<th style="width:30px"></th>'; // Cột action (xóa)
+            return html;
         }
         return '<th>Không có cấu hình cột</th>';
     },

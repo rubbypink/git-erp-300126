@@ -1,19 +1,19 @@
 // public/admin/js/SettingsController.js
 export class SettingsController {
-  constructor(containerId) {
-    this.container = document.getElementById(containerId);
-  }
+    constructor(containerId) {
+        this.container = document.getElementById(containerId);
+    }
 
-  render() {
-    this.container.innerHTML = `
+    render() {
+        this.container.innerHTML = `
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="m-0 text-dark"><i class="fa-solid fa-sliders text-primary me-2"></i>Cấu hình & Template (Giai đoạn 5)</h4>
+                <h4 class="m-0 "><i class="fa-solid fa-sliders text-primary me-2"></i>Cấu hình & Template (Giai đoạn 5)</h4>
             </div>
 
             <div class="row g-4">
                 <div class="col-12 col-lg-5">
                     <div class="card border-0 shadow-sm h-100">
-                        <div class="card-header bg-white fw-bold py-3">Cấu hình Hệ thống (system_settings)</div>
+                        <div class="card-header bkg-light fw-bold py-3">Cấu hình Hệ thống (system_settings)</div>
                         <div class="card-body">
                             <form id="admin-settings-form">
                                 <div class="mb-3">
@@ -35,7 +35,7 @@ export class SettingsController {
 
                 <div class="col-12 col-lg-7">
                     <div class="card border-0 shadow-sm h-100">
-                        <div class="card-header bg-white fw-bold py-3 d-flex justify-content-between align-items-center">
+                        <div class="card-header bkg-light fw-bold py-3 d-flex justify-content-between align-items-center">
                             <span>Quản lý Mẫu in (system_templates)</span>
                             <button class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-plus"></i> Thêm mẫu</button>
                         </div>
@@ -61,5 +61,5 @@ export class SettingsController {
                 </div>
             </div>
         `;
-  }
+    }
 }
