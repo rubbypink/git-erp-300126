@@ -144,7 +144,7 @@ export default class ErpHeaderMenu {
                 }
                 /* 1. Tạo lớp kính mờ cho toàn bộ khung Panel */
                 #notificationPanel {
-                    background-color: rgba(255, 255, 255, 0.85) !important; /* Nền trắng trong suốt 85% */
+                    background-color: var(--app-bg) !important; /* Nền trắng trong suốt 85% */
                     backdrop-filter: blur(16px); /* Làm nhòe nội dung bên dưới (Glassmorphism) */
                     -webkit-backdrop-filter: blur(16px); /* Hỗ trợ Safari */
                     border: 1px solid rgba(0, 0, 0, 0.08) !important; /* Viền siêu mỏng */
@@ -157,7 +157,7 @@ export default class ErpHeaderMenu {
                 #notificationPanel .bg-secondary,
                 #notificationPanel .bkg-light,
                 #notificationList {
-                    background-color: transparent !important; /* Ép trong suốt hoàn toàn */
+                    background-color: var(--app-bg) !important; /* Ép trong suốt hoàn toàn */
                     border-color: rgba(0, 0, 0, 0.06) !important; /* Viền phân cách mềm đi */
                 }
     
@@ -176,7 +176,7 @@ export default class ErpHeaderMenu {
                     transition: background-color 0.2s ease;
                 }
                 #notificationList .notification-item:hover {
-                    background-color: rgba(0, 0, 0, 0.04) !important; /* Phủ xám cực nhẹ khi hover */
+                    background-color: var(--app-bg) !important; /* Phủ xám cực nhẹ khi hover */
                 }
             }
         `;
@@ -358,7 +358,7 @@ export default class ErpHeaderMenu {
                  outline: none;
              }
              body.dark-theme .chrome-trigger-btn:hover {
-                 background-color: rgba(255, 255, 255, 0.1); 
+                 background-color: var(--app-bg); 
              }
              
              /* Khung Menu Chính */

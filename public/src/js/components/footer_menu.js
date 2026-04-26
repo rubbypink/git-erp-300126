@@ -363,7 +363,7 @@ export default class ErpFooterMenu {
                     display: none !important; pointer-events: none !important;
                 }
                 .erp-footer-mobile { 
-                    display: flex !important; justify-content: flex-start; align-items: center; background-color: transparent;
+                    display: flex !important; justify-content: flex-start; align-items: center; background-color: var(--tbl-head-bg);
                     pointer-events: none;
                 }
                 #erp-f-mobile-trigger { 
@@ -506,7 +506,7 @@ export default class ErpFooterMenu {
             const desktopContainer = document.getElementById('erp-f-desktop-container');
             if (type && type === 'btn-group') {
                 const groupDiv = document.createElement('div');
-                groupDiv.className = `btn-group dropup bg-dark shadow-sm`;
+                groupDiv.className = `btn-group dropup bkg-light shadow-sm`;
                 const ulId = `${id}-dropup`;
                 const htmlString = `
             <button type="button" class="btn btn-primary d-flex align-items-center gap-1 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="width: inherity">

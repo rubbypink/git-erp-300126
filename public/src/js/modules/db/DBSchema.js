@@ -2483,7 +2483,7 @@ function createFormBySchema(collectionName, formId) {
         html += `
     <div class="readonly-section card my-3" style="border: 1px solid #dee2e6; border-radius: 4px;">
       <div class="card-header p-2" style="
-        background-color: #f8f9fa;
+        background-color: var(--app-bg);
         cursor: pointer;
         user-select: none;
         display: flex;
@@ -2501,7 +2501,7 @@ function createFormBySchema(collectionName, formId) {
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 12px;
         padding: 12px;
-        background-color: #fafbfc;
+        background-color: var(--app-bg);
       ">
     `;
 

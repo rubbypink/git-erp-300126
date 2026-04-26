@@ -28,7 +28,7 @@ Sử dụng 2 bộ màu hài hòa phổ biến nhất
         --secondary-color: #94a3b8; /* Slate - Trung tính */
         --app-bg: #0f172a; /* Navy đậm - Nền sâu */
         --header-bg: #1e293b; /* Xanh đen - Header */
-        --main-bg: #0f172a;
+        --main-bg: #12192aaf;
         --text-color: #f8fafc; /* Gần trắng - Dễ đọc */
         --text-secondary: #94a3b8; /* Xám Slate - Phụ */
         --border-color: #334155; /* Viền tối */
@@ -50,10 +50,10 @@ Sử dụng 2 bộ màu hài hòa phổ biến nhất
         --tbl-border: #334155;
 
         /* Tab Navigation - Dark */
-        --tab-active-bg: #334155;
-        --tab-active-text: #818cf8;
+        --tab-active-bg: #316abb;
+        --tab-active-text: #ffffff;
         --tab-inactive-bg: #0f172a;
-        --tab-inactive-text: #94a3b8;
+        --tab-inactive-text: #b0b4ba;
 
         /* Shadow - Dark */
         --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -80,7 +80,7 @@ Sử dụng 2 bộ màu hài hòa phổ biến nhất
     --text-secondary: #64748b;
     --border-color: #e2e8f0;
     --surface-color: #ffffff;
-    --popup-bg: #ffcecef9;
+    --popup-bg: #fbe9e9f9;
     --popup-text: #0f172a;
     --hover-bg: #fdfbed;
     --input-bg: #ffffff;
@@ -90,7 +90,7 @@ Sử dụng 2 bộ màu hài hòa phổ biến nhất
     --info-color: #0ea5e9;
 
     /* Table Colors - Light */
-    --tbl-head-bg: #f1f5f9;
+    --tbl-head-bg: #bdbebf;
     --tbl-head-text: #0f172a;
     --tbl-row-bg: #ffffff;
     --tbl-row-hover: #f8fafc;

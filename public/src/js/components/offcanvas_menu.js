@@ -319,12 +319,12 @@ export class OffcanvasMenu extends HTMLElement {
 
             .btn-danger { 
                 color: #fff; 
-                background-color: #dc3545; 
+                background-color: var(--app-bg); 
                 border-color: #dc3545; 
             }
 
             .btn-danger:hover { 
-                background-color: #bb2d3b; 
+                background-color: var(--app-bg); 
                 border-color: #b02a37; 
             }
 

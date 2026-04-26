@@ -1474,7 +1474,7 @@ export default class ATable {
           <p style="text-align: center; font-size: 12px; color: #7f8c8d;">Ngày xuất: ${new Date().toLocaleString('vi-VN')}</p>
           <table border="1" style="width: 100%; border-collapse: collapse; font-size: 10px;">
             <thead>
-              <tr style="background-color: #2c3e50; color: white;">
+              <tr style="background-color: var(--app-bg); color: var(--text-color);">
                 ${Object.keys(exportData[0] || {})
                     .map((h) => `<th style="padding: 8px;">${h}</th>`)
                     .join('')}
@@ -1685,7 +1685,7 @@ export default class ATable {
 
             html += `
         <tr class="border-bottom border-light">
-          <th class="text-nowrap fw-bold  align-top pt-2" style="width: 1%; padding-left: 0.5rem; background-color: rgba(0,0,0,0.02);">
+          <th class="text-nowrap fw-bold  align-top pt-2" style="width: 1%; padding-left: 0.5rem; background-color: var(--app-bg);">
             ${isComplex ? `<i class="fas fa-layer-group text-primary me-2 small"></i>` : `<i class="fas fa-caret-right text-muted me-2 small"></i>`} 
             ${escapeHtml(val)}
           </th>
@@ -1722,7 +1722,7 @@ export default class ATable {
             // ĐỊNH TUYẾN 2: Dữ liệu Object/Array lồng nhau thông thường -> Đệ quy
             else {
                 contentHtml = `
-          <div class="at-nested-viewer rounded overflow-auto" style="max-height: 70vh; background-color: #f8f9fa;">
+          <div class="at-nested-viewer rounded overflow-auto" style="max-height: 70vh; background-color: var(--app-bg);">
             ${this._buildNestedObjectHtml(rawData)}
           </div>`;
             }
@@ -1833,7 +1833,7 @@ export default class ATable {
         // HEADER
         html += `<thead class="table-dark sticky-top" style="z-index: 2;">
     <tr>
-      <th class="text-center bg-dark text-warning p-2" style="width: 180px; border-right: 2px solid #444;">
+      <th class="text-center bkg-light text-warning p-2" style="width: 180px; border-right: 2px solid #444;">
          <div class="small opacity-75">NHÀ CUNG CẤP</div>
          <div class="fw-bold"><i class="fas fa-handshake"></i> ${supplierName}</div>
       </th>`;

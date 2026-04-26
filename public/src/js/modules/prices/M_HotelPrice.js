@@ -83,9 +83,9 @@ class HotelPriceManager {
           position: sticky; left: 0; border-right: 2px solid #dee2e6 !important;
         }
         .hp-matrix-table th.sticky-top { position: sticky; top: 0;}
-        .hp-price-input:focus { background-color: #fff3cd !important; outline: none; }
-        .hp-metadata-row { background-color: #e7f1ff !important; color: #0c4128; font-weight: 600; }
-        .hp-room-name-input:focus { background-color: #e7f1ff !important; outline: none; }
+        .hp-price-input:focus { background-color: var(--app-bg); color: var(--text-color); outline: none; }
+        .hp-metadata-row { background-color: var(--app-bg); color: var(--text-color); font-weight: 600; }
+        .hp-room-name-input:focus { background-color: var(--app-bg); color: var(--text-color); outline: none; }
       </style>
       <div class="card shadow-sm border-0 h-100">
         <div class="card-header bkg-light py-3 border-bottom d-flex justify-content-between align-items-center">
@@ -318,7 +318,7 @@ class HotelPriceManager {
           <thead class="table-dark sticky-top">
             ${metadataHtml}
             <tr>
-              <th rowspan="2" style="min-width: 200px; z-index: 5;" class="sticky-left bg-dark">Hạng phòng (ID)</th>
+              <th rowspan="2" style="min-width: 200px; z-index: 5;" class="sticky-left bkg-light">Hạng phòng (ID)</th>
               ${activePeriods.map((p) => `<th colspan="${activePackages.length * activeRateTypes.length}">${p.name}</th>`).join('')}
             </tr>
             <tr>

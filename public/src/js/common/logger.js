@@ -180,7 +180,7 @@ const L = {
 
         const html = `
       <div class="card shadow-sm mt-3">
-        <div class="card-header bg-dark  d-flex justify-content-between align-items-center">
+        <div class="card-header bkg-light  d-flex justify-content-between align-items-center">
           <h6 class="mb-0">Hệ thống Log - Ngày ${new Date().toLocaleDateString()}</h6>
           <button class="btn btn-sm btn-danger" onclick="L.clear()">Xóa tất cả Log</button>
         </div>
