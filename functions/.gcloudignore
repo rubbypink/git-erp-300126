@@ -1,0 +1,24 @@
+# .gcloudignore for Firebase Functions
+# Firebase CLI dùng file này thay vì .gitignore để quyết định file nào được deploy
+
+# Ignore git metadata
+.git
+.gitignore
+
+# Ignore node_modules (sẽ được cài lại trên Cloud)
+node_modules/
+
+# Ignore log files
+*.log
+
+# Ignore test files
+__tests__/
+*.test.js
+*.spec.js
+
+# ✅ QUAN TRỌNG: KHÔNG ignore .env — file này chứa API keys cần deploy lên Cloud Functions
+# (Firebase Functions sẽ tự động load .env khi deploy)
+
+# Ignore editor config
+.vscode/
+.idea/

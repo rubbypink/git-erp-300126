@@ -578,6 +578,25 @@ export default class PriceImportAI {
         }
     }
 
+    _normalizeAIData(data) {
+        if (!Array.isArray(data)) return [];
+        return data.map((item) => {
+            const normalized = { id: 'ai-' + Date.now() + Math.random() };
+            for (const [key, value] of Object.entries(item)) {
+                const k = key.toLowerCase();
+                if (k.includes('room') || k.includes('phòng')) normalized.room_name = value;
+                else if (k.includes('period') || k.includes('giai đoạn')) normalized.period_name = value;
+                else if (k.includes('package') || k.includes('gói')) normalized.package_name = value;
+                else if (k.includes('type') || k.includes('loại')) normalized.rate_type_name = value;
+                else if (k.includes('price') || k.includes('giá')) normalized.price = value;
+
+                const cleanKey = k.replace(/\s+/g, '-');
+                normalized[cleanKey] = value;
+            }
+            return normalized;
+        });
+    }
+
     async _handleSaveToDB() {
         try {
             const data = this.table ? this.table.getData() : this.extractedData;

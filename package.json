@@ -22,10 +22,9 @@
     "vite-plugin-static-copy": "^3.2.0"
   },
   "dependencies": {
-    "choices.js": "^11.1.0",
-    "dayjs": "^1.11.19",
     "dexie": "^4.4.2",
-    "firebase": "^12.10.0",
+    "firebase": "^12.12.0",
+    "firebase-functions": "^7.2.5",
     "sweetalert2": "^11.26.21"
   }
 }

@@ -831,6 +831,8 @@ class Application {
             // menu.toggleSide();
         }
         await SECURITY_MANAGER.cleanDOM(document);
+
+        const emily = await mgr.loadModule('EmilyChatUI', true);
         A.UI.activateTab('tab-dashboard');
     }
 }

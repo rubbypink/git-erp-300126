@@ -3,7 +3,7 @@ const { logger } = require('firebase-functions');
 const { getFirestore } = require('../utils/firebase-admin.util');
 const { FieldValue } = require('firebase-admin/firestore');
 
-const deleteBooking = onCall(async (request) => {
+const deleteBooking = onCall({ cors: true }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', 'Yêu cầu đăng nhập.');
 
   const uid = request.auth.uid;

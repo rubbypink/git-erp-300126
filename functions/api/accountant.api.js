@@ -18,6 +18,7 @@ exports.commitFundAccount = onCall(
   {
     region: REGION,
     enforceAppCheck: false,
+    cors: true,
   },
   async (request) => {
     if (!request.auth) {

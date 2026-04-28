@@ -1614,3 +1614,53 @@ html {
         transform: translateY(0);
     }
 }
+
+/* Custom Scrollbar cho khung chat của Emily */
+#emily-chat-box::-webkit-scrollbar {
+    width: 6px;
+}
+#emily-chat-box::-webkit-scrollbar-thumb {
+    background-color: #ccc;
+    border-radius: 10px;
+}
+
+/* Hiệu ứng hiển thị tin nhắn */
+.chat-msg {
+    animation: fadeIn 0.3s ease-in-out;
+    word-wrap: break-word;
+    font-size: 0.9rem;
+}
+
+.user-msg {
+    background-color: #0d6efd;
+    color: white;
+    align-self: flex-end;
+    border-radius: 15px 15px 0 15px !important;
+}
+
+.emily-msg {
+    background-color: #ffffff;
+    color: #333;
+    align-self: flex-start;
+    border-radius: 15px 15px 15px 0 !important;
+    border: 1px solid #e0e0e0;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive cho Mobile First */
+@media (max-width: 576px) {
+    #emily-chat-window {
+        width: calc(100vw - 30px);
+        height: calc(100vh - 120px);
+    }
+}

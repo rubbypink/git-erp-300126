@@ -1,2 +1,12 @@
 node_modules/
 *.local
+.env
+.env.*
+functions/node_modules/
+functions/.env
+functions/.env.*
+functions/.firebase/
+functions/.firebaserc
+functions/.vscode/
+functions/.idea/
+functions/.DS_Store

@@ -5,6 +5,9 @@
  * ═════════════════════════════════════════════════════════════════════════
  */
 
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+
 const { setGlobalOptions } = require('firebase-functions/v2');
 setGlobalOptions({ region: 'asia-southeast1' });
 
@@ -22,21 +25,24 @@ const { dailyReminders } = require('./api/cron.api');
 const { syncTransactionOnWrite } = require('./api/transaction-sync.api');
 const { commitFundAccount } = require('./api/accountant.api');
 const { processDocumentAI } = require('./api/import-ai.api');
+const { chatWithEmily } = require('./api/chat.api');
+const { crawlerDataOnline } = require('./api/crawler-trigger.api');
 
 // ─── Export Functions ───
 module.exports = {
-  syncUserToAuthOnWrite,
-  syncUserAuthDeleteOnDelete,
-  runSyncUserToAuth,
-  runBatchSyncUsers,
-  ...migrateFieldModule,
-  validateGoogleLoginOnSignIn,
-
-  deleteBooking,
-  archiveOldData,
-  dailyReminders,
-  syncTransactionOnWrite,
-  commitFundAccount,
-  // AI Import API (Frontend sẽ gọi tên hàm này)
-  processDocumentAI,
+    syncUserToAuthOnWrite,
+    syncUserAuthDeleteOnDelete,
+    runSyncUserToAuth,
+    runBatchSyncUsers,
+    ...migrateFieldModule,
+    validateGoogleLoginOnSignIn,
+    deleteBooking,
+    archiveOldData,
+    dailyReminders,
+    syncTransactionOnWrite,
+    commitFundAccount,
+    // AI Import API (Frontend sẽ gọi tên hàm này)
+    processDocumentAI,
+    chatWithEmily,
+    crawlerDataOnline,
 };

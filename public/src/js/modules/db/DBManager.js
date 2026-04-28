@@ -158,6 +158,19 @@ class DBManager {
         return this;
     }
 
+    // ─── Getters ──────────────────────────────────────────────────────────
+
+    /** Firestore instance */
+    get db() {
+        return this.#db;
+    }
+    get schema() {
+        return this.#schema;
+    }
+    get local() {
+        return this.#localDB;
+    }
+
     /**
      * Gửi yêu cầu thực thi một Cloud Function ở Backend.
      * @param {string} functionName - Tên function (endpoint) đã khai báo ở Firebase Functions.
@@ -181,19 +194,6 @@ class DBManager {
             L.log(`❌ [DBManager.callFunction] Lỗi thực thi ${functionName}:`, error);
             throw error;
         }
-    }
-
-    // ─── Getters ──────────────────────────────────────────────────────────
-
-    /** Firestore instance */
-    get db() {
-        return this.#db;
-    }
-    get schema() {
-        return this.#schema;
-    }
-    get local() {
-        return this.#localDB;
     }
 
     // ─── Load All Data ────────────────────────────────────────────────────────

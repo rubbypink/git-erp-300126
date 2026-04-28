@@ -92,7 +92,7 @@ exports.syncUserAuthDeleteOnDelete = onDocumentDeleted({ document: 'users/{uid}'
 /**
  * CALLABLE FUNCTION: Manual sync user to Firebase Auth
  */
-exports.runSyncUserToAuth = onCall({ region: REGION }, async (request) => {
+exports.runSyncUserToAuth = onCall({ region: REGION, cors: true }, async (request) => {
   if (!request.auth) {
     throw new Error('Bạn phải đăng nhập để sử dụng chức năng này.');
   }
@@ -119,7 +119,7 @@ exports.runSyncUserToAuth = onCall({ region: REGION }, async (request) => {
 /**
  * CALLABLE FUNCTION: Batch sync multiple users
  */
-exports.runBatchSyncUsers = onCall({ region: REGION }, async (request) => {
+exports.runBatchSyncUsers = onCall({ region: REGION, cors: true }, async (request) => {
   if (!request.auth) {
     throw new Error('Bạn phải đăng nhập để sử dụng chức năng này.');
   }

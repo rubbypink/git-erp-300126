@@ -11,6 +11,7 @@ const config = require('../config/system.config');
 const archiveOldData = onCall(
   {
     region: config.FIREBASE.REGION,
+    cors: true,
   },
   async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', 'Yêu cầu đăng nhập.');
