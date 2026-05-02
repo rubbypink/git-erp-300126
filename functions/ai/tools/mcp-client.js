@@ -1,15 +1,69 @@
 const { ai } = require('../genkit-init');
 const { z } = require('genkit');
-// Tích hợp SDK của MCP
-const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
-const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
+const axios = require('axios');
 
 /**
  * @module MCP_Tools
- * @description Quản lý kết nối tới CrawlForge MCP và xuất ra các Genkit Tools
+ * @description Quản lý kết nối tới CrawlForge REST API và xuất ra các Genkit Tools.
+ *
+ * 🔧 ĐÃ SỬA: Chuyển từ MCP Stdio Transport (không tương thích Firebase Cloud Functions)
+ * sang REST API trực tiếp qua HTTPS. CrawlForge cung cấp REST endpoint tại:
+ *   https://api.crawlforge.dev
+ *
+ * Biến môi trường cần thiết:
+ *   CRAWLFORGE_API_KEY  — API key (định dạng cf_live_...), lấy từ https://www.crawlforge.dev/signup
+ *   CRAWLFORGE_API_URL  — (tùy chọn) Mặc định: https://api.crawlforge.dev
  */
 
+const CRAWLFORGE_API_URL = process.env.CRAWLFORGE_API_URL || 'https://api.crawlforge.dev';
+const CRAWLFORGE_API_KEY = process.env.CRAWLFORGE_API_KEY || '';
+
+/**
+ * @function callCrawlForgeAPI
+ * @description Gọi CrawlForge REST API tool bằng HTTP POST
+ * @param {string} toolName    — Tên tool (vd: 'scrape_with_actions')
+ * @param {object} arguments   — Tham số gửi kèm
+ * @returns {Promise<string>}  — Nội dung text trả về từ CrawlForge
+ */
+async function callCrawlForgeAPI(toolName, args) {
+    if (!CRAWLFORGE_API_KEY) {
+        throw new Error(
+            'Thiếu CRAWLFORGE_API_KEY. Vui lòng đăng ký tại https://www.crawlforge.dev/signup ' +
+            'và set biến môi trường CRAWLFORGE_API_KEY.'
+        );
+    }
+
+    const response = await axios({
+        method: 'POST',
+        url: `${CRAWLFORGE_API_URL}/tools/${toolName}`,
+        headers: {
+            'Authorization': `Bearer ${CRAWLFORGE_API_KEY}`,
+            'Content-Type': 'application/json',
+            'User-Agent': '9trip-erp/1.0 (Firebase Cloud Functions)',
+        },
+        data: args,
+        timeout: 120_000, // 2 phút — đủ cho các trang nặng + Cloudflare challenge
+    });
+
+    // CrawlForge API trả về { content: [{ type: 'text', text: '...' }] }
+    // Hoặc { result: '...' } tùy phiên bản
+    if (response.data?.content?.[0]?.text) {
+        return response.data.content[0].text;
+    }
+    if (response.data?.result) {
+        return response.data.result;
+    }
+    if (typeof response.data === 'string') {
+        return response.data;
+    }
+
+    // Fallback: serialize toàn bộ response
+    return JSON.stringify(response.data);
+}
+
+// ═══════════════════════════════════════════════════════════════
 // 1. Tool Cào Dữ Liệu Raw (Vượt Cloudflare)
+// ═══════════════════════════════════════════════════════════════
 const crawlforgeScrapeTool = ai.defineTool(
     {
         name: 'crawlforge_scrape',
@@ -22,40 +76,41 @@ const crawlforgeScrapeTool = ai.defineTool(
     },
     async (input) => {
         try {
-            console.log(`[MCP Tool] Đang khởi chạy CrawlForge Scrape cho: ${input.url}`);
+            console.log(`[MCP Tool] Đang gọi CrawlForge REST API scrape: ${input.url}`);
 
-            // Khởi tạo luồng giao tiếp Stdio tới MCP Server được cài local/server
-            // Lưu ý: Trên Firebase, lệnh này sẽ gọi npx để kích hoạt server của CrawlForge
-            const transport = new StdioClientTransport({
-                command: 'npx',
-                args: ['-y', 'crawlforge-mcp-server'],
+            const result = await callCrawlForgeAPI('scrape_with_actions', {
+                url: input.url,
+                stealth_mode: input.stealthMode !== false, // mặc định true
+                wait_for: input.waitForSelector || undefined,
             });
 
-            const client = new Client({ name: 'erp-genkit-client', version: '1.0.0' }, { capabilities: { tools: {} } });
-
-            await client.connect(transport);
-
-            // Gọi tool có sẵn của CrawlForge
-            const result = await client.callTool({
-                name: 'scrape_with_actions',
-                arguments: {
-                    url: input.url,
-                    stealth_mode: input.stealthMode,
-                    wait_for: input.waitForSelector,
-                },
-            });
-
-            // Ngắt kết nối dọn dẹp RAM
-            await transport.close();
-
-            return result.content[0].text; // Trả về nội dung web
+            console.log(`[MCP Tool] ✅ CrawlForge scrape thành công (${result.length} ký tự)`);
+            return result;
         } catch (error) {
-            console.error(`[MCP Tool ERROR]`, error);
-            return `Lỗi khi cào dữ liệu: ${error.message}`;
+            const status = error.response?.status;
+            const detail = error.response?.data?.message || error.message;
+
+            console.error(`[MCP Tool ERROR] HTTP ${status || '???'}:`, detail);
+
+            if (status === 401 || status === 403) {
+                return 'Lỗi xác thực CrawlForge: Kiểm tra lại CRAWLFORGE_API_KEY (cần định dạng cf_live_...). Đăng ký free tại https://www.crawlforge.dev/signup';
+            }
+            if (status === 402) {
+                return 'Hết credits CrawlForge. Vui lòng nâng cấp gói tại https://www.crawlforge.dev/pricing';
+            }
+            if (status === 429) {
+                return 'CrawlForge rate limit. Đợi vài giây rồi thử lại.';
+            }
+
+            return `Lỗi khi cào dữ liệu: ${detail}`;
         }
     }
 );
 
+// ═══════════════════════════════════════════════════════════════
+// 2. Export
+// ═══════════════════════════════════════════════════════════════
 module.exports = {
     crawlforgeScrapeTool,
+    callCrawlForgeAPI, // export để tái sử dụng cho các tool khác sau này
 };

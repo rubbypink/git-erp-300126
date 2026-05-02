@@ -85,7 +85,7 @@ Sau khi nhận data từ FireCrawl MCP, gọi `orchestrator` skill để:
 Gửi dữ liệu đã chuẩn hóa tới endpoint:
 
 ```
-POST https://9tripphuquoc.com/cloneWebData
+POST https://erp.9tripphuquoc.com/cloneWebData
 Content-Type: application/json
 
 {
@@ -111,30 +111,30 @@ Chỉ inject schema của service type được chọn vào prompt FireCrawl:
 
 ```json
 {
-	"id": "string (auto-generated)",
-	"slug": "string (URL-friendly, e.g. 'phu-quoc-3d2n')",
-	"title": "string",
-	"excerpt": "string (short description, max 200 chars)",
-	"description": "string (full HTML description)",
-	"featuredImage": "string (URL)",
-	"gallery": ["string (URL array)"],
-	"duration": "string (e.g. '3D2N')",
-	"destinations": ["string (location names)"],
-	"itinerary": [{ "day": "number", "title": "string", "description": "string", "meals": "string", "accommodation": "string" }],
-	"inclusions": ["string"],
-	"exclusions": ["string"],
-	"pricing": { "basePrice": "number", "currency": "string (VND|USD|EUR, default: VND)", "discountPercent": "number (default: 0)", "discountLabel": "string", "maxPeople": "number" },
-	"availability": { "startDates": ["string (ISO date)"], "calendar": [{ "date": "string (ISO date)", "available": "boolean", "price": "number" }] },
-	"categories": ["string"],
-	"tags": ["string"],
-	"rating": "number (1-5, default: 0)",
-	"reviewCount": "number (default: 0)",
-	"featured": "boolean (default: false)",
-	"status": "string (default: 'active')",
-	"metaTitle": "string",
-	"metaDescription": "string",
-	"createdAt": "string (ISO timestamp)",
-	"updatedAt": "string (ISO timestamp)"
+    "id": "string (auto-generated)",
+    "slug": "string (URL-friendly, e.g. 'phu-quoc-3d2n')",
+    "title": "string",
+    "excerpt": "string (short description, max 200 chars)",
+    "description": "string (full HTML description)",
+    "featuredImage": "string (URL)",
+    "gallery": ["string (URL array)"],
+    "duration": "string (e.g. '3D2N')",
+    "destinations": ["string (location names)"],
+    "itinerary": [{ "day": "number", "title": "string", "description": "string", "meals": "string", "accommodation": "string" }],
+    "inclusions": ["string"],
+    "exclusions": ["string"],
+    "pricing": { "basePrice": "number", "currency": "string (VND|USD|EUR, default: VND)", "discountPercent": "number (default: 0)", "discountLabel": "string", "maxPeople": "number" },
+    "availability": { "startDates": ["string (ISO date)"], "calendar": [{ "date": "string (ISO date)", "available": "boolean", "price": "number" }] },
+    "categories": ["string"],
+    "tags": ["string"],
+    "rating": "number (1-5, default: 0)",
+    "reviewCount": "number (default: 0)",
+    "featured": "boolean (default: false)",
+    "status": "string (default: 'active')",
+    "metaTitle": "string",
+    "metaDescription": "string",
+    "createdAt": "string (ISO timestamp)",
+    "updatedAt": "string (ISO timestamp)"
 }
 ```
 
@@ -142,25 +142,25 @@ Chỉ inject schema của service type được chọn vào prompt FireCrawl:
 
 ```json
 {
-	"id": "string (auto-generated)",
-	"slug": "string",
-	"name": "string",
-	"excerpt": "string",
-	"description": "string",
-	"featuredImage": "string (URL)",
-	"gallery": ["string (URL array)"],
-	"address": { "street": "string", "city": "string", "country": "string", "lat": "number", "lng": "number" },
-	"starRating": "number (1-5)",
-	"amenities": ["string"],
-	"policies": { "checkInTime": "string (e.g. '14:00')", "checkOutTime": "string (e.g. '12:00')", "cancellation": "string" },
-	"rating": "number (1-5, default: 0)",
-	"reviewCount": "number (default: 0)",
-	"featured": "boolean (default: false)",
-	"status": "string (default: 'active')",
-	"metaTitle": "string",
-	"metaDescription": "string",
-	"createdAt": "string (ISO timestamp)",
-	"updatedAt": "string (ISO timestamp)"
+    "id": "string (auto-generated)",
+    "slug": "string",
+    "name": "string",
+    "excerpt": "string",
+    "description": "string",
+    "featuredImage": "string (URL)",
+    "gallery": ["string (URL array)"],
+    "address": { "street": "string", "city": "string", "country": "string", "lat": "number", "lng": "number" },
+    "starRating": "number (1-5)",
+    "amenities": ["string"],
+    "policies": { "checkInTime": "string (e.g. '14:00')", "checkOutTime": "string (e.g. '12:00')", "cancellation": "string" },
+    "rating": "number (1-5, default: 0)",
+    "reviewCount": "number (default: 0)",
+    "featured": "boolean (default: false)",
+    "status": "string (default: 'active')",
+    "metaTitle": "string",
+    "metaDescription": "string",
+    "createdAt": "string (ISO timestamp)",
+    "updatedAt": "string (ISO timestamp)"
 }
 ```
 
@@ -168,21 +168,21 @@ Chỉ inject schema của service type được chọn vào prompt FireCrawl:
 
 ```json
 {
-	"id": "string (auto-generated)",
-	"hotelId": "string (required - reference to hotel)",
-	"slug": "string",
-	"name": "string",
-	"description": "string",
-	"images": ["string (URL array)"],
-	"roomType": "string",
-	"maxGuests": "number",
-	"bedType": "string",
-	"pricing": { "basePrice": "number", "currency": "string (default: VND)", "discountPercent": "number (default: 0)" },
-	"amenities": ["string"],
-	"availability": { "totalRooms": "number", "calendar": [{ "date": "string (ISO date)", "available": "boolean", "price": "number" }] },
-	"status": "string (default: 'active')",
-	"createdAt": "string (ISO timestamp)",
-	"updatedAt": "string (ISO timestamp)"
+    "id": "string (auto-generated)",
+    "hotelId": "string (required - reference to hotel)",
+    "slug": "string",
+    "name": "string",
+    "description": "string",
+    "images": ["string (URL array)"],
+    "roomType": "string",
+    "maxGuests": "number",
+    "bedType": "string",
+    "pricing": { "basePrice": "number", "currency": "string (default: VND)", "discountPercent": "number (default: 0)" },
+    "amenities": ["string"],
+    "availability": { "totalRooms": "number", "calendar": [{ "date": "string (ISO date)", "available": "boolean", "price": "number" }] },
+    "status": "string (default: 'active')",
+    "createdAt": "string (ISO timestamp)",
+    "updatedAt": "string (ISO timestamp)"
 }
 ```
 
@@ -190,26 +190,26 @@ Chỉ inject schema của service type được chọn vào prompt FireCrawl:
 
 ```json
 {
-	"id": "string (auto-generated)",
-	"slug": "string",
-	"title": "string",
-	"excerpt": "string",
-	"description": "string",
-	"featuredImage": "string (URL)",
-	"gallery": ["string (URL array)"],
-	"duration": "string",
-	"location": "string",
-	"pricing": { "basePrice": "number", "currency": "string (default: VND)", "discountPercent": "number (default: 0)" },
-	"availability": { "startDates": ["string (ISO date)"], "calendar": [{ "date": "string (ISO date)", "available": "boolean", "price": "number" }] },
-	"categories": ["string"],
-	"rating": "number (1-5, default: 0)",
-	"reviewCount": "number (default: 0)",
-	"featured": "boolean (default: false)",
-	"status": "string (default: 'active')",
-	"metaTitle": "string",
-	"metaDescription": "string",
-	"createdAt": "string (ISO timestamp)",
-	"updatedAt": "string (ISO timestamp)"
+    "id": "string (auto-generated)",
+    "slug": "string",
+    "title": "string",
+    "excerpt": "string",
+    "description": "string",
+    "featuredImage": "string (URL)",
+    "gallery": ["string (URL array)"],
+    "duration": "string",
+    "location": "string",
+    "pricing": { "basePrice": "number", "currency": "string (default: VND)", "discountPercent": "number (default: 0)" },
+    "availability": { "startDates": ["string (ISO date)"], "calendar": [{ "date": "string (ISO date)", "available": "boolean", "price": "number" }] },
+    "categories": ["string"],
+    "rating": "number (1-5, default: 0)",
+    "reviewCount": "number (default: 0)",
+    "featured": "boolean (default: false)",
+    "status": "string (default: 'active')",
+    "metaTitle": "string",
+    "metaDescription": "string",
+    "createdAt": "string (ISO timestamp)",
+    "updatedAt": "string (ISO timestamp)"
 }
 ```
 
@@ -217,26 +217,26 @@ Chỉ inject schema của service type được chọn vào prompt FireCrawl:
 
 ```json
 {
-	"id": "string (auto-generated)",
-	"slug": "string",
-	"name": "string",
-	"excerpt": "string",
-	"description": "string",
-	"images": ["string (URL array)"],
-	"carType": "string",
-	"transmission": "string (e.g. 'automatic', 'manual')",
-	"seats": "number",
-	"pricing": { "basePrice": "number", "currency": "string (default: VND)", "pricePerDay": "number", "discountPercent": "number (default: 0)" },
-	"features": ["string"],
-	"availability": { "calendar": [{ "date": "string (ISO date)", "available": "boolean", "price": "number" }] },
-	"rating": "number (1-5, default: 0)",
-	"reviewCount": "number (default: 0)",
-	"featured": "boolean (default: false)",
-	"status": "string (default: 'active')",
-	"metaTitle": "string",
-	"metaDescription": "string",
-	"createdAt": "string (ISO timestamp)",
-	"updatedAt": "string (ISO timestamp)"
+    "id": "string (auto-generated)",
+    "slug": "string",
+    "name": "string",
+    "excerpt": "string",
+    "description": "string",
+    "images": ["string (URL array)"],
+    "carType": "string",
+    "transmission": "string (e.g. 'automatic', 'manual')",
+    "seats": "number",
+    "pricing": { "basePrice": "number", "currency": "string (default: VND)", "pricePerDay": "number", "discountPercent": "number (default: 0)" },
+    "features": ["string"],
+    "availability": { "calendar": [{ "date": "string (ISO date)", "available": "boolean", "price": "number" }] },
+    "rating": "number (1-5, default: 0)",
+    "reviewCount": "number (default: 0)",
+    "featured": "boolean (default: false)",
+    "status": "string (default: 'active')",
+    "metaTitle": "string",
+    "metaDescription": "string",
+    "createdAt": "string (ISO timestamp)",
+    "updatedAt": "string (ISO timestamp)"
 }
 ```
 
@@ -244,25 +244,25 @@ Chỉ inject schema của service type được chọn vào prompt FireCrawl:
 
 ```json
 {
-	"id": "string (auto-generated)",
-	"slug": "string",
-	"name": "string",
-	"excerpt": "string",
-	"description": "string",
-	"images": ["string (URL array)"],
-	"type": "string",
-	"location": "string",
-	"pricing": { "basePrice": "number", "currency": "string (default: VND)", "pricePerDay": "number", "discountPercent": "number (default: 0)" },
-	"features": ["string"],
-	"availability": { "calendar": [{ "date": "string (ISO date)", "available": "boolean", "price": "number" }] },
-	"rating": "number (1-5, default: 0)",
-	"reviewCount": "number (default: 0)",
-	"featured": "boolean (default: false)",
-	"status": "string (default: 'active')",
-	"metaTitle": "string",
-	"metaDescription": "string",
-	"createdAt": "string (ISO timestamp)",
-	"updatedAt": "string (ISO timestamp)"
+    "id": "string (auto-generated)",
+    "slug": "string",
+    "name": "string",
+    "excerpt": "string",
+    "description": "string",
+    "images": ["string (URL array)"],
+    "type": "string",
+    "location": "string",
+    "pricing": { "basePrice": "number", "currency": "string (default: VND)", "pricePerDay": "number", "discountPercent": "number (default: 0)" },
+    "features": ["string"],
+    "availability": { "calendar": [{ "date": "string (ISO date)", "available": "boolean", "price": "number" }] },
+    "rating": "number (1-5, default: 0)",
+    "reviewCount": "number (default: 0)",
+    "featured": "boolean (default: false)",
+    "status": "string (default: 'active')",
+    "metaTitle": "string",
+    "metaDescription": "string",
+    "createdAt": "string (ISO timestamp)",
+    "updatedAt": "string (ISO timestamp)"
 }
 ```
 
@@ -270,20 +270,20 @@ Chỉ inject schema của service type được chọn vào prompt FireCrawl:
 
 ```json
 {
-	"id": "string (auto-generated)",
-	"slug": "string",
-	"name": "string",
-	"type": "string (e.g. 'city', 'island', 'region')",
-	"parentId": "string (optional)",
-	"description": "string",
-	"image": "string (URL)",
-	"lat": "number",
-	"lng": "number",
-	"country": "string",
-	"featured": "boolean (default: false)",
-	"status": "string (default: 'active')",
-	"createdAt": "string (ISO timestamp)",
-	"updatedAt": "string (ISO timestamp)"
+    "id": "string (auto-generated)",
+    "slug": "string",
+    "name": "string",
+    "type": "string (e.g. 'city', 'island', 'region')",
+    "parentId": "string (optional)",
+    "description": "string",
+    "image": "string (URL)",
+    "lat": "number",
+    "lng": "number",
+    "country": "string",
+    "featured": "boolean (default: false)",
+    "status": "string (default: 'active')",
+    "createdAt": "string (ISO timestamp)",
+    "updatedAt": "string (ISO timestamp)"
 }
 ```
 
@@ -326,7 +326,7 @@ Example of one correct output document:
 ## ERP Endpoint Specification
 
 ```
-POST https://9tripphuquoc.com/cloneWebData
+POST https://erp.9tripphuquoc.com/cloneWebData
 
 Headers:
   Content-Type: application/json
