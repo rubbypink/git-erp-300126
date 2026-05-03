@@ -1,0 +1,167 @@
+<template id="tmpl-ai-marketing">
+    <div class="container-fluid p-2 p-md-3">
+        <!-- ═══ HEADER — Mobile First ═══ -->
+        <div class="p-2 mb-3 rounded d-flex flex-column flex-md-row align-items-center justify-content-between gap-2"
+             style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <h6 class="m-0 text-white text-uppercase fw-bold p-2">
+                <i class="fa-solid fa-robot me-2"></i>AI Content Pipeline — Phú Quốc
+            </h6>
+            <div class="d-flex align-items-center gap-2 flex-wrap justify-content-center">
+                <select id="ai-queue-filter-status" class="form-select form-select-sm fw-bold" style="width: 140px;">
+                    <option value="pending_review">Chờ duyệt</option>
+                    <option value="approved">Đã duyệt</option>
+                    <option value="rejected">Từ chối</option>
+                    <option value="revision">Sửa lại</option>
+                    <option value="">Tất cả</option>
+                </select>
+                <select id="ai-queue-filter-format" class="form-select form-select-sm fw-bold" style="width: 130px;">
+                    <option value="">Tất cả format</option>
+                    <option value="social_post">Social Post</option>
+                    <option value="blog_post">Blog Post</option>
+                    <option value="short_caption">Short Caption</option>
+                    <option value="news_summary">News Summary</option>
+                </select>
+                <button id="ai-queue-refresh" class="btn btn-outline-light btn-sm fw-bold">
+                    <i class="fa-solid fa-rotate me-1"></i>Tải lại
+                </button>
+            </div>
+        </div>
+
+        <!-- ═══ STATS CARDS ═══ -->
+        <div class="row g-2 mb-3">
+            <div class="col-6 col-md-3">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body p-2 text-center">
+                        <div class="text-muted small">Chờ duyệt</div>
+                        <div class="fw-bold text-warning fs-5" id="ai-stat-pending">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body p-2 text-center">
+                        <div class="text-muted small">Đã duyệt</div>
+                        <div class="fw-bold text-success fs-5" id="ai-stat-approved">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body p-2 text-center">
+                        <div class="text-muted small">Từ chối</div>
+                        <div class="fw-bold text-danger fs-5" id="ai-stat-rejected">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-body p-2 text-center">
+                        <div class="text-muted small">Sửa lại</div>
+                        <div class="fw-bold text-info fs-5" id="ai-stat-revision">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ PIPELINE STATUS ═══ -->
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-header bg-dark bg-gradient text-white py-1 d-flex justify-content-between align-items-center"
+                 onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto; cursor: pointer;">
+                <small class="fw-bold"><i class="fa-solid fa-diagram-project me-1"></i>Pipeline: Researcher → Writer → MediaMaster → Publisher</small>
+                <i class="fa-solid fa-chevron-down toggle-icon small"></i>
+            </div>
+            <div class="card-body p-2">
+                <div class="d-flex flex-column flex-md-row gap-2 align-items-stretch" id="ai-pipeline-steps">
+                    <!-- Researcher -->
+                    <div class="flex-fill border rounded p-2 text-center" id="ai-pipe-researcher" style="border-color: #ffc107 !important;">
+                        <div class="fw-bold small text-warning"><i class="fa-solid fa-magnifying-glass me-1"></i>Researcher</div>
+                        <div class="text-muted" style="font-size: 11px;">Gemini 1.5 Flash</div>
+                        <div class="badge bg-warning text-dark mt-1" id="ai-pipe-researcher-count">—</div>
+                    </div>
+                    <div class="d-none d-md-flex align-items-center text-muted"><i class="fa-solid fa-arrow-right"></i></div>
+                    <div class="d-flex d-md-none justify-content-center text-muted"><i class="fa-solid fa-arrow-down"></i></div>
+                    <!-- Writer -->
+                    <div class="flex-fill border rounded p-2 text-center" id="ai-pipe-writer" style="border-color: #17a2b8 !important;">
+                        <div class="fw-bold small text-info"><i class="fa-solid fa-pen-nib me-1"></i>Writer</div>
+                        <div class="text-muted" style="font-size: 11px;">DeepSeek V4 Pro</div>
+                        <div class="badge bg-info text-dark mt-1" id="ai-pipe-writer-count">—</div>
+                    </div>
+                    <div class="d-none d-md-flex align-items-center text-muted"><i class="fa-solid fa-arrow-right"></i></div>
+                    <div class="d-flex d-md-none justify-content-center text-muted"><i class="fa-solid fa-arrow-down"></i></div>
+                    <!-- Media Master -->
+                    <div class="flex-fill border rounded p-2 text-center" id="ai-pipe-media" style="border-color: #6f42c1 !important;">
+                        <div class="fw-bold small" style="color: #6f42c1;"><i class="fa-solid fa-image me-1"></i>MediaMaster</div>
+                        <div class="text-muted" style="font-size: 11px;">Gemini 1.5 Flash</div>
+                        <div class="badge mt-1" style="background: #6f42c1;" id="ai-pipe-media-count">—</div>
+                    </div>
+                    <div class="d-none d-md-flex align-items-center text-muted"><i class="fa-solid fa-arrow-right"></i></div>
+                    <div class="d-flex d-md-none justify-content-center text-muted"><i class="fa-solid fa-arrow-down"></i></div>
+                    <!-- Publisher -->
+                    <div class="flex-fill border rounded p-2 text-center" id="ai-pipe-publisher" style="border-color: #28a745 !important;">
+                        <div class="fw-bold small text-success"><i class="fa-solid fa-paper-plane me-1"></i>Publisher</div>
+                        <div class="text-muted" style="font-size: 11px;">Chưa triển khai</div>
+                        <div class="badge bg-secondary mt-1" id="ai-pipe-publisher-count">—</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ CONTENT QUEUE — Matrix Input ═══ -->
+        <div class="card shadow-sm border-0 mb-3">
+            <div class="card-header bg-primary bg-gradient bg-opacity-75 py-1 d-flex justify-content-between align-items-center"
+                 onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto; cursor: pointer;">
+                <small class="fw-bold text-white border-start border-4 border-warning ps-2">
+                    <i class="fa-solid fa-layer-group me-1"></i>Danh sách bài viết — Chờ duyệt
+                </small>
+                <span class="badge bg-warning text-dark" id="ai-queue-count">0</span>
+            </div>
+            <div class="card-body p-0">
+                <!-- Loading skeleton -->
+                <div id="ai-queue-loading" class="text-center p-4">
+                    <div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
+                    <span class="text-muted small">Đang tải bài viết từ Content Queue...</span>
+                </div>
+                <!-- Empty state -->
+                <div id="ai-queue-empty" class="text-center p-4 d-none">
+                    <i class="fa-solid fa-inbox fa-2x text-muted mb-2"></i>
+                    <div class="text-muted small">Không có bài viết nào phù hợp bộ lọc.</div>
+                </div>
+                <!-- Content cards list -->
+                <div id="ai-queue-list" class="d-none">
+                    <!-- Cards sẽ được render bất đồng bộ bởi JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ DETAIL MODAL — Xem trước & Matrix Input Review ═══ -->
+        <div class="modal fade" id="aiDetailModal" tabindex="-1" aria-labelledby="aiDetailModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary bg-gradient text-white py-2">
+                        <h6 class="modal-title fw-bold" id="aiDetailModalLabel">
+                            <i class="fa-solid fa-file-lines me-1"></i>Chi tiết bài viết
+                        </h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-3" id="ai-detail-body">
+                        <!-- Render bởi JS -->
+                    </div>
+                    <div class="modal-footer d-flex flex-column flex-md-row gap-2">
+                        <div class="d-flex gap-2 flex-fill">
+                            <button type="button" class="btn btn-success flex-fill" id="ai-btn-approve">
+                                <i class="fa-solid fa-check me-1"></i>Duyệt
+                            </button>
+                            <button type="button" class="btn btn-outline-warning flex-fill" id="ai-btn-revision">
+                                <i class="fa-solid fa-pen me-1"></i>Sửa lại
+                            </button>
+                            <button type="button" class="btn btn-outline-danger flex-fill" id="ai-btn-reject">
+                                <i class="fa-solid fa-xmark me-1"></i>Từ chối
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Đóng</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>

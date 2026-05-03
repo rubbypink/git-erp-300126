@@ -46,8 +46,9 @@ class AiManager {
      * @description Cho AI khả năng tự quyết định dùng Tool (ví dụ gọi MCP CrawlForge)
      * @param {string} prompt - Yêu cầu của người dùng
      * @param {Array} tools - Mảng các Genkit Tools truyền vào
+     * @param {string} [systemPrompt] - System prompt tùy chỉnh (thay thế mặc định nếu có)
      */
-    async generateWithTools(prompt, tools = []) {
+    async generateWithTools(prompt, tools = [], systemPrompt) {
         try {
             console.log(`[AiManager] Bắt đầu Agentic Loop với ${this.modelName}...`);
             const response = await ai.generate({
@@ -55,7 +56,7 @@ class AiManager {
                 prompt: prompt,
                 tools: tools,
                 maxTurns: 5,
-                system: 'Bạn là một Web Scraping Agent. Hãy sử dụng các tool được cung cấp để truy cập web và lấy dữ liệu. Hãy phân tích kỹ DOM trả về.',
+                system: systemPrompt || 'Bạn là một Web Scraping Agent. Hãy sử dụng các tool được cung cấp để truy cập web và lấy dữ liệu. Hãy phân tích kỹ DOM trả về.',
             });
             return { success: true, text: response.text, data: response };
         } catch (error) {

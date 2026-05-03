@@ -1,16 +1,18 @@
 const { ai } = require('../genkit-init');
 const { z } = require('genkit');
+const path = require('path');
 const { gemini, openai, deepseek, emily } = require('../index');
 const { getTourInfoSkill } = require('../tools/db-skills');
 const { searchPhuQuocTourismSkill } = require('../tools/phuquoc-search');
 const { getFirestore } = require('../../utils/firebase-admin.util');
+const emilyConfig = require(path.resolve(__dirname, '../../../.9trip-agents/configs/emily.config'));
 
-// Bảng ánh xạ tên model → instance AiManager
+// Bảng ánh xạ tên model → instance AiManager (lấy từ config)
 const MODEL_MAP = {
-    emily, // googleai/gemini-1.5-flash (mặc định)
-    gemini, // googleai/gemini-3.1-flash
-    openai, // openai/gpt-4o
-    deepseek, // deepseek/deepseek-v4-pro
+    emily,
+    gemini,
+    openai,
+    deepseek,
 };
 
 const chatbotFlow = ai.defineFlow(
@@ -24,16 +26,12 @@ const chatbotFlow = ai.defineFlow(
         outputSchema: z.string(),
     },
     async (input) => {
-        const systemPrompt = `
-Bạn là Emily, chuyên viên tư vấn bán hàng của Công ty TNHH 9 Trip Phú Quốc (Chuyên mảng du lịch Phú Quốc).
-Quy tắc trả lời:
-1. Giá cả & Tour: BẮT BUỘC dùng tool 'search_tours_db' để check hệ thống nội bộ. Tuyệt đối không bịa giá. Nếu không có dữ liệu, hãy nói "Hiện tại chúng tôi chưa có tour phù hợp, nhưng tôi sẽ cập nhật ngay khi có thông tin mới!".
-2. Kinh nghiệm, Thời tiết, Ăn uống hay thông tin về du lịch Phú Quốc: Dùng tool 'search_phuquoc' để lấy thông tin mới nhất trên mạng nếu bạn không chắc chắn.
-3. Nếu khách hỏi ngoài lề (không liên quan du lịch Phú Quốc), hãy khéo léo từ chối và hướng họ về dịch vụ của 9Trip.
-        `;
+        // Đọc systemPrompt từ config
+        const systemPrompt = emilyConfig.systemPrompt;
 
-        // Chọn agent: theo model người dùng yêu cầu, mặc định là emily
-        const agent = MODEL_MAP[input.model] || emily;
+        // Chọn agent: theo model người dùng yêu cầu, mặc định lấy từ config
+        const agentKey = input.model || emilyConfig.defaultModel;
+        const agent = MODEL_MAP[agentKey] || emily;
         // Nếu dùng model khác emily, set emily làm fallback phòng khi lỗi quota/token
         const fallback = agent !== emily ? emily : null;
 
@@ -45,7 +43,7 @@ Quy tắc trả lời:
             system: systemPrompt,
             tools: [getTourInfoSkill, searchPhuQuocTourismSkill],
             db: getFirestore(),
-            collection: 'emily_chat_sessions',
+            collection: emilyConfig.chatCollection,
             fallbackAgent: fallback,
         });
 
