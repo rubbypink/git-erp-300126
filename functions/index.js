@@ -24,9 +24,6 @@ const { archiveOldData } = require('./api/archive.api');
 const { dailyReminders } = require('./api/cron.api');
 const { syncTransactionOnWrite } = require('./api/transaction-sync.api');
 const { commitFundAccount } = require('./api/accountant.api');
-const { processDocumentAI } = require('./api/import-ai.api');
-const { chatWithEmily } = require('./api/chat.api');
-const { crawlerDataOnline } = require('./api/crawler-trigger.api');
 
 // ─── Export Functions ───
 module.exports = {
@@ -41,8 +38,4 @@ module.exports = {
     dailyReminders,
     syncTransactionOnWrite,
     commitFundAccount,
-    // AI Import API (Frontend sẽ gọi tên hàm này)
-    processDocumentAI,
-    chatWithEmily,
-    crawlerDataOnline,
 };

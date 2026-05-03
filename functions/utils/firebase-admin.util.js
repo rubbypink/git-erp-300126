@@ -59,3 +59,4 @@ module.exports = {
   getMessaging: getMessagingInstance,
   getAuth: getAuthInstance,
 };
+
