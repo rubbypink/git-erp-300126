@@ -88,7 +88,7 @@ class IndexedDBHelper {
 
     async _doInitDB() {
         try {
-            this.db.version(12).stores(buildDexieSchema());
+            this.db.version(15).stores(buildDexieSchema());
             await this.db.open();
             await this._loadSyncMeta();
             return true;

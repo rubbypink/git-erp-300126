@@ -3,10 +3,10 @@
  * Updated for Cloud Functions v7 (v2) & Admin SDK v13
  */
 
-const { onSchedule } = require('firebase-functions/v2/scheduler');
-const { logger } = require('firebase-functions');
-const { getFirestore } = require('../utils/firebase-admin.util');
-const { FieldValue } = require('firebase-admin/firestore');
+import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { logger } from 'firebase-functions';
+import { getFirestore } from '../utils/firebase-admin.util.js';
+import { FieldValue } from 'firebase-admin/firestore';
 
 // Chạy vào 07:00 sáng mỗi ngày, theo giờ Việt Nam
 const dailyReminders = onSchedule(
@@ -85,4 +85,4 @@ const dailyReminders = onSchedule(
   }
 );
 
-module.exports = { dailyReminders };
+export { dailyReminders };

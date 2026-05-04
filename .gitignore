@@ -80,10 +80,8 @@ dist/
 .env
 .env.local
 .env.production
-
 # Firebase Emulator Data
 firebase-data/
-/functions-ai/
 
 # AI 
 memory.md

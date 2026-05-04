@@ -373,12 +373,33 @@ export const ChromeMenuController = {
                             logA('Chưa tải module báo cáo. Vui lòng refresh trang.', 'warning', 'alert');
                         }
                     } else {
-                        console.error('Modal component not found. Please ensure at-modal-full is included in the page.');
+                        console.error('Modal component not found. Please ensure at-modal-modal is included in the page.');
                         logA('Không tìm thấy thành phần modal. Vui lòng refresh trang.', 'warning', 'alert');
                     }
                 },
             },
             'Cài Đặt Hệ Thống' // Chỉ định chính xác tên (label) của Submenu đích
+        );
+        this.addMenu(
+            {
+                type: 'item',
+                label: 'AI Marketing Dashboard',
+                icon: 'fa-solid fa-robot text-info',
+                action: async function () {
+                    if (typeof AiMarketingModule === 'undefined') {
+                        await A.load('AiMarketing');
+                    }
+                    A.Modal.show(
+                        '<div id="ai-marketing-container" class="p-2"></div>',
+                        'AI Content Pipeline — Phú Quốc'
+                    );
+                    setTimeout(() => {
+                        AiMarketingModule.destroy();
+                        AiMarketingModule.init();
+                    }, 100);
+                },
+            },
+            'Administration'
         );
     },
 };

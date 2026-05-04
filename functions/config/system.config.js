@@ -3,7 +3,7 @@
  * Centralized configuration for Cloud Functions
  */
 
-module.exports = {
+export default {
   // Messaging configuration
   MESSAGING: {
     VALID_TOPICS: ['Sales', 'Operator', 'Accountant', 'All', 'Admin'],
@@ -31,8 +31,7 @@ module.exports = {
     },
   },
 
-  // CORS configuration - whitelist domains
-  CORS: ['https://www.9tripphuquoc.com', 'https://9tripphuquoc.com', 'http://localhost:5000', 'http://127.0.0.1:5000', 'http://127.0.0.1:5500'],
+  CORS: ['https://www.erp.9tripphuquoc.com', 'https://erp.9tripphuquoc.com', 'http://localhost:5000', 'http://127.0.0.1:5000', 'http://127.0.0.1:5500'],
 
   // Cloud Function configuration
   FUNCTIONS: {

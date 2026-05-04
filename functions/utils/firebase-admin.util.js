@@ -4,11 +4,11 @@
  * Updated for Firebase Admin SDK v13 (Modular)
  */
 
-const { initializeApp, getApps } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
-const { getMessaging } = require('firebase-admin/messaging');
-const { getAuth } = require('firebase-admin/auth');
-const { logger } = require('firebase-functions');
+import { initializeApp, getApps } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getMessaging } from 'firebase-admin/messaging';
+import { getAuth } from 'firebase-admin/auth';
+import { logger } from 'firebase-functions';
 
 /**
  * Initialize Firebase Admin SDK (Singleton)
@@ -53,10 +53,4 @@ function getAuthInstance() {
   return getAuth();
 }
 
-module.exports = {
-  initializeFirebaseAdmin,
-  getFirestore: getFirestoreInstance,
-  getMessaging: getMessagingInstance,
-  getAuth: getAuthInstance,
-};
-
+export { initializeFirebaseAdmin, getFirestoreInstance as getFirestore, getMessagingInstance as getMessaging, getAuthInstance as getAuth };

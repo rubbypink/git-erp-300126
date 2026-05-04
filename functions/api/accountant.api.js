@@ -5,16 +5,16 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
-const { commitFundAccountLogic } = require('../services/accountant.service');
-const config = require('../config/system.config');
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { commitFundAccountLogic } from '../services/accountant.service.js';
+import config from '../config/system.config.js';
 
 const REGION = config.FIREBASE.REGION;
 
 /**
  * Callable Function: Chốt số dư tài khoản quỹ
  */
-exports.commitFundAccount = onCall(
+export const commitFundAccount = onCall(
   {
     region: REGION,
     enforceAppCheck: false,

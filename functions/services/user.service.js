@@ -3,10 +3,10 @@
  * Handles user-related business logic (authentication, validation, etc.)
  */
 
-const {logger} = require("firebase-functions");
-const {HttpsError} = require("firebase-functions/v2/https");
-const {getFirestore} = require("../utils/firebase-admin.util");
-const config = require("../config/system.config");
+import { logger } from 'firebase-functions';
+import { HttpsError } from 'firebase-functions/v2/https';
+import { getFirestore } from '../utils/firebase-admin.util.js';
+import config from '../config/system.config.js';
 
 /**
  * Verify user exists in Firestore
@@ -16,17 +16,11 @@ const config = require("../config/system.config");
  */
 async function verifyUserExists(uid) {
   try {
-    const userDoc = await getFirestore()
-        .collection(config.FIREBASE.COLLECTIONS.USERS)
-        .doc(uid)
-        .get();
+    const userDoc = await getFirestore().collection(config.FIREBASE.COLLECTIONS.USERS).doc(uid).get();
 
     if (!userDoc.exists) {
       logger.warn(`⚠️ User ${uid} not found in database`);
-      throw new HttpsError(
-          "permission-denied",
-          config.ERRORS.USER_NOT_FOUND,
-      );
+      throw new HttpsError('permission-denied', config.ERRORS.USER_NOT_FOUND);
     }
 
     return userDoc.data();
@@ -34,12 +28,8 @@ async function verifyUserExists(uid) {
     if (error instanceof HttpsError) {
       throw error;
     }
-    logger.error("❌ Error verifying user:", error);
-    throw new HttpsError(
-        "internal",
-        "Lỗi khi xác thực người dùng.",
-        error.message,
-    );
+    logger.error('❌ Error verifying user:', error);
+    throw new HttpsError('internal', 'Lỗi khi xác thực người dùng.', error.message);
   }
 }
 
@@ -62,20 +52,13 @@ async function verifyUserRole(uid, requiredRole) {
  */
 async function getUserData(uid) {
   try {
-    const userDoc = await getFirestore()
-        .collection(config.FIREBASE.COLLECTIONS.USERS)
-        .doc(uid)
-        .get();
+    const userDoc = await getFirestore().collection(config.FIREBASE.COLLECTIONS.USERS).doc(uid).get();
 
     return userDoc.exists ? userDoc.data() : null;
   } catch (error) {
-    logger.error("❌ Error getting user data:", error);
+    logger.error('❌ Error getting user data:', error);
     return null;
   }
 }
 
-module.exports = {
-  verifyUserExists,
-  verifyUserRole,
-  getUserData,
-};
+export { verifyUserExists, verifyUserRole, getUserData };

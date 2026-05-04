@@ -6,9 +6,9 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-const { logger } = require('firebase-functions');
-const { getFirestore } = require('../utils/firebase-admin.util');
-const { Timestamp } = require('firebase-admin/firestore');
+import { logger } from 'firebase-functions';
+import { getFirestore } from '../utils/firebase-admin.util.js';
+import { Timestamp } from 'firebase-admin/firestore';
 
 /**
  * Chốt số dư tài khoản quỹ
@@ -101,6 +101,4 @@ async function commitFundAccountLogic(accountId, start, end) {
   }
 }
 
-module.exports = {
-  commitFundAccountLogic,
-};
+export { commitFundAccountLogic };

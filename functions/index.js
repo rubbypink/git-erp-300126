@@ -5,37 +5,20 @@
  * ═════════════════════════════════════════════════════════════════════════
  */
 
-const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '.env') });
-
-const { setGlobalOptions } = require('firebase-functions/v2');
+import dotenv from 'dotenv/config';
+import { setGlobalOptions } from 'firebase-functions/v2';
 setGlobalOptions({ region: 'asia-southeast1' });
 
-const { initializeFirebaseAdmin } = require('./utils/firebase-admin.util');
+import { initializeFirebaseAdmin } from './utils/firebase-admin.util.js';
 initializeFirebaseAdmin();
 
-// ─── Import Functions ───
-const { syncUserToAuthOnWrite, syncUserAuthDeleteOnDelete, runSyncUserToAuth, runBatchSyncUsers } = require('./api/user-sync.api');
-const migrateFieldModule = require('./api/migration.api');
-const { validateGoogleLoginOnSignIn } = require('./api/auth-blocking.api');
+import { syncUserToAuthOnWrite, syncUserAuthDeleteOnDelete, runSyncUserToAuth, runBatchSyncUsers } from './api/user-sync.api.js';
+import { migrateField } from './api/migration.api.js';
+import { validateGoogleLoginOnSignIn } from './api/auth-blocking.api.js';
+import { deleteBooking } from './api/bookings.api.js';
+import { archiveOldData } from './api/archive.api.js';
+import { dailyReminders } from './api/cron.api.js';
+import { syncTransactionOnWrite } from './api/transaction-sync.api.js';
+import { commitFundAccount } from './api/accountant.api.js';
 
-const { deleteBooking } = require('./api/bookings.api');
-const { archiveOldData } = require('./api/archive.api');
-const { dailyReminders } = require('./api/cron.api');
-const { syncTransactionOnWrite } = require('./api/transaction-sync.api');
-const { commitFundAccount } = require('./api/accountant.api');
-
-// ─── Export Functions ───
-module.exports = {
-    syncUserToAuthOnWrite,
-    syncUserAuthDeleteOnDelete,
-    runSyncUserToAuth,
-    runBatchSyncUsers,
-    ...migrateFieldModule,
-    validateGoogleLoginOnSignIn,
-    deleteBooking,
-    archiveOldData,
-    dailyReminders,
-    syncTransactionOnWrite,
-    commitFundAccount,
-};
+export { syncUserToAuthOnWrite, syncUserAuthDeleteOnDelete, runSyncUserToAuth, runBatchSyncUsers, migrateField, validateGoogleLoginOnSignIn, deleteBooking, archiveOldData, dailyReminders, syncTransactionOnWrite, commitFundAccount };

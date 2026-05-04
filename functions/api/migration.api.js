@@ -6,16 +6,16 @@
  * ═════════════════════════════════════════════════════════════════════════
  */
 
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
-const { logger } = require('firebase-functions');
-const { getFirestore } = require('../utils/firebase-admin.util');
-const { FieldValue } = require('firebase-admin/firestore');
-const config = require('../config/system.config');
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { logger } from 'firebase-functions';
+import { getFirestore } from '../utils/firebase-admin.util.js';
+import { FieldValue } from 'firebase-admin/firestore';
+import config from '../config/system.config.js';
 
 /**
  * Migrate a field in a Firestore collection (rename, copy, or move).
  */
-exports.migrateField = onCall(
+export const migrateField = onCall(
   {
     region: config.FIREBASE.REGION,
     cors: config.CORS,

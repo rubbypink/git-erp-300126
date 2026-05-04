@@ -5,18 +5,18 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-const { logger } = require('firebase-functions');
-const { onDocumentWritten } = require('firebase-functions/v2/firestore');
-const { syncTransactionToFundAccount } = require('../services/transaction-sync.service');
-const { getFirestore } = require('../utils/firebase-admin.util');
-const config = require('../config/system.config');
+import { logger } from 'firebase-functions';
+import { onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { syncTransactionToFundAccount } from '../services/transaction-sync.service.js';
+import { getFirestore } from '../utils/firebase-admin.util.js';
+import config from '../config/system.config.js';
 
 const REGION = config.FIREBASE.REGION;
 
 /**
  * TRIGGER: Khi có bất kỳ thay đổi nào trên transactions
  */
-exports.syncTransactionOnWrite = onDocumentWritten(
+export const syncTransactionOnWrite = onDocumentWritten(
   {
     document: 'transactions/{transactionId}',
     region: REGION,

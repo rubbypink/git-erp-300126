@@ -4,11 +4,11 @@
  * Updated for Cloud Functions v7 (v2) & Admin SDK v13
  */
 
-const { beforeUserSignedIn } = require('firebase-functions/v2/identity');
-const { HttpsError } = require('firebase-functions/v2/https');
-const { logger } = require('firebase-functions');
-const { getFirestore } = require('../utils/firebase-admin.util');
-const config = require('../config/system.config');
+import { beforeUserSignedIn } from 'firebase-functions/v2/identity';
+import { HttpsError } from 'firebase-functions/v2/https';
+import { logger } from 'firebase-functions';
+import { getFirestore } from '../utils/firebase-admin.util.js';
+import config from '../config/system.config.js';
 
 const validateGoogleLoginOnSignIn = beforeUserSignedIn(async (event) => {
   const user = event.data;
@@ -55,6 +55,4 @@ const validateGoogleLoginOnSignIn = beforeUserSignedIn(async (event) => {
   return {};
 });
 
-module.exports = {
-  validateGoogleLoginOnSignIn,
-};
+export { validateGoogleLoginOnSignIn };

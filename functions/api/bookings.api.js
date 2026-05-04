@@ -1,9 +1,9 @@
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
-const { logger } = require('firebase-functions');
-const { getFirestore } = require('../utils/firebase-admin.util');
-const { FieldValue } = require('firebase-admin/firestore');
+import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { logger } from 'firebase-functions';
+import { getFirestore } from '../utils/firebase-admin.util.js';
+import { FieldValue } from 'firebase-admin/firestore';
 
-const deleteBooking = onCall({ cors: true }, async (request) => {
+const deleteBooking = onCall({ cors: true, region: 'asia-southeast1' }, async (request) => {
   if (!request.auth) throw new HttpsError('unauthenticated', 'Yêu cầu đăng nhập.');
 
   const uid = request.auth.uid;
@@ -101,4 +101,4 @@ const deleteBooking = onCall({ cors: true }, async (request) => {
   }
 });
 
-module.exports = { deleteBooking };
+export { deleteBooking };

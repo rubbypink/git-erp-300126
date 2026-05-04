@@ -6,9 +6,9 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-const { logger } = require('firebase-functions');
-const { getFirestore } = require('../utils/firebase-admin.util');
-const { FieldValue } = require('firebase-admin/firestore');
+import { logger } from 'firebase-functions';
+import { getFirestore } from '../utils/firebase-admin.util.js';
+import { FieldValue } from 'firebase-admin/firestore';
 
 /**
  * Xử lý cập nhật số dư tài khoản quỹ khi có thay đổi trong transactions
@@ -24,7 +24,7 @@ async function syncTransactionToFundAccount(transactionId, newData, oldData) {
 
       const fundAccountId = newData?.fund_source || oldData?.fund_source;
       if (!fundAccountId) {
-        logger(`OldData: ${oldData}, NewData: ${newData}`);
+        logger.info(`OldData: ${oldData}, NewData: ${newData}`);
         throw new Error('Không thể cập nhật nếu thiếu tài khoản đích!.');
       }
 
@@ -135,6 +135,4 @@ async function syncTransactionToFundAccount(transactionId, newData, oldData) {
   }
 }
 
-module.exports = {
-  syncTransactionToFundAccount,
-};
+export { syncTransactionToFundAccount };

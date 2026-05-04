@@ -1,0 +1,12 @@
+node_modules/
+*.local
+.env
+.env.*
+functions-ai/node_modules/
+functions-ai/.env
+functions-ai/.env.*
+functions-ai/.firebase/
+functions-ai/.firebaserc
+functions-ai/.vscode/
+functions-ai/.idea/
+functions-ai/.DS_Store

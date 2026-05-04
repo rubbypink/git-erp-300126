@@ -12,7 +12,6 @@ class AiMarketingModule {
     static Config = {
         queueCollection: 'ai_content_queue',
         pageSize: 20,
-        refreshIntervalMs: 30000,
     };
 
     static State = {
@@ -23,7 +22,7 @@ class AiMarketingModule {
         selectedId: null,
         isInitialized: false,
         isLoading: false,
-        refreshTimer: null,
+        currentTaskId: null,
     };
 
     static async init() {
@@ -33,7 +32,6 @@ class AiMarketingModule {
             await this.renderTemplate();
             this.bindEvents();
             await this.loadQueue();
-            this.startAutoRefresh();
             this.State.isInitialized = true;
             L._('AiMarketing: Khởi tạo xong ✅');
         } catch (e) {
@@ -49,7 +47,7 @@ class AiMarketingModule {
             return;
         }
         if (A.UI && A.UI.HELP && A.UI.HELP.loadHtmlFile) {
-            const html = await A.UI.HELP.loadHtmlFile('/src/components/tpl_ai_marketing.html');
+            const html = await A.UI.HELP.loadHtmlFile('./src/components/tpl_ai_marketing.html');
             if (html) {
                 container.innerHTML = '';
                 const temp = document.createElement('div');
@@ -68,21 +66,35 @@ class AiMarketingModule {
     static bindEvents() {
         const self = this;
 
-        A.Event.on('click', 'ai-queue-refresh', () => self.loadQueue());
+        A.Event.on('#ai-queue-refresh', 'click', () => self.loadQueue(), true);
 
-        A.Event.on('change', 'ai-queue-filter-status', (e) => {
+        A.Event.on('#ai-queue-filter-status', 'change', (e) => {
             self.State.currentFilter.status = e.target.value;
             self.applyFilters();
-        });
+        }, true);
 
-        A.Event.on('change', 'ai-queue-filter-format', (e) => {
+        A.Event.on('#ai-queue-filter-format', 'change', (e) => {
             self.State.currentFilter.format = e.target.value;
             self.applyFilters();
-        });
+        }, true);
 
-        A.Event.on('click', 'ai-btn-approve', () => self.reviewContent('approved'));
-        A.Event.on('click', 'ai-btn-revision', () => self.reviewContent('revision'));
-        A.Event.on('click', 'ai-btn-reject', () => self.reviewContent('rejected'));
+        A.Event.on('#ai-btn-approve', 'click', () => self.reviewContent('approved'), true);
+        A.Event.on('#ai-btn-revision', 'click', () => self.reviewContent('revision'), true);
+        A.Event.on('#ai-btn-reject', 'click', () => self.reviewContent('rejected'), true);
+
+        A.Event.on('#ai-btn-run-pipeline', 'click', () => {
+            const modal = new bootstrap.Modal(getE('aiPipelineModal'));
+            modal.show();
+        }, true);
+
+        A.Event.on('#ai-pipeline-source', 'change', (e) => {
+            const urlGroup = getE('ai-pipeline-url-group');
+            if (urlGroup) urlGroup.style.display = e.target.value === 'rss' ? '' : 'none';
+        }, true);
+
+        A.Event.on('#ai-btn-start-pipeline', 'click', () => self.runPipeline(), true);
+
+        A.Event.on('#ai-btn-load-progress', 'click', () => self.loadPipelineProgress(), true);
     }
 
     // ═══ LOAD QUEUE — Gọi Callable Function ══════════════════════════════
@@ -97,10 +109,9 @@ class AiMarketingModule {
 
             for (const status of statuses) {
                 try {
-                    const fn = firebase.functions().httpsCallable('getContentQueue');
-                    const result = await fn({ status, limit: 50 });
-                    if (result.data?.success) {
-                        loadAll[status] = result.data.items || [];
+                    const result = await A.DB.callFunction('getContentQueue', { status, limit: 50 }, AI_FUNCTIONS_BASE);
+                    if (result.data?.success || result?.success) {
+                        loadAll[status] = result.data.items || result.items || [];
                     } else {
                         loadAll[status] = [];
                     }
@@ -132,40 +143,6 @@ class AiMarketingModule {
         } finally {
             this.State.isLoading = false;
             this.showLoading(false);
-        }
-    }
-
-    // ═══ LOAD QUEUE — Fallback từ Firestore local ════════════════════════
-    static async loadQueueFromLocal() {
-        try {
-            const snapshot = await firebase.firestore()
-                .collection(this.Config.queueCollection)
-                .orderBy('created_at', 'desc')
-                .limit(50)
-                .get();
-
-            const items = [];
-            snapshot.forEach((doc) => {
-                items.push({ id: doc.id, ...doc.data() });
-            });
-
-            this.State.items = items;
-            this.State.stats = {
-                pending_review: items.filter((i) => i.status === 'pending_review').length,
-                approved: items.filter((i) => status === 'approved').length,
-                rejected: items.filter((i) => i.status === 'rejected').length,
-                revision: items.filter((i) => i.status === 'revision').length,
-            };
-            // Fix typo: s/status/i.status/
-            this.State.stats.pending_review = items.filter((i) => i.status === 'pending_review').length;
-            this.State.stats.approved = items.filter((i) => i.status === 'approved').length;
-            this.State.stats.rejected = items.filter((i) => i.status === 'rejected').length;
-            this.State.stats.revision = items.filter((i) => i.status === 'revision').length;
-
-            this.updateStats();
-            this.applyFilters();
-        } catch (error) {
-            console.warn('[AiMarketing] loadQueueFromLocal fallback failed:', error.message);
         }
     }
 
@@ -205,7 +182,6 @@ class AiMarketingModule {
         if (emptyEl) emptyEl.classList.add('d-none');
         listEl.classList.remove('d-none');
 
-        // Render bất đồng bộ — chunk 5 items mỗi frame
         this.renderChunked(listEl, items, 5);
     }
 
@@ -494,14 +470,13 @@ class AiMarketingModule {
         if (!result.isConfirmed) return;
 
         try {
-            const fn = firebase.functions().httpsCallable('reviewContent');
-            const response = await fn({ contentId, status });
+            const result = await A.DB.callFunction('reviewContent', { contentId, status }, AI_FUNCTIONS_BASE);
 
-            if (response.data?.success) {
+            if (result.data?.success || result?.success) {
                 Swal.fire({ icon: 'success', title: 'Đã cập nhật!', timer: 1500, showConfirmButton: false });
                 await this.loadQueue();
             } else {
-                throw new Error(response.data?.message || 'Lỗi không xác định');
+                throw new Error(result.data?.message || 'Lỗi không xác định');
             }
         } catch (error) {
             console.error('[AiMarketing] quickReview error:', error);
@@ -527,16 +502,297 @@ class AiMarketingModule {
         return map[status] || 'Cập nhật trạng thái';
     }
 
-    // ═══ AUTO REFRESH ══════════════════════════════════════════════════════
-    static startAutoRefresh() {
-        this.stopAutoRefresh();
-        this.State.refreshTimer = setInterval(() => this.loadQueue(), this.Config.refreshIntervalMs);
+    // ═══ PARSE KEYWORDS ══════════════════════════════════════════════════
+    static parseKeywords(raw) {
+        if (!raw || !raw.trim()) return [];
+        const s = raw.trim();
+
+        if (s.startsWith('[')) {
+            try {
+                const arr = JSON.parse(s);
+                if (Array.isArray(arr)) return arr.map(k => k.trim()).filter(Boolean);
+            } catch (e) { /* fall through */ }
+            const py = s.match(/'([^']*?)'/g);
+            if (py && py.length) return py.map(k => k.replace(/'/g, '').trim()).filter(Boolean);
+        }
+
+        if (s.includes(',')) return s.split(',').map(k => k.trim()).filter(Boolean);
+        if (s.includes('\n')) return s.split('\n').map(k => k.trim()).filter(Boolean);
+
+        return [s];
     }
 
-    static stopAutoRefresh() {
-        if (this.State.refreshTimer) {
-            clearInterval(this.State.refreshTimer);
-            this.State.refreshTimer = null;
+    // ═══ UPDATE PIPELINE STEPS UI ════════════════════════════════════════
+    static updatePipelineSteps(steps, results) {
+        const stepMap = {
+            researcher: { el: 'ai-pipe-researcher', countEl: 'ai-pipe-researcher-count' },
+            scoring: { el: 'ai-pipe-scoring', countEl: 'ai-pipe-scoring-count' },
+            filter_dedup: { el: 'ai-pipe-filter', countEl: 'ai-pipe-filter-count' },
+            enrichment: { el: 'ai-pipe-enrichment', countEl: 'ai-pipe-enrichment-count' },
+            planner: { el: 'ai-pipe-planner', countEl: 'ai-pipe-planner-count' },
+            writer: { el: 'ai-pipe-writer', countEl: 'ai-pipe-writer-count' },
+            media_master: { el: 'ai-pipe-media', countEl: 'ai-pipe-media-count' },
+            publish: { el: 'ai-pipe-publisher', countEl: 'ai-pipe-publisher-count' },
+        };
+
+        // Cập nhật từng step dựa trên steps array từ pipeline result
+        if (steps && steps.length) {
+            for (const step of steps) {
+                const map = stepMap[step.name];
+                if (!map) continue;
+                const el = getE(map.el);
+                const countEl = getE(map.countEl);
+                if (!el) continue;
+
+                el.classList.remove('border-warning', 'border-info', 'border-success', 'border-danger', 'opacity-50');
+                if (step.status === 'completed') {
+                    el.classList.add('border-success');
+                    el.style.background = '#d4edda';
+                    if (countEl) countEl.textContent = `✅ ${step.duration ? (step.duration / 1000).toFixed(1) + 's' : 'done'}`;
+                } else if (step.status === 'failed') {
+                    el.classList.add('border-danger');
+                    el.style.background = '#f8d7da';
+                    if (countEl) countEl.textContent = '❌ ' + (step.error?.slice(0, 30) || 'fail');
+                } else if (step.status === 'running') {
+                    el.classList.add('border-info');
+                    el.style.background = '#d1ecf1';
+                    if (countEl) countEl.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+                } else {
+                    el.classList.add('opacity-50');
+                    if (countEl) countEl.textContent = '⏳...';
+                }
+            }
+        }
+
+        // Cập nhật count với results nếu có
+        if (results) {
+            const resultMap = {
+                'ai-pipe-researcher-count': results.totalResearched,
+                'ai-pipe-media-count': results.mediaQueued || results.written,
+            };
+            for (const [id, val] of Object.entries(resultMap)) {
+                const el = getE(id);
+                if (el && val !== undefined) el.textContent = val;
+            }
+        }
+    }
+
+    // ═══ RUN FULL PIPELINE — Research → Write → Media → Publish ══════
+    static async runPipeline() {
+        const source = getVal('ai-pipeline-source');
+        const url = getVal('ai-pipeline-url');
+        const keywordsRaw = getVal('ai-pipeline-keywords');
+        const maxItems = parseInt(getVal('ai-pipeline-maxitems')) || 5;
+        const hoursBack = parseInt(getVal('ai-pipeline-hours')) || 24;
+        const enableFacebook = getE('ai-pipeline-facebook')?.checked || false;
+
+        const payload = { source, maxItems, hoursBack, enableFacebookGroupSearch: enableFacebook };
+        if (source === 'rss' && url) payload.url = url;
+        const keywords = AiMarketingModule.parseKeywords(keywordsRaw);
+        if (keywords.length) payload.keywords = keywords;
+
+        // Reset step UI về trạng thái chờ
+        const stepIds = ['ai-pipe-researcher', 'ai-pipe-writer', 'ai-pipe-media', 'ai-pipe-publisher'];
+        for (const id of stepIds) {
+            const el = getE(id);
+            if (el) {
+                el.classList.remove('border-success', 'border-danger', 'opacity-50');
+                el.style.background = '';
+            }
+        }
+        const countIds = ['ai-pipe-researcher-count', 'ai-pipe-writer-count', 'ai-pipe-media-count', 'ai-pipe-publisher-count'];
+        for (const id of countIds) {
+            const el = getE(id);
+            if (el) el.textContent = '⏳...';
+        }
+
+        // Close config modal, open progress modal
+        bootstrap.Modal.getInstance(getE('aiPipelineModal'))?.hide();
+        const progressModal = new bootstrap.Modal(getE('aiProgressModal'));
+        progressModal.show();
+
+        // Hiển thị step đầu tiên
+        this.updateProgressStatus('⏳ Researcher đang thu thập dữ liệu...', 10);
+        this.markProgressStep('researcher');
+
+        try {
+            const result = await A.DB.callFunction('runPipeline', payload, AI_FUNCTIONS_BASE);
+
+            progressModal.hide();
+
+            if (result.data?.success || result?.success) {
+                const data = result.data || result;
+                const pipelineData = data.data || {};
+                const taskId = data.taskId;
+
+                // Lưu taskId để có thể load progress sau
+                if (taskId) this.State.currentTaskId = taskId;
+
+                // Đánh dấu hoàn tất trên progress modal trước khi đóng
+                this.updateProgressStatus('✅ Pipeline hoàn tất!', 100);
+                this.markProgressStep('publish');
+
+                // Cập nhật step UI với kết quả thực tế
+                this.updatePipelineSteps(pipelineData.steps, pipelineData.results);
+
+                let msg = `✅ Pipeline hoàn tất!\n\n`;
+                msg += `📰 Researcher: ${pipelineData.results?.totalResearched || 0} items\n`;
+                msg += `✍️ Writer: ${pipelineData.results?.written || 0} bài viết\n`;
+                msg += `🖼️ MediaMaster: ${pipelineData.results?.mediaQueued || 0} media\n`;
+                if (data.publishCount) msg += `📤 Publisher: ${data.publishCount} bài đã đăng\n`;
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Pipeline thành công!',
+                    text: msg,
+                    confirmButtonText: 'OK',
+                });
+                await this.loadQueue();
+            } else {
+                throw new Error(result.data?.error || result.error || result.data?.message || result.message || 'Pipeline trả về kết quả thất bại');
+            }
+        } catch (error) {
+            progressModal.hide();
+            console.error('[AiMarketing] Pipeline error:', error);
+
+            // Đánh dấu step bị lỗi
+            const researcherEl = getE('ai-pipe-researcher');
+            if (researcherEl) {
+                researcherEl.classList.add('border-danger');
+                researcherEl.style.background = '#f8d7da';
+            }
+            const researcherCount = getE('ai-pipe-researcher-count');
+            if (researcherCount) researcherCount.textContent = '❌ error';
+
+            Swal.fire({
+                icon: 'error',
+                title: 'Pipeline thất bại',
+                text: error.message,
+                confirmButtonText: 'Đóng',
+            });
+        }
+    }
+
+    // ═══ PROGRESS MODAL HELPERS ══════════════════════════════════════════
+    static updateProgressStatus(text, percent) {
+        const statusEl = getE('ai-progress-status');
+        const barEl = getE('ai-progress-bar');
+        if (statusEl) statusEl.textContent = text;
+        if (barEl) barEl.style.width = (percent || 5) + '%';
+    }
+
+    static markProgressStep(activeStep) {
+        const steps = ['researcher', 'writer', 'media', 'publish'];
+        for (const step of steps) {
+            const el = getE('ai-ps-' + step);
+            if (!el) continue;
+            const inner = el.querySelector('.border');
+            if (!inner) continue;
+            if (step === activeStep) {
+                inner.classList.remove('opacity-50');
+                inner.classList.add('border-primary');
+                inner.style.background = step === 'researcher' ? '#fff3cd' : step === 'writer' ? '#d1ecf1' : step === 'media' ? '#e8daef' : '#d4edda';
+            } else {
+                const idx = steps.indexOf(step);
+                const activeIdx = steps.indexOf(activeStep);
+                if (idx < activeIdx) {
+                    inner.classList.remove('opacity-50');
+                    inner.style.background = '#d4edda';
+                    inner.style.borderColor = '#28a745';
+                } else {
+                    inner.classList.add('opacity-50');
+                }
+            }
+        }
+    }
+
+    // ═══ LOAD PIPELINE PROGRESS — Đọc từ Firestore ═════════════════════
+    static async loadPipelineProgress() {
+        const taskId = this.State.currentTaskId;
+        if (!taskId) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Chưa có pipeline',
+                text: 'Bạn chưa chạy pipeline nào trong phiên này. Hãy khởi chạy Research & Publish trước.',
+                confirmButtonText: 'OK',
+            });
+            return;
+        }
+
+        try {
+            const doc = await A.DB.db.collection('ai_pipeline_tasks').doc(taskId).get();
+            if (!doc.exists) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Không tìm thấy',
+                    text: `Pipeline #${taskId.slice(0, 12)}... không tồn tại trong Firestore.`,
+                    confirmButtonText: 'OK',
+                });
+                return;
+            }
+
+            const data = doc.data();
+
+            // Cập nhật step UI
+            if (data.result?.steps) {
+                this.updatePipelineSteps(data.result.steps, data.result.results);
+            }
+
+            // Hiển thị trạng thái
+            const status = data.status || 'unknown';
+            const statusMap = {
+                processing: { icon: '⏳', label: 'Đang xử lý...', cls: 'info' },
+                completed: { icon: '✅', label: 'Hoàn tất', cls: 'success' },
+                partial: { icon: '⚠️', label: 'Hoàn tất một phần', cls: 'warning' },
+                failed: { icon: '❌', label: 'Thất bại', cls: 'error' },
+            };
+            const s = statusMap[status] || { icon: '❓', label: status, cls: 'secondary' };
+
+            const errorMsg = data.error || data.result?.error || '';
+            let html = `<div class="text-center mb-2"><span class="badge bg-${s.cls} fs-6">${s.icon} ${s.label}</span></div>`;
+            html += `<div class="small text-muted mb-2">Task ID: <code>${taskId}</code></div>`;
+
+            if (data.result?.results) {
+                const r = data.result.results;
+                html += `<div class="border rounded p-2 mb-2" style="background:#f8f9fa;">`;
+                html += `<div class="small d-flex justify-content-between"><span>📰 Researcher</span><span class="fw-bold">${r.totalResearched || 0}</span></div>`;
+                html += `<div class="small d-flex justify-content-between"><span>⭐ Scored</span><span class="fw-bold">${r.scored || 0}</span></div>`;
+                html += `<div class="small d-flex justify-content-between"><span>🔍 Kept</span><span class="fw-bold">${r.kept || 0}</span></div>`;
+                html += `<div class="small d-flex justify-content-between"><span>📝 Enriched</span><span class="fw-bold">${r.enriched || 0}</span></div>`;
+                html += `<div class="small d-flex justify-content-between"><span>✍️ Written</span><span class="fw-bold">${r.written || 0}</span></div>`;
+                html += `<div class="small d-flex justify-content-between"><span>🖼️ Media</span><span class="fw-bold">${r.mediaQueued || 0}</span></div>`;
+                html += `</div>`;
+            }
+
+            if (errorMsg) {
+                html += `<div class="alert alert-danger py-1 px-2 small mb-0">${errorMsg}</div>`;
+            }
+
+            // Show step durations
+            if (data.result?.steps) {
+                html += `<div class="mt-2 small"><span class="fw-bold">Các bước:</span></div>`;
+                for (const step of data.result.steps) {
+                    const icon = step.status === 'completed' ? '✅' : step.status === 'failed' ? '❌' : step.status === 'running' ? '⏳' : '⏸️';
+                    const duration = step.duration ? ` (${(step.duration / 1000).toFixed(1)}s)` : '';
+                    html += `<div class="small d-flex justify-content-between px-2"><span>${icon} ${step.name}</span><span>${duration}</span></div>`;
+                }
+            }
+
+            Swal.fire({
+                icon: s.cls === 'success' ? 'success' : s.cls === 'error' ? 'error' : 'info',
+                title: `Pipeline ${s.label}`,
+                html,
+                confirmButtonText: 'OK',
+                width: 480,
+            });
+        } catch (error) {
+            console.error('[AiMarketing] loadPipelineProgress error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi tải tiến trình',
+                text: error.message,
+                confirmButtonText: 'Đóng',
+            });
         }
     }
 
@@ -555,10 +811,10 @@ class AiMarketingModule {
     }
 
     static destroy() {
-        this.stopAutoRefresh();
         this.State.isInitialized = false;
         this.State.items = [];
         this.State.filteredItems = [];
+        this.State.currentTaskId = null;
     }
 }
 

@@ -5,9 +5,6 @@
 .git
 .gitignore
 
-# Ignore node_modules (sẽ được cài lại trên Cloud)
-node_modules/
-
 # Ignore log files
 *.log
 

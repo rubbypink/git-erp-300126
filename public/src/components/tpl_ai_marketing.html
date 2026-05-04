@@ -21,6 +21,9 @@
                     <option value="short_caption">Short Caption</option>
                     <option value="news_summary">News Summary</option>
                 </select>
+                <button id="ai-btn-run-pipeline" class="btn btn-success btn-sm fw-bold">
+                    <i class="fa-solid fa-rocket me-1"></i>Research & Publish
+                </button>
                 <button id="ai-queue-refresh" class="btn btn-outline-light btn-sm fw-bold">
                     <i class="fa-solid fa-rotate me-1"></i>Tải lại
                 </button>
@@ -68,39 +71,51 @@
             <div class="card-header bg-dark bg-gradient text-white py-1 d-flex justify-content-between align-items-center"
                  onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto; cursor: pointer;">
                 <small class="fw-bold"><i class="fa-solid fa-diagram-project me-1"></i>Pipeline: Researcher → Writer → MediaMaster → Publisher</small>
-                <i class="fa-solid fa-chevron-down toggle-icon small"></i>
+                <div class="d-flex gap-1">
+                    <button id="ai-btn-load-progress" class="btn btn-outline-light btn-sm py-0 px-1" onclick="event.stopPropagation(); AiMarketingModule.loadPipelineProgress()" title="Tải tiến trình pipeline hiện tại">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                    <i class="fa-solid fa-chevron-down toggle-icon small"></i>
+                </div>
             </div>
             <div class="card-body p-2">
-                <div class="d-flex flex-column flex-md-row gap-2 align-items-stretch" id="ai-pipeline-steps">
+                <div class="d-flex flex-column flex-md-row gap-2 align-items-stretch flex-wrap" id="ai-pipeline-steps">
                     <!-- Researcher -->
-                    <div class="flex-fill border rounded p-2 text-center" id="ai-pipe-researcher" style="border-color: #ffc107 !important;">
+                    <div class="flex-fill border rounded p-2 text-center" id="ai-pipe-researcher" style="border-color: #ffc107 !important; min-width: 100px;">
                         <div class="fw-bold small text-warning"><i class="fa-solid fa-magnifying-glass me-1"></i>Researcher</div>
-                        <div class="text-muted" style="font-size: 11px;">Gemini 1.5 Flash</div>
-                        <div class="badge bg-warning text-dark mt-1" id="ai-pipe-researcher-count">—</div>
+                        <div class="text-muted" style="font-size: 11px;">Gemini 2.5 Flash</div>
+                        <div class="fw-bold mt-1 small" id="ai-pipe-researcher-count" style="color: #856404;">⏳...</div>
                     </div>
                     <div class="d-none d-md-flex align-items-center text-muted"><i class="fa-solid fa-arrow-right"></i></div>
                     <div class="d-flex d-md-none justify-content-center text-muted"><i class="fa-solid fa-arrow-down"></i></div>
+                    <!-- Scoring -->
+                    <div class="flex-fill border rounded p-2 text-center d-none d-md-block" id="ai-pipe-scoring" style="border-color: #fd7e14 !important; min-width: 100px;">
+                        <div class="fw-bold small" style="color:#fd7e14;"><i class="fa-solid fa-star me-1"></i>Scoring</div>
+                        <div class="text-muted" style="font-size: 11px;">Matrix</div>
+                        <div class="fw-bold mt-1 small" id="ai-pipe-scoring-count" style="color:#856404;">⏳...</div>
+                    </div>
+                    <div class="d-none d-md-flex align-items-center text-muted"><i class="fa-solid fa-arrow-right"></i></div>
                     <!-- Writer -->
-                    <div class="flex-fill border rounded p-2 text-center" id="ai-pipe-writer" style="border-color: #17a2b8 !important;">
+                    <div class="flex-fill border rounded p-2 text-center" id="ai-pipe-writer" style="border-color: #17a2b8 !important; min-width: 100px;">
                         <div class="fw-bold small text-info"><i class="fa-solid fa-pen-nib me-1"></i>Writer</div>
                         <div class="text-muted" style="font-size: 11px;">DeepSeek V4 Pro</div>
-                        <div class="badge bg-info text-dark mt-1" id="ai-pipe-writer-count">—</div>
+                        <div class="fw-bold mt-1 small" id="ai-pipe-writer-count" style="color:#0c5460;">⏳...</div>
                     </div>
                     <div class="d-none d-md-flex align-items-center text-muted"><i class="fa-solid fa-arrow-right"></i></div>
                     <div class="d-flex d-md-none justify-content-center text-muted"><i class="fa-solid fa-arrow-down"></i></div>
                     <!-- Media Master -->
-                    <div class="flex-fill border rounded p-2 text-center" id="ai-pipe-media" style="border-color: #6f42c1 !important;">
+                    <div class="flex-fill border rounded p-2 text-center" id="ai-pipe-media" style="border-color: #6f42c1 !important; min-width: 100px;">
                         <div class="fw-bold small" style="color: #6f42c1;"><i class="fa-solid fa-image me-1"></i>MediaMaster</div>
                         <div class="text-muted" style="font-size: 11px;">Gemini 1.5 Flash</div>
-                        <div class="badge mt-1" style="background: #6f42c1;" id="ai-pipe-media-count">—</div>
+                        <div class="fw-bold mt-1 small" id="ai-pipe-media-count" style="color:#6f42c1;">⏳...</div>
                     </div>
                     <div class="d-none d-md-flex align-items-center text-muted"><i class="fa-solid fa-arrow-right"></i></div>
                     <div class="d-flex d-md-none justify-content-center text-muted"><i class="fa-solid fa-arrow-down"></i></div>
                     <!-- Publisher -->
-                    <div class="flex-fill border rounded p-2 text-center" id="ai-pipe-publisher" style="border-color: #28a745 !important;">
+                    <div class="flex-fill border rounded p-2 text-center" id="ai-pipe-publisher" style="border-color: #28a745 !important; min-width: 100px;">
                         <div class="fw-bold small text-success"><i class="fa-solid fa-paper-plane me-1"></i>Publisher</div>
-                        <div class="text-muted" style="font-size: 11px;">Chưa triển khai</div>
-                        <div class="badge bg-secondary mt-1" id="ai-pipe-publisher-count">—</div>
+                        <div class="text-muted" style="font-size: 11px;">Social API</div>
+                        <div class="fw-bold mt-1 small" id="ai-pipe-publisher-count" style="color:#155724;">⏳...</div>
                     </div>
                 </div>
             </div>
@@ -129,6 +144,117 @@
                 <!-- Content cards list -->
                 <div id="ai-queue-list" class="d-none">
                     <!-- Cards sẽ được render bất đồng bộ bởi JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ PIPELINE CONFIG MODAL — Research & Publish ═══ -->
+        <div class="modal fade" id="aiPipelineModal" tabindex="-1" aria-labelledby="aiPipelineModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header bg-success bg-gradient text-white py-2">
+                        <h6 class="modal-title fw-bold" id="aiPipelineModalLabel">
+                            <i class="fa-solid fa-rocket me-1"></i>Research & Publish Pipeline
+                        </h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-3">
+                        <div class="small text-muted mb-3">
+                            <i class="fa-solid fa-diagram-project me-1"></i>
+                            Researcher → Writer → MediaMaster → Publisher
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small">Nguồn dữ liệu</label>
+                            <select id="ai-pipeline-source" class="form-select form-select-sm">
+                                <option value="auto_search">Auto Search (Google + RSS)</option>
+                                <option value="rss">RSS URL cụ thể</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="ai-pipeline-url-group" style="display:none;">
+                            <label class="form-label fw-bold small">URL RSS</label>
+                            <input type="url" id="ai-pipeline-url" class="form-control form-control-sm" placeholder="https://example.com/rss">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small">Từ khóa (tuỳ chọn)</label>
+                            <input type="text" id="ai-pipeline-keywords" class="form-control form-control-sm" placeholder="Phú Quốc, du lịch, resort">
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label fw-bold small">Số item tối đa</label>
+                                <input type="number" id="ai-pipeline-maxitems" class="form-control form-control-sm" value="5" min="1" max="20">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold small">Giờ truy xuất</label>
+                                <input type="number" id="ai-pipeline-hours" class="form-control form-control-sm" value="24" min="1" max="168">
+                            </div>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input type="checkbox" id="ai-pipeline-facebook" class="form-check-input" checked>
+                            <label class="form-check-label small" for="ai-pipeline-facebook">Quét Facebook Group</label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input type="checkbox" id="ai-pipeline-publish" class="form-check-input">
+                            <label class="form-check-label small" for="ai-pipeline-publish">Tự động đăng lên Social sau khi duyệt</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer d-flex flex-column flex-md-row gap-2">
+                        <button type="button" class="btn btn-success flex-fill" id="ai-btn-start-pipeline">
+                            <i class="fa-solid fa-play me-1"></i>Khởi chạy Pipeline
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Huỷ</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ PIPELINE PROGRESS MODAL ═══ -->
+        <div class="modal fade" id="aiProgressModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-dark bg-gradient text-white py-2">
+                        <h6 class="modal-title fw-bold">
+                            <i class="fa-solid fa-spinner fa-spin me-1"></i>Pipeline đang chạy...
+                        </h6>
+                    </div>
+                    <div class="modal-body p-3">
+                        <div class="text-center">
+                            <div class="mb-3">
+                                <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;"></div>
+                            </div>
+                            <div id="ai-progress-status" class="fw-bold mb-2">Đang khởi tạo...</div>
+                            <div class="text-muted small mb-3" id="ai-progress-detail">Researcher → Writer → MediaMaster → Publisher</div>
+                            <div class="progress mb-3" style="height: 6px;">
+                                <div id="ai-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 5%;"></div>
+                            </div>
+                        </div>
+                        <!-- Step indicator -->
+                        <div class="row g-1 small" id="ai-progress-steps">
+                            <div class="col-3 text-center" id="ai-ps-researcher">
+                                <div class="border rounded p-1" style="background:#fff3cd;">
+                                    <i class="fa-solid fa-magnifying-glass text-warning"></i>
+                                    <div class="fw-bold" style="font-size:10px;color:#856404;">Researcher</div>
+                                </div>
+                            </div>
+                            <div class="col-3 text-center" id="ai-ps-writer">
+                                <div class="border rounded p-1 opacity-50">
+                                    <i class="fa-solid fa-pen-nib text-info"></i>
+                                    <div class="fw-bold" style="font-size:10px;color:#0c5460;">Writer</div>
+                                </div>
+                            </div>
+                            <div class="col-3 text-center" id="ai-ps-media">
+                                <div class="border rounded p-1 opacity-50">
+                                    <i class="fa-solid fa-image" style="color:#6f42c1;"></i>
+                                    <div class="fw-bold" style="font-size:10px;color:#6f42c1;">Media</div>
+                                </div>
+                            </div>
+                            <div class="col-3 text-center" id="ai-ps-publish">
+                                <div class="border rounded p-1 opacity-50">
+                                    <i class="fa-solid fa-paper-plane text-success"></i>
+                                    <div class="fw-bold" style="font-size:10px;color:#155724;">Publish</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -175,13 +175,23 @@ class DBManager {
      * Gửi yêu cầu thực thi một Cloud Function ở Backend.
      * @param {string} functionName - Tên function (endpoint) đã khai báo ở Firebase Functions.
      * @param {Object} payload - Dữ liệu tham số gửi kèm.
+     * @param {string|Object} [regionOrOptions='asia-southeast1'] - Region string hoặc object { region, useEmulator }.
      * @returns {Promise<Object>} Kết quả trả về từ server.
      */
-    async callFunction(functionName, payload = {}) {
+    async callFunction(functionName, payload = {}, regionOrOptions = 'asia-southeast1') {
         try {
             await this.ready();
+
+            const region = typeof regionOrOptions === 'string' ? regionOrOptions : (regionOrOptions.region || 'asia-southeast1');
+            const useEmulator = typeof regionOrOptions === 'object' && regionOrOptions.useEmulator;
+
             if (!this.#functions) {
-                this.#functions = getFunctions(getApp(), 'asia-southeast1');
+                this.#functions = getFunctions(getApp(), region);
+            }
+
+            if (useEmulator) {
+                const { connectFunctionsEmulator } = await import('firebase/functions');
+                connectFunctionsEmulator(this.#functions, 'localhost', 5001);
             }
 
             if (this.#debug) L._(`[CloudFunction] Calling: ${functionName}`, payload);
@@ -191,7 +201,17 @@ class DBManager {
 
             return result.data;
         } catch (error) {
-            L.log(`❌ [DBManager.callFunction] Lỗi thực thi ${functionName}:`, error);
+            const isCorsError = error.message?.includes('CORS')
+                || error.message?.includes('cors')
+                || error.message?.includes('ERR_FAILED')
+                || error.message?.includes('Access-Control-Allow-Origin')
+                || error.code === 'functions/unavailable';
+
+            if (isCorsError) {
+                console.error(`❌ [DBManager.callFunction] Lỗi CORS khi gọi ${functionName}. Function chưa được deploy hoặc thiếu cấu hình CORS. Chạy lệnh: cd functions-ai && npm run deploy`, error);
+            } else {
+                L.log(`❌ [DBManager.callFunction] Lỗi thực thi ${functionName}:`, error);
+            }
             throw error;
         }
     }

@@ -6,12 +6,12 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-const { logger } = require('firebase-functions');
-const { onDocumentWritten, onDocumentDeleted } = require('firebase-functions/v2/firestore');
-const { onCall } = require('firebase-functions/v2/https');
-const { getFirestore } = require('../utils/firebase-admin.util');
-const { syncUserToAuth, syncUsersToAuth, deleteUserFromAuth } = require('../services/user-sync.service');
-const config = require('../config/system.config');
+import { logger } from 'firebase-functions';
+import { onDocumentWritten, onDocumentDeleted } from 'firebase-functions/v2/firestore';
+import { onCall } from 'firebase-functions/v2/https';
+import { getFirestore } from '../utils/firebase-admin.util.js';
+import { syncUserToAuth, syncUsersToAuth, deleteUserFromAuth } from '../services/user-sync.service.js';
+import config from '../config/system.config.js';
 
 // ★ Region must match the Firestore database location.
 const REGION = config.FIREBASE.REGION; // 'asia-southeast1'
@@ -19,7 +19,7 @@ const REGION = config.FIREBASE.REGION; // 'asia-southeast1'
 /**
  * TRIGGER: On Firestore "users" document write
  */
-exports.syncUserToAuthOnWrite = onDocumentWritten({ document: 'users/{docId}', region: REGION }, async (event) => {
+export const syncUserToAuthOnWrite = onDocumentWritten({ document: 'users/{docId}', region: REGION }, async (event) => {
   const docId = event.params.docId;
   const beforeData = event.data.before.data?.();
   const afterData = event.data.after.data?.();
@@ -64,7 +64,7 @@ exports.syncUserToAuthOnWrite = onDocumentWritten({ document: 'users/{docId}', r
 /**
  * TRIGGER: On Firestore "users" document delete
  */
-exports.syncUserAuthDeleteOnDelete = onDocumentDeleted({ document: 'users/{uid}', region: REGION }, async (event) => {
+export const syncUserAuthDeleteOnDelete = onDocumentDeleted({ document: 'users/{uid}', region: REGION }, async (event) => {
   const uid = event.params.uid;
 
   logger.info(`🗑️ User document deleted from Firestore: ${uid}`);
@@ -92,7 +92,7 @@ exports.syncUserAuthDeleteOnDelete = onDocumentDeleted({ document: 'users/{uid}'
 /**
  * CALLABLE FUNCTION: Manual sync user to Firebase Auth
  */
-exports.runSyncUserToAuth = onCall({ region: REGION, cors: true }, async (request) => {
+export const runSyncUserToAuth = onCall({ region: REGION, cors: true }, async (request) => {
   if (!request.auth) {
     throw new Error('Bạn phải đăng nhập để sử dụng chức năng này.');
   }
@@ -119,7 +119,7 @@ exports.runSyncUserToAuth = onCall({ region: REGION, cors: true }, async (reques
 /**
  * CALLABLE FUNCTION: Batch sync multiple users
  */
-exports.runBatchSyncUsers = onCall({ region: REGION, cors: true }, async (request) => {
+export const runBatchSyncUsers = onCall({ region: REGION, cors: true }, async (request) => {
   if (!request.auth) {
     throw new Error('Bạn phải đăng nhập để sử dụng chức năng này.');
   }
