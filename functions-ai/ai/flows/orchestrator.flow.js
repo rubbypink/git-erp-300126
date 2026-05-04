@@ -1,6 +1,7 @@
 import { ai } from '../genkit-init.js';
 import { z } from 'genkit';
 import { rtdb } from '../../utils/firebase-admin.util.js';
+import { safeRtdbSet } from '../../.9trip-agents/shared-logic/helpers.js';
 
 import { researcherScanRSSFlow } from './researcher-rss.flow.js';
 import { scoringFlow } from './scoring.flow.js';
@@ -106,7 +107,7 @@ const orchestratorFlow = ai.defineFlow(
                 step1.duration = Date.now() - start1;
                 step1.message = 'No items found';
 
-                await rtdb.ref(`agent_reports/${today}/orchestrator/${pipelineId}`).set({
+                await safeRtdbSet(rtdb.ref(`agent_reports/${today}/orchestrator/${pipelineId}`), {
                     status: 'partial',
                     error: 'Researcher returned 0 items',
                     researcherOutput: {
@@ -144,7 +145,7 @@ const orchestratorFlow = ai.defineFlow(
                 step3.duration = Date.now() - start3;
                 step3.message = 'All items filtered/deduped';
 
-                await rtdb.ref(`agent_reports/${today}/orchestrator/${pipelineId}`).set({
+                await safeRtdbSet(rtdb.ref(`agent_reports/${today}/orchestrator/${pipelineId}`), {
                     status: 'partial',
                     error: 'All items filtered out',
                     input: { source: input.source, url: input.url || null, keywords: input.keywords || null },
@@ -231,7 +232,7 @@ const orchestratorFlow = ai.defineFlow(
             results.mediaQueued = contentIds.length;
             console.log(`[Orchestrator] ✅ Step 7 — Media: ${contentIds.length} queued`);
 
-            await rtdb.ref(`agent_reports/${today}/orchestrator/${pipelineId}`).set({
+            await safeRtdbSet(rtdb.ref(`agent_reports/${today}/orchestrator/${pipelineId}`), {
                 status: 'completed',
                 results,
                 contentIds,
@@ -259,7 +260,7 @@ const orchestratorFlow = ai.defineFlow(
         } catch (error) {
             console.error(`[Orchestrator] ❌ Pipeline ${pipelineId} failed:`, error.message);
 
-            await rtdb.ref(`agent_reports/${today}/orchestrator/${pipelineId}`).set({
+            await safeRtdbSet(rtdb.ref(`agent_reports/${today}/orchestrator/${pipelineId}`), {
                 status: 'failed',
                 error: error.message,
                 stack: error.stack?.slice(0, 1000),

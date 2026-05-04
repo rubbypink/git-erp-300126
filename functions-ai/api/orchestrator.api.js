@@ -1,7 +1,8 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { FieldValue } from 'firebase-admin/firestore';
-import { db } from '../utils/firebase-admin.util.js';
+import { db, rtdb } from '../utils/firebase-admin.util.js';
 import { orchestratorFlow } from '../ai/flows/orchestrator.flow.js';
+import { stripUndefined } from '../.9trip-agents/shared-logic/helpers.js';
 
 export const runPipeline = onCall(
     {
@@ -40,38 +41,64 @@ export const runPipeline = onCall(
             created_at: FieldValue.serverTimestamp(),
         });
 
-        try {
-            const result = await orchestratorFlow({
-                source,
-                url: url || undefined,
-                keywords: keywords || undefined,
-                maxItems,
-                hoursBack,
-                enableFacebookGroupSearch,
-            });
-
-            await taskRef.update({
+        orchestratorFlow({
+            source,
+            url: url || undefined,
+            keywords: keywords || undefined,
+            maxItems,
+            hoursBack,
+            enableFacebookGroupSearch,
+        }).then((result) => {
+            return taskRef.update({
                 status: result.status,
-                result,
+                result: stripUndefined(result),
                 updated_at: FieldValue.serverTimestamp(),
             });
-
-            return { success: true, taskId: taskRef.id, data: result };
-        } catch (error) {
-            console.error(`[Orchestrator] ❌ Pipeline crash:`, error);
-            await taskRef.update({
+        }).catch((error) => {
+            console.error(`[Orchestrator] ❌ Pipeline ${taskRef.id} failed:`, error.message);
+            return taskRef.update({
                 status: 'failed',
                 error: error.message,
-                stack: error.stack,
+                stack: error.stack?.slice(0, 1000),
                 updated_at: FieldValue.serverTimestamp(),
             });
+        });
 
-            return {
-                success: false,
-                taskId: taskRef.id,
-                error: error.message,
-                data: null,
-            };
+        return { success: true, taskId: taskRef.id, status: 'processing' };
+    }
+);
+
+export const getRunningPipelines = onCall(
+    {
+        region: 'asia-southeast1',
+        timeoutSeconds: 15,
+        cors: ['https://erp.9tripphuquoc.com', 'erp.9tripphuquoc.com', '9tripphuquoc.com'],
+        invoker: 'public',
+    },
+    async (request) => {
+        try {
+            const today = new Date().toISOString().slice(0, 10);
+            const snapshot = await rtdb.ref(`agent_reports/${today}/orchestrator`).once('value');
+            const data = snapshot.val() || {};
+            const running = [];
+            for (const [id, task] of Object.entries(data)) {
+                const hasRunning = task.steps?.some((s) => s.status === 'running');
+                if (hasRunning) {
+                    running.push({
+                        pipelineId: id,
+                        status: task.status,
+                        steps: task.steps,
+                        results: task.results || null,
+                        error: task.error || null,
+                        timestamp: task.timestamp,
+                        input: task.input || null,
+                    });
+                }
+            }
+            return { success: true, count: running.length, running };
+        } catch (error) {
+            console.warn(`[getRunningPipelines] Không thể query RTDB: ${error.message}`);
+            return { success: true, count: 0, running: [], message: 'Không thể kết nối database.' };
         }
     }
 );

@@ -175,7 +175,7 @@ class DBManager {
      * Gửi yêu cầu thực thi một Cloud Function ở Backend.
      * @param {string} functionName - Tên function (endpoint) đã khai báo ở Firebase Functions.
      * @param {Object} payload - Dữ liệu tham số gửi kèm.
-     * @param {string|Object} [regionOrOptions='asia-southeast1'] - Region string hoặc object { region, useEmulator }.
+     * @param {string|Object} [regionOrOptions='asia-southeast1'] - Region string hoặc object { region, useEmulator, timeout }.
      * @returns {Promise<Object>} Kết quả trả về từ server.
      */
     async callFunction(functionName, payload = {}, regionOrOptions = 'asia-southeast1') {
@@ -184,6 +184,7 @@ class DBManager {
 
             const region = typeof regionOrOptions === 'string' ? regionOrOptions : (regionOrOptions.region || 'asia-southeast1');
             const useEmulator = typeof regionOrOptions === 'object' && regionOrOptions.useEmulator;
+            const timeout = typeof regionOrOptions === 'object' ? regionOrOptions.timeout : undefined;
 
             if (!this.#functions) {
                 this.#functions = getFunctions(getApp(), region);
@@ -196,7 +197,7 @@ class DBManager {
 
             if (this.#debug) L._(`[CloudFunction] Calling: ${functionName}`, payload);
 
-            const callable = httpsCallable(this.#functions, functionName);
+            const callable = httpsCallable(this.#functions, functionName, timeout ? { timeout } : undefined);
             const result = await callable(payload);
 
             return result.data;

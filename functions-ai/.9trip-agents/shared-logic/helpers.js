@@ -9,6 +9,54 @@ import { db, rtdb } from '../../utils/firebase-admin.util.js';
 import { FieldValue } from 'firebase-admin/firestore';
 
 /**
+ * Đệ quy loại bỏ giá trị undefined khỏi object/array
+ * Firebase RTDB & Firestore đều reject undefined — hàm này đảm bảo data sạch
+ * @param {*} obj - Object, array, hoặc giá trị primitive
+ * @returns {*} - Bản sao đã loại bỏ undefined
+ */
+function stripUndefined(obj) {
+    if (obj === undefined) return null;
+    if (obj === null) return null;
+    if (Array.isArray(obj)) return obj.map(stripUndefined);
+    if (typeof obj === 'object' && obj.constructor === Object) {
+        const result = {};
+        for (const [key, val] of Object.entries(obj)) {
+            const cleaned = stripUndefined(val);
+            if (cleaned !== undefined) result[key] = cleaned;
+        }
+        return result;
+    }
+    if (obj instanceof Date) return obj;
+    return obj;
+}
+
+/**
+ * Ghi RTDB .set() an toàn — tự động stripUndefined, không throw
+ * @param {admin.database.Reference} ref - RTDB Reference
+ * @param {Object} data - Dữ liệu cần ghi
+ */
+async function safeRtdbSet(ref, data) {
+    try {
+        await ref.set(stripUndefined(data));
+    } catch (error) {
+        console.error(`[safeRtdbSet] Ghi RTDB thất bại (${ref.key || ref.path}): ${error.message}`);
+    }
+}
+
+/**
+ * Ghi RTDB .push() an toàn — tự động stripUndefined, không throw
+ * @param {admin.database.Reference} ref - RTDB Reference
+ * @param {Object} data - Dữ liệu cần ghi
+ */
+async function safeRtdbPush(ref, data) {
+    try {
+        await ref.push(stripUndefined(data));
+    } catch (error) {
+        console.error(`[safeRtdbPush] Ghi RTDB thất bại (${ref.key || ref.path}): ${error.message}`);
+    }
+}
+
+/**
  * Ghi log Agent vào Firebase Realtime Database
  * Cấu trúc: agent_reports/{yyyy-mm-dd}/{agentName}/{pushId}
  * @param {string} agentName - Tên agent (vd: 'writer_agent', 'researcher_agent')
@@ -30,7 +78,7 @@ async function log(agentName, level, message, metadata = null) {
             entry.metadata = metadata;
         }
 
-        await logPath.push(entry);
+        await logPath.push(stripUndefined(entry));
 
         const prefix = level === 'error' ? '❌' : level === 'warn' ? '⚠️' : level === 'success' ? '✅' : 'ℹ️';
         console.log(`[${agentName}] ${prefix} ${message}`);
@@ -152,6 +200,9 @@ async function pushToContentQueue(contentData) {
 
 export {
     log,
+    stripUndefined,
+    safeRtdbSet,
+    safeRtdbPush,
     validateResearchData,
     extractTopic,
     getTrainingSamples,

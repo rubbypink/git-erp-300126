@@ -2,6 +2,7 @@ import { ai } from '../genkit-init.js';
 import { z } from 'genkit';
 import { FieldValue } from 'firebase-admin/firestore';
 import { db, rtdb } from '../../utils/firebase-admin.util.js';
+import { safeRtdbSet } from '../../.9trip-agents/shared-logic/helpers.js';
 import analyticsConfig from '../../.9trip-agents/configs/analytics.config.js';
 import publisherConfig from '../../.9trip-agents/configs/publisher.config.js';
 import axios from 'axios';
@@ -130,7 +131,7 @@ const analyticsFlow = ai.defineFlow(
       }
     }
 
-    await rtdb.ref(`agent_reports/${today}/analytics`).set({
+    await safeRtdbSet(rtdb.ref(`agent_reports/${today}/analytics`), {
       analyzed: snapshot.size,
       updated,
       counts,

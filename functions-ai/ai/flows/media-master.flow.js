@@ -3,6 +3,7 @@ import { z } from 'genkit';
 import { FieldValue } from 'firebase-admin/firestore';
 import AiManager from '../ai.manager.js';
 import { db, rtdb } from '../../utils/firebase-admin.util.js';
+import { safeRtdbPush } from '../../.9trip-agents/shared-logic/helpers.js';
 import mediaMasterConfig from '../../.9trip-agents/configs/media-master.config.js';
 import { processImage, determineFormat } from '../services/image-processor.service.js';
 import { buildVideoSpec, suggestTrimPoints } from '../services/video-processor.service.js';
@@ -99,7 +100,7 @@ const mediaMasterFlow = ai.defineFlow(
 
     await queueRef.set(queueData);
 
-    await rtdb.ref(`agent_reports/${today}/media_master`).push({
+    await safeRtdbPush(rtdb.ref(`agent_reports/${today}/media_master`), {
       level: 'success',
       message: `[${mediaType}] Content queued: ${queueRef.id}`,
       timestamp: Date.now(),

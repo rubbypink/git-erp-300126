@@ -102,6 +102,20 @@ const researcherScanRSSFlow = ai.defineFlow(
                 } catch (e) {
                     console.warn(`[Researcher] Web search keyword "${kw}" failed: ${e.message}`);
                     await log('researcher_flow', 'warn', 'Keyword search failed', { keyword: kw, error: e.message });
+                    if (!totalKeywordsAttempted && allSearchResults.length === 0) {
+                        await log('researcher_flow', 'error', 'All web search layers crashed on first keyword. Aborting pipeline.', { keyword: kw, error: e.message });
+                        console.error(`[Researcher] ❌ All web search layers crashed on first keyword — dừng pipeline. Error: ${e.message}`);
+                        return {
+                            sourceName: 'web_search',
+                            sourceUrl: 'web_search',
+                            scannedAt: new Date().toISOString(),
+                            totalItems: 0,
+                            items: [],
+                            trendingTopics: [],
+                            queryKeywords: searchKw,
+                            error: e.message,
+                        };
+                    }
                 }
             }
 
@@ -184,6 +198,8 @@ const researcherScanRSSFlow = ai.defineFlow(
         });
         resultData.sourceName = resultData.sourceName || url || 'auto_search';
         resultData.sourceUrl = resultData.sourceUrl || url || 'auto_search';
+        resultData.scannedAt = resultData.scannedAt || new Date().toISOString();
+        resultData.trendingTopics = resultData.trendingTopics || [];
 
         const itemsBeforeFilter = (resultData.items || []).length;
         const filteredItems = (resultData.items || []).filter((item) => {
@@ -201,8 +217,16 @@ const researcherScanRSSFlow = ai.defineFlow(
             });
         }
 
-        resultData.items = filteredItems;
-        resultData.totalItems = filteredItems.length;
+        resultData.items = filteredItems.map((item) => ({
+            title: item.title || '(không có tiêu đề)',
+            link: item.link || '',
+            pubDate: item.pubDate || new Date().toISOString(),
+            summary: item.summary || '',
+            category: researcherConfig.categories.includes(item.category) ? item.category : 'khác',
+            sentiment: researcherConfig.sentiments.includes(item.sentiment) ? item.sentiment : 'trung_tính',
+            phuQuocRelevance: typeof item.phuQuocRelevance === 'number' ? Math.min(10, Math.max(0, item.phuQuocRelevance)) : 0,
+        })).filter((item) => item.link);
+        resultData.totalItems = resultData.items.length;
 
         console.log(`[Researcher] ✅ Hoàn thành — ${resultData.totalItems || 0} bài viết từ ${resultData.sourceName || 'N/A'}`);
         await log('researcher_flow', 'success', 'Research complete', {

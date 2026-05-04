@@ -1,7 +1,7 @@
 import { researcherScanRSSFlow, RSSScanResultSchema, RSSItemSchema } from '../../ai/flows/researcher-rss.flow.js';
 import researcherConfig from '../configs/researcher.config.js';
 import { AGENT_CONFIGS } from '../configs/prompts_master.js';
-import { log, validateResearchData, extractTopic, isQualifiedResearchData } from '../shared-logic/helpers.js';
+import { log, validateResearchData, extractTopic, isQualifiedResearchData, safeRtdbPush } from '../shared-logic/helpers.js';
 import { db, rtdb } from '../../utils/firebase-admin.util.js';
 
 const AGENT_NAME = 'researcher_agent';
@@ -38,7 +38,7 @@ async function scanAndScore(input = {}) {
     }
 
     const today = new Date().toISOString().slice(0, 10);
-    await rtdb.ref(`agent_reports/${today}/${AGENT_NAME}`).push({
+    await safeRtdbPush(rtdb.ref(`agent_reports/${today}/${AGENT_NAME}`), {
       level: 'success',
       message: `[${result.sourceName}] ${result.totalItems} items`,
       timestamp: Date.now(),

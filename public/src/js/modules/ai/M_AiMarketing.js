@@ -82,17 +82,7 @@ class AiMarketingModule {
         A.Event.on('#ai-btn-revision', 'click', () => self.reviewContent('revision'), true);
         A.Event.on('#ai-btn-reject', 'click', () => self.reviewContent('rejected'), true);
 
-        A.Event.on('#ai-btn-run-pipeline', 'click', () => {
-            const modal = new bootstrap.Modal(getE('aiPipelineModal'));
-            modal.show();
-        }, true);
-
-        A.Event.on('#ai-pipeline-source', 'change', (e) => {
-            const urlGroup = getE('ai-pipeline-url-group');
-            if (urlGroup) urlGroup.style.display = e.target.value === 'rss' ? '' : 'none';
-        }, true);
-
-        A.Event.on('#ai-btn-start-pipeline', 'click', () => self.runPipeline(), true);
+        A.Event.on('#ai-btn-run-pipeline', 'click', () => self.openPipelineConfigSwal(), true);
 
         A.Event.on('#ai-btn-load-progress', 'click', () => self.loadPipelineProgress(), true);
     }
@@ -111,7 +101,7 @@ class AiMarketingModule {
                 try {
                     const result = await A.DB.callFunction('getContentQueue', { status, limit: 50 }, AI_FUNCTIONS_BASE);
                     if (result.data?.success || result?.success) {
-                        loadAll[status] = result.data.items || result.items || [];
+                        loadAll[status] = result.data?.items ?? result.items ?? [];
                     } else {
                         loadAll[status] = [];
                     }
@@ -577,14 +567,80 @@ class AiMarketingModule {
         }
     }
 
-    // ═══ RUN FULL PIPELINE — Research → Write → Media → Publish ══════
-    static async runPipeline() {
-        const source = getVal('ai-pipeline-source');
-        const url = getVal('ai-pipeline-url');
-        const keywordsRaw = getVal('ai-pipeline-keywords');
-        const maxItems = parseInt(getVal('ai-pipeline-maxitems')) || 5;
-        const hoursBack = parseInt(getVal('ai-pipeline-hours')) || 24;
-        const enableFacebook = getE('ai-pipeline-facebook')?.checked || false;
+    // ═══ OPEN PIPELINE CONFIG — Swal form thay thế Bootstrap modal ══════
+    static async openPipelineConfigSwal() {
+        const result = await Swal.fire({
+            title: 'Research & Publish Pipeline',
+            html: `
+                <div class="mb-3 text-start">
+                    <label class="form-label small fw-bold">Nguồn dữ liệu</label>
+                    <select id="swal-pipeline-source" class="swal2-select form-select form-select-sm">
+                        <option value="auto_search">Auto Search (Google + RSS)</option>
+                        <option value="rss">RSS URL cụ thể</option>
+                    </select>
+                </div>
+                <div class="mb-3 text-start" id="swal-pipeline-url-group" style="display:none;">
+                    <label class="form-label small fw-bold">URL RSS</label>
+                    <input type="url" id="swal-pipeline-url" class="swal2-input form-control form-control-sm" placeholder="https://example.com/rss">
+                </div>
+                <div class="mb-3 text-start">
+                    <label class="form-label small fw-bold">Từ khóa (tuỳ chọn)</label>
+                    <input type="text" id="swal-pipeline-keywords" class="swal2-input form-control form-control-sm" placeholder="Phú Quốc, du lịch, resort">
+                </div>
+                <div class="row g-2 mb-3 text-start">
+                    <div class="col-6">
+                        <label class="form-label small fw-bold">Số item tối đa</label>
+                        <input type="number" id="swal-pipeline-maxitems" class="swal2-input form-control form-control-sm" value="5" min="1" max="20">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-bold">Giờ truy xuất</label>
+                        <input type="number" id="swal-pipeline-hours" class="swal2-input form-control form-control-sm" value="24" min="1" max="168">
+                    </div>
+                </div>
+                <div class="form-check text-start mb-2">
+                    <input type="checkbox" id="swal-pipeline-facebook" class="swal2-checkbox form-check-input" checked>
+                    <label class="form-check-label small" for="swal-pipeline-facebook">Quét Facebook Group</label>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: '<i class="fa-solid fa-play me-1"></i>Khởi chạy Pipeline',
+            cancelButtonText: 'Huỷ',
+            confirmButtonColor: '#28a745',
+            width: 520,
+            didOpen: () => {
+                const sourceEl = document.getElementById('swal-pipeline-source');
+                const urlGroup = document.getElementById('swal-pipeline-url-group');
+                if (sourceEl && urlGroup) {
+                    sourceEl.addEventListener('change', function () {
+                        urlGroup.style.display = this.value === 'rss' ? '' : 'none';
+                    });
+                }
+            },
+            preConfirm: () => {
+                const source = document.getElementById('swal-pipeline-source')?.value || 'auto_search';
+                const url = document.getElementById('swal-pipeline-url')?.value || '';
+                const keywordsRaw = document.getElementById('swal-pipeline-keywords')?.value || '';
+                const maxItems = parseInt(document.getElementById('swal-pipeline-maxitems')?.value) || 5;
+                const hoursBack = parseInt(document.getElementById('swal-pipeline-hours')?.value) || 24;
+                const enableFacebook = document.getElementById('swal-pipeline-facebook')?.checked || false;
+
+                if (source === 'rss' && !url) {
+                    Swal.showValidationMessage('Vui lòng nhập URL RSS');
+                    return false;
+                }
+
+                return { source, url: url || null, keywordsRaw, maxItems, hoursBack, enableFacebook };
+            },
+        });
+
+        if (result.isConfirmed) {
+            await this.runPipeline(result.value);
+        }
+    }
+
+    // ═══ RUN FULL PIPELINE — Research → Writer → Media → Publish ══════
+    static async runPipeline(config) {
+        const { source, url, keywordsRaw, maxItems, hoursBack, enableFacebook } = config;
 
         const payload = { source, maxItems, hoursBack, enableFacebookGroupSearch: enableFacebook };
         if (source === 'rss' && url) payload.url = url;
@@ -592,70 +648,55 @@ class AiMarketingModule {
         if (keywords.length) payload.keywords = keywords;
 
         // Reset step UI về trạng thái chờ
-        const stepIds = ['ai-pipe-researcher', 'ai-pipe-writer', 'ai-pipe-media', 'ai-pipe-publisher'];
+        const stepIds = ['ai-pipe-researcher', 'ai-pipe-scoring', 'ai-pipe-filter', 'ai-pipe-enrichment', 'ai-pipe-planner', 'ai-pipe-writer', 'ai-pipe-media', 'ai-pipe-publisher'];
         for (const id of stepIds) {
             const el = getE(id);
             if (el) {
-                el.classList.remove('border-success', 'border-danger', 'opacity-50');
+                el.classList.remove('border-success', 'border-danger', 'border-info', 'opacity-50');
                 el.style.background = '';
             }
         }
-        const countIds = ['ai-pipe-researcher-count', 'ai-pipe-writer-count', 'ai-pipe-media-count', 'ai-pipe-publisher-count'];
+        const countIds = ['ai-pipe-researcher-count', 'ai-pipe-scoring-count', 'ai-pipe-filter-count', 'ai-pipe-enrichment-count', 'ai-pipe-planner-count', 'ai-pipe-writer-count', 'ai-pipe-media-count', 'ai-pipe-publisher-count'];
         for (const id of countIds) {
             const el = getE(id);
             if (el) el.textContent = '⏳...';
         }
 
-        // Close config modal, open progress modal
-        bootstrap.Modal.getInstance(getE('aiPipelineModal'))?.hide();
-        const progressModal = new bootstrap.Modal(getE('aiProgressModal'));
-        progressModal.show();
-
-        // Hiển thị step đầu tiên
-        this.updateProgressStatus('⏳ Researcher đang thu thập dữ liệu...', 10);
-        this.markProgressStep('researcher');
+        // Show loading Swal
+        Swal.fire({
+            title: 'Đang khởi tạo pipeline...',
+            html: '<div class="spinner-border text-success" role="status"></div><p class="mt-2 small">Pipeline đang khởi tạo. Vui lòng đợi...</p>',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading(); },
+        });
 
         try {
-            const result = await A.DB.callFunction('runPipeline', payload, AI_FUNCTIONS_BASE);
+            const result = await A.DB.callFunction('runPipeline', payload, {
+                region: AI_FUNCTIONS_BASE,
+                timeout: 30000,
+            });
 
-            progressModal.hide();
-
-            if (result.data?.success || result?.success) {
-                const data = result.data || result;
-                const pipelineData = data.data || {};
-                const taskId = data.taskId;
-
-                // Lưu taskId để có thể load progress sau
+            if (result?.success) {
+                const taskId = result.taskId;
                 if (taskId) this.State.currentTaskId = taskId;
 
-                // Đánh dấu hoàn tất trên progress modal trước khi đóng
-                this.updateProgressStatus('✅ Pipeline hoàn tất!', 100);
-                this.markProgressStep('publish');
-
-                // Cập nhật step UI với kết quả thực tế
-                this.updatePipelineSteps(pipelineData.steps, pipelineData.results);
-
-                let msg = `✅ Pipeline hoàn tất!\n\n`;
-                msg += `📰 Researcher: ${pipelineData.results?.totalResearched || 0} items\n`;
-                msg += `✍️ Writer: ${pipelineData.results?.written || 0} bài viết\n`;
-                msg += `🖼️ MediaMaster: ${pipelineData.results?.mediaQueued || 0} media\n`;
-                if (data.publishCount) msg += `📤 Publisher: ${data.publishCount} bài đã đăng\n`;
+                this.updatePipelineSteps([
+                    { name: 'researcher', status: 'running' },
+                ]);
 
                 Swal.fire({
                     icon: 'success',
-                    title: 'Pipeline thành công!',
-                    text: msg,
+                    title: 'Pipeline đã chạy!',
+                    html: '<div class="small">Pipeline đang chạy ngầm (3-10 phút).<br>Nhấn <b>"Tải Lại Tiến Trình"</b> để xem tiến độ thực tế.</div>',
                     confirmButtonText: 'OK',
                 });
-                await this.loadQueue();
             } else {
-                throw new Error(result.data?.error || result.error || result.data?.message || result.message || 'Pipeline trả về kết quả thất bại');
+                throw new Error(result?.error || 'Pipeline không khởi tạo được');
             }
         } catch (error) {
-            progressModal.hide();
             console.error('[AiMarketing] Pipeline error:', error);
 
-            // Đánh dấu step bị lỗi
             const researcherEl = getE('ai-pipe-researcher');
             if (researcherEl) {
                 researcherEl.classList.add('border-danger');
@@ -673,120 +714,126 @@ class AiMarketingModule {
         }
     }
 
-    // ═══ PROGRESS MODAL HELPERS ══════════════════════════════════════════
-    static updateProgressStatus(text, percent) {
-        const statusEl = getE('ai-progress-status');
-        const barEl = getE('ai-progress-bar');
-        if (statusEl) statusEl.textContent = text;
-        if (barEl) barEl.style.width = (percent || 5) + '%';
-    }
+    // ═══ LOAD PIPELINE PROGRESS — Kiểm tra RTDB trước, fallback Firestore ══════
+    static async loadPipelineProgress() {
+        Swal.fire({
+            title: 'Đang kiểm tra tiến trình...',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => { Swal.showLoading(); },
+        });
 
-    static markProgressStep(activeStep) {
-        const steps = ['researcher', 'writer', 'media', 'publish'];
-        for (const step of steps) {
-            const el = getE('ai-ps-' + step);
-            if (!el) continue;
-            const inner = el.querySelector('.border');
-            if (!inner) continue;
-            if (step === activeStep) {
-                inner.classList.remove('opacity-50');
-                inner.classList.add('border-primary');
-                inner.style.background = step === 'researcher' ? '#fff3cd' : step === 'writer' ? '#d1ecf1' : step === 'media' ? '#e8daef' : '#d4edda';
+        try {
+            const result = await A.DB.callFunction('getRunningPipelines', {}, AI_FUNCTIONS_BASE);
+            const running = result?.running || [];
+
+            if (running.length > 0) {
+                for (const task of running) {
+                    this.updatePipelineSteps(task.steps, task.results);
+                }
+                await this.renderRunningPipelinesSwal(running);
             } else {
-                const idx = steps.indexOf(step);
-                const activeIdx = steps.indexOf(activeStep);
-                if (idx < activeIdx) {
-                    inner.classList.remove('opacity-50');
-                    inner.style.background = '#d4edda';
-                    inner.style.borderColor = '#28a745';
+                const taskId = this.State.currentTaskId;
+                if (taskId) {
+                    await this.loadFirestoreProgress(taskId);
                 } else {
-                    inner.classList.add('opacity-50');
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Không có pipeline đang chạy',
+                        text: 'Hiện không có pipeline nào đang chạy. Hãy khởi chạy Research & Publish trước.',
+                        confirmButtonText: 'OK',
+                    });
                 }
             }
+        } catch (error) {
+            console.error('[AiMarketing] loadPipelineProgress error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi tải tiến trình',
+                text: error.message,
+                confirmButtonText: 'Đóng',
+            });
         }
     }
 
-    // ═══ LOAD PIPELINE PROGRESS — Đọc từ Firestore ═════════════════════
-    static async loadPipelineProgress() {
-        const taskId = this.State.currentTaskId;
-        if (!taskId) {
-            Swal.fire({
-                icon: 'info',
-                title: 'Chưa có pipeline',
-                text: 'Bạn chưa chạy pipeline nào trong phiên này. Hãy khởi chạy Research & Publish trước.',
-                confirmButtonText: 'OK',
-            });
-            return;
+    static async renderRunningPipelinesSwal(running) {
+        let html = '';
+        for (const task of running) {
+            const statusBadge = task.status === 'failed' ? 'danger' : task.status === 'completed' ? 'success' : task.status === 'partial' ? 'warning' : 'info';
+            html += `<div class="border rounded p-2 mb-2 text-start" style="background:#f8f9fa;">`;
+            html += `<div class="d-flex justify-content-between align-items-center mb-1">`;
+            html += `<span class="badge bg-${statusBadge}">${task.status || 'processing'}</span>`;
+            html += `<code class="small">${(task.pipelineId || '').slice(0, 16)}...</code>`;
+            html += `</div>`;
+            if (task.steps) {
+                for (const step of task.steps) {
+                    const icon = step.status === 'completed' ? '✅' : step.status === 'failed' ? '❌' : step.status === 'running' ? '⏳' : '⏸️';
+                    const duration = step.duration ? ` (${(step.duration / 1000).toFixed(1)}s)` : '';
+                    html += `<div class="small d-flex justify-content-between px-2"><span>${icon} ${step.name}</span><span class="text-muted">${duration}</span></div>`;
+                }
+            }
+            if (task.error) {
+                html += `<div class="alert alert-danger py-1 px-2 small mt-2 mb-0">${task.error}</div>`;
+            }
+            html += `</div>`;
         }
 
+        Swal.fire({
+            icon: 'info',
+            title: `${running.length} pipeline đang chạy`,
+            html,
+            confirmButtonText: 'OK',
+            width: 520,
+        });
+    }
+
+    static async loadFirestoreProgress(taskId) {
         try {
             const doc = await A.DB.db.collection('ai_pipeline_tasks').doc(taskId).get();
             if (!doc.exists) {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Không tìm thấy',
-                    text: `Pipeline #${taskId.slice(0, 12)}... không tồn tại trong Firestore.`,
+                    text: `Pipeline #${taskId.slice(0, 12)}... không tồn tại.`,
                     confirmButtonText: 'OK',
                 });
                 return;
             }
 
             const data = doc.data();
-
-            // Cập nhật step UI
             if (data.result?.steps) {
                 this.updatePipelineSteps(data.result.steps, data.result.results);
             }
 
-            // Hiển thị trạng thái
             const status = data.status || 'unknown';
-            const statusMap = {
-                processing: { icon: '⏳', label: 'Đang xử lý...', cls: 'info' },
-                completed: { icon: '✅', label: 'Hoàn tất', cls: 'success' },
-                partial: { icon: '⚠️', label: 'Hoàn tất một phần', cls: 'warning' },
-                failed: { icon: '❌', label: 'Thất bại', cls: 'error' },
-            };
-            const s = statusMap[status] || { icon: '❓', label: status, cls: 'secondary' };
+            const s = { processing: 'info', completed: 'success', partial: 'warning', failed: 'error' }[status] || 'secondary';
+            const statusLabel = { processing: 'Đang xử lý...', completed: 'Hoàn tất', partial: 'Hoàn tất một phần', failed: 'Thất bại' }[status] || status;
 
-            const errorMsg = data.error || data.result?.error || '';
-            let html = `<div class="text-center mb-2"><span class="badge bg-${s.cls} fs-6">${s.icon} ${s.label}</span></div>`;
+            let html = `<div class="text-center mb-2"><span class="badge bg-${s} fs-6">${statusLabel}</span></div>`;
             html += `<div class="small text-muted mb-2">Task ID: <code>${taskId}</code></div>`;
 
             if (data.result?.results) {
                 const r = data.result.results;
-                html += `<div class="border rounded p-2 mb-2" style="background:#f8f9fa;">`;
+                html += `<div class="border rounded p-2 mb-2 text-start" style="background:#f8f9fa;">`;
                 html += `<div class="small d-flex justify-content-between"><span>📰 Researcher</span><span class="fw-bold">${r.totalResearched || 0}</span></div>`;
-                html += `<div class="small d-flex justify-content-between"><span>⭐ Scored</span><span class="fw-bold">${r.scored || 0}</span></div>`;
-                html += `<div class="small d-flex justify-content-between"><span>🔍 Kept</span><span class="fw-bold">${r.kept || 0}</span></div>`;
-                html += `<div class="small d-flex justify-content-between"><span>📝 Enriched</span><span class="fw-bold">${r.enriched || 0}</span></div>`;
                 html += `<div class="small d-flex justify-content-between"><span>✍️ Written</span><span class="fw-bold">${r.written || 0}</span></div>`;
                 html += `<div class="small d-flex justify-content-between"><span>🖼️ Media</span><span class="fw-bold">${r.mediaQueued || 0}</span></div>`;
                 html += `</div>`;
             }
 
-            if (errorMsg) {
-                html += `<div class="alert alert-danger py-1 px-2 small mb-0">${errorMsg}</div>`;
-            }
-
-            // Show step durations
-            if (data.result?.steps) {
-                html += `<div class="mt-2 small"><span class="fw-bold">Các bước:</span></div>`;
-                for (const step of data.result.steps) {
-                    const icon = step.status === 'completed' ? '✅' : step.status === 'failed' ? '❌' : step.status === 'running' ? '⏳' : '⏸️';
-                    const duration = step.duration ? ` (${(step.duration / 1000).toFixed(1)}s)` : '';
-                    html += `<div class="small d-flex justify-content-between px-2"><span>${icon} ${step.name}</span><span>${duration}</span></div>`;
-                }
+            if (data.error) {
+                html += `<div class="alert alert-danger py-1 px-2 small mb-0">${data.error}</div>`;
             }
 
             Swal.fire({
-                icon: s.cls === 'success' ? 'success' : s.cls === 'error' ? 'error' : 'info',
-                title: `Pipeline ${s.label}`,
+                icon: status === 'completed' ? 'success' : status === 'failed' ? 'error' : 'info',
+                title: `Pipeline ${statusLabel}`,
                 html,
                 confirmButtonText: 'OK',
                 width: 480,
             });
         } catch (error) {
-            console.error('[AiMarketing] loadPipelineProgress error:', error);
+            console.error('[AiMarketing] loadFirestoreProgress error:', error);
             Swal.fire({
                 icon: 'error',
                 title: 'Lỗi tải tiến trình',

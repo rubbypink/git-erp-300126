@@ -18,6 +18,6 @@ import { publishContent as publishContentFn, getPublishLogs, getPublishStatus } 
 import { chatWithEmily } from './api/chat.api.js';
 import { processDocumentAI } from './api/import-ai.api.js';
 import { crawlerDataOnline } from './api/crawler-trigger.api.js';
-import { runPipeline } from './api/orchestrator.api.js';
+import { runPipeline, getRunningPipelines } from './api/orchestrator.api.js';
 
-export { researcherScanRSS, writerGenerate, mediaMaster, getContentQueue, reviewContent, publishContentFn as publishContent, getPublishLogs, getPublishStatus, chatWithEmily, processDocumentAI, crawlerDataOnline, runPipeline };
+export { researcherScanRSS, writerGenerate, mediaMaster, getContentQueue, reviewContent, publishContentFn as publishContent, getPublishLogs, getPublishStatus, chatWithEmily, processDocumentAI, crawlerDataOnline, runPipeline, getRunningPipelines };

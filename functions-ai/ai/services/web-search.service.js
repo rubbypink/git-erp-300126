@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { log } from '../../.9trip-agents/shared-logic/helpers.js';
 
-const GEMINI_API_KEY_FREE = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_FREE;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_FREE;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta';
 const OPENROUTER_API_KEY = process.env.OPENROUTER;
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1';
@@ -320,8 +320,8 @@ async function searchWeb(query, options = {}) {
         errors.push({ layer: 3, name: 'gemini_google_search', error: e.message });
     }
 
-    await log('web_search', 'error', `All layers failed`, { query: query.slice(0, 60), errors });
-    throw new Error(`All web search layers failed: ${JSON.stringify(errors)}`);
+    await log('web_search', 'error', `All 3 layers crashed (tool error)`, { query: query.slice(0, 60), errors });
+    throw new Error(`All 3 web search layers crashed (tool error, not empty data): ${JSON.stringify(errors)}`);
 }
 
 // ═════════════════════════════════════════════════════════════════════
