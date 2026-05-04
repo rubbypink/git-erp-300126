@@ -1,6 +1,10 @@
 /**
  * TEST SCRIPT — Kiểm tra từng layer web search độc lập
  * Chạy: node test-search-layers.js
+ *
+ * TEST REFERENCES (cho các agent liên quan):
+ * - Facebook post mẫu: https://www.facebook.com/9tripphuquoc/videos/6947693362001593
+ *   Dùng để test Researcher (scrape/analyze), Publisher (post đã publish), MediaMaster (video)
  */
 import 'dotenv/config';
 import axios from 'axios';

@@ -2,6 +2,7 @@ import { ai } from '../genkit-init.js';
 import { z } from 'genkit';
 import { rtdb } from '../../utils/firebase-admin.util.js';
 import { safeRtdbSet } from '../../.9trip-agents/shared-logic/helpers.js';
+import researcherConfig from '../../.9trip-agents/configs/researcher.config.js';
 
 import { researcherScanRSSFlow } from './researcher-rss.flow.js';
 import { scoringFlow } from './scoring.flow.js';
@@ -60,29 +61,39 @@ const orchestratorFlow = ai.defineFlow(
             return entry;
         };
 
+        const safeInput = {
+            source: input.source === 'rss' ? 'rss' : 'auto_search',
+            url: (input.source === 'rss' && input.url && typeof input.url === 'string') ? input.url : undefined,
+            keywords: (Array.isArray(input.keywords) && input.keywords.length > 0) ? input.keywords : undefined,
+            maxItems: Number.isFinite(input.maxItems) ? Math.min(50, Math.max(1, Math.floor(input.maxItems))) : 10,
+            hoursBack: Number.isFinite(input.hoursBack) ? Math.min(168, Math.max(1, Math.floor(input.hoursBack))) : 24,
+            enableFacebookGroupSearch: input.enableFacebookGroupSearch !== false,
+        };
+
         const results = { totalResearched: 0, scored: 0, kept: 0, enriched: 0, planned: 0, written: 0, mediaQueued: 0 };
         const contentIds = [];
 
-        console.log(`[Orchestrator] 🚀 Pipeline ${pipelineId} bắt đầu — source: ${input.source}`);
+        console.log(`[Orchestrator] 🚀 Pipeline ${pipelineId} bắt đầu — source: ${safeInput.source}${safeInput.keywords ? ' | keywords: ' + safeInput.keywords.length : ''}`);
 
         try {
             const step1 = log('researcher', 'running');
             const start1 = Date.now();
 
             let researcherData;
-            if (input.source === 'rss' && input.url) {
+            if (safeInput.source === 'rss' && safeInput.url) {
                 researcherData = await researcherScanRSSFlow({
-                    url: input.url,
-                    maxItems: input.maxItems,
-                    hoursBack: input.hoursBack,
-                    enableFacebookGroupSearch: input.enableFacebookGroupSearch,
+                    url: safeInput.url,
+                    maxItems: safeInput.maxItems,
+                    hoursBack: safeInput.hoursBack,
+                    enableFacebookGroupSearch: safeInput.enableFacebookGroupSearch,
                 });
             } else {
+                const effectiveKeywords = safeInput.keywords || researcherConfig.autoSearchDefaultKeywords;
                 researcherData = await researcherScanRSSFlow({
-                    maxItems: input.maxItems,
-                    keywords: input.keywords,
-                    hoursBack: input.hoursBack,
-                    enableFacebookGroupSearch: input.enableFacebookGroupSearch,
+                    maxItems: safeInput.maxItems,
+                    keywords: effectiveKeywords,
+                    hoursBack: safeInput.hoursBack,
+                    enableFacebookGroupSearch: safeInput.enableFacebookGroupSearch,
                 });
             }
 
@@ -115,7 +126,7 @@ const orchestratorFlow = ai.defineFlow(
                         totalItems: researcherData?.totalItems,
                         trendingTopics: researcherData?.trendingTopics,
                     },
-                    input: { source: input.source, url: input.url || null, keywords: input.keywords || null, maxItems: input.maxItems, hoursBack: input.hoursBack },
+                    input: { source: safeInput.source, url: safeInput.url || null, keywords: safeInput.keywords || null, maxItems: safeInput.maxItems, hoursBack: safeInput.hoursBack, enableFacebookGroupSearch: safeInput.enableFacebookGroupSearch },
                     steps: steps.map((s) => ({ name: s.name, status: s.status, duration: s.duration })),
                     timestamp: Date.now(),
                 });
@@ -148,7 +159,7 @@ const orchestratorFlow = ai.defineFlow(
                 await safeRtdbSet(rtdb.ref(`agent_reports/${today}/orchestrator/${pipelineId}`), {
                     status: 'partial',
                     error: 'All items filtered out',
-                    input: { source: input.source, url: input.url || null, keywords: input.keywords || null },
+                    input: { source: safeInput.source, url: safeInput.url || null, keywords: safeInput.keywords || null, maxItems: safeInput.maxItems, hoursBack: safeInput.hoursBack, enableFacebookGroupSearch: safeInput.enableFacebookGroupSearch },
                     filterSummary: filtered.summary,
                     steps: steps.map((s) => ({ name: s.name, status: s.status, duration: s.duration })),
                     results,
@@ -236,7 +247,7 @@ const orchestratorFlow = ai.defineFlow(
                 status: 'completed',
                 results,
                 contentIds,
-                input: { source: input.source, url: input.url || null, keywords: input.keywords || null },
+                input: { source: safeInput.source, url: safeInput.url || null, keywords: safeInput.keywords || null, maxItems: safeInput.maxItems, hoursBack: safeInput.hoursBack, enableFacebookGroupSearch: safeInput.enableFacebookGroupSearch },
                 details: {
                     rawItems: rawItems.length,
                     scoredItems: scored.scoredItems.length,
@@ -264,7 +275,7 @@ const orchestratorFlow = ai.defineFlow(
                 status: 'failed',
                 error: error.message,
                 stack: error.stack?.slice(0, 1000),
-                input: { source: input.source, url: input.url || null },
+                input: { source: safeInput.source, url: safeInput.url || null, keywords: safeInput.keywords || null, maxItems: safeInput.maxItems, hoursBack: safeInput.hoursBack, enableFacebookGroupSearch: safeInput.enableFacebookGroupSearch },
                 results,
                 steps: steps.map((s) => ({ name: s.name, status: s.status, duration: s.duration })),
                 timestamp: Date.now(),

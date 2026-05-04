@@ -73,14 +73,13 @@ const researcherScanRSSFlow = ai.defineFlow(
             sourceType = 'rss';
         } else {
             sourceType = 'web_search';
-            console.log(`[Researcher] 🔍 Bắt đầu auto search — keywords: ${(keywords || researcherConfig.autoSearchDefaultKeywords).length} từ khóa`);
+            const searchKw = (Array.isArray(keywords) && keywords.length > 0) ? keywords : researcherConfig.autoSearchDefaultKeywords;
+            console.log(`[Researcher] 🔍 Bắt đầu auto search — keywords: ${searchKw.length} từ khóa`);
             await log('researcher_flow', 'info', 'Auto search started', {
-                keywordsCount: (keywords || researcherConfig.autoSearchDefaultKeywords).length,
+                keywordsCount: searchKw.length,
                 facebookEnabled: enableFacebookGroupSearch,
                 maxItems, hoursBack,
             });
-
-            const searchKw = keywords && keywords.length > 0 ? keywords : researcherConfig.autoSearchDefaultKeywords;
 
             const allSearchResults = [];
             const seenUrls = new Set();

@@ -41,6 +41,15 @@ const researcherConfig = {
         'cờ bạc', 'bắt cóc', 'lừa đảo', 'scam',
     ],
 
+    // ─── URL tham khảo để test agent & huấn luyện tìm nội dung tương tự ──
+    testReferenceUrls: [
+        {
+            url: 'https://www.facebook.com/9tripphuquoc/videos/6947693362001593',
+            label: 'Facebook post mẫu — video Phú Quốc 9 Trip',
+            note: 'Dùng test Researcher (scrape/analyze), Publisher, MediaMaster',
+        },
+    ],
+
     // ─── Auto Search — Khi không có URL RSS ──────────────────────────────
     autoSearchEnabled: true,
     hoursBackDefault: 24,
