@@ -21,6 +21,20 @@ const writerConfig = {
     // ─── Phong cách viết ──────────────────────────────────────────────────
     style: 'Sống động, tự nhiên, tin cậy',
 
+    // ─── Icon được phép sử dụng trong bài viết ────────────────────────────
+    allowedIcons: ['✅', '🎁', '⭐', '😍', '💎', '👉', '❌', '🌎', '🏠', '☎️'],
+
+    // ─── Chữ ký mặc định (append sau content) ────────────────────────────
+    signature: [
+        '______________',
+        '𝗖𝗼̂𝗻𝗴 𝘁𝘆 𝗧𝗡𝗛𝗛 𝟵 𝗧𝗿𝗶𝗽 𝗣𝗵𝘂́ 𝗤𝘂𝗼̂́𝗰',
+        '☎️ Hotline 24/7: 0877.901.901',
+        '📍 Địa chỉ : 17 Chu Văn An, Khu Phố 5, đặc khu Phú Quốc, An Giang',
+        '💌 Email: info@9tripphuquoc.com',
+        '🌎 Website: https://9tripphuquoc.com',
+        '#9tripphuquoc #combophuquoc #combophuquocgiare #reviewphuquoc #Vinpearlphuquoc #dulichphuquoc #tourphúquốc4N3D',
+    ].join('\n'),
+
     // ─── Định dạng đầu ra hỗ trợ ──────────────────────────────────────────
     formats: [
         'social_post',     // Bài đăng Facebook/Instagram/Zalo
@@ -56,14 +70,21 @@ NGUYÊN TẮC SỐNG CÒN — MOBILE FIRST:
 4. XUỐNG DÒNG: Cứ 2-3 câu phải xuống dòng. Không viết thành khối chữ dày.
 
 ═════════════════════════════════════
+ICON — SỬ DỤNG LINH HOẠT:
+═════════════════════════════════════
+- Được phép dùng icon: ✅ 🎁 ⭐ 😍 💎 👉 ❌ 🌎 🏠 ☎️
+- Tối đa 4-5 icon trong toàn bài. Đặt icon ở đầu câu/dòng để nhấn mạnh.
+- Không lạm dụng. Icon phải có ý nghĩa, không spam.
+
+═════════════════════════════════════
 QUY TẮC CTA — NHẸ NHÀNG, KHÔNG THÚC ÉP:
 ═════════════════════════════════════
 CTA phải TỰ NHIÊN như một gợi ý, không như mệnh lệnh. Ưu tiên cung cấp GIÁ TRỊ thay vì ép mua.
 
 ✅ CTA TỐT (hãy học theo):
-  - "Trên bàn đồ chỉ cách 1 nhấp — 9 Trip gợi ý chỗ ở phù hợp thôi 😊"
-  - "Nếu bạn cũng tò mò, 9 Trip có sẵn vài combo cho lựa chọn nhẹ."
-  - "Bật app 9 Trip xem thêm chi nhánh trải nghiệm — không sao cả, xem cho biết."
+  - "🌎 Trên bàn đồ chỉ cách 1 nhấp — 9 Trip gợi ý chỗ ở phù hợp thôi 😊"
+  - "💎 Nếu bạn cũng tò mò, 9 Trip có sẵn vài combo cho lựa chọn nhẹ."
+  - "👉 Bật app 9 Trip xem thêm chi nhánh trải nghiệm — không sao cả, xem cho biết."
 
 ❌ CTA TỆ (TUYỆT ĐỐI KHÔNG):
   - "ĐẶT NGAY để nhận ưu đãi!!!"
@@ -74,7 +95,7 @@ CTA phải TỰ NHIÊN như một gợi ý, không như mệnh lệnh. Ưu tiên
 GIỌNG VĂN:
 ═════════════════════════════════════
 - Sống động, gần gũi, như đang kể chuyện với bạn.
-- Đôi khi dùng emoji nhưng không lạm dụng (tối đa 2-3 emoji cả bài).
+- Dùng icon linh hoạt để tăng tương tác (tối đa 4-5 icon cả bài).
 - Không dùng từ ngữ "đồ bán", "chốt đơn", "fomo", "săn sale".
 - Ưu tiên thông tin hữu ích: mẹo du lịch, kinh nghiệm thực tế, địa điểm ẩn.
 
@@ -84,7 +105,9 @@ CẤU TRÚC BÀI VIẾT (MẶC ĐỊNH):
 1. HOOK — Câu mở mắt, gợi sự tò mò
 2. NỘI DUNG CHÍNH — Thông tin hữu ích, mẹo, kinh nghiệm
 3. GIÁ TRỊ THÊM — 1 chi tiết bất ngờ hoặc ít người biết
-4. CTA NHẸ NHÀNG — Gợi ý bước tiếp, không ép`,
+4. CTA NHẸ NHÀNG — Gợi ý bước tiếp, không ép
+
+⚠️ KHÔNG thêm chữ ký công ty vào nội dung content. Chữ ký sẽ được append tự động sau.`,
 
     // ─── User Prompt Template — Nhận data từ Researcher ──────────────────
     userPromptTemplate: `Dưới đây là dữ liệu thu thập được từ Researcher Agent. Hãy viết {{format}} dựa trên dữ liệu này.
@@ -97,10 +120,12 @@ CẤU TRÚC BÀI VIẾT (MẶC ĐỊNH):
 - Độ dài: {{lengthHint}}
 - Phong cách: {{styleHint}}
 - Ngôn ngữ: Tiếng Việt
+- Icon được phép: ✅ 🎁 ⭐ 😍 💎 👉 ❌ 🌎 🏠 ☎️ (tối đa 4-5 icon cả bài)
 - Không sử dụng các từ cấm: {{bannedWords}}
 - CTA phải nhẹ nhàng (xem quy tắc trong System Prompt)
 - Nếu dữ liệu có phuQuocRelevance ≥ 8, ưu tiên nhấn mạnh yếu tố Phú Quốc.
-- Nếu dữ liệu có category "thuế_chính_sách", viết theo phong cách thông báo hữu ích, không bán hàng.`,
+- Nếu dữ liệu có category "thuế_chính_sách", viết theo phong cách thông báo hữu ích, không bán hàng.
+- KHÔNG thêm chữ ký công ty. Chữ ký sẽ được thêm tự động sau.`,
 
     // ─── Fallback model (khi DeepSeek lỗi quota) ────────────────────────
     fallbackModel: 'googleai/gemini-2.5-flash',

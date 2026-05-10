@@ -165,13 +165,15 @@ const researcherScanRSSFlow = ai.defineFlow(
         }
 
         let extractPrompt;
+        let effectiveMaxItems = maxItems; // Giá trị gốc cho RSS
         if (sourceType === 'rss') {
             extractPrompt = researcherConfig.extractSystemPrompt.replace(/\{\{maxItems\}\}/g, String(maxItems)).replace(/\{\{hoursBack\}\}/g, String(hoursBack));
         } else {
+            effectiveMaxItems = researcherConfig.autoSearchMaxItems || maxItems; // Cao hơn cho auto_search
             extractPrompt = `${researcherConfig.autoSearchSystemPrompt}\n\n${researcherConfig.autoSearchUserPromptTemplate}`
                 .replace(/\{\{searchData\}\}/g, '<<DATA IN PROMPT BELOW>>')
                 .replace(/\{\{hoursBack\}\}/g, String(hoursBack))
-                .replace(/\{\{maxItems\}\}/g, String(maxItems));
+                .replace(/\{\{maxItems\}\}/g, String(effectiveMaxItems));
         }
 
         console.log(`[Researcher] Phase 2 — extractJSON với ${rawContent.length} ký tự dữ liệu, sourceType=${sourceType}`);
@@ -200,20 +202,17 @@ const researcherScanRSSFlow = ai.defineFlow(
         resultData.scannedAt = resultData.scannedAt || new Date().toISOString();
         resultData.trendingTopics = resultData.trendingTopics || [];
 
-        const itemsBeforeFilter = (resultData.items || []).length;
-        const filteredItems = (resultData.items || []).filter((item) => {
-            if (!item.pubDate) return false;
-            return true;
-        });
-        const itemsAfterFilter = filteredItems.length;
-
-        if (itemsBeforeFilter !== itemsAfterFilter) {
-            console.warn(`[Researcher] ⚠️ pubDate filter: ${itemsBeforeFilter} → ${itemsAfterFilter} (dropped ${itemsBeforeFilter - itemsAfterFilter} items without pubDate)`);
-            await log('researcher_flow', 'warn', 'pubDate filter dropped items', {
-                before: itemsBeforeFilter,
-                after: itemsAfterFilter,
-                dropped: itemsBeforeFilter - itemsAfterFilter,
-            });
+        // Chỉ lọc pubDate cho RSS (cần ngày chính xác), bỏ qua cho auto_search
+        let filteredItems = resultData.items || [];
+        if (sourceType === 'rss') {
+            const before = filteredItems.length;
+            filteredItems = filteredItems.filter((item) => item.pubDate);
+            if (before !== filteredItems.length) {
+                console.warn(`[Researcher] ⚠️ RSS pubDate filter: ${before} → ${filteredItems.length} (dropped ${before - filteredItems.length})`);
+                await log('researcher_flow', 'warn', 'RSS pubDate filter dropped items', {
+                    before, after: filteredItems.length, dropped: before - filteredItems.length,
+                });
+            }
         }
 
         resultData.items = filteredItems.map((item) => ({

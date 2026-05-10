@@ -153,8 +153,10 @@ async function layer1_geminiSearch(query, maxResults, hoursBack) {
 }
 
 // ═════════════════════════════════════════════════════════════════════
-// LAYER 2: OpenRouter Web Search Server Tool (engine: firecrawl)
+// LAYER 1: OpenRouter Web Search Server Tool
 // Dùng bất kỳ model nào — OpenRouter xử lý search server-side
+// Không gửi model → OpenRouter auto-route đến model hỗ trợ tool calling
+// Engine 'auto' = native search (nếu provider hỗ trợ) hoặc fallback Exa
 // Tài liệu: https://openrouter.ai/docs/guides/features/server-tools/web-search
 // ═════════════════════════════════════════════════════════════════════
 
@@ -164,7 +166,6 @@ async function layer2_openrouterSearch(query, maxResults, hoursBack) {
     const response = await axios.post(
         `${OPENROUTER_API_URL}/chat/completions`,
         {
-            model: 'openrouter/free',
             messages: [
                 {
                     role: 'system',

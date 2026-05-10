@@ -54,7 +54,8 @@ const researcherConfig = {
     autoSearchEnabled: true,
     hoursBackDefault: 24,
     webSearchMaxResults: 10,
-    webSearchMaxResultsPerKeyword: 5, // Số kết quả tối đa mỗi từ khóa
+    webSearchMaxResultsPerKeyword: 8, // Số kết quả tối đa mỗi từ khóa
+    autoSearchMaxItems: 20, // Giới hạn items trả về cho auto_search (cao hơn RSS)
 
     autoSearchDefaultKeywords: [
         'tin tức du lịch Phú Quốc mới nhất',

@@ -76,6 +76,15 @@ const writerGenerateFlow = ai.defineFlow(
         }
 
         const outputData = result.data;
+
+        // Append signature vào cuối content
+        outputData.content = outputData.content + '\n\n' + writerConfig.signature;
+
+        // Merge hashtags từ signature (tránh trùng lặp)
+        const sigHashtags = writerConfig.signature.match(/#\S+/g) || [];
+        const mergedHashtags = [...new Set([...outputData.hashtags, ...sigHashtags])];
+        outputData.hashtags = mergedHashtags.slice(0, 10); // Tối đa 10 hashtag
+
         console.log(`[Writer] ✅ Hoàn thành — ${outputData.wordCount || '?'} từ, format: ${outputData.format || input.format}`);
 
         return outputData;

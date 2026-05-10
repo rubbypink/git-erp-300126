@@ -87,7 +87,7 @@ async function testGemini() {
 // ─── TEST 2: OPENROUTER WEB SEARCH TOOL ──────────────────────
 async function testOpenRouter() {
     console.log('\n═══════════════════════════════════════════');
-    console.log('🧪 TEST 2: OpenRouter Web Search Server Tool (engine: firecrawl)');
+    console.log('🧪 TEST 2: OpenRouter Web Search Server Tool (engine: auto)');
     console.log('═══════════════════════════════════════════');
     console.log(`API Key: ${OPENROUTER_API_KEY ? OPENROUTER_API_KEY.slice(0, 10) + '...' : 'MISSING!'}`);
 
@@ -96,12 +96,11 @@ async function testOpenRouter() {
         const response = await axios.post(
             `${OPENROUTER_API_URL}/chat/completions`,
             {
-                model: 'openai/gpt-4o',
                 messages: [
                     { role: 'system', content: `Search the web and return results in this format:\n[TITLE] title\n[URL] url\n[SNIPPET] summary\n[DATE] date\nSeparate with: ---` },
                     { role: 'user', content: `Search for: ${QUERY}\nOnly last ${HOURS_BACK}h. Top ${MAX_RESULTS} results.` },
                 ],
-                tools: [{ type: 'openrouter:web_search', parameters: { engine: 'firecrawl', max_results: MAX_RESULTS } }],
+                tools: [{ type: 'openrouter:web_search', parameters: { engine: 'auto', max_results: MAX_RESULTS } }],
                 temperature: 0.1,
                 max_tokens: 4096,
             },

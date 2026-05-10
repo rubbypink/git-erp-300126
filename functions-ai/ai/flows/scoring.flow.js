@@ -47,7 +47,8 @@ const ScoringOutputSchema = z.object({
 });
 
 function scoreFreshness(pubDate, hoursBack) {
-  if (!pubDate) return 0;
+  if (pubDate === undefined || pubDate === null) return 0;
+  if (pubDate === '') return 3;
   const pub = new Date(pubDate);
   if (isNaN(pub.getTime())) return 3;
   const now = new Date();
