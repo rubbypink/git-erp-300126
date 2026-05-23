@@ -15,13 +15,13 @@
 
     <div class="px-3 py-2 bkg-light">
         <div class="acc-filter-container" style="width: fit-content">
-            <div class="acc-filter-header bg-white d-flex justify-content-between align-items-center user-select-none border rounded" onclick="this.parentElement.classList.toggle('active')" style="pointer-events: auto">
+            <div class="acc-filter-header bg-body-tertiary d-flex justify-content-between align-items-center user-select-none border rounded" onclick="this.parentElement.classList.toggle('active')" style="pointer-events: auto">
                 <div class="d-flex align-items-center px-2 py-2">
                     <i class="fas fa-filter text-success me-2"></i>
                     <span class="fw-bold me-1">Bộ lọc:</span>
                     <span id="report-filter-summary" class="text-success fw-bold small">Tháng này</span>
                 </div>
-                <i class="fas fa-chevron-down text-muted transition-icon"></i>
+                <i class="fas fa-chevron-down text-body-secondary transition-icon"></i>
             </div>
 
             <div class="acc-filter-body border border-top-0 rounded-bottom p-3">
@@ -93,11 +93,11 @@
             </thead>
             <tbody id="report-table-body">
                 <tr>
-                    <td colspan="12" class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải dữ liệu...</td>
+                    <td colspan="12" class="text-center text-body-secondary py-4"><i class="fas fa-spinner fa-spin me-2"></i> Đang tải dữ liệu...</td>
                 </tr>
             </tbody>
         </table>
     </div>
 
-    <div class="px-3 py-2 bkg-light border-top text-muted small text-center">Tổng: <span id="report-total-records" class="fw-bold">0</span> giao dịch | Thu: <span id="report-total-in" class="fw-bold text-success">0</span> | Chi: <span id="report-total-out" class="fw-bold text-danger">0</span> | Lệch: <span id="report-balance" class="fw-bold">0</span></div>
+    <div class="px-3 py-2 bkg-light border-top text-body-secondary small text-center">Tổng: <span id="report-total-records" class="fw-bold">0</span> giao dịch | Thu: <span id="report-total-in" class="fw-bold text-success">0</span> | Chi: <span id="report-total-out" class="fw-bold text-danger">0</span> | Lệch: <span id="report-balance" class="fw-bold">0</span></div>
 </div>

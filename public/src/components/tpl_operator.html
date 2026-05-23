@@ -4,7 +4,7 @@
             <h6 class="m-0 text-uppercase fw-bold text-primary p-2"><i class="fa-solid fa-gauge me-2"></i>Trung Tâm Điều Hành (Operator)</h6>
             <div class="d-flex align-items-center gap-2">
                 <button class="btn btn-outline-success btn-sm fw-bold" onclick="OperatorController.UI.openFilterDialog()"><i class="fa-solid fa-file-invoice-dollar me-1"></i> Công nợ NCC</button>
-                <span class="small text-muted desktop-only">Giai đoạn:</span>
+                <span class="small text-body-secondary desktop-only">Giai đoạn:</span>
                 <select id="dash-month-select" class="form-select form-select-sm fw-bold text-primary desktop-only" style="width: 110px">
                     <option value="" disabled>Tháng...</option>
                 </select>
@@ -300,16 +300,16 @@
 
             <div class="row mb-3 gap-2">
                 <div class="col-md-5">
-                    <label for="pm-cc" class="form-label fw-bold small text-muted">CC Email</label>
+                    <label for="pm-cc" class="form-label fw-bold small text-body-secondary">CC Email</label>
                     <input type="text" class="form-control form-control-sm" id="pm-cc" placeholder="quanly@hotel.com" />
                 </div>
                 <div class="col-md-5">
-                    <label for="pm-bcc" class="form-label fw-bold small text-muted">BCC Email</label>
+                    <label for="pm-bcc" class="form-label fw-bold small text-body-secondary">BCC Email</label>
                     <input type="text" class="form-control form-control-sm" id="pm-bcc" placeholder="Gửi ẩn danh..." />
                 </div>
             </div>
 
-            <div class="form-text text-muted small mb-3 fst-italic">* Các email phân cách nhau bởi dấu chấm phẩy (;).</div>
+            <div class="form-text text-body-secondary small mb-3 fst-italic">* Các email phân cách nhau bởi dấu chấm phẩy (;).</div>
         </form>
     </div>
 </template>
@@ -337,11 +337,11 @@
             </select>
             <div class="row g-2">
                 <div class="col-6">
-                    <label class="small text-muted">Từ ngày</label>
+                    <label class="small text-body-secondary">Từ ngày</label>
                     <input type="date" id="modal-start-date" class="form-control form-control-sm" />
                 </div>
                 <div class="col-6">
-                    <label class="small text-muted">Đến ngày</label>
+                    <label class="small text-body-secondary">Đến ngày</label>
                     <input type="date" id="modal-end-date" class="form-control form-control-sm" />
                 </div>
             </div>
@@ -357,7 +357,7 @@
                 <div>
                     <h6 class="mb-1 fw-bold text-primary"><i class="fa-solid fa-chart-pie me-2"></i>Tổng kết Công nợ: <span id="modal-sup-name">...</span></h6>
                     <div id="modal-type-stats" class="mb-2 small"></div>
-                    <div class="d-flex gap-3 text-muted small">
+                    <div class="d-flex gap-3 text-body-secondary small">
                         <span>Tổng tiền: <strong id="modal-total-cost">0</strong></span>
                         <span>Đã thanh toán: <strong id="modal-total-paid" class="text-success">0</strong></span>
                         <span>Còn lại: <strong id="modal-total-debt" class="text-danger fs-6">0</strong></span>

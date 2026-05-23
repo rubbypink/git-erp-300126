@@ -1,5 +1,5 @@
 <div class="container-fluid p-3 report-container">
-    <div class="card shadow-sm mb-3 d-print-none">
+    <div class="card shadow-sm mb-3 d-print-none bg-body-tertiary">
         <div class="card-body p-2 d-flex flex-wrap gap-2 align-items-center justify-content-between">
             <div class="d-flex flex-wrap gap-2 align-items-center">
                 <div class="input-group input-group-sm" style="width: 280px">
@@ -34,7 +34,7 @@
                         <option value="start_date">Ngày Đi</option>
                     </select>
                     <input type="date" id="rpt-date-from" class="form-control form-control-sm" />
-                    <span class="d-none text-muted">-</span>
+                    <span class="d-none text-body-secondary">-</span>
                     <input type="date" id="rpt-date-to" class="form-control form-control-sm" />
                     <select class="form-select form-select-sm" id="rpt-date-field" style="width: max-content" onchange="ReportModule.setQuickDate()">
                         <option value="Hôm nay">Hôm nay</option>
@@ -96,11 +96,11 @@
         </div>
     </div>
 
-    <div class="card shadow-sm mb-3">
+    <div class="card shadow-sm mb-3 bg-body-tertiary">
         <div class="card-header py-2 cursor-pointer" style="cursor: pointer" onclick="ReportModule.toggleCharts()" title="Click để ẩn/hiện biểu đồ">
             <div class="d-flex justify-content-between align-items-center">
                 <h6 class="mb-0 fw-bold text-primary"><i class="fas fa-chart-line me-2"></i>BIỂU ĐỒ THỐNG KÊ</h6>
-                <i class="fas fa-chevron-up text-muted" id="chart-toggle-icon"></i>
+                <i class="fas fa-chevron-up text-body-secondary" id="chart-toggle-icon"></i>
             </div>
         </div>
 
@@ -121,10 +121,10 @@
     </div>
 
     <!-- Container cho ATable -->
-    <div id="rpt-table-container" class="card shadow-sm border-0" style="min-height: 400px">
+    <div id="rpt-table-container" class="card shadow-sm border-0 bg-body-tertiary" style="min-height: 400px">
         <div class="card-body p-0 d-flex flex-column h-100">
             <!-- ATable sẽ được inject vào đây -->
-            <div class="text-center p-5 text-muted">
+            <div class="text-center p-5 text-body-secondary">
                 <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
                 <p>Đang tải dữ liệu báo cáo...</p>
             </div>

@@ -16,70 +16,35 @@
 }
 
 /* =========================================================================
-COLOR SCHEME: LIGHT & DARK THEMES
-Sử dụng 2 bộ màu hài hòa phổ biến nhất
-- Light: Blue/Gray (Professional, dễ nhìn)
-- Dark: Purple/Gray (Hiện đại, bảo vệ mắt)
+COLOR SCHEME: LIGHT & DARK THEMES (Bootstrap 5.3 data-bs-theme)
+Cozy Minimalist palette: Light warm off-white, Dark warm zinc
 ========================================================================= */
-/* ─── THEME: DARK MODE ─── */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --primary-color: #818cf8; /* Indigo sáng - Nổi bật trên nền tối */
-        --secondary-color: #94a3b8; /* Slate - Trung tính */
-        --app-bg: #0f172a; /* Navy đậm - Nền sâu */
-        --header-bg: #1e293b; /* Xanh đen - Header */
-        --main-bg: #12192aaf;
-        --text-color: #f8fafc; /* Gần trắng - Dễ đọc */
-        --text-secondary: #94a3b8; /* Xám Slate - Phụ */
-        --border-color: #334155; /* Viền tối */
-        --surface-color: #1e293b; /* Nền Card/Modal */
-        --popup-bg: #1e293b;
-        --popup-text: #f8fafc;
-        --hover-bg: #3f4e63;
-        --input-bg: #0f172a;
-        --success-color: #34d399;
-        --warning-color: #fbbf24;
-        --error-color: #f87171;
-        --info-color: #38bdf8;
 
-        /* Table Colors - Dark */
-        --tbl-head-bg: #334155;
-        --tbl-head-text: #f8fafc;
-        --tbl-row-bg: #1e293b;
-        --tbl-row-hover: #334155;
-        --tbl-border: #334155;
-
-        /* Tab Navigation - Dark */
-        --tab-active-bg: #316abb;
-        --tab-active-text: #ffffff;
-        --tab-inactive-bg: #0f172a;
-        --tab-inactive-text: #b0b4ba;
-
-        /* Shadow - Dark */
-        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
-        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
-    }
-}
-
+/* ─── THEME: LIGHT (Mặc định) ─── */
 :root {
     color-scheme: light dark;
+
+    /* Bootstrap 5.3 theme overrides */
+    --bs-body-bg: #FDFBF7;
+    --bs-body-color: #212529;
+    --bs-tertiary-bg: #FFFFFF;
 
     /* ─── LAYOUT GRID CONSTANTS ─── */
     --grid-cols: 13;
     --header-height: 5rem;
     --footer-height: 4rem;
 
-    /* ─── THEME: LIGHT MODE (Mặc định) ─── */
-    --primary-color: #2563eb; /* Blue - Chuyên nghiệp */
-    --secondary-color: #64748b; /* Slate Gray */
-    --app-bg: #f8fafc; /* Xám cực nhạt - Sạch sẽ */
-    --header-bg: #1e3a8a; /* Xanh đậm - Tin cậy */
+    /* ─── CUSTOM THEME MAPPINGS ─── */
+    --app-bg: var(--bs-body-bg);
+    --surface-color: var(--bs-tertiary-bg);
+    --text-color: var(--bs-body-color);
+    --border-color: #E2E8F0;
+
+    --primary-color: #2563eb;
+    --secondary-color: #64748b;
+    --header-bg: #1e3a8a;
     --main-bg: #efefef;
-    --text-color: #0f172a; /* Navy tối - Tương phản tốt */
     --text-secondary: #64748b;
-    --border-color: #e2e8f0;
-    --surface-color: #ffffff;
     --popup-bg: #fbe9e9f9;
     --popup-text: #0f172a;
     --hover-bg: #fdfbed;
@@ -94,7 +59,7 @@ Sử dụng 2 bộ màu hài hòa phổ biến nhất
     --tbl-head-text: #0f172a;
     --tbl-row-bg: #ffffff;
     --tbl-row-hover: #f8fafc;
-    --tbl-border: #e2e8f0;
+    --tbl-border: #E2E8F0;
 
     /* Tab Navigation - Light */
     --tab-active-bg: #ffffff;
@@ -109,6 +74,52 @@ Sử dụng 2 bộ màu hài hòa phổ biến nhất
     --shadow-sm: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.05);
     --shadow-md: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 0.625rem 0.9375rem rgba(0, 0, 0, 0.1);
+}
+
+/* ─── THEME: DARK MODE ─── */
+[data-bs-theme="dark"] {
+    /* Bootstrap 5.3 theme overrides */
+    --bs-body-bg: #18181B;
+    --bs-body-color: #FAFAFA;
+    --bs-tertiary-bg: #27272A;
+
+    /* ─── CUSTOM THEME MAPPINGS ─── */
+    --app-bg: var(--bs-body-bg);
+    --surface-color: var(--bs-tertiary-bg);
+    --text-color: var(--bs-body-color);
+    --border-color: #3F3F46;
+
+    --primary-color: #818cf8;
+    --secondary-color: #94a3b8;
+    --header-bg: #27272A;
+    --main-bg: #18181B;
+    --text-secondary: #A1A1AA;
+    --popup-bg: #27272A;
+    --popup-text: #FAFAFA;
+    --hover-bg: #3F3F46;
+    --input-bg: #18181B;
+    --success-color: #34d399;
+    --warning-color: #fbbf24;
+    --error-color: #f87171;
+    --info-color: #38bdf8;
+
+    /* Table Colors - Dark */
+    --tbl-head-bg: #3F3F46;
+    --tbl-head-text: #FAFAFA;
+    --tbl-row-bg: #27272A;
+    --tbl-row-hover: #3F3F46;
+    --tbl-border: #3F3F46;
+
+    /* Tab Navigation - Dark */
+    --tab-active-bg: #3F3F46;
+    --tab-active-text: #FAFAFA;
+    --tab-inactive-bg: #27272A;
+    --tab-inactive-text: #A1A1AA;
+
+    /* Shadows - Dark */
+    --shadow-sm: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 0.625rem 0.9375rem rgba(0, 0, 0, 0.4);
 }
 
 .card-body {

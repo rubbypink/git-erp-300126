@@ -33,33 +33,33 @@
         <!-- ═══ STATS CARDS ═══ -->
         <div class="row g-2 mb-3">
             <div class="col-6 col-md-3">
-                <div class="card shadow-sm border-0 h-100">
+                <div class="card shadow-sm border-0 h-100 bg-body-tertiary">
                     <div class="card-body p-2 text-center">
-                        <div class="text-muted small">Chờ duyệt</div>
+                        <div class="text-body-secondary small">Chờ duyệt</div>
                         <div class="fw-bold text-warning fs-5" id="ai-stat-pending">0</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="card shadow-sm border-0 h-100">
+                <div class="card shadow-sm border-0 h-100 bg-body-tertiary">
                     <div class="card-body p-2 text-center">
-                        <div class="text-muted small">Đã duyệt</div>
+                        <div class="text-body-secondary small">Đã duyệt</div>
                         <div class="fw-bold text-success fs-5" id="ai-stat-approved">0</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="card shadow-sm border-0 h-100">
+                <div class="card shadow-sm border-0 h-100 bg-body-tertiary">
                     <div class="card-body p-2 text-center">
-                        <div class="text-muted small">Từ chối</div>
+                        <div class="text-body-secondary small">Từ chối</div>
                         <div class="fw-bold text-danger fs-5" id="ai-stat-rejected">0</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="card shadow-sm border-0 h-100">
+                <div class="card shadow-sm border-0 h-100 bg-body-tertiary">
                     <div class="card-body p-2 text-center">
-                        <div class="text-muted small">Sửa lại</div>
+                        <div class="text-body-secondary small">Sửa lại</div>
                         <div class="fw-bold text-info fs-5" id="ai-stat-revision">0</div>
                     </div>
                 </div>
@@ -67,7 +67,7 @@
         </div>
 
         <!-- ═══ PIPELINE STATUS ═══ -->
-        <div class="card shadow-sm border-0 mb-3">
+        <div class="card shadow-sm border-0 mb-3 bg-body-tertiary">
             <div class="card-header bg-dark bg-gradient text-white py-1 d-flex justify-content-between align-items-center"
                  onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto; cursor: pointer;">
                 <small class="fw-bold"><i class="fa-solid fa-diagram-project me-1"></i>Pipeline: Researcher → Writer → MediaMaster → Publisher</small>
@@ -83,38 +83,38 @@
                     <!-- Researcher -->
                     <div class="flex-fill border rounded p-2 text-center" id="ai-pipe-researcher" style="border-color: #ffc107 !important; min-width: 100px;">
                         <div class="fw-bold small text-warning"><i class="fa-solid fa-magnifying-glass me-1"></i>Researcher</div>
-                        <div class="text-muted" style="font-size: 11px;">Gemini 2.5 Flash</div>
+                        <div class="text-body-secondary" style="font-size: 11px;">Gemini 2.5 Flash</div>
                         <div class="fw-bold mt-1 small" id="ai-pipe-researcher-count" style="color: #856404;">⏳...</div>
                     </div>
-                    <div class="d-none d-md-flex align-items-center text-muted"><i class="fa-solid fa-arrow-right"></i></div>
-                    <div class="d-flex d-md-none justify-content-center text-muted"><i class="fa-solid fa-arrow-down"></i></div>
+                    <div class="d-none d-md-flex align-items-center text-body-secondary"><i class="fa-solid fa-arrow-right"></i></div>
+                    <div class="d-flex d-md-none justify-content-center text-body-secondary"><i class="fa-solid fa-arrow-down"></i></div>
                     <!-- Scoring -->
                     <div class="flex-fill border rounded p-2 text-center d-none d-md-block" id="ai-pipe-scoring" style="border-color: #fd7e14 !important; min-width: 100px;">
                         <div class="fw-bold small" style="color:#fd7e14;"><i class="fa-solid fa-star me-1"></i>Scoring</div>
-                        <div class="text-muted" style="font-size: 11px;">Matrix</div>
+                        <div class="text-body-secondary" style="font-size: 11px;">Matrix</div>
                         <div class="fw-bold mt-1 small" id="ai-pipe-scoring-count" style="color:#856404;">⏳...</div>
                     </div>
-                    <div class="d-none d-md-flex align-items-center text-muted"><i class="fa-solid fa-arrow-right"></i></div>
+                    <div class="d-none d-md-flex align-items-center text-body-secondary"><i class="fa-solid fa-arrow-right"></i></div>
                     <!-- Writer -->
                     <div class="flex-fill border rounded p-2 text-center" id="ai-pipe-writer" style="border-color: #17a2b8 !important; min-width: 100px;">
                         <div class="fw-bold small text-info"><i class="fa-solid fa-pen-nib me-1"></i>Writer</div>
-                        <div class="text-muted" style="font-size: 11px;">DeepSeek V4 Pro</div>
+                        <div class="text-body-secondary" style="font-size: 11px;">DeepSeek V4 Pro</div>
                         <div class="fw-bold mt-1 small" id="ai-pipe-writer-count" style="color:#0c5460;">⏳...</div>
                     </div>
-                    <div class="d-none d-md-flex align-items-center text-muted"><i class="fa-solid fa-arrow-right"></i></div>
-                    <div class="d-flex d-md-none justify-content-center text-muted"><i class="fa-solid fa-arrow-down"></i></div>
+                    <div class="d-none d-md-flex align-items-center text-body-secondary"><i class="fa-solid fa-arrow-right"></i></div>
+                    <div class="d-flex d-md-none justify-content-center text-body-secondary"><i class="fa-solid fa-arrow-down"></i></div>
                     <!-- Media Master -->
                     <div class="flex-fill border rounded p-2 text-center" id="ai-pipe-media" style="border-color: #6f42c1 !important; min-width: 100px;">
                         <div class="fw-bold small" style="color: #6f42c1;"><i class="fa-solid fa-image me-1"></i>MediaMaster</div>
-                        <div class="text-muted" style="font-size: 11px;">Gemini 1.5 Flash</div>
+                        <div class="text-body-secondary" style="font-size: 11px;">Gemini 1.5 Flash</div>
                         <div class="fw-bold mt-1 small" id="ai-pipe-media-count" style="color:#6f42c1;">⏳...</div>
                     </div>
-                    <div class="d-none d-md-flex align-items-center text-muted"><i class="fa-solid fa-arrow-right"></i></div>
-                    <div class="d-flex d-md-none justify-content-center text-muted"><i class="fa-solid fa-arrow-down"></i></div>
+                    <div class="d-none d-md-flex align-items-center text-body-secondary"><i class="fa-solid fa-arrow-right"></i></div>
+                    <div class="d-flex d-md-none justify-content-center text-body-secondary"><i class="fa-solid fa-arrow-down"></i></div>
                     <!-- Publisher -->
                     <div class="flex-fill border rounded p-2 text-center" id="ai-pipe-publisher" style="border-color: #28a745 !important; min-width: 100px;">
                         <div class="fw-bold small text-success"><i class="fa-solid fa-paper-plane me-1"></i>Publisher</div>
-                        <div class="text-muted" style="font-size: 11px;">Social API</div>
+                        <div class="text-body-secondary" style="font-size: 11px;">Social API</div>
                         <div class="fw-bold mt-1 small" id="ai-pipe-publisher-count" style="color:#155724;">⏳...</div>
                     </div>
                 </div>
@@ -122,24 +122,24 @@
         </div>
 
         <!-- ═══ CONTENT QUEUE — Matrix Input ═══ -->
-        <div class="card shadow-sm border-0 mb-3">
+        <div class="card shadow-sm border-0 mb-3 bg-body-tertiary">
             <div class="card-header bg-primary bg-gradient bg-opacity-75 py-1 d-flex justify-content-between align-items-center"
                  onclick="this.closest('.card').classList.toggle('active')" style="pointer-events: auto; cursor: pointer;">
                 <small class="fw-bold text-white border-start border-4 border-warning ps-2">
                     <i class="fa-solid fa-layer-group me-1"></i>Danh sách bài viết — Chờ duyệt
                 </small>
-                <span class="badge bg-warning text-dark" id="ai-queue-count">0</span>
+                <span class="badge bg-warning text-body" id="ai-queue-count">0</span>
             </div>
             <div class="card-body p-0">
                 <!-- Loading skeleton -->
                 <div id="ai-queue-loading" class="text-center p-4">
                     <div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
-                    <span class="text-muted small">Đang tải bài viết từ Content Queue...</span>
+                    <span class="text-body-secondary small">Đang tải bài viết từ Content Queue...</span>
                 </div>
                 <!-- Empty state -->
                 <div id="ai-queue-empty" class="text-center p-4 d-none">
-                    <i class="fa-solid fa-inbox fa-2x text-muted mb-2"></i>
-                    <div class="text-muted small">Không có bài viết nào phù hợp bộ lọc.</div>
+                    <i class="fa-solid fa-inbox fa-2x text-body-secondary mb-2"></i>
+                    <div class="text-body-secondary small">Không có bài viết nào phù hợp bộ lọc.</div>
                 </div>
                 <!-- Content cards list -->
                 <div id="ai-queue-list" class="d-none">
@@ -159,7 +159,7 @@
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body p-3">
-                        <div class="small text-muted mb-3">
+                        <div class="small text-body-secondary mb-3">
                             <i class="fa-solid fa-diagram-project me-1"></i>
                             Researcher → Writer → MediaMaster → Publisher
                         </div>
@@ -222,7 +222,7 @@
                                 <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;"></div>
                             </div>
                             <div id="ai-progress-status" class="fw-bold mb-2">Đang khởi tạo...</div>
-                            <div class="text-muted small mb-3" id="ai-progress-detail">Researcher → Writer → MediaMaster → Publisher</div>
+                            <div class="text-body-secondary small mb-3" id="ai-progress-detail">Researcher → Writer → MediaMaster → Publisher</div>
                             <div class="progress mb-3" style="height: 6px;">
                                 <div id="ai-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 5%;"></div>
                             </div>
