@@ -58,8 +58,6 @@ class AccountantController {
         this.pnlReport = new PnLReport(this);
         this.charts = new FinancialCharts(this);
         this.exportUtil = new AccExport(this);
-
-        this._setupAutoRefresh();
     }
 
     _registerLogicFilters() {
@@ -90,33 +88,6 @@ class AccountantController {
             if (!status || status === 'all') return items;
             return items.filter((item) => item.status === status);
         });
-    }
-
-    _setupAutoRefresh() {
-        this._refreshTimer = null;
-
-        A.Event.on('data:bookings', () => {
-            this._debouncedRefresh('bookings');
-        });
-
-        A.Event.on('data:operator_entries', () => {
-            this._debouncedRefresh('operator_entries');
-        });
-    }
-
-    _debouncedRefresh(source) {
-        if (this._refreshTimer) clearTimeout(this._refreshTimer);
-        this._refreshTimer = setTimeout(() => {
-            logA(`Dữ liệu ${source} đã cập nhật. Làm mới...`, 'info', 'toast');
-            this.refreshData();
-        }, 5000);
-    }
-
-    destroy() {
-        if (this._refreshTimer) {
-            clearTimeout(this._refreshTimer);
-            this._refreshTimer = null;
-        }
     }
 
     // --- INIT & FLOW CONTROL ---
