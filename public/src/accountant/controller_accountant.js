@@ -225,7 +225,11 @@ class AccountantController {
 
     async refreshData() {
         try {
-            const [fundsData, transData] = await Promise.all([this.getData(this.currentFundCol), this.getData(this.currentTransCol)]);
+            const [fundsData, transData] = await Promise.all([
+                this.getData(this.currentFundCol),
+                this.getData(this.currentTransCol),
+                this.getData('bookings'),       // Load bookings để lookup booking_id khi tạo Phiếu Thu
+            ]);
 
             this.funds = Object.values(fundsData || []);
             this.transactions = Object.values(transData || []);
@@ -254,7 +258,7 @@ class AccountantController {
             logA('Đang làm mới dữ liệu...', 'info', 'toast');
             // 1. Force fetch latest from Firestore into IndexedDB + APP_DATA
             if (window.A && window.A.DB && window.A.DB.loadCollections) {
-                await window.A.DB.loadCollections([this.currentTransCol, this.currentFundCol], { forceNew: true });
+                await window.A.DB.loadCollections([this.currentTransCol, this.currentFundCol, 'bookings'], { forceNew: true });
             }
             // 2. Re-render from updated APP_DATA
             await this.refreshData();
@@ -1405,6 +1409,24 @@ class AccountantController {
 
             if (data.type === 'IN') {
                 bookingData = findInCollection(window.APP_DATA?.bookings, data.booking_id);
+                // Firestore fallback: nếu không tìm thấy trong APP_DATA.bookings, query trực tiếp
+                if (!bookingData && window.A?.DB?.runQuery) {
+                    const lookupId = String(data.booking_id).trim();
+                    const bareId = lookupId.replace(/^BK-/i, '').replace(/^bk-/i, '');
+                    const idVariants = [...new Set([
+                        lookupId,
+                        bareId,
+                        'BK-' + bareId,
+                        'bk-' + bareId,
+                    ])];
+                    for (const variant of idVariants) {
+                        const result = await window.A.DB.runQuery('bookings', 'id', '==', variant);
+                        if (result && result.length > 0) {
+                            bookingData = result[0];
+                            break;
+                        }
+                    }
+                }
                 bkId = bookingData?.id || data.booking_id;
             } else if (data.type === 'OUT') {
                 bookingData = findInCollection(window.APP_DATA?.operator_entries, data.booking_id);
