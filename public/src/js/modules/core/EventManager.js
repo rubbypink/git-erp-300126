@@ -453,7 +453,8 @@ class EventManager {
                 const module = await import('@acc/controller_accountant.js');
                 if (module && module.default) {
                     const AccountantCtrl = module.default;
-                    await AccountantCtrl.openTransactionModal('IN');
+                    // Truyền sourceModule='sales' để validate booking_id bắt buộc
+                    await AccountantCtrl.openTransactionModal('IN', { sourceModule: 'sales' });
                     const booking = APP_DATA.bookings?.[getVal('BK_ID')];
                     const balance = booking?.balance_amount || 0;
                     setVal('inp-amount-show', balance * 1000);

@@ -1114,8 +1114,8 @@ class AccountantController {
     /**
      * Open modal for creating a new transaction (IN or OUT)
      */
-    async openNewTransactionModal(type) {
-        await this.openTransactionModal(type);
+    async openNewTransactionModal(type, options = {}) {
+        await this.openTransactionModal(type, options);
     }
 
     /**
@@ -1125,11 +1125,18 @@ class AccountantController {
         await this.openTransactionModal(transaction);
     }
 
-    async openTransactionModal(type) {
+    async openTransactionModal(type, options = {}) {
         let existingData = null;
+        // Lưu nguồn gọi modal để validate booking_id khi từ SalesModule
+        this.currentSourceModule = options.sourceModule || null;
+
         if (typeof type === 'object') {
             existingData = type;
             type = existingData.type;
+            // Edit mode: cũng hỗ trợ sourceModule từ object
+            if (existingData.sourceModule) {
+                this.currentSourceModule = existingData.sourceModule;
+            }
         }
         const isEdit = !!existingData;
         const mode = existingData ? existingData.type : type; // Nếu edit thì lấy type cũ
@@ -1326,9 +1333,29 @@ class AccountantController {
 
         const amount = getNum('inp-amount-show');
         if (!data.fund_source) data.fund_source = document.querySelector('#acc-modal-form [data-field="fund_source"]').value;
-        // 1. Validate
+
+        // ====================================================================
+        // 1. VALIDATE MANDATORY FIELDS
+        // ====================================================================
         if (!amount || amount <= 0) return logA('Số tiền không hợp lệ', 'warning', 'alert');
         if (!data.fund_source && !isEdit) return logA('Chưa chọn quỹ', 'warning', 'alert');
+
+        // Bắt buộc nhập Trạng thái (status)
+        if (!data.status || !String(data.status).trim()) {
+            return logA('Vui lòng chọn Trạng thái giao dịch (Chờ duyệt / Hoàn thành)', 'warning', 'alert');
+        }
+
+        // Bắt buộc nhập Ngày chứng từ (transaction_date)
+        if (!data.transaction_date || !String(data.transaction_date).trim()) {
+            return logA('Vui lòng chọn Ngày chứng từ', 'warning', 'alert');
+        }
+
+        // Khi được gọi từ SalesModule: bắt buộc booking_id phải có giá trị
+        if (this.currentSourceModule === 'sales') {
+            if (!data.booking_id || !String(data.booking_id).trim()) {
+                return logA('Vui lòng chọn Booking cho Phiếu Thu (bắt buộc khi tạo từ form Sales)', 'warning', 'alert');
+            }
+        }
 
         // --- 2. XỬ LÝ BOOKING ID (Quan trọng) ---
         // Đọc từ APP_DATA thay vì gọi Firestore trực tiếp — data đã có trong bộ nhớ
@@ -1363,14 +1390,26 @@ class AccountantController {
             }
 
             const collectionName = this.currentTransCol || 'transactions';
-            // --- 4. TẠO RECORD GIAO DỊCH ---
+            // --- 4. TẠO RECORD GIAO DỊCH (chỉ lưu field có giá trị) ---
             const record = {
                 id: transId,
-                ...data,
-                amount: amount,
                 type: type,
+                amount: amount,
+                transaction_date: data.transaction_date,
+                status: data.status,
+                created_by: data.created_by || (window.A && CURRENT_USER ? CURRENT_USER.name : 'Hệ thống'),
+                created_at: data.created_at || new Date().toISOString(),
                 updated_at: new Date().toISOString(),
             };
+
+            // Các field tùy chọn: chỉ lưu nếu có giá trị thực (không rỗng, không NaN)
+            const optionalFields = ['category', 'description', 'booking_id', 'receiver', 'fund_source'];
+            optionalFields.forEach((field) => {
+                const val = data[field];
+                if (val !== undefined && val !== null && String(val).trim() !== '' && String(val) !== 'NaN') {
+                    record[field] = val;
+                }
+            });
 
             await window.A.DB.saveRecord(collectionName, record);
             L._(`Saved Transaction ${transId}`);
