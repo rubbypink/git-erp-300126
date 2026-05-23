@@ -12,6 +12,7 @@
     background-color: var(--acc-bg);
     min-height: calc(100vh - var(--acc-action-bar-height));
     padding-bottom: 80px !important;
+    padding-top: 10px;
 }
 .acc-filter-container {
     border-radius: var(--acc-border-radius);

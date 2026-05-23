@@ -145,6 +145,18 @@ class AccountantController {
 
             this.cacheDom();
             this.bindEvents(); // Bind event ngay khi có DOM
+            
+            // Restore collapse preference
+            if (localStorage.getItem('acc_stats_collapsed') === '1') {
+                const collapseEl = document.getElementById('acc-stats-collapse');
+                const toggleIcon = document.querySelector('#acc-toggle-stats i');
+                if (collapseEl) collapseEl.classList.remove('show');
+                if (toggleIcon) {
+                    toggleIcon.classList.remove('fa-chevron-up');
+                    toggleIcon.classList.add('fa-chevron-down');
+                }
+            }
+
             this._initATable(); // Khởi tạo ATable
             this.injectBulkActionBar(); // Inject bulk action bar
             this._bindInlineEditing(); // Bind inline editing
@@ -180,6 +192,30 @@ class AccountantController {
         }
         this.currentTransCol = this.entityConfig[this.currentEntity].trans || 'transactions';
         this.currentFundCol = this.entityConfig[this.currentEntity].fund || 'fund_accounts';
+    }
+
+    toggleStatsCollapse() {
+        const collapseEl = document.getElementById('acc-stats-collapse');
+        const toggleBtn = document.getElementById('acc-toggle-stats');
+        if (!collapseEl) return;
+        
+        // Custom toggle since bootstrap collapse might not be initialized with JS here
+        const isShowing = collapseEl.classList.contains('show');
+        if (isShowing) {
+            collapseEl.classList.remove('show');
+        } else {
+            collapseEl.classList.add('show');
+        }
+        
+        // Toggle icon
+        const icon = toggleBtn?.querySelector('i');
+        if (icon) {
+            icon.classList.toggle('fa-chevron-up', !isShowing);
+            icon.classList.toggle('fa-chevron-down', isShowing);
+        }
+        
+        // Persist preference
+        localStorage.setItem('acc_stats_collapsed', isShowing ? '1' : '0');
     }
 
     cacheDom() {
@@ -256,13 +292,28 @@ class AccountantController {
     async forceRefresh() {
         try {
             logA('Đang làm mới dữ liệu...', 'info', 'toast');
-            // 1. Force fetch latest from Firestore into IndexedDB + APP_DATA
-            if (window.A && window.A.DB && window.A.DB.loadCollections) {
-                await window.A.DB.loadCollections([this.currentTransCol, this.currentFundCol, 'bookings'], { forceNew: true });
+            
+            // Collect all collections allowed for current user role + accountant collections
+            let roleColls = window.COLL_MANIFEST && CURRENT_USER ? window.COLL_MANIFEST[CURRENT_USER.role] : null;
+            if (!roleColls) {
+                 roleColls = ['transactions', 'fund_accounts', 'bookings', 'operator_entries', 'suppliers'];
             }
+            
+            // Combine with current specific collections to be sure
+            const collectionsToSync = [...new Set([
+                ...roleColls,
+                this.currentTransCol,
+                this.currentFundCol
+            ])].filter(Boolean);
+
+            if (window.A && window.A.DB && window.A.DB.loadCollections) {
+                // forceNew: true forces DBManager to clear IndexedDB and fetch everything from Firestore
+                await window.A.DB.loadCollections(collectionsToSync, { forceNew: true });
+            }
+            
             // 2. Re-render from updated APP_DATA
             await this.refreshData();
-            logA('Dữ liệu đã được làm mới', 'success', 'toast');
+            logA('Dữ liệu đã được làm mới hoàn toàn', 'success', 'toast');
         } catch (error) {
             console.error('Force refresh error:', error);
             Opps('Lỗi làm mới dữ liệu: ' + error.message);
