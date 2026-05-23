@@ -1,0 +1,323 @@
+{
+  "value": {
+    "query": "minimalist warm cozy UI color palette hex codes light and dark mode site:github.com OR site:awwwards.com OR site:dribbble.com",
+    "expanded_queries": [
+      "minimalist warm cozy UI color palette hex codes light and dark mode site:github.com OR site:awwwards.com OR site:dribbble.com",
+      "minimalist warm cozy ui color palette hex code light and dark mode site github com or site awwward com or site dribbble com",
+      "minimalist warm cozy ui color palette hex code light and dark mode site github com or site awwwards com or site dribbble com",
+      "minimalist warm cozy ui color palette hex codes light and dark mode site github com or site awwward com or site dribbble com",
+      "\"minimalist warm cozy UI color palette hex codes light and dark mode site:github.com OR site:awwwards.com OR site:dribbble.com\""
+    ],
+    "results": [
+      {
+        "title": "ui-ux-pro-max-skill/.claude/skills/ui-ux-pro-max/SKILL.md at ... - GitHub",
+        "link": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill/blob/main/.claude/skills/ui-ux-pro-max/SKILL.md",
+        "snippet": "Styles: glassmorphism, claymorphism, minimalism, brutalism, neumorphism, bento grid, dark mode, responsive, skeuomorphism, and flat design. Topics: color ...",
+        "displayLink": "github.com",
+        "formattedUrl": "https://github.com/nextlevelbuilder/ui-ux-pro-max.../ui.../SKILL.md",
+        "htmlSnippet": "Styles: glassmorphism, claymorphism, <b>minimalism</b>, brutalism, neumorphism, bento grid, <b>dark mode</b>, responsive, skeuomorphism, and flat design. Topics: <b>color</b>&nbsp;...",
+        "pagemap": {
+          "metatags": {
+            "title": "ui-ux-pro-max-skill/.claude/skills/ui-ux-pro-max/SKILL.md at main · nextlevelbuilder/ui-ux-pro-max-skill",
+            "description": "An AI SKILL that provide design intelligence for building professional UI/UX multiple platforms - nextlevelbuilder/ui-ux-pro-max-skill",
+            "image": "https://repository-images.githubusercontent.com/1106996539/d7c84c2d-e797-405f-a868-87fb194e8432",
+            "author": "",
+            "publishedTime": "",
+            "modifiedTime": ""
+          },
+          "thumbnail": {
+            "src": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQc6-749kmGuGPRZ3VdU0Adp7rqDOyK75JHmZMyy1LfDti4xXBwVjYausA&s",
+            "width": "212",
+            "height": "214"
+          },
+          "image": "https://repository-images.githubusercontent.com/1106996539/d7c84c2d-e797-405f-a868-87fb194e8432"
+        },
+        "metadata": {},
+        "originalIndex": 3,
+        "normalizedUrl": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill/blob/main/.claude/skills/ui-ux-pro-max/SKILL.md",
+        "contentHash": "0100011011010000000000000000000001000110110100000000000000000000",
+        "titleTokens": [
+          "ui",
+          "ux",
+          "pro",
+          "max",
+          "skill",
+          "claude",
+          "skills",
+          "ui",
+          "ux",
+          "pro",
+          "max",
+          "skill",
+          "md",
+          "at",
+          "github"
+        ],
+        "scores": {
+          "bm25": 0.5728433510809929,
+          "semantic": 0.18652106920719266,
+          "authority": 0.48,
+          "freshness": 0.5
+        },
+        "finalScore": 0.431093661194555
+      },
+      {
+        "title": "devanshug2307/Awesome-AI-Image-Prompts - GitHub",
+        "link": "https://github.com/devanshug2307/Awesome-AI-Image-Prompts",
+        "snippet": "The background is a dark slate grey studio backdrop with subtle, warm orange light accents. ... Mixed color temperatures: Cool fluorescent overhead lights ...",
+        "displayLink": "github.com",
+        "formattedUrl": "https://github.com/devanshug2307/Awesome-AI-Image-Prompts",
+        "htmlSnippet": "The background is a <b>dark</b> slate grey studio backdrop with subtle, <b>warm</b> orange <b>light</b> accents. ... Mixed <b>color</b> temperatures: <b>Cool</b> fluorescent overhead <b>lights</b>&nbsp;...",
+        "pagemap": {
+          "metatags": {
+            "title": "GitHub - devanshug2307/Awesome-AI-Image-Prompts: 1000+ curated AI image generation prompts for DALL-E, Midjourney, Google Nano Banana (Imagen), Flux, ChatGPT Image, and Stable Diffusion. Copy-ready JSON prompts for 3D miniatures, product photography, portraits, character design & more.",
+            "description": "1000+ curated AI image generation prompts for DALL-E, Midjourney, Google Nano Banana (Imagen), Flux, ChatGPT Image, and Stable Diffusion. Copy-ready JSON prompts for 3D miniatures, product photogra...",
+            "image": "https://opengraph.githubassets.com/e07baec22071acbf6f2ba8aac6a5281202173f92b503928f7f780d3a79e04fce/devanshug2307/Awesome-AI-Image-Prompts",
+            "author": "",
+            "publishedTime": "",
+            "modifiedTime": ""
+          },
+          "thumbnail": {
+            "src": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQfP5jV_4eXmo28XyP-lrlckQlg5XOTxppnOmP-J3MVU2d4xW6usIA4ATTL&s",
+            "width": "225",
+            "height": "225"
+          },
+          "image": "https://camo.githubusercontent.com/862096817065daffe30a3dabfe9bc2ce1835f19b48924d86a98a213c5149e93b/68747470733a2f2f7062732e7477696d672e636f6d2f6d656469612f47375276706445576741414c46515a2e6a7067"
+        },
+        "metadata": {},
+        "originalIndex": 2,
+        "normalizedUrl": "https://github.com/devanshug2307/Awesome-AI-Image-Prompts",
+        "contentHash": "0100011000000000010000000000000001000110000000000100000000000000",
+        "titleTokens": [
+          "devanshug2307",
+          "awesome",
+          "ai",
+          "image",
+          "prompts",
+          "github"
+        ],
+        "scores": {
+          "bm25": 0.47557629821766734,
+          "semantic": 0.15510326900818064,
+          "authority": 0.7,
+          "freshness": 0.5
+        },
+        "finalScore": 0.4267614999895211
+      },
+      {
+        "title": "awesome-gpt-image-2-API-and-Prompts/README_tr.md at main",
+        "link": "https://github.com/EvoLinkAI/awesome-gpt-image-2-API-and-Prompts/blob/main/README_tr.md",
+        "snippet": "Color palette should focus on [color theme] tones. Style inspired by viral Pinterest café photography, Korean lifestyle aesthetics, Japanese cozy café culture, ...",
+        "displayLink": "github.com",
+        "formattedUrl": "https://github.com/EvoLinkAI/awesome-gpt-image-2.../README_tr.md",
+        "htmlSnippet": "<b>Color palette</b> should focus on [color <b>theme</b>] tones. Style inspired by viral Pinterest café photography, Korean lifestyle aesthetics, Japanese <b>cozy</b> café culture,&nbsp;...",
+        "pagemap": {
+          "metatags": {
+            "title": "awesome-gpt-image-2-API-and-Prompts/README_tr.md at main · EvoLinkAI/awesome-gpt-image-2-API-and-Prompts",
+            "description": "GPT-Image-2 API and Prompts. Contribute to EvoLinkAI/awesome-gpt-image-2-API-and-Prompts development by creating an account on GitHub.",
+            "image": "https://opengraph.githubassets.com/8cc5788b809dd364bb3f5d21a1483d2c465c926e3e56a178136fedcd20797530/EvoLinkAI/awesome-gpt-image-2-API-and-Prompts",
+            "author": "",
+            "publishedTime": "",
+            "modifiedTime": ""
+          },
+          "thumbnail": {
+            "src": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQxBRb2aiLnKzCSumpC8IQJlJJTS-KzmC0wqZXr4RH8MG3JM4Xsosu0-Fwh&s",
+            "width": "318",
+            "height": "159"
+          },
+          "image": "https://opengraph.githubassets.com/8cc5788b809dd364bb3f5d21a1483d2c465c926e3e56a178136fedcd20797530/EvoLinkAI/awesome-gpt-image-2-API-and-Prompts"
+        },
+        "metadata": {},
+        "originalIndex": 4,
+        "normalizedUrl": "https://github.com/EvoLinkAI/awesome-gpt-image-2-API-and-Prompts/blob/main/README_tr.md",
+        "contentHash": "1100011110101000000000000000000011000111101010000000000000000000",
+        "titleTokens": [
+          "awesome",
+          "gpt",
+          "image",
+          "api",
+          "and",
+          "prompts",
+          "readme_tr",
+          "md",
+          "at",
+          "main"
+        ],
+        "scores": {
+          "bm25": 0.3873326215665885,
+          "semantic": 0.13797256151887555,
+          "authority": 0.54,
+          "freshness": 0.5
+        },
+        "finalScore": 0.35432481708229807
+      },
+      {
+        "title": "Ultra Lobster offers a visually pleasing and comfortable ... - GitHub",
+        "link": "https://github.com/7368697661/Ultra-Lobster",
+        "snippet": "Ultra Lobster offers a visually pleasing and comfortable working experience, with an emphasis on bringing rounded UI elements, modern design trends, ...",
+        "displayLink": "github.com",
+        "formattedUrl": "https://github.com/7368697661/Ultra-Lobster",
+        "htmlSnippet": "Ultra Lobster offers a visually pleasing and <b>comfortable</b> working experience, with an emphasis on bringing rounded <b>UI</b> elements, modern design trends,&nbsp;...",
+        "pagemap": {
+          "metatags": {
+            "title": "GitHub - 7368697661/Ultra-Lobster: Ultra Lobster offers a visually pleasing and comfortable working experience, with an emphasis on bringing rounded UI elements, modern design trends, and soft design choices to Obsidian.",
+            "description": "Ultra Lobster offers a visually pleasing and comfortable working experience, with an emphasis on bringing rounded UI elements, modern design trends, and soft design choices to Obsidian. - 736869766...",
+            "image": "https://opengraph.githubassets.com/1ac1dd5bf4770affe9646de799a0be2d6582023305747bdbcc3b669b0c19eb23/7368697661/Ultra-Lobster",
+            "author": "",
+            "publishedTime": "",
+            "modifiedTime": ""
+          },
+          "thumbnail": {
+            "src": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSwbghRzcR7Ty_gRKEwfkhNz5hnlqFx28ljtpHfEDnBFhuzIcSkl6pqqGl8&s",
+            "width": "225",
+            "height": "225"
+          },
+          "image": "https://avatars.githubusercontent.com/u/87339163?v=4"
+        },
+        "metadata": {},
+        "originalIndex": 1,
+        "normalizedUrl": "https://github.com/7368697661/Ultra-Lobster",
+        "contentHash": "1110010110001000000000000000000011100101100010000000000000000000",
+        "titleTokens": [
+          "ultra",
+          "lobster",
+          "offers",
+          "visually",
+          "pleasing",
+          "and",
+          "comfortable",
+          "github"
+        ],
+        "scores": {
+          "bm25": 0.2898943915031645,
+          "semantic": 0.09119215051751062,
+          "authority": 0.7,
+          "freshness": 0.5
+        },
+        "finalScore": 0.3333154017565189
+      },
+      {
+        "title": "VoltAgent/awesome-claude-design - GitHub",
+        "link": "https://github.com/VoltAgent/awesome-claude-design",
+        "snippet": "Awesome Claude Design: 68 ready-to-use design system inspirations in DESIGN.md format. Drop one in, scaffold a full UI in one shot.",
+        "displayLink": "github.com",
+        "formattedUrl": "https://github.com/VoltAgent/awesome-claude-design",
+        "htmlSnippet": "Awesome Claude Design: 68 ready-to-use design system inspirations in DESIGN.md format. Drop one in, scaffold a full <b>UI</b> in one shot.",
+        "pagemap": {
+          "metatags": {
+            "title": "GitHub - VoltAgent/awesome-claude-design: Awesome Claude Design: 68 ready-to-use design system inspirations in DESIGN.md format. Drop one in, scaffold a full UI in one shot.",
+            "description": "Awesome Claude Design: 68 ready-to-use design system inspirations in DESIGN.md format. Drop one in, scaffold a full UI in one shot. - VoltAgent/awesome-claude-design",
+            "image": "https://opengraph.githubassets.com/6dc9f77af060f1336684ac0d5d64af040d166144457c2211b16ce874af4b3f61/VoltAgent/awesome-claude-design",
+            "author": "",
+            "publishedTime": "",
+            "modifiedTime": ""
+          },
+          "thumbnail": {
+            "src": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ2MM6XngSnlxnDnAO934O47uHKHOVbx4TNYVlEc_j8FaDqyFOU12iaeAdq&s",
+            "width": "389",
+            "height": "129"
+          },
+          "image": "https://private-user-images.githubusercontent.com/18739364/580310752-c679bd35-ba7e-4d6f-834d-3f4b6e5a35e4.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3Nzk0NzE3MzYsIm5iZiI6MTc3OTQ3MTQzNiwicGF0aCI6Ii8xODczOTM2NC81ODAzMTA3NTItYzY3OWJkMzUtYmE3ZS00ZDZmLTgzNGQtM2Y0YjZlNWEzNWU0LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNjA1MjIlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjYwNTIyVDE3MzcxNlomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWNjNTk3NzI5OGZkOWE0OGI5MmE2NjNhNGJhY2I5MzhhNjU0NjVkOTQ0NGI5MmExZmViZDA4OWU4MWU1ZGVkY2QmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JnJlc3BvbnNlLWNvbnRlbnQtdHlwZT1pbWFnZSUyRnBuZyJ9.AqZ67RzYDdGsJGcITwP3jurWhOzB94mBYCqxUPVr4ow"
+        },
+        "metadata": {},
+        "originalIndex": 0,
+        "normalizedUrl": "https://github.com/VoltAgent/awesome-claude-design",
+        "contentHash": "1110010111010000100000000000000011100101110100001000000000000000",
+        "titleTokens": [
+          "voltagent",
+          "awesome",
+          "claude",
+          "design",
+          "github"
+        ],
+        "scores": {
+          "bm25": 0.16969055331653635,
+          "semantic": 0.03749707065577803,
+          "authority": 0.7,
+          "freshness": 0.5
+        },
+        "finalScore": 0.2691253425233479
+      }
+    ],
+    "total_results": "425",
+    "search_time": 0.269572,
+    "offset": 0,
+    "limit": 5,
+    "cached": false,
+    "provider": {
+      "name": "crawlforge",
+      "backend": "Google Search",
+      "capabilities": {
+        "requiresApiKey": true,
+        "apiKeyType": "CrawlForge API key",
+        "supportsPagination": true,
+        "supportsLanguageFilter": true,
+        "supportsDateFilter": true,
+        "supportsSiteFilter": true,
+        "supportsFileTypeFilter": true,
+        "supportsSafeSearch": true,
+        "supportsLocalization": true,
+        "supportsCountryTargeting": true,
+        "maxResultsPerRequest": 100,
+        "rateLimit": "Based on your CrawlForge plan",
+        "creditCost": "2 credits per search",
+        "features": [
+          "Google Search results via CrawlForge proxy",
+          "No Google API credentials needed",
+          "Full text search",
+          "Image metadata",
+          "Exact phrase matching",
+          "Boolean operators",
+          "Site-specific search",
+          "File type filtering",
+          "Date range filtering",
+          "Language filtering",
+          "Country targeting",
+          "Safe search",
+          "Localization support",
+          "Related searches",
+          "Rich snippets"
+        ],
+        "benefits": [
+          "Simplified authentication (one API key)",
+          "Unified billing through CrawlForge",
+          "Enterprise-grade reliability",
+          "No Google API quota management",
+          "Built-in rate limiting",
+          "Credit-based pricing"
+        ]
+      }
+    },
+    "localization": null,
+    "processing": {
+      "ranking": {
+        "algorithmsUsed": [
+          "bm25",
+          "semantic",
+          "authority",
+          "freshness"
+        ],
+        "weightsApplied": {
+          "bm25": 0.4,
+          "semantic": 0.3,
+          "authority": 0.2,
+          "freshness": 0.1
+        },
+        "totalResults": 5
+      },
+      "deduplication": {
+        "originalCount": 5,
+        "finalCount": 5,
+        "duplicatesRemoved": 0,
+        "deduplicationRate": "0.0%"
+      },
+      "query_expansion": {
+        "original_query": "minimalist warm cozy UI color palette hex codes light and dark mode site:github.com OR site:awwwards.com OR site:dribbble.com",
+        "expanded_count": 5,
+        "used_query": "minimalist warm cozy UI color palette hex codes light and dark mode site:github.com OR site:awwwards.com OR site:dribbble.com"
+      },
+      "localization_applied": false
+    }
+  },
+  "expiry": null
+}

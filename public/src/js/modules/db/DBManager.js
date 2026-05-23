@@ -2599,7 +2599,7 @@ class DBManager {
                 if (lastNo > 0) {
                     await this._updateCounter(collectionName, lastNo + 1);
                 }
-            }
+            
             } else {
                 if (collectionName === 'booking_details') prefix = bookingId ? `${bookingId}_` : '';
                 try {
