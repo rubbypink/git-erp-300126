@@ -1186,32 +1186,41 @@ class SalesModule {
                 }
 
                 let saveResult = null;
-                if (Object.keys(bookings || {}).filter((k) => k !== 'id').length > 0) {
+                const hasBookingChanges = Object.keys(bookings || {}).filter((k) => k !== 'id').length > 0;
+                const isCancelled = getVal('BK_Status') === 'Hủy' || bookings?.status === 'Hủy';
+
+                // Step 1: Save bookings if there are actual changes
+                if (hasBookingChanges) {
                     saveResult = await A.DB.saveRecord('bookings', bookings);
-                    if (saveResult?.success && bookings.status !== 'Hủy') {
+                }
+
+                // Step 2: Save booking_details (ALWAYS if not cancelled — FIX: moved outside bookings gate)
+                const resolvedBkId = saveResult?.id || bookings.id;
+                if (!isCancelled && Array.isArray(booking_details) && booking_details.length > 0) {
+                    const details = booking_details.map((d) => {
+                        if (!d.booking_id) d.booking_id = resolvedBkId;
+                        return d; // FIX: pass object directly, NOT Object.values(d) — prevents ghost empty docs
+                    });
+                    await A.DB.batchSave('booking_details', details);
+                }
+
+                // Step 3: Post-save actions (notification, customer, commit, refresh)
+                if (!isCancelled) {
+                    if (saveResult?.success) {
                         if (!bookingId && window.A?.NotificationManager) {
                             window.NotificationManager.sendToAll('NEW BOOKING', `Booking mới: ${saveResult.id} - ${bookings.staff_id}`);
                             setVal('BK_ID', saveResult.id);
                         }
-
-                        if (Array.isArray(booking_details) && booking_details.length > 0) {
-                            const resolvedBkId = saveResult?.id || bookings.id;
-                            const details = booking_details.map((d) => {
-                                if (!d.booking_id) d.booking_id = resolvedBkId;
-                                return Object.values(d);
-                            });
-                            await A.DB.batchSave('booking_details', details);
-                        }
-
-                        await SalesModule.DB.saveCustomer();
-                        if (window.StateProxy) await StateProxy.commitSession();
-
-                        const btnDashUpdate = getE('btn-dash-update');
-                        if (btnDashUpdate && window.A?.Event) window.A.Event.trigger(btnDashUpdate, 'click');
-
-                        if (typeof logA === 'function') logA('Lưu dữ liệu thành công!', 'success');
-                        handleBookingSearch(saveResult?.id || bookings.id);
                     }
+
+                    await SalesModule.DB.saveCustomer();
+                    if (window.StateProxy) await StateProxy.commitSession();
+
+                    const btnDashUpdate = getE('btn-dash-update');
+                    if (btnDashUpdate && window.A?.Event) window.A.Event.trigger(btnDashUpdate, 'click');
+
+                    if (typeof logA === 'function') logA('Lưu dữ liệu thành công!', 'success');
+                    handleBookingSearch(resolvedBkId);
                 }
             } catch (e) {
                 if (window.StateProxy) StateProxy.rollbackSession();
