@@ -85,8 +85,6 @@ firebase-data/
 
 # AI 
 memory.md
-agents.md
 .roo/
-.agents/
 plans/
 .gitignore

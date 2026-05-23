@@ -1,0 +1,41 @@
+{
+  "active_plan": "D:\\Software\\9-TRIP-ERP\\9trip-repository\\9trip-erp-front-end\\.sisyphus\\plans\\transaction-rewrite.md",
+  "started_at": "2026-05-23T02:54:53.430Z",
+  "session_ids": [
+    "ses_1ad3e3243ffej3z9PXpnQgCfpT"
+  ],
+  "session_origins": {
+    "ses_1ad3e3243ffej3z9PXpnQgCfpT": "direct"
+  },
+  "plan_name": "transaction-rewrite",
+  "agent": "atlas",
+  "task_sessions": {
+    "todo:4": {
+      "task_key": "todo:4",
+      "task_label": "4",
+      "task_title": "**Fix `M_OperatorModule.js` `syncTransactionForPaidAmount`**",
+      "session_id": "ses_1ad3da5dbffeYeQxD0fBXczH8e",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-05-23T02:58:08.224Z"
+    },
+    "todo:10": {
+      "task_key": "todo:10",
+      "task_label": "10",
+      "task_title": "**Clean `DBManager.js` (remove obsolete `migrateTransactionsToSequentialIds`)**",
+      "session_id": "ses_1ad3962f3ffeJPie6q92Imno6o",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-23T03:01:01.206Z"
+    },
+    "final-wave:f1": {
+      "task_key": "final-wave:f1",
+      "task_label": "F1",
+      "task_title": "**Code Quality Review** — `unspecified-high`",
+      "session_id": "ses_1ad33d63dffetyRvH2B1VlNWQC",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-05-23T03:08:16.537Z"
+    }
+  }
+}
