@@ -11,6 +11,7 @@ export class FinancialCharts {
 
     async show() {
         try {
+            await this.ctrl.refreshData();
             await this._loadChartJs();
 
             const transactions = this.ctrl.transactions || [];

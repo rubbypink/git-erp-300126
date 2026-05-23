@@ -249,6 +249,22 @@ class AccountantController {
         }
     }
 
+    async forceRefresh() {
+        try {
+            logA('Đang làm mới dữ liệu...', 'info', 'toast');
+            // 1. Force fetch latest from Firestore into IndexedDB + APP_DATA
+            if (window.A && window.A.DB && window.A.DB.loadCollections) {
+                await window.A.DB.loadCollections([this.currentTransCol, this.currentFundCol], { forceNew: true });
+            }
+            // 2. Re-render from updated APP_DATA
+            await this.refreshData();
+            logA('Dữ liệu đã được làm mới', 'success', 'toast');
+        } catch (error) {
+            console.error('Force refresh error:', error);
+            Opps('Lỗi làm mới dữ liệu: ' + error.message);
+        }
+    }
+
     // ===================================================================
     // TỐI ƯU HIỂN THỊ DANH SÁCH QUỸ (JS Render)
     // ===================================================================
@@ -428,10 +444,18 @@ class AccountantController {
     renderPerformanceStats(data) {
         let totalIn = 0,
             totalOut = 0;
+        const fundMap = {};
         data.forEach((item) => {
             const amount = parseFloat(item.amount || 0);
-            if (item.type === 'IN') totalIn += amount;
-            else if (item.type === 'OUT') totalOut += amount;
+            const fund = item.fund_source || 'Khác';
+            if (!fundMap[fund]) fundMap[fund] = { in: 0, out: 0 };
+            if (item.type === 'IN') {
+                totalIn += amount;
+                fundMap[fund].in += amount;
+            } else if (item.type === 'OUT') {
+                totalOut += amount;
+                fundMap[fund].out += amount;
+            }
         });
         const net = totalIn - totalOut;
 
@@ -442,7 +466,29 @@ class AccountantController {
             this.els.netBalance.innerText = (net >= 0 ? '+' : '-') + formatMoney(Math.abs(net));
             this.els.netBalance.className = `h4 mb-0 fw-bold ${net >= 0 ? 'text-success' : 'text-danger'}`;
         }
+
+    // Per-fund breakdown
+    const fbContainer = document.getElementById('acc-fund-breakdown');
+    if (fbContainer) {
+        const entries = Object.entries(fundMap).sort((a, b) => (b[1].in + b[1].out) - (a[1].in + a[1].out));
+        let html = '<div class="small border-top pt-2">';
+        entries.forEach(([fund, vals]) => {
+            const fNet = vals.in - vals.out;
+            const fNetClass = fNet >= 0 ? 'text-success' : 'text-danger';
+            html += `<div class="d-flex justify-content-between align-items-center py-1">
+                    <span class="text-muted" style="font-size:0.75rem">${fund}</span>
+                    <span style="font-size:0.75rem">
+                        <span class="text-success">${formatMoney(vals.in)}</span>
+                        <span class="text-muted mx-1">/</span>
+                        <span class="text-danger">${formatMoney(vals.out)}</span>
+                        <span class="fw-bold ${fNetClass} ms-1">${fNet >= 0 ? '+' : ''}${formatMoney(fNet)}</span>
+                    </span>
+                </div>`;
+        });
+        html += '</div>';
+        fbContainer.innerHTML = html;
     }
+}
 
     renderCardListView(transactions) {
         const container = document.getElementById('acc-card-list');
@@ -567,6 +613,7 @@ class AccountantController {
             ],
             pageSize: 50,
             sorter: true,
+            data: [],
             header: false,
             footer: false,
             onRowClick: (row) => {
@@ -846,8 +893,10 @@ class AccountantController {
         const selector = document.getElementById('acc-entity-select');
         if (selector && !selector.disabled) {
             selector.addEventListener('change', (e) => {
-                this.currentEntity = e.target.value;
-                this.setupEntityAccess(CURRENT_USER.role);
+                const selectedEntity = e.target.value;
+                this.currentEntity = selectedEntity;
+                this.currentTransCol = this.entityConfig[selectedEntity].trans;
+                this.currentFundCol = this.entityConfig[selectedEntity].fund;
                 this.refreshData();
             });
         }
@@ -893,6 +942,9 @@ class AccountantController {
                 this.filterState.status = isPending ? 'all' : 'Pending';
                 this.els.btnFilterPending.classList.toggle('btn-warning', !isPending);
                 this.els.btnFilterPending.classList.toggle('btn-outline-warning', isPending);
+                this.els.btnFilterPending.innerHTML = isPending
+                    ? '<i class="fas fa-clock me-1"></i> Chờ duyệt'
+                    : '<i class="fas fa-times me-1"></i> Hủy lọc Chờ duyệt';
                 this.applyFiltersAndRender();
             });
         }
@@ -1128,7 +1180,6 @@ class AccountantController {
                         <select class="form-select form-select-sm w-100" data-field="status" ${isEdit && existingData.status === 'Completed' && !isManager ? 'disabled' : ''}>
                             <option value="Pending" ${existingData?.status === 'Pending' ? 'selected' : ''}>⏳ Chờ duyệt</option>
                             <option value="Completed" ${existingData?.status === 'Completed' || !isEdit ? 'selected' : ''}>✅ Hoàn thành</option>
-                            <option value="Planning" ${existingData?.status === 'Planning' ? 'selected' : ''}>📝 Lên Lịchh</option>
                         </select>
                         ${isEdit && existingData.status === 'Completed' && !isManager ? '<div class="form-text text-warning small mt-1"><i class="fas fa-info-circle"></i> Không thể sửa trạng thái khi đã hoàn thành</div>' : ''}
                     </div>
@@ -1139,7 +1190,7 @@ class AccountantController {
                     <label class="form-label fw-bold small">💰 Số tiền (VNĐ)</label>
                     <div class="input-group input-group-sm w-100">
                         <span class="input-group-text ${colorClass} fw-bold">${mode === 'IN' ? '+' : '-'}</span>
-                        <input type="text" class="form-control form-control-sm fw-bold ${colorClass}" id="inp-amount-show" 
+                        <input type="text" class="form-control form-control-sm fw-bold ${colorClass}" id="inp-amount-show" data-field="amount" 
                             value="${existingData ? parseInt(existingData.amount).toLocaleString('vi-VN') : ''}" 
                             placeholder="0" autocomplete="off" ${isEdit && !isManager ? 'disabled' : ''}> 
                     </div>
@@ -1161,6 +1212,13 @@ class AccountantController {
                         value="${existingData?.booking_id || ''}" placeholder="VD: BK-2023-001..." 
                         ${isEdit && !isManager ? 'disabled' : ''}>
                     <div class="form-text small mt-1">Hệ thống sẽ tự động kiểm tra và cập nhật công nợ (có thể để trống)</div>
+                </div>
+
+                <!-- Section 4b: Receiver -->
+                <div class="mb-3 p-2 border rounded bkg-light">
+                    <label class="form-label fw-bold text-primary small">👤 Người nộp / Người nhận</label>
+                    <input type="text" class="form-control form-control-sm w-100" data-field="receiver"
+                        value="${existingData?.receiver || ''}" placeholder="Tên người nộp tiền / nhận tiền...">
                 </div>
 
                 <!-- Section 5: Category & Description -->
@@ -1266,8 +1324,7 @@ class AccountantController {
         const formDataResult = HD.getFormData('acc-modal-form', this.currentTransCol);
         const data = Object.values(formDataResult)[0] || {};
 
-        const amountShow = getVal('inp-amount-show');
-        const amount = parseFloat(amountShow);
+        const amount = getNum('inp-amount-show');
         if (!data.fund_source) data.fund_source = document.querySelector('#acc-modal-form [data-field="fund_source"]').value;
         // 1. Validate
         if (!amount || amount <= 0) return logA('Số tiền không hợp lệ', 'warning', 'alert');

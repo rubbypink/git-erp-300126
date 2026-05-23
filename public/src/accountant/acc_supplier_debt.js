@@ -10,7 +10,12 @@ export class SupplierDebtDashboard {
         this.table = null;
     }
 
+    _fmt(v) {
+        return new Intl.NumberFormat('vi-VN', { minimumFractionDigits: 0 }).format(v);
+    }
+
     async show() {
+        await this.ctrl.refreshData();
         const operators = await this.ctrl.getData('operator_entries');
         const suppliers = await this.ctrl.getData('suppliers');
 
@@ -62,12 +67,12 @@ export class SupplierDebtDashboard {
         this.table = new ATable('supplier-debt-table-container', {
             columns: [
                 { field: 'supplier_name', header: 'Nhà Cung Cấp', minWidth: '200px' },
-                { field: 'total_cost', header: 'Tổng Chi Phí', width: '130px', align: 'right', renderer: (v) => formatMoney(v) },
-                { field: 'paid_amount', header: 'Đã TT', width: '130px', align: 'right', renderer: (v) => formatMoney(v) },
-                { field: 'debt_balance', header: 'Còn Nợ', width: '130px', align: 'right', renderer: (v) => `<span class="fw-bold text-danger">${formatMoney(v)}</span>` },
-                { field: 'aging_30', header: '30-60 ngày', width: '110px', align: 'right', renderer: (v) => formatMoney(v) },
-                { field: 'aging_60', header: '60-90 ngày', width: '110px', align: 'right', renderer: (v) => formatMoney(v) },
-                { field: 'aging_90', header: '>90 ngày', width: '100px', align: 'right', renderer: (v) => formatMoney(v) },
+                { field: 'total_cost', header: 'Tổng Chi Phí', width: '130px', align: 'right', renderer: (v) => this._fmt(v) },
+                { field: 'paid_amount', header: 'Đã TT', width: '130px', align: 'right', renderer: (v) => this._fmt(v) },
+                { field: 'debt_balance', header: 'Còn Nợ', width: '130px', align: 'right', renderer: (v) => `<span class="fw-bold text-danger">${this._fmt(v)}</span>` },
+                { field: 'aging_30', header: '30-60 ngày', width: '110px', align: 'right', renderer: (v) => this._fmt(v) },
+                { field: 'aging_60', header: '60-90 ngày', width: '110px', align: 'right', renderer: (v) => this._fmt(v) },
+                { field: 'aging_90', header: '>90 ngày', width: '100px', align: 'right', renderer: (v) => this._fmt(v) },
             ],
             pageSize: 50,
             sortable: true,
@@ -141,9 +146,9 @@ export class SupplierDebtDashboard {
         const el60 = document.getElementById('sd-debt-60');
         const el90 = document.getElementById('sd-debt-90');
 
-        if (elTotal) elTotal.textContent = formatMoney(totalDebt);
-        if (el30) el30.textContent = formatMoney(debt30);
-        if (el60) el60.textContent = formatMoney(debt60);
-        if (el90) el90.textContent = formatMoney(debt90);
+        if (elTotal) elTotal.textContent = this._fmt(totalDebt);
+        if (el30) el30.textContent = this._fmt(debt30);
+        if (el60) el60.textContent = this._fmt(debt60);
+        if (el90) el90.textContent = this._fmt(debt90);
     }
 }

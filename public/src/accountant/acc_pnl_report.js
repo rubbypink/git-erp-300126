@@ -13,6 +13,7 @@ export class PnLReport {
 
     async show() {
         try {
+            await this.ctrl.refreshData();
             // Load data from APP_DATA via controller
             const bookings = await this.ctrl.getData('bookings');
             const operators = await this.ctrl.getData('operator_entries');
