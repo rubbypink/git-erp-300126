@@ -1379,16 +1379,26 @@ class AccountantController {
             const findInCollection = (collection, lookupId) => {
                 if (!collection || !lookupId) return null;
                 const idStr = String(lookupId).trim();
-                // Strategy 1: Key trực tiếp (vd: APP_DATA.bookings['BK-11254'])
+                const idLower = idStr.toLowerCase();
+                // Strategy 1: Key trực tiếp (phân biệt hoa/thường)
                 if (collection[idStr]) return collection[idStr];
-                // Strategy 2: Thêm prefix "BK-" (vd: booking_id = "11254" → key "BK-11254")
-                const withPrefix = idStr.startsWith('BK-') ? idStr.substring(3) : 'BK-' + idStr;
+                if (collection[idLower]) return collection[idLower];
+                // Strategy 2: Thêm/xóa prefix "BK-" / "bk-" (vd: "11254" → key "bk-11254")
+                const withoutPrefix = idLower.replace(/^bk[-_]?/i, '');
+                const withPrefix = 'bk-' + withoutPrefix;
+                const withPrefixUpper = 'BK-' + withoutPrefix;
                 if (collection[withPrefix]) return collection[withPrefix];
-                // Strategy 3: Duyệt qua tất cả document, so sánh field "id"
+                if (collection[withPrefixUpper]) return collection[withPrefixUpper];
+                if (collection[withoutPrefix]) return collection[withoutPrefix];
+                // Strategy 3: Duyệt qua tất cả document, so sánh field "id" (case-insensitive)
                 const allDocs = Array.isArray(collection) ? collection : Object.values(collection);
                 const found = allDocs.find((doc) => {
-                    const docId = String(doc?.id ?? '');
-                    return docId === idStr || docId === withPrefix || docId.replace(/^BK-/, '') === idStr.replace(/^BK-/, '');
+                    const docId = String(doc?.id ?? '').toLowerCase().trim();
+                    const bareDocId = docId.replace(/^bk[-_]?/i, '');
+                    return docId === idLower
+                        || docId === withPrefix
+                        || docId === withPrefixUpper
+                        || bareDocId === withoutPrefix;
                 });
                 return found || null;
             };
@@ -1455,7 +1465,8 @@ class AccountantController {
             // --- 5. AGGREGATION (CỘNG DỒN & UPDATE PARENT) ---
             // Bước này chạy riêng sau khi đã lưu transaction thành công
             if (type === 'IN' && data.booking_id && data.status === 'Completed') {
-                await this.aggregateBookingBalance(bkId, type, amount);
+                // Truyền bookingData đã tìm được để tránh lookup lại (tránh lỗi case-sensitive)
+                await this.aggregateBookingBalance(bkId, type, amount, bookingData);
                 if (SalesModule) {
                     SalesModule.DB.updateDeposit();
                 } else this.refreshData();
@@ -1474,19 +1485,16 @@ class AccountantController {
      * Logic Cộng dồn tiền và Update vào Booking/Operator.
      * Đọc từ APP_DATA (đã được saveRecord cập nhật) — không cần thêm Firestore read.
      */
-    async aggregateBookingBalance(bookingId, type, amount) {
+    async aggregateBookingBalance(bookingId, type, amount, preFoundBooking = null) {
         L._(`Aggregating for Booking: ${bookingId}, Type: ${type}`);
-        // Access NotificationManager from the main app bundle (avoids broken relative import in production)
         const NotificationManager = window.A?.NotificationManager;
         if (amount) amount = parseFloat(amount);
 
         try {
-            // Tổng hợp từ APP_DATA — saveRecord đã cập nhật trước đó, không cần query Firestore
             const allTransData = window.APP_DATA?.[`${this.currentTransCol}_by_booking`] || {};
             const transBk = HD.filter(allTransData[bookingId], 'Completed', '==', 'status');
             if (!transBk) return;
-            let totalIn = 0,
-                totalOut = 0;
+            let totalIn = 0, totalOut = 0;
 
             totalIn = HD.agg(HD.filter(transBk, 'IN', 'type'), 'amount');
             totalOut = HD.agg(HD.filter(transBk, 'OUT', 'type'), 'amount');
@@ -1494,8 +1502,9 @@ class AccountantController {
 
             if (type === 'IN' && totalIn > 0) {
                 totalIn = parseFloat(totalIn) / 1000;
-                // Đọc booking từ APP_DATA — không cần .get() Firestore
-                const bookingData = window.APP_DATA?.bookings?.[bookingId] || {};
+                // Ưu tiên dùng preFoundBooking (đã tìm thấy từ handleSaveTransaction)
+                // Fallback: lookup từ APP_DATA.bookings bằng bookingId
+                const bookingData = preFoundBooking || window.APP_DATA?.bookings?.[bookingId] || {};
                 const totalAmount = parseFloat(bookingData.total_amount || 0);
                 const customerName = bookingData.customer_full_name || '';
                 const balance = totalAmount - totalIn;
