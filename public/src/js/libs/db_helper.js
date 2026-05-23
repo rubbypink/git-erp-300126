@@ -923,4 +923,24 @@ HD.toObject = function (data, keyField = 'id') {
   }, {});
 };
 
+/**
+ * Sinh ID tuần tự cho transactions (PT- cho IN, PC- cho OUT)
+ * @param {'IN'|'OUT'} type - Loại transaction
+ * @param {number} [count=1] - Số lượng ID cần sinh
+ * @returns {Promise<string>|Promise<string[]>} - ID hoặc mảng ID
+ */
+HD.generateTransId = async function(type, count = 1) {
+  if (!window.A?.DB?.generateTransIds) {
+    throw new Error('DBManager.generateTransIds chưa được khởi tạo');
+  }
+  if (type !== 'IN' && type !== 'OUT') {
+    throw new Error('Type phải là IN hoặc OUT');
+  }
+  if (count < 1) {
+    throw new Error('count phải >= 1');
+  }
+  const ids = await window.A.DB.generateTransIds(type, count);
+  return count === 1 ? ids[0] : ids;
+};
+
 export default HD;

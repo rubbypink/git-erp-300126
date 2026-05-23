@@ -3085,6 +3085,57 @@ class DBManager {
         }
     };
 
+    /**
+     * Generate transaction IDs (PT/PC prefix) using Firestore runTransaction
+     * @param {'IN'|'OUT'} type - 'IN' → PT prefix, 'OUT' → PC prefix
+     * @param {number} count - Number of IDs to generate
+     * @returns {Promise<string[]>} - e.g. ['PT-1', 'PT-2'] or ['PC-1']
+     */
+    generateTransIds = async (type, count) => {
+        if (!this.#db || count <= 0) return [];
+
+        const { runTransaction, doc } = await import('firebase/firestore');
+        const counterRef = doc(this.#db, 'counters_id', 'transactions');
+        const prefix = type === 'IN' ? 'PT' : 'PC';
+        const field = type === 'IN' ? 'last_pt' : 'last_pc';
+
+        try {
+            const ids = await runTransaction(this.#db, async (transaction) => {
+                const counterSnap = await transaction.get(counterRef);
+                let lastNo = 0;
+
+                if (counterSnap.exists()) {
+                    const data = counterSnap.data();
+                    lastNo = Number(data[field]) || 0;
+                }
+
+                const newLastNo = lastNo + count;
+                const newIds = [];
+                for (let i = lastNo + 1; i <= newLastNo; i++) {
+                    newIds.push(`${prefix}-${i}`);
+                }
+
+                if (!counterSnap.exists()) {
+                    transaction.set(counterRef, {
+                        [field]: newLastNo,
+                        last_pt: type === 'IN' ? newLastNo : 0,
+                        last_pc: type === 'OUT' ? newLastNo : 0,
+                    });
+                } else {
+                    transaction.update(counterRef, { [field]: newLastNo });
+                }
+
+                return newIds;
+            });
+
+            L._(`🆔 [TransIds] ${count} ${type} IDs: ${ids[0]} → ${ids[ids.length - 1]}`);
+            return ids;
+        } catch (e) {
+            console.error(`❌ Error generating ${type} transaction IDs:`, e);
+            return [];
+        }
+    };
+
     // ─── Internal Helpers ─────────────────────────────────────────────────
 
     async _updateCounter(collectionName, newNo) {
