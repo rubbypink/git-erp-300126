@@ -1,25 +1,12 @@
 /**
- * ═════════════════════════════════════════════════════════════════════════
- * MIGRATION HELPER - Client-side Utility
- * ═════════════════════════════════════════════════════════════════════════
- * Helper functions to call the migrateField Cloud Function from the client
- *
- * Handles automatic batch splitting for large collections (max 500 per batch)
- *
- * Usage:
- *   1. Ensure user is logged in
- *   2. Call: MigrationHelper.migrateField(...)
- *   3. Monitor progress in console
- * ═════════════════════════════════════════════════════════════════════════
+ * Helper functions to call the migrateField Cloud Function from the client.
+ * Handles automatic batch splitting for large collections (max 500 per batch).
  */
 
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getAuth } from 'firebase/auth';
 import { getApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc, query, where, limit, orderBy, writeBatch, runTransaction, serverTimestamp } from 'firebase/firestore';
-
-// Nhớ import 'db' từ file cấu hình Firebase của bạn
-// import { db } from "./config/firebase-config.js";
 
 const MigrationHelper = () => {
     /**
@@ -42,8 +29,6 @@ const MigrationHelper = () => {
                 throw new Error('User not authenticated. Please login first.');
             }
 
-            // ─── Refresh ID Token (Very Important!) ───
-            // Firebase tokens expire after 1 hour. Refresh to ensure valid token
             L._('%c🔐 Refreshing authentication token...', 'color: #FF9800; font-weight: bold');
             await currentUser.getIdToken(true);
             L._('%c✅ Token refreshed successfully', 'color: #4CAF50');
@@ -58,7 +43,6 @@ const MigrationHelper = () => {
             L._(`   Operation: ${type.toUpperCase()}`);
             L._(`   Authenticated as: ${currentUser.email}`);
 
-            // Call the Cloud Function
             const result = await migrate({
                 collection: collectionName,
                 oldField,
@@ -66,7 +50,6 @@ const MigrationHelper = () => {
                 type,
             });
 
-            // Log results
             L._(`%c✅ Migration Completed Successfully!`, 'color: #4CAF50; font-weight: bold');
             L._(`   Total Documents Scanned: ${result.data.totalDocumentsScanned}`);
             L._(`   Documents Processed: ${result.data.documentsProcessed}`);
@@ -122,9 +105,6 @@ const MigrationHelper = () => {
 };
 
 /**
- * =========================================================================
- * MIGRATION: CẬP NHẬT HÀNG LOẠT GIÁ TRỊ CHO 1 FIELD (OPTIMIZED)
- * =========================================================================
  * @description Sử dụng LocalDB để lọc dữ liệu và Batch Write để cập nhật Firestore & LocalDB
  * @param {string} collectionName - Tên collection (vd: 'bookings')
  * @param {string} field - Tên trường cần update (vd: 'status')
@@ -135,7 +115,6 @@ MigrationHelper.runMigrateFieldData = async function (collectionName, field, old
     L._(`🚀 [MIGRATION] Bắt đầu cập nhật ${collectionName}: ${field} [${oldVal}] -> [${newVal}]`, 'info');
     const db = A.DB;
     try {
-        // 1. Lấy dữ liệu từ IndexedDB bằng A.DB.storage.getCollection
         const storage = A.DB?.local || window.localDB;
         if (!storage || typeof storage.getCollection !== 'function') {
             throw new Error('Không tìm thấy DB Storage (A.DB.storage) hoặc hàm getCollection không khả dụng.');
@@ -144,7 +123,6 @@ MigrationHelper.runMigrateFieldData = async function (collectionName, field, old
         L._(`📥 Đang lấy dữ liệu từ LocalDB cho '${collectionName}'...`);
         const allDocs = await storage.getCollection(collectionName);
 
-        // 2. Lọc các bản ghi cần cập nhật (item[field] === oldVal)
         const filteredDocs = allDocs.filter((item) => item[field] === oldVal);
 
         if (filteredDocs.length === 0) {
@@ -159,12 +137,10 @@ MigrationHelper.runMigrateFieldData = async function (collectionName, field, old
         let localBatch = [];
         let countInBatch = 0;
 
-        // 3. Duyệt và cập nhật Firestore bằng writeBatch
         for (const docData of filteredDocs) {
             const docId = docData.id || docData.uid;
             if (!docId) continue;
 
-            // Chuẩn bị dữ liệu cho Local DB (updated_at dùng Date.now())
             localBatch.push({
                 ...docData,
                 [field]: newVal,
@@ -184,14 +160,7 @@ MigrationHelper.runMigrateFieldData = async function (collectionName, field, old
     }
 };
 
-/**
- * 9TRIP ERP - SAFE IMPORT SCRIPT (CONSOLE VERSION)
- * --------------------------------------------------
- * Tác dụng: Import dữ liệu JSON vào LocalDB (IndexedDB) an toàn qua File Picker.
- * Tránh lỗi "Bad control character" khi dán nội dung lớn vào Console.
- */
 MigrationHelper.importJSONFile = async function (filePath) {
-    // 1. Kiểm tra môi trường
     if (!window.A || !window.A.DB || !window.A.DB.local) {
         console.error('❌ Không tìm thấy instance A.DB.local. Hãy đảm bảo bạn đang ở trong ứng dụng 9Trip ERP.');
         return;
@@ -199,14 +168,12 @@ MigrationHelper.importJSONFile = async function (filePath) {
 
     const localDB = window.A.DB.local;
 
-    // 2. Tạo File Input ẩn
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.json';
     input.style.display = 'none';
     document.body.appendChild(input);
 
-    // 3. Xử lý khi chọn file
     input.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) {
@@ -229,17 +196,14 @@ MigrationHelper.importJSONFile = async function (filePath) {
                 const collections = Object.keys(data);
                 console.log(`📦 Tìm thấy ${collections.length} collections trong file.`);
 
-                // Đảm bảo DB đã mở
                 await localDB.initDB();
 
                 let totalImported = 0;
                 let successCount = 0;
 
-                // 4. Thực hiện Import từng collection
                 for (const coll of collections) {
                     const docs = data[coll];
 
-                    // Chỉ xử lý nếu là mảng dữ liệu
                     if (!Array.isArray(docs)) {
                         console.warn(`⚠️ Bỏ qua [${coll}]: Dữ liệu không phải là mảng.`);
                         continue;
@@ -248,10 +212,8 @@ MigrationHelper.importJSONFile = async function (filePath) {
                     try {
                         console.log(`⏳ Đang Import [${coll}] (${docs.length} bản ghi)...`);
 
-                        // Xóa dữ liệu cũ trong bảng này
                         await localDB.clear(coll);
 
-                        // Ghi dữ liệu mới (bulkPut)
                         const count = await localDB.putBatch(coll, docs);
 
                         console.log(`✅ Hoàn tất [${coll}]: ${count} bản ghi.`);
@@ -262,7 +224,6 @@ MigrationHelper.importJSONFile = async function (filePath) {
                     }
                 }
 
-                // 5. Thông báo kết quả
                 const msg = `Đã import thành công ${totalImported} bản ghi vào ${successCount}/${collections.length} collections.`;
                 console.log(`🚀 ${msg}`);
 
@@ -283,7 +244,6 @@ MigrationHelper.importJSONFile = async function (filePath) {
                     alert('Lỗi Import: ' + err.message);
                 }
             } finally {
-                // Dọn dẹp
                 if (document.body.contains(input)) {
                     document.body.removeChild(input);
                 }
@@ -298,11 +258,9 @@ MigrationHelper.importJSONFile = async function (filePath) {
         reader.readAsText(file);
     };
 
-    // 4. Kích hoạt hộp thoại chọn file
     input.click();
 };
 
-/* Hàm này sẽ export tất cả dữ liệu của A.DB.local vào file JSON */
 MigrationHelper.exportJSONFile = async function () {
     try {
         console.log('%c🚀 [9Trip ERP] Đang Export dữ liệu từ A.DB.local...', 'color: #007bff; font-weight: bold;');
@@ -310,13 +268,11 @@ MigrationHelper.exportJSONFile = async function () {
         const localDB = A.DB.local;
         const db = localDB.db;
 
-        // Đảm bảo DB đã mở
         if (!db.isOpen()) await db.open();
 
         const exportData = {};
         for (const table of db.tables) {
             const tableName = table.name;
-            // Sử dụng getCollection như bạn yêu cầu hoặc toArray() của Dexie để lấy data
             const records = typeof localDB.getCollection === 'function' ? await localDB.getCollection(tableName) : await table.toArray();
 
             exportData[tableName] = records;

@@ -6,42 +6,28 @@ import { DB_SCHEMA } from './DBSchema.js';
 import localDB from './DBLocalStorage.js';
 import HD from '@js/libs/db_helper.js';
 window.HD = HD;
-/**
- * DB MANAGER - FIRESTORE MODULAR VERSION (v9+)
- * ─────────────────────────────────────────────────────────────────────────
- * Thiết kế:
- *  • Constructor nhận config → tự auto-init khi Firebase auth sẵn sàng.
- *  • loadAllData(): ưu tiên IndexedDB cache (72h), fallback Firestore .get().
- *  • Một onSnapshot DUY NHẤT cho collection 'notifications':
- *      - type='data-change' → #autoSyncData() → reload collection liên quan
- *      - type khác          → NotificationManager.receive()
- *  • Mọi ghi/xóa Firestore đi qua #firestoreCRUD (chốt chặn duy nhất).
- * ─────────────────────────────────────────────────────────────────────────
- */
+/** DB Manager — Firestore Modular (v9+). Auto-init when auth ready, IndexedDB-first with Smart Delta Sync. */
 
 class DBManager {
-    // ─── Private state ────────────────────────────────────────────────
     #db = null;
-    #listeners = {}; // chỉ dùng cho notifications listener
+    #listeners = {};
     #config = {};
-    #initPromise = null; // đảm bảo init chỉ chạy 1 lần
-    #resolveInit = null; // để init() thủ công resolve promise
-    #schema = DB_SCHEMA; // Cấu trúc schema tập trung, dễ maintain và dùng chung với UI Renderer
-    #localDB = localDB; // Instance của DBLocalStorage để quản lý cache IndexedDB
-    #functions = null; // Instance của Firebase Functions
+    #initPromise = null;
+    #resolveInit = null;
+    #schema = DB_SCHEMA;
+    #localDB = localDB;
+    #functions = null;
     #debug = false;
 
-    // ─── Queue & Batching State ───────────────────────────────────────
-    #writeQueue = []; // [{ collectionName, action, id, data, options, resolve, reject }]
+    #writeQueue = [];
     #flushTimer = null;
     #isFlushing = false;
-    #maxBatchSize = 450; // Firestore limit is 500, we use 450 for safety
-    #flushDelay = 800; // ms to wait before flushing the queue
+    #maxBatchSize = 450;
+    #flushDelay = 800;
 
-    // ─── Public State ────────────────────────────────────────────────
     batchCounterUpdates = {};
     currentCustomer = null;
-    _initialized = false; // true sau khi #bootInit hoàn tất
+    _initialized = false;
 
     /**
      * Query config — limits are overridable via Admin Settings (A.getConfig).
@@ -65,9 +51,6 @@ class DBManager {
             service_price_schedules: { limit: 500, postSort: { key: 'id', dir: 'desc' } },
         };
     }
-    // ─── Cấu hình Booking History ─────────────────────────────────────────
-    // Collections mà khi CRUD sẽ tự động ghi history vào bookings.history
-    // Key = collection name, value = cách lấy booking_id từ data/APP_DATA
     static #HISTORY_COLLS = new Set(['bookings', 'booking_details', 'transactions']);
 
     /**
@@ -122,7 +105,6 @@ class DBManager {
         this.#db = getFirestore(getApp());
         this.#functions = getFunctions(getApp(), 'asia-southeast1');
 
-        // Khởi tạo IndexedDB song song với Firestore
         await this.#localDB.initDB().catch((e) => L.log('⚠️ IndexedDB initDB thất bại:', e));
         this.#debug = A.getConfig('debug') || false;
         window.addEventListener('app-ready', () => {
@@ -153,8 +135,6 @@ class DBManager {
         }
         return this;
     }
-
-    // ─── Getters ──────────────────────────────────────────────────────────
 
     /** Firestore instance */
     get db() {
@@ -213,8 +193,6 @@ class DBManager {
         }
     }
 
-    // ─── Load All Data ────────────────────────────────────────────────────────
-
     /**
      * Tải toàn bộ data cần thiết cho APP_DATA.
      *
@@ -238,49 +216,38 @@ class DBManager {
         const lastSyncRole = this.#localDB.getMeta('LAST_SYNC_ROLE') ?? '';
         const roleChanged = currentRole !== lastSyncRole;
 
-        // ── 1. KHỞI TẠO FRAMEWORK DỮ LIỆU RỖNG ──
-        this.#buildEmptyResult(); // Reset APP_DATA về trạng thái sạch
+        this.#buildEmptyResult();
 
-        // ── 2. CHIẾN LƯỢC LOCAL-FIRST (IDB -> Memory) ──
         if (!forceNew) {
             const indexedData = await this.#loadFromIndexedDB(currentRoleColls);
             const hasData = Object.keys(indexedData).some((k) => Object.keys(indexedData[k] || {}).length > 0);
 
             if (hasData) {
-                // Đổ dữ liệu local vào Mirror Memory ngay lập tức
                 Object.assign(APP_DATA, indexedData);
 
-                // Nếu Role thay đổi: Prune dữ liệu thừa của Role cũ trong IDB và Memory
                 if (roleChanged) {
                     L._(`🔄 Role changed: [${lastSyncRole}] → [${currentRole}]. Cleaning cache...`);
                     await this.#pruneDanglingCollections(currentRoleColls);
                 }
 
-                // Tải Meta (Config/Users) và chạy Delta Sync ngầm
                 this.loadMeta(APP_DATA).catch((e) => L.log('Meta load fail:', e));
 
-                // Rebuild indexes & Sort để UI sẵn sàng
-                // this.#rebuildAllSecondaryIndexes();
                 this.#localDB.setMeta('LAST_SYNC_ROLE', currentRole);
 
                 const networkSaver = window.A?.getConfig?.('network_saver');
                 if (!networkSaver) {
-                    // Smart Delta Sync sẽ cập nhật IDB, sau đó IDB sẽ cập nhật lại APP_DATA
                     this.#smartDeltaSync(currentRoleColls).catch((e) => L.log('Delta sync fail:', e));
                 }
 
-                return APP_DATA; // Trả về dữ liệu local ngay cho UI render
+                return APP_DATA;
             }
         }
-        // ── 3. FALLBACK: FULL LOAD TỪ FIRESTORE (Khi IDB trống hoặc forceNew) ──
         L._(`📚 Full load from Firestore (Role: ${currentRole})`);
         try {
-            // Tải song song Meta và Data để tối ưu thời gian
             await Promise.all([
                 this.loadMeta(APP_DATA),
-                this.syncDelta(currentRoleColls, true), // forceFullLoad = true
+                this.syncDelta(currentRoleColls, true),
             ]);
-            // Lưu ngược lại IDB để lần sau không cần tải lại
             await this.#saveAppDataCache(currentRoleColls, forceNew);
 
             return APP_DATA;
@@ -331,12 +298,10 @@ class DBManager {
             return 0;
         }
         if (options === true) {
-            // Hỗ trợ gọi cũ: loadCollections(true) → forceNew=true
             options = { forceNew: true };
         }
         const { forceNew = false, deltaSync = false, batchId = null, limit: limitOverride = null } = options;
 
-        // ── Xác định danh sách collections ───────────────────────────────
         let collList;
         if (!collections) {
             const role = window.CURRENT_USER?.role ?? null;
@@ -369,13 +334,10 @@ class DBManager {
                         let q = collection(this.#db, collName);
 
                         if (deltaSync && lastSyncDate && !isMissingData && !forceNew) {
-                            // Delta mode: chỉ lấy docs có updated_at thay đổi sau lần sync cuối
                             q = query(q, where('updated_at', '>', lastSyncDate));
                         } else if (batchId) {
-                            // Large-batch reload: lọc theo batchId
                             q = query(q, where('batch_id', '==', batchId));
                         } else {
-                            // Full load: KHÔNG thêm orderBy, chỉ giới hạn số docs nếu có config
                             const lim = limitOverride ?? cfg?.limit;
                             if (lim) q = query(q, limit(lim));
                         }
@@ -385,33 +347,26 @@ class DBManager {
 
                         const isDelta = deltaSync && lastSyncDate && !isMissingData && !forceNew;
 
-                        // 1. Gom dữ liệu từ Firestore
                         const fetchedDocs = [];
                         snap.forEach((d) => fetchedDocs.push({ id: d.id, ...d.data() }));
 
                         if (!isDelta) {
-                            // ── TRƯỜNG HỢP 1: FULL LOAD (Thay thế toàn bộ) ──
-                            // Bước 1: IDB FIRST - Xóa sạch store cũ và ghi lô mới (Source of Truth)
                             await this.#localDB.clear(collName);
                             await this.#localDB.putBatch(collName, fetchedDocs);
                             this.#localDB.markSynced(collName);
 
-                            // Bước 2: DỌN DẸP RAM (Mirror)
                             APP_DATA[collName] = {};
 
-                            // Bước 3: ĐỔ VÀO RAM
                             for (const doc of fetchedDocs) {
                                 this._updateAppDataObj(collName, doc);
                             }
 
                             L._(`✅ [${collName}] full load: ${fetchedDocs.length} docs`);
                         } else {
-                            // ── TRƯỜNG HỢP 2: DELTA LOAD (Chỉ cập nhật cái mới) ──
-                            // Ép toàn bộ qua Gatekeeper để nó lo việc Merge + Ghi IDB + Ghi RAM
                             const syncItems = fetchedDocs.map((doc) => ({
                                 coll: collName,
                                 id: doc.id,
-                                action: 'u', // Upsert
+                                action: 'u',
                                 data: doc,
                             }));
                             await this.#gatekeepSyncToLocal(null, null, null, null, true, syncItems);
@@ -428,7 +383,6 @@ class DBManager {
 
             const total = counts.reduce((a, b) => a + b, 0);
             if (total > 0) {
-                // Chỉ cập nhật Meta, dữ liệu đã được lưu an toàn
                 this.#localDB.setMeta('LAST_SYNC', Date.now().toString());
                 this.#localDB.setMeta('LAST_SYNC_ROLE', window.CURRENT_USER?.role ?? '');
 
@@ -452,13 +406,11 @@ class DBManager {
         const currentInApp = Object.keys(APP_DATA);
 
         for (const coll of currentInApp) {
-            // Không xóa meta collections
             if (['lists', 'currentUser', 'users'].includes(coll)) continue;
-            // if (DBManager.#INDEX_CONFIG.some((c) => c.index === coll)) continue;
 
             if (!allowedSet.has(coll)) {
-                delete APP_DATA[coll]; // Xóa memory
-                await this.#localDB.clear(coll); // Xóa IDB
+                delete APP_DATA[coll];
+                await this.#localDB.clear(coll);
                 L._(`🗑️ Pruned collection: ${coll}`);
             }
         }
@@ -478,12 +430,10 @@ class DBManager {
         try {
             const appDataExists = typeof APP_DATA !== 'undefined' && APP_DATA;
 
-            // 1. Chuẩn hóa mọi luồng dữ liệu về 1 mảng items chung để xử lý
             const items = isBatch ? batchItems : [{ coll: collName, id, action, data: payload }];
 
-            // 2. Gom nhóm theo Collection để tối ưu Ghi/Xóa lô
-            const putOps = {}; // { collName: [doc1, doc2] }
-            const delOps = {}; // { collName: [id1, id2] }
+            const putOps = {};
+            const delOps = {};
 
             const sanitizeForLocal = (obj) => {
                 if (obj === null || typeof obj !== 'object') return obj;
@@ -506,13 +456,12 @@ class DBManager {
                 const a = item.action;
                 const d = item.data;
 
-                if (!c || !i) continue; // Bỏ qua nếu thiếu key mapping
+                if (!c || !i) continue;
 
                 if (a === 'd' || a === 'delete') {
                     if (!delOps[c]) delOps[c] = [];
                     delOps[c].push(i);
                 } else if (a === 'ua') {
-                    // Xử lý ArrayUnion
                     let doc = appDataExists ? APP_DATA[c]?.[i] : null;
                     let arrVal = doc?.[d.field];
                     if (!arrVal) arrVal = [];
@@ -524,7 +473,6 @@ class DBManager {
                         APP_DATA[c][i][d.field] = arrVal;
                     }
 
-                    // Cập nhật IndexedDB (Lấy doc từ IDB để merge nếu RAM không có)
                     const idbDoc = (await this.#localDB.get(c, i)) || { id: i };
                     const currentArr = idbDoc[d.field] || [];
                     currentArr.push(d.value);
@@ -533,7 +481,6 @@ class DBManager {
                     L._('[Gatekeeper] Synced ArrayUnion Done', item);
                     continue;
                 } else {
-                    // Xử lý Set, Add, Update, Increment
                     if (!putOps[c]) putOps[c] = [];
                     let currentDoc = appDataExists ? APP_DATA[c]?.[i] : null;
                     if (!currentDoc || Object.keys(currentDoc).length <= 1) {
@@ -553,10 +500,8 @@ class DBManager {
                 }
             }
 
-            // 3. GHI VÀO LOCALDB (SOURCE OF TRUTH) - Thực hiện trước
             for (const c of Object.keys(putOps)) {
                 if (putOps[c].length > 0) {
-                    // Đảm bảo dữ liệu trong RAM không bị ghi đè bởi dữ liệu cũ hơn từ IDB (nếu có)
                     try {
                         await this.#localDB.putBatch(c, putOps[c]);
                     } catch (e) {
@@ -582,9 +527,7 @@ class DBManager {
                 }
             }
 
-            // 4. ĐẨY VÀO APP_DATA (MEMORY MIRROR) - Thực hiện sau
             if (appDataExists) {
-                // Sử dụng for...of thay vì forEach để đảm bảo tính tuần tự nếu cần mở rộng sau này
                 for (const c of Object.keys(putOps)) {
                     for (const doc of putOps[c]) {
                         this._updateAppDataObj(c, doc);
@@ -601,15 +544,7 @@ class DBManager {
         }
     }
 
-    /** TẠM THỜI BỎ QUA CHỨC NĂNG LÀM SẠCH
-     * =========================================================================
-     * SANITIZE DATA FOR FIRESTORE (CHUẨN HÓA DỮ LIỆU)
-     * Mục đích: Làm sạch dữ liệu từ Form/UI trước khi đẩy lên Firestore
-     * =========================================================================
-     * @param {Array|Object} inputData - Dữ liệu thô từ giao diện
-     * @param {Object} options - Các tùy chọn bổ sung
-     * @returns {Object} Object đã được làm sạch, map theo id (nếu input là Array)
-     */
+    /** Clean data for Firestore — currently disabled (early return). */
     async cleanDataForFirestore(inputData, options = { removeEmptyString: false, debug: false }) {
         return inputData;
         const removedFields = [];
@@ -621,10 +556,8 @@ class DBManager {
          * @param {string} path - Đường dẫn truy cập field (để debug)
          */
         const sanitize = (obj, path = '') => {
-            // 1. Xử lý các kiểu dữ liệu cơ bản
             if (obj === null || obj === undefined) return obj;
 
-            // 2. Kiểm tra tham chiếu vòng (Circular Reference)
             if (typeof obj === 'object' && obj !== null && !(obj instanceof Date)) {
                 if (seen.has(obj)) {
                     removedFields.push({ path, reason: 'Tham chiếu vòng (Circular Reference)' });
@@ -633,15 +566,12 @@ class DBManager {
                 seen.add(obj);
             }
 
-            // 3. Giữ nguyên các kiểu dữ liệu đặc biệt của Firestore/JS
             if (obj instanceof Date) return obj;
 
-            // Kiểm tra Firestore FieldValue hoặc Timestamp (v9+)
             if (obj && typeof obj === 'object' && (obj.constructor?.name === 'FieldValue' || typeof obj.toMillis === 'function' || obj._methodName || obj.serverTimestamp)) {
                 return obj;
             }
 
-            // 4. Xử lý Mảng
             if (Array.isArray(obj)) {
                 return obj
                     .map((item, index) => sanitize(item, path ? `${path}[${index}]` : `[${index}]`))
@@ -654,32 +584,27 @@ class DBManager {
                     });
             }
 
-            // 5. Xử lý Object
             if (typeof obj === 'object') {
                 const cleanedObj = {};
 
                 for (const [key, value] of Object.entries(obj)) {
                     const currentPath = path ? `${path}.${key}` : key;
 
-                    // Bỏ qua field nội bộ (quy ước bắt đầu bằng _)
                     if (key.startsWith('_')) {
                         removedFields.push({ path: currentPath, reason: 'Field nội bộ (bắt đầu bằng _)' });
                         continue;
                     }
 
-                    // Bỏ qua giá trị rác
                     if (value === undefined || value === null || value === 'undefined' || value === 'null') {
                         removedFields.push({ path: currentPath, reason: `Giá trị không hợp lệ: ${value}` });
                         continue;
                     }
 
-                    // Bỏ qua NaN
                     if (typeof value === 'number' && isNaN(value)) {
                         removedFields.push({ path: currentPath, reason: 'Giá trị là NaN' });
                         continue;
                     }
 
-                    // Xử lý String
                     if (typeof value === 'string') {
                         const trimmed = value.trim();
                         if (trimmed === '' && options.removeEmptyString) {
@@ -688,13 +613,11 @@ class DBManager {
                         }
                         cleanedObj[key] = trimmed;
                     }
-                    // Xử lý Object lồng nhau
                     else if (typeof value === 'object') {
                         const nested = sanitize(value, currentPath);
 
                         if (nested === undefined) continue;
 
-                        // Kiểm tra xem object sau khi làm sạch có dữ liệu không
                         const isDate = nested instanceof Date;
                         const isFirestoreType = nested && typeof nested.toMillis === 'function';
                         const isNotEmptyObj = !Array.isArray(nested) && Object.keys(nested).length > 0;
@@ -706,7 +629,6 @@ class DBManager {
                             removedFields.push({ path: currentPath, reason: 'Object/Array rỗng sau khi làm sạch' });
                         }
                     }
-                    // Các kiểu dữ liệu khác (Boolean, Number hợp lệ)
                     else {
                         cleanedObj[key] = value;
                     }
@@ -724,7 +646,6 @@ class DBManager {
 
             let processData = inputData;
 
-            // Bước 1: Chuyển đổi Array -> Object nếu input là mảng các record
             if (Array.isArray(processData)) {
                 processData = processData.reduce((acc, item, idx) => {
                     if (item && typeof item === 'object') {
@@ -739,22 +660,20 @@ class DBManager {
                 }, {});
             }
 
-            // Bước 2: Thực thi làm sạch đệ quy
             const result = sanitize(processData);
 
-            // Bước 3: Log kết quả debug nếu có field bị loại bỏ
             if (removedFields.length > 0 && (this.#debug || options.debug)) {
                 L._(`[cleanDataForFirestore] Đã loại bỏ ${removedFields.length} trường dữ liệu:`, removedFields, 'debug');
             }
 
-            return result || {}; // Trả về {} thay vì null để tránh lỗi falsy
+            return result || {};
         } catch (error) {
             if (typeof Opps === 'function') {
                 Opps(error, 'cleanDataForFirestore', { severity: 'error', data: { inputData, removedFields } });
             } else {
                 console.error('[cleanDataForFirestore] Lỗi nghiêm trọng:', error, removedFields);
             }
-            return {}; // Trả về {} thay vì null
+            return {};
         }
     }
 
@@ -784,7 +703,6 @@ class DBManager {
     async #saveAppDataCache(collNames = null, clearStores = false) {
         if (!APP_DATA) return;
 
-        // Xác định danh sách collections cần ghi
         var toWrite = collNames ?? this.#getRoleCollections(window.CURRENT_USER?.role ?? '');
         if (!Array.isArray(toWrite)) toWrite = [toWrite];
         if (clearStores) {
@@ -795,9 +713,9 @@ class DBManager {
                     const docList = Object.values(docs).filter((d) => d?.id);
                     if (docList.length === 0) return;
                     try {
-                        await this.#localDB.clear(coll); // xóa sạch store cũ
-                        await this.#localDB.putBatch(coll, docList); // ghi mới hoàn toàn
-                        this.#localDB.markSynced(coll); // đánh dấu TTL
+                        await this.#localDB.clear(coll);
+                        await this.#localDB.putBatch(coll, docList);
+                        this.#localDB.markSynced(coll);
                         L._(`🗑️→💾 IDB clear+putBatch [${coll}]: ${docList.length} docs`);
                     } catch (e) {
                         L.log(`⚠️ IndexedDB clear+putBatch [${coll}] thất bại:`, e);
@@ -805,7 +723,6 @@ class DBManager {
                 })
             );
         } else {
-            // Delta / normal save: fire-and-forget — không block UI
             for (const coll of toWrite) {
                 const docs = APP_DATA[coll];
                 if (!docs || typeof docs !== 'object') continue;
@@ -819,13 +736,12 @@ class DBManager {
             }
         }
 
-        // Lưu metadata vào IndexedDB _sync_meta (không dùng localStorage)
         this.#localDB.setMeta('LAST_SYNC', Date.now().toString());
         this.#localDB.setMeta('LAST_SYNC_ROLE', window.CURRENT_USER?.role ?? '');
     }
 
     async #startNotificationsListener() {
-        if (this.#listeners['notifications']) return; // đã chạy
+        if (this.#listeners['notifications']) return;
 
         const windowMs = this.#config.notificationsWindowMs;
         const lastSyncRaw = this.#localDB.getMeta('LAST_SYNC');
@@ -833,13 +749,11 @@ class DBManager {
 
         const now = Date.now();
 
-        // Lấy mốc quá khứ gần nhất giữa lastSync và (now - 72h)
         const cutoffMs = Math.max(lastSyncMs, now - windowMs);
         const cutoffDate = new Date(cutoffMs);
 
         L._(`🔔 Notifications listener: query từ ${cutoffDate.toLocaleString()}`);
 
-        // [OPTIMIZATION] Xóa notification_dedup quá 24h để tối ưu bộ nhớ IndexedDB
         const dedupCutoff = now - 24 * 60 * 60 * 1000;
         this.#localDB
             .deleteByQuery('notification_dedup', 'processed_at', '<', dedupCutoff)
@@ -856,7 +770,6 @@ class DBManager {
             return;
         }
         const role = window.CURRENT_USER.role;
-        // Admin: xóa các notification cũ hơn 3 ngày
         if (role === 'admin') {
             const deleteCutoff = new Date(now - 3 * 24 * 60 * 60 * 1000);
             const q = query(collection(this.#db, 'notifications'), where('created_at', '<', deleteCutoff));
@@ -874,10 +787,8 @@ class DBManager {
         }
         const q = query(collection(this.#db, 'notifications'), where('created_at', '>=', cutoffDate));
 
-        // 1. CHUẨN HÓA DỮ LIỆU USER (Nên để trước khi gọi onSnapshot)
-        // Đảm bảo userGroups luôn là một mảng và các phần tử đều là chữ thường
         const userGroups = (Array.isArray(user.group) ? user.group : [user.group])
-            .filter(Boolean) // Loại bỏ các giá trị null/undefined nếu có
+            .filter(Boolean)
             .map((g) => String(g).toLowerCase());
 
         const userName = String(user.name || '').toLowerCase();
@@ -890,19 +801,14 @@ class DBManager {
                 const dataChangeDocs = [];
                 const notifDocsRaw = [];
 
-                // Danh sách collection user này được phép sync ngầm
                 const myColls = this.#getRoleCollections(role);
 
-                // ── 2. PHÂN LOẠI & LỌC DATA-CHANGE TỪ SỚM ──
                 const changes = snapshot.docChanges();
                 for (const change of changes) {
                     if (change.type === 'removed') continue;
                     const docData = change.doc.data();
                     const docId = change.doc.id;
 
-                    // [DEDUPLICATION MECHANISM]
-                    // Kiểm tra xem change này đã được xử lý chưa dựa trên IndexedDB
-                    // Key: collection + docId + action + updated_at
                     let changePayload;
                     try {
                         changePayload = typeof docData.data === 'string' ? JSON.parse(docData.data) : docData.data;
@@ -924,44 +830,35 @@ class DBManager {
                     const doc = { id: docId, ...docData };
 
                     if (doc.type === 'data-change') {
-                        // [BỘ LỌC NGẦM]: Chỉ đẩy vào Gatekeeper nếu user có quyền với collection này
                         if (myColls.includes(doc.collection)) {
                             dataChangeDocs.push(doc);
                         }
                     } else {
-                        // ★ BỘ LỌC CHỐNG DATA-CHANGE (Lớp bảo vệ 1)
-                        // Đảm bảo không có data-change nào lọt vào luồng UI notifications
                         notifDocsRaw.push(doc);
                     }
                 }
 
-                // ── 3. XỬ LÝ AUTO SYNC DATA (Gatekeeper) ──
                 if (dataChangeDocs.length > 0) {
                     this.#autoSyncData(dataChangeDocs);
                 }
 
-                // ── 4. XỬ LÝ NOTIFICATION UI ──
                 if (notifDocsRaw.length > 0) {
                     const validNotifs = notifDocsRaw.filter((d) => {
-                        // ★ BỘ LỌC CHỐNG DATA-CHANGE (Lớp bảo vệ 1 - Double check)
                         if (d.type === 'data-change') return false;
 
                         const docGroups = (Array.isArray(d.group) ? d.group : [d.group]).filter(Boolean).map((g) => String(g).toLowerCase());
 
                         const docTargetUsers = (Array.isArray(d.target_users) ? d.target_users : []).map((u) => String(u).toLowerCase());
 
-                        // Logic kiểm tra của bạn + hỗ trợ thêm group 'all' và quyền 'admin'
                         const isGroupMatch = docGroups.some((docG) => docG === 'all' || userGroups.includes(docG));
                         const isRoleMatch = String(d?.role || '').toLowerCase() === role;
                         const isUserMatch = docTargetUsers.includes(userName);
-                        const isAdmin = role === 'admin'; // Admin thấy mọi thông báo (Bỏ dòng này nếu không cần)
+                        const isAdmin = role === 'admin';
 
                         return isGroupMatch || isUserMatch || isRoleMatch || isAdmin;
                     });
 
-                    // Chỉ dispatch event khi thực sự có thông báo dành cho user này
                     if (validNotifs.length > 0) {
-                        // Đảm bảo truy cập đúng object NotificationManager
                         const notifManager = window.A?.NotificationManager || window.NotificationManager;
                         if (notifManager && typeof notifManager.receiveFromServer === 'function') {
                             notifManager.receiveFromServer(validNotifs);
@@ -982,7 +879,6 @@ class DBManager {
         if (this.#listeners['notifications']) {
             this.#listeners['notifications']();
             delete this.#listeners['notifications'];
-            // L._('🔕 Notifications listener stopped');
         }
     }
 
@@ -1002,7 +898,6 @@ class DBManager {
      * @param {Array} docs - Mảng notification documents (type='data-change')
      */
     async #autoSyncData(docs) {
-        // ── 1. Parse + deduplicate theo coll::id ─────────────────────────
         const deduped = new Map();
 
         for (const notif of docs) {
@@ -1017,7 +912,6 @@ class DBManager {
             if (!change?.coll || !change?.id) continue;
 
             const key = `${change.coll}::${change.id}`;
-            // created_at có thể là Firebase Timestamp hoặc số milliseconds
             const ts = notif.created_at?.toMillis?.() ?? (notif.created_at?.seconds ? notif.created_at.seconds * 1000 : 0) ?? 0;
 
             const existing = deduped.get(key);
@@ -1028,7 +922,6 @@ class DBManager {
 
         if (deduped.size === 0) return;
 
-        // ── 2. Áp dụng từng thay đổi ─────────────────────────────────────
         for (const [, change] of deduped) {
             await this.#applyLocalChange(change);
         }
@@ -1044,13 +937,10 @@ class DBManager {
         if (!APP_DATA || !coll || !id) return;
 
         if (action === 'b') {
-            // XỬ LÝ BATCH
             if (typeof payload === 'string') {
                 L._(`🔄 #applyLocalChange: batch lớn (batch_id=${payload}), reload server...`);
                 await this.loadCollections(coll, { forceNew: true, batchId: payload });
             } else if (Array.isArray(payload)) {
-                // payload là array [{id, action, data}]
-                // Ép qua Gatekeeper dạng Batch
                 await this.#gatekeepSyncToLocal(
                     null,
                     null,
@@ -1066,8 +956,6 @@ class DBManager {
                 );
             }
         } else {
-            // XỬ LÝ ĐƠN (Set, Update, Delete, Increment)
-            // Chuyển action code 's', 'u', 'd', 'i' sang Gatekeeper
             await this.#gatekeepSyncToLocal(coll, id, action, payload);
         }
     }
@@ -1089,22 +977,18 @@ class DBManager {
                 const lastSyncStr = this.#localDB.getMeta(`LAST_SYNC_${coll}`);
                 const since = lastSyncStr ? new Date(parseInt(lastSyncStr, 10)) : null;
 
-                // Chỉ lấy docs thay đổi/thêm mới từ Firestore — docs đã xóa KHÔNG được trả về
                 const docs = await this.#fetchCollectionDocs(coll, since);
 
                 if (docs?.length > 0) {
-                    // Ghi vào IDB (merge — cho lần tải trang sau)
                     await this.#localDB.putBatch(coll, docs);
 
-                    // Merge vào APP_DATA theo từng doc — không ghi đè toàn bộ collection
                     for (const doc of docs) {
-                        this._updateAppDataObj(coll, doc); // cũng cập nhật secondary indexes
+                        this._updateAppDataObj(coll, doc);
                     }
 
                     L._(`📥 Background sync [${coll}]: +${docs.length} docs`);
                 }
 
-                // Cập nhật TTL kể cả khi không có doc mới (tránh sync liên tục)
                 this.#localDB.markSynced(coll);
             } catch (e) {
                 L.log(`⚠️ Background sync [${coll}] thất bại:`, e);
@@ -1128,7 +1012,6 @@ class DBManager {
      * @returns {Promise<void>}
      */
     async #smartDeltaSync(roleColls) {
-        // Smart delta chỉ áp dụng khi role có quyền truy cập bookings
         if (!roleColls.includes('bookings')) {
             L._('🔍 Smart Delta: role không có bookings — fallback backgroundSync');
             return this.#backgroundSync(roleColls);
@@ -1137,7 +1020,6 @@ class DBManager {
         const lastSyncRaw = this.#localDB.getMeta('LAST_SYNC_DELTA');
         const lastSyncDate = lastSyncRaw ? new Date(parseInt(lastSyncRaw, 10)) : null;
 
-        // Chưa bao giờ sync delta → cần sync tất cả collections
         if (!lastSyncDate) {
             L._('🔍 Smart Delta: chưa có LAST_SYNC_DELTA — sync tất cả...');
             await this.syncDelta(roleColls, false);
@@ -1145,7 +1027,6 @@ class DBManager {
         }
 
         try {
-            // ── Probe bookings: chỉ cần biết có ít nhất 1 doc mới ──
             const q1 = query(collection(this.#db, 'bookings'), where('updated_at', '>', lastSyncDate), limit(1));
             const q2 = query(collection(this.#db, 'transactions'), where('updated_at', '>', lastSyncDate), limit(1));
 
@@ -1156,7 +1037,6 @@ class DBManager {
                 return;
             }
 
-            // ── Có dữ liệu mới → sync tất cả collections (bookings + các collection khác) ──
             const otherColls = roleColls.filter((c) => c !== 'bookings');
             L._(`🔍[Smart Delta]: phát hiện dữ liệu mới → sync + ${otherColls.length} collection(s) khác`);
             await this.syncDelta(roleColls, false);
@@ -1173,11 +1053,9 @@ class DBManager {
             let collectionsToSync;
 
             if (collectionName) {
-                // Hỗ trợ cả string ('bookings') lẫn array (['bookings', 'customers', ...])
                 collectionsToSync = Array.isArray(collectionName) ? collectionName : [collectionName];
             } else {
                 const role = CURRENT_USER.role;
-                // Dùng #getRoleCollections — nguồn chân lý duy nhất (không duplicate roleMap)
                 const roleColls = this.#getRoleCollections(role);
                 const dataListSelect = getE('btn-select-datalist');
                 const selectedColls = dataListSelect
@@ -1185,12 +1063,8 @@ class DBManager {
                           .map((opt) => opt.value)
                           .filter(Boolean)
                     : [];
-                // Union: roleColls + select options, khử trùng
                 collectionsToSync = [...new Set([...roleColls, ...selectedColls])];
             }
-            // Loại bỏ secondary index names — không phải Firestore collection thật
-            // const _indexNames = new Set(DBManager.#INDEX_CONFIG.map((c) => c.index));
-            // collectionsToSync = collectionsToSync.filter((c) => !_indexNames.has(c));
 
             L._(`🔄 Sync Delta: ${collectionsToSync.length} collection(s) to sync`);
 
@@ -1215,20 +1089,12 @@ class DBManager {
                     if (!querySnapshot.empty) {
                         L._(`[${colName}] Đang xử lý ${querySnapshot.size} bản ghi.`);
                         if (isMissingData || forceNew) {
-                            // Full reload: reset primary collection + secondary indexes liên quan
                             APP_DATA[colName] = {};
-                            // DBManager.#INDEX_CONFIG
-                            //   .filter((c) => c.source === colName)
-                            //   .forEach(({ index }) => {
-                            //     APP_DATA[index] = {};
-                            //   });
 
-                            // Sử dụng for...of để await từng item, đảm bảo APP_DATA được nạp đầy đủ trước khi kết thúc
                             for (const d of querySnapshot.docs) {
                                 await this.#gatekeepSyncToLocal(colName, d.id, 's', d.data());
                             }
                         } else {
-                            // Delta: chỉ cập nhật/thêm docs thay đổi, secondary indexes tự cập nhật qua _updateAppDataObj
                             for (const d of querySnapshot.docs) {
                                 await this.#gatekeepSyncToLocal(colName, d.id, 's', d.data());
                             }
@@ -1266,18 +1132,13 @@ class DBManager {
      * @param {boolean} forceNew - Nếu true, buộc tải lại toàn bộ dữ liệu từ Firestore
      */
     async loadMeta(result, forceNew = false, needNew = null) {
-        // Đảm bảo cấu trúc khởi tạo an toàn
         if (needNew === 'lists') await this.#localDB.delete('app_config', 'lists');
         else if (needNew) await this.#localDB.clear(needNew);
         if (!result.lists) result.lists = {};
         if (!result.users) result.users = {};
 
-        // Mảng lưu trữ tên các collection bị thiếu trong cache cần tải từ Firestore
         const missingCollections = [];
         if (!forceNew) {
-            // ==========================================
-            // BƯỚC 1: KIỂM TRA TÍNH TOÀN VẸN INDEXEDDB CACHE
-            // ==========================================
             try {
                 const cachedAppCFgObj = await this.#localDB.getAllAsObject('app_config');
                 let parsedUsers = await this.#localDB.getAllAsObject('users');
@@ -1286,30 +1147,25 @@ class DBManager {
                 let parsedLists = cachedAppCFgObj?.lists || null;
 
                 if (Object.keys(parsedLists) && Object.keys(parsedUsers)) {
-                    // Kiểm tra kỹ xem cache có mảng dữ liệu của hotels và suppliers chưa
                     const hasStaff = Array.isArray(Object.values(parsedLists?.staff)) && Object.values(parsedLists?.staff).length > 0;
                     const hasHotels = parseHotels && Object.values(parseHotels).length > 0;
                     const hasSuppliers = parseSuppliers && Object.values(parseSuppliers).length > 0;
                     const hasUsers = parsedUsers && Object.keys(parsedUsers).length > 0;
-                    // Cấu hình app_config thường có nhiều key ngoài staff, hotel, supplier
                     const hasAppConfig = parsedLists && Object.values(parsedLists).filter((k) => !['staff', 'hotel', 'supplier'].includes(k)).length > 0;
 
-                    // Lưu các list thiếu vào biến
                     if (!hasAppConfig) missingCollections.push('app_config');
                     if (!hasUsers || !hasStaff) missingCollections.push('users');
                     if (!hasHotels) missingCollections.push('hotels');
                     if (!hasSuppliers) missingCollections.push('suppliers');
 
-                    // Nạp trước những dữ liệu ĐÃ CÓ vào result
                     Object.assign(result.lists, parsedLists || {});
                     Object.assign(result.users, parsedUsers || {});
                     Object.assign(result.hotels, parseHotels || {});
                     Object.assign(result.suppliers, parseSuppliers || {});
 
-                    // Chỉ return nếu TẤT CẢ list đều đầy đủ
                     if (missingCollections.length === 0) {
                         L._('📦 [loadMeta] Đã load Meta (lists, users, hotels, suppliers) đầy đủ từ cache IndexedDB');
-                        return; // Kết thúc hàm an toàn
+                        return;
                     } else {
                         L._(`⚠️ [loadMeta] Cache hiện tại bị thiếu [${missingCollections.join(', ')}], tiến hành tải phần thiếu từ Firestore...`);
                     }
@@ -1319,14 +1175,10 @@ class DBManager {
                 }
             } catch (e) {
                 L.log('⚠️ [loadMeta] Lỗi đọc cache Meta từ IndexedDB, tiến hành fetch mới toàn bộ:', e);
-                // Fallback: nếu lỗi parse thì tải lại tất cả
                 missingCollections.push('app_config', 'users', 'hotels', 'suppliers');
             }
         }
 
-        // ==========================================
-        // BƯỚC 2: TẢI TỪ FIRESTORE (CHỈ NHỮNG PHẦN BỊ THIẾU) VÀ XỬ LÝ DỮ LIỆU
-        // ==========================================
         L._(`📥 [loadMeta] Fetch data từ Firestore: ${missingCollections.join(', ')}...`);
 
         const promises = [];
@@ -1338,10 +1190,8 @@ class DBManager {
         missingCollections.forEach((coll) => {
             try {
                 cfg = DBManager.#QUERY_CONFIG[coll];
-                // 1. Xác định tên collection/path chính xác cho từng vòng lặp
                 const actualColName = coll;
                 lim = cfg?.limit || 1000;
-                // 2. Khởi tạo Query RIÊNG cho từng collection dựa trên logic chung
                 let q;
                 if (lastSyncDate) {
                     if (actualColName === 'app_config') {
@@ -1357,17 +1207,15 @@ class DBManager {
                     }
                 }
 
-                // 3. Đẩy vào mảng promises
                 promises.push(q);
             } catch (err) {
                 L.error(`❌ Lỗi tạo query cho collection ${coll}:`, err);
-                promises.push(Promise.resolve(null)); // Đảm bảo mảng promises không bị lệch index
+                promises.push(Promise.resolve(null));
             }
         });
 
         const snaps = await Promise.all(promises);
 
-        // Map snaps back to their collections
         const snapMap = {};
         missingCollections.forEach((coll, i) => {
             snapMap[coll] = snaps[i];
@@ -1378,7 +1226,6 @@ class DBManager {
         const hotelsSnap = snapMap['hotels'];
         const suppliersSnap = snapMap['suppliers'];
 
-        // 1. Xử lý app_config (Chỉ chạy nếu có dữ liệu tải về)
         if (cfgSnap) {
             if (cfgSnap.exists()) {
                 const rawCfg = cfgSnap.data();
@@ -1395,7 +1242,6 @@ class DBManager {
             }
         }
 
-        // 2. Xử lý users & tạo staffList (Chỉ chạy nếu có dữ liệu tải về)
         if (usersSnap && !usersSnap.empty) {
             const staffList = [];
             const userDocs = [];
@@ -1406,13 +1252,11 @@ class DBManager {
                 staffList.push({ id: d.uid, name: d.data().name || d.data().user_name });
             });
             result.lists.staff = staffList;
-            // Đồng bộ users xuống LocalDB
             await this.#localDB.putBatch('users', userDocs);
         } else {
             L._('⚠️ [loadMeta] users không có dữ liệu hoặc query lỗi');
         }
 
-        // 3. Xử lý hotels (Chỉ chạy nếu có dữ liệu tải về)
         if (hotelsSnap && !hotelsSnap.empty) {
             const hotelList = [];
             const hotelDocs = [];
@@ -1423,12 +1267,10 @@ class DBManager {
                 hotelList.push({ id: d.id, name: d.data().name });
             });
             result.lists.hotels = hotelList;
-            // Đồng bộ hotels xuống LocalDB
             await this.#localDB.putBatch('hotels', hotelDocs);
         } else {
             L._('⚠️ [loadMeta] hotels không có dữ liệu hoặc query lỗi');
         }
-        // 4. Xử lý suppliers (Chỉ chạy nếu có dữ liệu tải về)
         if (suppliersSnap && !suppliersSnap.empty) {
             const supplierList = [];
             const supplierDocs = [];
@@ -1439,17 +1281,13 @@ class DBManager {
                 supplierList.push({ id: d.id, name: d.data().name });
             });
             result.lists.suppliers = supplierList;
-            // Đồng bộ suppliers xuống LocalDB
             await this.#localDB.putBatch('suppliers', supplierDocs);
         } else {
             L._('⚠️ [loadMeta] suppliers không có dữ liệu hoặc query lỗi');
         }
-        // ==========================================
-        // BƯỚC 3: CẬP NHẬT LẠI INDEXEDDB CACHE
-        // ==========================================
         try {
             var lists = { id: 'lists', ...result.lists };
-            lists.id = 'lists'; // Đảm bảo luôn có doc id cho app_config
+            lists.id = 'lists';
             this.#localDB.put('app_config', lists);
             this.#localDB.setMeta('LAST_SYNC_META', Date.now().toString());
             L._(`💾 [loadMeta] Đã lưu cập nhật cache Meta mới (bổ sung: ${missingCollections.join(', ')}) vào IndexedDB thành công`);
@@ -1472,10 +1310,8 @@ class DBManager {
         let q = collection(this.#db, collName);
 
         if (sinceDate) {
-            // Incremental: chỉ lấy docs đã thay đổi kể từ lần sync trước
             q = query(q, where('updated_at', '>', sinceDate));
         } else {
-            // Full load với limit
             const lim = cfg?.limit;
             if (lim) q = query(q, limit(lim));
         }
@@ -1486,22 +1322,14 @@ class DBManager {
         return docs;
     }
 
-    // ─── Private: Build Empty Result ─────────────────────────────────────
-
     #buildEmptyResult() {
         const primaryColls = ['bookings', 'booking_details', 'operator_entries', 'customers', 'transactions', 'suppliers', 'fund_accounts', 'transactions_thenice', 'fund_accounts_thenice', 'hotels', 'hotel_price_schedules', 'service_price_schedules', 'tour_prices', 'users'];
 
         APP_DATA = { lists: {}, currentUser: {} };
 
-        // Primary flat indexes
         primaryColls.forEach((c) => {
             APP_DATA[c] = {};
         });
-
-        // Secondary grouped indexes
-        // DBManager.#INDEX_CONFIG.forEach(({ index }) => {
-        //   APP_DATA[index] = {};
-        // });
         return APP_DATA;
     }
 
@@ -1523,17 +1351,14 @@ class DBManager {
         return {};
     }
 
-    // ─── Sync Trigger ─────────────────────────────────────────────────────
     /**
      * Đồng bộ 1 booking_detail row sang collection operator_entries.
      * Tối ưu: Nếu chỉ cập nhật 1 vài field, kiểm tra xem item đã tồn tại chưa và lọc field hợp lệ.
      */
     async _syncOperatorEntry(detailRow, customerName = '') {
         try {
-            // ── 1. GUARD & PARSE DATA ──
             if (!detailRow) throw new Error('Dữ liệu detailRow bị trống.');
 
-            // Chuẩn hóa về Object ngay từ đầu
             const dataObj = this.#ensureObject(detailRow, 'booking_details');
 
             const id = String(dataObj.id || '');
@@ -1542,11 +1367,9 @@ class DBManager {
                 return { success: false, error: 'Invalid ID' };
             }
 
-            // ── 2. KIỂM TRA TỒN TẠI & LỌC FIELD (TỐI ƯU) ──
             const existingEntry = window.APP_DATA?.operator_entries?.[id];
-            const isPartialUpdate = Object.keys(dataObj).length < 10; // Giả định nếu truyền ít field là partial update
+            const isPartialUpdate = Object.keys(dataObj).length < 10;
 
-            // Danh sách các field được phép đồng bộ từ booking_details sang operator_entries
             const ALLOWED_SYNC_FIELDS = {
                 booking_id: 'booking_id',
                 customer_full_name: 'customer_full_name',
@@ -1566,11 +1389,9 @@ class DBManager {
             let hasValidField = false;
 
             if (isPartialUpdate && existingEntry) {
-                // Trường hợp cập nhật một vài field: Chỉ lấy các field hợp lệ có trong dataObj
                 for (const [bdField, opField] of Object.entries(ALLOWED_SYNC_FIELDS)) {
                     if (Object.prototype.hasOwnProperty.call(dataObj, bdField)) {
                         let val = dataObj[bdField];
-                        // Format data nếu cần
                         if (bdField === 'check_in' || bdField === 'check_out') val = val ? formatDateISO(val) : '';
                         if (bdField === 'quantity' || bdField === 'child_qty' || bdField === 'nights') val = Number(val) || 0;
                         if (bdField === 'total') val = Number(val) || 0;
@@ -1580,13 +1401,11 @@ class DBManager {
                     }
                 }
 
-                // Nếu không có field nào hợp lệ để update vào operator_entries thì bỏ qua
                 if (!hasValidField) {
                     if (this.#debug) L._(`[_syncOperatorEntry] ⏭️ Bỏ qua: Không có field hợp lệ để update cho ID ${id}`);
                     return { success: true, skipped: true };
                 }
             } else {
-                // Trường hợp Full Sync hoặc Item chưa tồn tại: Build đầy đủ syncData
                 let finalCustName = customerName || dataObj.customer_full_name || '';
                 if (!finalCustName.trim() && dataObj.booking_id) {
                     finalCustName = window.APP_DATA?.bookings?.[dataObj.booking_id]?.customer_full_name || '';
@@ -1609,10 +1428,8 @@ class DBManager {
                 };
             }
 
-            // Luôn cập nhật timestamp
             syncData.updated_at = serverTimestamp();
 
-            // ── 3. GHI FIRESTORE & LOCAL CACHE ──
             const res = await this.#firestoreCRUD('operator_entries', 'set', id, syncData, { merge: true });
             if (res.success) {
                 if (this.#debug) L._(`[_syncOperatorEntry] ✅ Synced ID: ${id}`, 'success');
@@ -1636,7 +1453,6 @@ class DBManager {
      */
     async syncOperatorEntriesByBookingId(bookingIds) {
         try {
-            // 1. Chuẩn hóa đầu vào (Biến đơn thành Mảng) - Quy tắc "Clean Input"
             const ids = Array.isArray(bookingIds) ? bookingIds : [bookingIds];
             const validIds = ids.filter((id) => id && String(id).trim() !== '');
 
@@ -1647,7 +1463,6 @@ class DBManager {
 
             L._(`[syncOperatorEntriesByBookingId] 🔄 Đang lọc details cho ${validIds.length} booking...`, 'info');
 
-            // 2. Tra cứu siêu tốc toàn bộ details thuộc booking từ APP_DATA (In-Memory Lookup)
             const allDetails = window.APP_DATA?.booking_details || {};
             const detailsToSync = Object.values(allDetails).filter((detail) => detail && detail.booking_id && validIds.includes(detail.booking_id));
 
@@ -1656,8 +1471,6 @@ class DBManager {
                 return { success: true, totalProcessed: 0, totalSuccess: 0 };
             }
 
-            // 3. Xử lý song song (Parallel execution) để tối đa hiệu năng
-            // [OPTIMIZATION] Chuyển sang dùng Batch Processing để tránh N+1 query
             const batchItems = detailsToSync.map((detail) => {
                 const dataObj = this.#ensureObject(detail, 'booking_details');
                 const id = String(dataObj.id || '');
@@ -1705,33 +1518,10 @@ class DBManager {
         }
     }
 
-    // ─── CHỐT CHẶN CRUD ──────────────────────────────────────────────────
-    /**
-     * Hàm chốt chặn DUY NHẤT thực hiện mọi thao tác ghi/xóa lên Firestore.
-     * KHÔNG gọi Firestore trực tiếp ở bất kỳ nơi nào khác — mọi CRUD đi qua đây.
-     *
-     * @param {string}  collectionName - Tên collection Firestore
-     * @param {'set'|'update'|'delete'|'increment'|'batch'|'transaction'|'arrayUnion'} action
-     * @param {string|null}  id   - Document ID (null nếu action = 'batch')
-     * @param {object|null}  data - Dữ liệu ghi (null khi delete/increment/batch)
-     * @param {object}  [options]
-     *   @param {boolean}  [options.merge=true]       - Dùng với action 'set', default true
-     *   @param {object}   [options.batchRef]          - External batch ref; nếu có thì chỉ gắn
-     *                                                   vào batch, KHÔNG tự commit
-     *   @param {string}   [options.fieldName]         - Tên field (chỉ dùng với 'increment'/'arrayUnion')
-     *   @param {array}   [options.arrayEntry=[]}    - Giá trị delta (chỉ dùng với 'arrayUnion')
-     *   @param {number}   [options.incrementBy=1]     - Giá trị delta (chỉ dùng với 'increment')
-     *   @param {{docId:string, docData?:object, op?:'set'|'update'|'delete'}[]} [options.items]
-     *                                                 - Danh sách items cho action 'batch';
-     *                                                   tự động chia batch ≤ 499 ops/commit
-     *   @param {boolean}  [options.useQueue=false]    - Nếu true, đẩy vào queue thay vì thực thi ngay
-     * @returns {Promise<{success:boolean, count?:number, error?:string}>}
-     */
     async #firestoreCRUD(collectionName, action, id = null, data = null, options = {}) {
         if (!this.#db) return { success: false, error: 'DB chưa init' };
         if (!collectionName) return { success: false, error: 'Thiếu collection' };
 
-        // ── [NEW] Queue Mechanism ───────────────────────────────────────────
         const queueableActions = ['set', 'update', 'delete', 'increment', 'arrayUnion'];
         if (options.useQueue && queueableActions.includes(action) && !options.batchRef) {
             return new Promise((resolve, reject) => {
@@ -1739,22 +1529,15 @@ class DBManager {
             });
         }
 
-        // ── Logging / Audit hook ────────────────────────────────────────────
         const actor = window.CURRENT_USER?.name ?? 'system';
         const target = id ? `${collectionName}/${id}` : collectionName;
 
-        // Chỉ thực hiện làm sạch dữ liệu cho các thao tác GHI (Write Actions)
         const writeActions = ['add', 'set', 'update', 'arrayUnion'];
         if (writeActions.includes(action)) {
             if (data) {
-                // [DEBUG] Log data trước khi clean
                 if (this.#debug) L._(`[CRUD DEBUG] Pre-clean data for ${target}:`, data);
-                // TẠM THỜI LOẠI BỎ cleanDataForFirestore THEO YÊU CẦU
-                // data = await this.cleanDataForFirestore(data);
             }
 
-            // Nếu sau khi làm sạch mà data bị null/undefined (do lỗi) hoặc falsy (ngoại trừ object rỗng {})
-            // Lưu ý: cleanDataForFirestore hiện tại trả về {} nếu bị lọc sạch, nên !data sẽ là false.
             if (data === null || data === undefined) {
                 L.log(`❌ [CRUD ERROR] Data đầu vào bị lỗi hoặc null tại ${target}`, 'firestoreCRUD', { severity: 'error', data: data });
                 throw new Error(`Dữ liệu đầu vào không hợp lệ khi chuẩn bị lưu vào ${collectionName}`);
@@ -1764,11 +1547,9 @@ class DBManager {
         if (data && typeof data === 'object' && !Array.isArray(data)) data.updated_by = actor;
         L._(`[CRUD] ${actor} | ${action.toUpperCase()} | ${target}`);
 
-        // ── Ghi nhận dữ liệu trước khi thay đổi (cho delete/update) ────────
         const originalData = id ? (APP_DATA?.[collectionName]?.[id] ?? null) : null;
 
         try {
-            // ── Nếu được truyền batchRef từ ngoài → gắn vào batch, KHÔNG commit ─
             if (options.batchRef) {
                 if (!id) return { success: false, error: 'Cần id khi dùng batchRef' };
                 const ref = doc(this.#db, collectionName, String(id));
@@ -1837,9 +1618,7 @@ class DBManager {
                     break;
                 }
 
-                // 2. GHI: ADD, SET, UPDATE, DELETE
                 case 'add': {
-                    // Modular SDK doesn't have collection().add(), use addDoc or setDoc with generated id
                     const ref = doc(collection(this.#db, collectionName));
                     await setDoc(ref, data);
                     data.id = ref.id;
@@ -1856,7 +1635,6 @@ class DBManager {
                     break;
                 }
 
-                // ── Cập nhật một phần (chỉ các field được truyền) ───────────
                 case 'update': {
                     if (!id) return { success: false, error: 'Cần id cho action update' };
                     const ref = doc(this.#db, collectionName, String(id));
@@ -1866,7 +1644,6 @@ class DBManager {
                     break;
                 }
 
-                // ── Xóa document ─────────────────────────────────────────────
                 case 'delete': {
                     if (!id) return { success: false, error: 'Cần id cho action delete' };
                     await deleteDoc(doc(this.#db, collectionName, String(id)));
@@ -1875,7 +1652,6 @@ class DBManager {
                     break;
                 }
 
-                // ── Tăng/giảm giá trị một field ──────────────────────────────
                 case 'increment': {
                     if (!id) return { success: false, error: 'Cần id cho action increment' };
                     if (!options.fieldName) return { success: false, error: 'Thiếu options.fieldName' };
@@ -1883,7 +1659,6 @@ class DBManager {
                     await updateDoc(ref, {
                         [options.fieldName]: increment(options.incrementBy ?? 1),
                     });
-                    // Buộc phải GET lại để biết con số chính xác là bao nhiêu để ghi xuống LocalDB
                     const incDoc = await getDoc(ref);
                     const finalData = { id: incDoc.id, ...incDoc.data() };
                     await this.#gatekeepSyncToLocal(collectionName, id, 'u', finalData);
@@ -1902,13 +1677,10 @@ class DBManager {
                     break;
                 }
 
-                // ── Ghi/xóa hàng loạt (tự tạo và commit batch, chia nhỏ ≤499) ─
                 case 'batch': {
                     const items = options.items ?? [];
                     if (items.length === 0) return { success: true, count: 0 };
 
-                    // Batch lớn (≥200): đính kèm batch_id vào mỗi doc để máy nhận
-                    // biết phạm vi thay đổi và tự fetch từ server thay vì apply inline.
                     const NOTIF_INLINE_LIMIT = 200;
                     const isLargeBatch = items.length >= NOTIF_INLINE_LIMIT;
                     const batchId = isLargeBatch ? `${collectionName}_batch_${Date.now()}` : null;
@@ -1918,12 +1690,9 @@ class DBManager {
                     let opCount = 0;
                     let totalCommitted = 0;
 
-                    // MẢNG THU THẬP CHO GATEKEEPER
                     const syncItems = [];
 
                     for (const i of items) {
-                        // TẠM THỜI LOẠI BỎ cleanDataForFirestore THEO YÊU CẦU
-                        // const item = await this.cleanDataForFirestore(i);
                         const item = i;
                         if (!item || !item.docId) {
                             L.log('⚠️ [Batch] Bỏ qua item không hợp lệ hoặc thiếu docId:', i);
@@ -1936,7 +1705,6 @@ class DBManager {
                             item.docData.updated_by = actor;
                         }
 
-                        // Nhúng batch_id vào các doc được ghi (không phải delete) khi batch lớn
                         const docData = isLargeBatch && op !== 'delete' && item.docData ? { ...item.docData, batch_id: batchId } : item.docData;
 
                         if (op === 'set') firestoreBatch.set(ref, docData, { merge: options.merge ?? true });
@@ -1945,11 +1713,9 @@ class DBManager {
 
                         opCount++;
 
-                        // Ánh xạ sang chuẩn của Gatekeeper: action (s/u/d)
                         const gkAction = op === 'delete' ? 'd' : op === 'set' ? 's' : 'u';
                         syncItems.push({ coll: collectionName, id: docIdStr, action: gkAction, data: docData });
 
-                        // Commit chunk nếu đạt giới hạn
                         if (opCount >= BATCH_LIMIT) {
                             await firestoreBatch.commit();
                             totalCommitted += opCount;
@@ -1958,7 +1724,6 @@ class DBManager {
                         }
                     }
 
-                    // Commit phần lẻ còn lại
                     if (opCount > 0) {
                         await firestoreBatch.commit();
                         totalCommitted += opCount;
@@ -1966,12 +1731,8 @@ class DBManager {
 
                     await this.#gatekeepSyncToLocal(null, null, null, null, true, syncItems);
 
-                    // ── Tạo notification (fire-and-forget) báo cho các máy khác ─────────
                     if (collectionName !== 'notifications') {
                         const notifId = `${collectionName}_batch_notif_${Date.now()}`;
-                        // Batch nhỏ: gửi full list → máy nhận apply inline
-                        // Batch lớn: chỉ gửi batch_id → máy nhận tự fetch server
-                        // [FIX] serverTimestamp() không được hỗ trợ trong mảng. Chuyển sang Date.now() cho payload notification.
                         const sanitizePayload = (data) => {
                             if (!data || typeof data !== 'object') return data;
                             const cleaned = { ...data };
@@ -2006,7 +1767,6 @@ class DBManager {
                         setDoc(doc(this.#db, 'notifications', notifId), batchNotif, { merge: false }).catch((e) => L.log('⚠️ Không thể tạo batch notification:', e));
                     }
 
-                    // ── Ghi booking history cho batch (fire-and-forget) ─────────
                     if (typeof this.#recordBatchBookingHistory === 'function') {
                         this.#recordBatchBookingHistory(collectionName, items, window.CURRENT_USER?.name || 'System');
                     }
@@ -2015,9 +1775,7 @@ class DBManager {
                     break;
                 }
 
-                // 5. TRANSACTION (Logic phức tạp có Read & Write)
                 case 'transaction': {
-                    // options.transactionFn trả về mảng các items đã bị thay đổi để sync
                     const txResultItems = await runTransaction(this.#db, async (transaction) => {
                         return await options.transactionFn(transaction, this.#db);
                     });
@@ -2033,16 +1791,12 @@ class DBManager {
                     return { success: false, error: `Action không hợp lệ: "${action}"` };
             }
 
-            // ── Tạo notification data-change (fire-and-forget) ──────────────
-            // Bỏ qua khi: ghi vào 'notifications' (tránh vòng lặp vô tận)
-            //             hoặc action='batch' (đã xử lý notification ngay trong case 'batch')
             const noUpdateColls = ['notifications', 'counters_id', 'app_config'];
             if (!noUpdateColls.includes(collectionName) && action !== 'batch') {
                 const actionCode = { set: 's', update: 'u', delete: 'd', increment: 'i' }[action] ?? action;
                 const notifId = `${collectionName}_${id ?? 'x'}_${Date.now()}`;
                 const now = serverTimestamp();
 
-                // [FIX] serverTimestamp() không được hỗ trợ trong mảng/object lồng nhau của notification payload
                 const sanitizePayload = (data) => {
                     if (!data || typeof data !== 'object') return data;
                     const cleaned = { ...data };
@@ -2070,7 +1824,6 @@ class DBManager {
                 setDoc(doc(this.#db, 'notifications', notifId), notifDoc, { merge: false }).catch((e) => L.log('⚠️ Không thể tạo notification:', e));
             }
 
-            // Ghi booking history (skip transactions không xác định được booking_id)
             if (DBManager.#HISTORY_COLLS.has(collectionName) && action !== 'arrayUnion') {
                 const skipHistory = collectionName === 'transactions' && !originalData?.booking_id && !data?.booking_id;
                 if (!skipHistory) this.#recordBookingHistory(collectionName, action, id, data, actor, originalData);
@@ -2083,18 +1836,11 @@ class DBManager {
         }
     }
 
-    // ─── [NEW] Queue & Batching Implementation ──────────────────────────
-
-    /**
-     * Thêm một thao tác vào hàng đợi xử lý lô.
-     * @param {Object} item - Thao tác cần thực hiện
-     */
     #addToQueue(item) {
         this.#writeQueue.push(item);
 
         if (this.#flushTimer) clearTimeout(this.#flushTimer);
 
-        // Nếu queue đạt giới hạn, flush ngay lập tức
         if (this.#writeQueue.length >= this.#maxBatchSize) {
             this.#flushQueue();
         } else {
@@ -2115,7 +1861,6 @@ class DBManager {
         L._(`🚀 [Queue] Flushing ${currentQueue.length} operations...`);
 
         try {
-            // Gom nhóm theo collection để tối ưu hóa batch notification
             const collGroups = {};
             currentQueue.forEach((item) => {
                 if (!collGroups[item.collectionName]) collGroups[item.collectionName] = [];
@@ -2123,17 +1868,14 @@ class DBManager {
             });
 
             for (const [collName, items] of Object.entries(collGroups)) {
-                // Chuyển đổi items sang định dạng của case 'batch'
                 const batchItems = items.map((item) => ({
                     docId: item.id,
                     docData: item.data,
                     op: item.action === 'increment' || item.action === 'arrayUnion' ? 'update' : item.action,
                 }));
 
-                // Thực thi batch thông qua #firestoreCRUD (để tận dụng logic sync local & notification)
                 const res = await this.#firestoreCRUD(collName, 'batch', null, null, { items: batchItems });
 
-                // Resolve/Reject các promise ban đầu
                 items.forEach((item) => {
                     if (res.success) item.resolve(res);
                     else item.reject(new Error(res.error));
@@ -2141,12 +1883,11 @@ class DBManager {
             }
         } catch (error) {
             L.log('❌ [Queue] Flush failed:', error);
-            // Reject tất cả nếu có lỗi nghiêm trọng
             currentQueue.forEach((item) => item.reject(error));
         } finally {
             this.#isFlushing = false;
             if (this.#writeQueue.length > 0) {
-                this.#flushQueue(); // Tiếp tục flush nếu có item mới vào trong lúc đang flush
+                this.#flushQueue();
             }
         }
     }
@@ -2178,11 +1919,9 @@ class DBManager {
      * @returns {boolean}
      */
     #shouldRecordHistory(collectionName, action, data, originalData) {
-        // Luôn ghi khi TẠO MỚI hoặc XÓA
         const isNew = (action === 'set' || action === 'add') && !originalData;
         if (isNew || action === 'delete') return true;
 
-        // Đối với CẬP NHẬT: Chỉ ghi khi đổi total_amount hoặc deposit_amount
         if (action === 'update' || action === 'set' || action === 'increment') {
             if (collectionName === 'bookings' && originalData && data) {
                 const hasTotalChanged = Object.prototype.hasOwnProperty.call(data, 'total_amount') && String(data.total_amount) !== String(originalData.total_amount);
@@ -2204,7 +1943,6 @@ class DBManager {
      */
     #resolveBookingId(collectionName, id, data, originalData) {
         if (collectionName === 'bookings') return id;
-        // Lấy từ data trước, fallback về APP_DATA (cho delete khi data=null)
         return data?.booking_id ?? originalData?.booking_id ?? APP_DATA?.[collectionName]?.[id]?.booking_id ?? null;
     }
 
@@ -2241,7 +1979,6 @@ class DBManager {
             }
         }
 
-        // Đối với TẠO MỚI / XÓA: Trả về tên collection và ID
         const collLabel = { bookings: 'Booking', booking_details: 'Dịch Vụ', transactions: 'Thanh Toán' }[collectionName] ?? collectionName;
         return `${collLabel} ${id || ''}`;
     }
@@ -2260,7 +1997,6 @@ class DBManager {
         try {
             if (action === 'get' || action === 'batch') return;
 
-            // Kiểm tra điều kiện ghi log
             if (!this.#shouldRecordHistory(collectionName, action, data, originalData)) return;
 
             const bookingId = this.#resolveBookingId(collectionName, id, data, originalData);
@@ -2286,7 +2022,7 @@ class DBManager {
             if (!DBManager.#HISTORY_COLLS.has(collectionName)) return;
             if (!items || items.length === 0) return;
 
-            const grouped = new Map(); // bookingId → entries[]
+            const grouped = new Map();
             for (const item of items) {
                 const originalData = APP_DATA?.[collectionName]?.[item.docId] ?? null;
                 const action = item.op ?? 'set';
@@ -2344,7 +2080,6 @@ class DBManager {
     #appendBookingHistory(bookingId, entry) {
         if (!this.#db || !bookingId || !entry) return;
 
-        // Đảm bảo entry là string để tránh lỗi array of characters
         const finalEntry = String(entry);
 
         this.#firestoreCRUD('bookings', 'arrayUnion', bookingId, finalEntry, {
@@ -2366,8 +2101,6 @@ class DBManager {
         const entry = this.#formatHistoryEntry(detail, bookingId, actor);
         this.#appendBookingHistory(bookingId, entry);
     }
-
-    // ─── CRUD ─────────────────────────────────────────────────────────────
 
     getCollection = async (collectionName, docId) => {
         let snap;
@@ -2408,18 +2141,15 @@ class DBManager {
     saveRecord = async (collectionName, dataArray, isBatch = false, batchRef = null) => {
         let isNew = false;
 
-        // 1. Chuẩn hóa dữ liệu đầu vào (Enforce Object)
         const dataObj = this.#ensureObject(dataArray, collectionName);
 
         let docId = collectionName === 'users' ? dataObj.uid : dataObj.id;
 
-        // 2. Tạo ID nếu chưa có (Bỏ qua placeholder từ Schema)
         const idStr = String(docId || '')
             .trim()
             .toLowerCase();
         const isPlaceholderId = !idStr || idStr === 'id dv' || idStr === 'auto-generated' || idStr === 'undefined' || idStr === 'null';
 
-        // CHỈ tạo ID mới nếu KHÔNG phải đang trong batch (vì batchSave đã lo việc cấp ID đồng loạt)
         if (!isBatch && isPlaceholderId) {
             let bookingId = dataObj.booking_id || null;
 
@@ -2434,7 +2164,6 @@ class DBManager {
                 dataObj.id = docId;
             }
 
-            // Cập nhật ngược lại mảng đầu vào nếu có (để UI đồng bộ ID)
             if (Array.isArray(dataArray)) dataArray[0] = docId;
             isNew = true;
         }
@@ -2444,30 +2173,25 @@ class DBManager {
             return { success: false, message: 'Missing ID' };
         }
 
-        // 3. Làm sạch dữ liệu trước khi gửi lên Firebase (Firebase cực ghét value undefined)
         dataObj.updated_at = serverTimestamp();
         Object.keys(dataObj).forEach((key) => dataObj[key] === undefined && delete dataObj[key]);
 
-        // 4. Lưu dữ liệu
         if (isBatch && batchRef) {
             return this.#firestoreCRUD(collectionName, 'set', docId, dataObj, { batchRef, merge: true });
         }
 
         try {
-            // [OPTIMIZATION] Sử dụng Queue cho các thao tác ghi đơn lẻ để tránh high-frequency triggers
             const writeResult = await this.#firestoreCRUD(collectionName, 'set', docId, dataObj, { useQueue: true });
 
-            // Cập nhật APP_DATA ngay lập tức để các module khác (như Accountant) có thể tìm thấy record vừa tạo
             this._updateAppDataObj(collectionName, dataObj);
 
-            // 5. Hệ thống Notification
             if (collectionName === 'booking_details') {
                 await this._syncOperatorEntry(dataObj);
                 if (!isNew) {
                     window.NotificationManager.sendToOperator(`Booking Detail ${dataObj.id} cập nhật!`, `Khách: ${dataObj.customer_full_name || 'Unknown'} cập nhật DV ${dataObj.service_name || 'Unknown'}`);
                 }
             }
-            return { success: true, id: docId, data: dataObj }; // FIX: Trả thêm data để logic bên ngoài tái sử dụng
+            return { success: true, id: docId, data: dataObj };
         } catch (e) {
             console.error('Save Error:', e);
             if (this.batchCounterUpdates && this.batchCounterUpdates[collectionName]) {
@@ -2481,10 +2205,8 @@ class DBManager {
     batchSave = async (collectionName, dataArrayList) => {
         if (!dataArrayList || dataArrayList.length === 0) return;
 
-        // ── 0. Chuẩn hóa toàn bộ danh sách về Object ──────────────────────
         const objectList = dataArrayList.map((item) => this.#ensureObject(item, collectionName));
 
-        // ── 1. Customer name lookup ───────────────────────────────────────
         let customerName = '';
         const firstItem = objectList[0];
         const bkId = firstItem.booking_id;
@@ -2495,7 +2217,6 @@ class DBManager {
             else L._('Booking not found ' + bkId);
         }
 
-        // ── 2. Pre-generate IDs ───────────────────────────────────────────
         this.batchCounterUpdates = {};
         const itemsNeedingId = objectList.filter((obj) => {
             const id = String(obj.id || '').trim();
@@ -2522,7 +2243,6 @@ class DBManager {
                     obj.id = ids[i];
                 });
             }
-            // Cập nhật ngược lại mảng đầu vào (để UI đồng bộ ID)
             dataArrayList.forEach((original, i) => {
                 if (Array.isArray(original)) original[0] = objectList[i].id;
                 else if (original && typeof original === 'object') original.id = objectList[i].id;
@@ -2530,7 +2250,6 @@ class DBManager {
             L._(`🆔 Pre-generated ${itemsNeedingId.length} IDs for ${collectionName}`);
         }
 
-        // ── 3. Batch save (chunks of 450) ────────────────────────────────
         const batchSize = 450;
         const chunks = [];
         for (let i = 0; i < objectList.length; i += batchSize) chunks.push(objectList.slice(i, i + batchSize));
@@ -2539,7 +2258,6 @@ class DBManager {
         const detailsForTrigger = [];
 
         for (const chunk of chunks) {
-            // [OPTIMIZATION] Sử dụng #firestoreCRUD action 'batch' trực tiếp để tối ưu hóa
             const batchItems = chunk.map((obj) => {
                 if (collectionName === 'booking_details') detailsForTrigger.push(obj);
                 obj.updated_at = serverTimestamp();
@@ -2558,14 +2276,11 @@ class DBManager {
         }
         this.batchCounterUpdates = {};
 
-        // ── 5. Trigger operator sync ──────────────────────────────────────
         if (collectionName === 'booking_details' && detailsForTrigger.length > 0) {
-            // [OPTIMIZATION] Sử dụng syncOperatorEntriesByBookingId để sync hàng loạt thay vì gọi lẻ
             const bookingIds = [...new Set(detailsForTrigger.map((d) => d.booking_id))];
             await this.syncOperatorEntriesByBookingId(bookingIds);
         }
 
-        // ── 5. Ghi booking history ────────────────────────────────────────
         if (DBManager.#HISTORY_COLLS.has(collectionName) && totalSuccess > 0) {
             const actor = window.CURRENT_USER?.name ?? 'system';
             const historyItems = objectList.map((obj) => ({
@@ -2585,7 +2300,6 @@ class DBManager {
         }
         if (!id) return;
         try {
-            // [OPTIMIZATION] Sử dụng Queue cho delete
             const res = await this.#firestoreCRUD(collectionName, 'delete', id, null, { useQueue: true });
 
             if (collectionName === 'booking_details') {
@@ -2624,7 +2338,7 @@ class DBManager {
             const res = await this.#firestoreCRUD(collectionName, 'increment', docId, null, {
                 fieldName,
                 incrementBy,
-                useQueue: true, // [OPTIMIZATION]
+                useQueue: true,
             });
             return res.success;
         } catch (e) {
@@ -2640,7 +2354,7 @@ class DBManager {
         try {
             const res = await this.#firestoreCRUD(collectionName, 'arrayUnion', docId, array, {
                 fieldName: fieldName,
-                useQueue: true, // [OPTIMIZATION]
+                useQueue: true,
             });
             return res.success;
         } catch (e) {
@@ -2758,8 +2472,6 @@ class DBManager {
         return null;
     };
 
-    // ─── Queries ──────────────────────────────────────────────────────────
-
     runQuery = async (collectionName, fieldName, operator, value, fieldOrder = null, lim = null) => {
         if (!this.#db) {
             console.error('❌ DB chưa init');
@@ -2782,16 +2494,13 @@ class DBManager {
         }
     };
 
-    // ─── ID Generation ────────────────────────────────────────────────────
-
     /**
      * Sinh N IDs liên tiếp cho 1 collection — chỉ đọc counter 1 lần và ghi 1 lần.
-     * Dùng thay cho gọi generateIds() N lần trong batchSave.
      *
      * @param {string} collectionName
-     * @param {number} count           - Số lượng IDs cần sinh
-     * @param {string|null} bookingId  - Chỉ dùng cho booking_details (xác định prefix)
-     * @returns {Promise<string[]>}    - Mảng IDs theo thứ tự
+     * @param {number} count
+     * @param {string|null} bookingId
+     * @returns {Promise<string[]>}
      */
     generateIdsBatch = async (collectionName, count, bookingId = null) => {
         if (!this.#db || count <= 0) return [];
@@ -2799,7 +2508,7 @@ class DBManager {
         const counterRef = doc(this.#db, 'counters_id', collectionName);
 
         try {
-            const counterSnap = await getDoc(counterRef); // ★ 1 read duy nhất
+            const counterSnap = await getDoc(counterRef);
             let lastNo = 0;
             let prefix = '';
             let useRandomId = false;
@@ -2809,9 +2518,7 @@ class DBManager {
                 else prefix = counterSnap.data().prefix || '';
                 lastNo = Number(counterSnap.data().last_no) || 0;
             } else {
-                // Fallback prefix cho booking_details nếu không có counter
                 if (collectionName === 'booking_details') prefix = bookingId ? `${bookingId}_` : '';
-                // Suy ra lastNo từ doc mới nhất (giống generateIds)
                 try {
                     const q = query(collection(this.#db, collectionName), orderBy('id', 'desc'), limit(1));
                     const latestSnap = await getDocs(q);
@@ -2843,7 +2550,6 @@ class DBManager {
                 }
             }
 
-            // Sinh N IDs trong memory
             const ids = [];
             for (let i = 0; i < count; i++) {
                 if (useRandomId) {
@@ -2854,7 +2560,6 @@ class DBManager {
                 }
             }
 
-            // ★ 1 write duy nhất — cập nhật counter về giá trị cuối cùng
             if (!useRandomId) {
                 await this._updateCounter(collectionName, lastNo);
             }
@@ -2881,7 +2586,6 @@ class DBManager {
             let prefix = '';
             let useRandomId = false;
 
-            // TRƯỜNG HỢP 1: Có cấu hình counter trong DB
             if (counterSnap.exists()) {
                 const data = counterSnap.data();
                 if (collectionName === 'booking_details') {
@@ -2890,15 +2594,13 @@ class DBManager {
                     prefix = data.prefix || '';
                 }
 
-                // FIX: Ép kiểu an toàn, mặc định là 0 nếu dữ liệu DB bị lỗi (undefined/null/"")
                 lastNo = Number(data.last_no) || 0;
 
                 if (lastNo > 0) {
                     await this._updateCounter(collectionName, lastNo + 1);
                 }
             }
-            // TRƯỜNG HỢP 2: Fallback - Tìm document mới nhất để tự suy luận ID
-            else {
+            } else {
                 if (collectionName === 'booking_details') prefix = bookingId ? `${bookingId}_` : '';
                 try {
                     const q = query(collection(this.#db, collectionName), orderBy('id', 'desc'), limit(1));
@@ -2907,12 +2609,11 @@ class DBManager {
                     if (!latestSnap.empty) {
                         const latestId = String(latestSnap.docs[0].id || '').trim();
 
-                        // FIX: Dùng Regex tìm chính xác tất cả các chữ số nằm ở CUỐI chuỗi (VD: BK-2023 -> 2023)
                         const match = latestId.match(/(\d+)$/);
 
                         if (match) {
                             lastNo = parseInt(match[1], 10);
-                            prefix = latestId.substring(0, match.index); // Lấy phần chữ làm prefix
+                            prefix = latestId.substring(0, match.index);
                         } else {
                             useRandomId = true;
                         }
@@ -2921,11 +2622,10 @@ class DBManager {
                     }
                 } catch (e) {
                     L.log(`⚠️ Cảnh báo: Không thể suy luận lastNo cho ${collectionName}:`, e.message);
-                    useRandomId = true; // Rơi vào fallback an toàn nhất
+                    useRandomId = true;
                 }
             }
 
-            // XỬ LÝ KẾT QUẢ CUỐI CÙNG
             const newNo = lastNo + 1;
             let newId = '';
 
@@ -2995,8 +2695,6 @@ class DBManager {
         }
     };
 
-    // ─── Internal Helpers ─────────────────────────────────────────────────
-
     async _updateCounter(collectionName, newNo) {
         try {
             const res = await this.#firestoreCRUD('counters_id', 'set', collectionName, {
@@ -3012,12 +2710,10 @@ class DBManager {
     _updateAppDataObj(collectionName, dataObj) {
         if (!APP_DATA || !dataObj?.id) return;
 
-        // Đảm bảo collection tồn tại trong APP_DATA để tránh lỗi "Cannot read properties of undefined"
         if (!APP_DATA[collectionName]) {
             APP_DATA[collectionName] = {};
         }
 
-        // 1. Merge dữ liệu để bảo toàn Delta Update
         const current = APP_DATA[collectionName][dataObj.id] || {};
         const merged = { ...current, ...dataObj };
         APP_DATA[collectionName][dataObj.id] = merged;
@@ -3025,9 +2721,7 @@ class DBManager {
 
     _removeFromAppDataObj(collectionName, id) {
         if (!APP_DATA?.[collectionName]?.[id]) return;
-        const docData = APP_DATA[collectionName][id];
 
-        // 1. Xóa khỏi Primary Memory
         delete APP_DATA[collectionName][id];
     }
 
@@ -3040,9 +2734,6 @@ class DBManager {
     };
 
     async handleDeleteBooking(bookingId) {
-        // 1. (Tùy chọn) Frontend check IndexedDB để khóa UI ở đây...
-
-        // 2. Xác nhận lại người dùng
         const confirm = await Swal.fire({
             title: 'Bạn có chắc chắn muốn xóa?',
             text: 'Hành động này không thể hoàn tác!',
@@ -3054,22 +2745,16 @@ class DBManager {
         if (!confirm.isConfirmed) return;
 
         try {
-            // Show loading
             Swal.showLoading();
 
-            // 3. Khởi tạo Callable Function (Modular)
             const functions = getFunctions(getApp(), 'asia-southeast1');
             const deleteBookingCall = httpsCallable(functions, 'deleteBooking');
 
-            // 4. Gọi hàm và truyền tham số lên Server
             const result = await deleteBookingCall({ bookingId: bookingId });
 
-            // 5. Xử lý thành công
             Swal.fire('Thành công!', result.data.message, 'success');
 
-            // TOD0: Viết hàm cập nhật lại UI, xóa booking khỏi IndexedDB (APP_DATA) và render lại bảng
             this.#gatekeepSyncToLocal('bookings', bookingId, 'd');
-            // Nếu có bảng booking_details, cũng xóa các details liên quan khỏi APP_DATA và render lại
             if (APP_DATA?.booking_details) {
                 Object.values(APP_DATA.booking_details)
                     .filter((detail) => detail.booking_id === bookingId)
@@ -3084,7 +2769,6 @@ class DBManager {
         } catch (error) {
             console.error('Lỗi xóa Booking:', error);
 
-            // Bắt lỗi HttpsError từ Backend ném về (Ví dụ: Lỗi cọc, lỗi Level...)
             Swal.fire({
                 icon: 'error',
                 title: 'Từ chối thao tác',
@@ -3098,110 +2782,7 @@ class DBManager {
     }
 }
 
-// class DataMigration {
-//   constructor() {
-//     this.db = DBManager.db || getFirestore(getApp());
-//   }
-
-//   /**
-//    * Migrate a single collection from local storage to server (emulator)
-//    * @param {string} collectionName
-//    * @returns {Promise<{success: number, failed: number, total: number}>}
-//    */
-//   async migrateCollection(collectionName) {
-//     const stats = { success: 0, failed: 0, total: 0 };
-//     if (!this.db) {
-//       this.db = DBManager.db || getFirestore(getApp());
-//     }
-
-//     try {
-//       if (typeof L !== 'undefined') L._(`Bắt đầu migration collection: ${collectionName}`, null, 'info');
-//       else console.log(`[${this.context}] Bắt đầu migration collection: ${collectionName}`);
-
-//       // 1. Đọc dữ liệu từ Local Storage (IndexedDB) thông qua DBManager.local
-//       // Giả sử DB_MANAGER đã được khởi tạo và có thuộc tính local (DBLocalStorage)
-//       const dataMap = await DB_MANAGER.local.getAllAsObject(collectionName);
-//       const items = Object.values(dataMap || {});
-//       stats.total = items.length;
-
-//       if (stats.total === 0) {
-//         const msg = `Collection ${collectionName} không có dữ liệu trong local storage.`;
-//         if (typeof L !== 'undefined') L._(msg, null, 'warning');
-//         else console.warn(`[${this.context}] ${msg}`);
-//         return stats;
-//       }
-
-//       // 2. Tạo collection firestore giả lập trước khi up data nếu cần thiết
-//       // Trong Firestore, collection được tạo tự động khi có document đầu tiên.
-//       // Tuy nhiên, ta có thể đảm bảo bằng cách ghi một doc dummy nếu cần,
-//       // nhưng ở đây ta sẽ dùng batchSave để đẩy data lên.
-
-//       // 3. Dùng DBManager.batchSave để lưu vào emulator/server
-//       // batchSave nhận mảng các object và tự xử lý chunking (450 items/batch)
-//       const res = await DB_MANAGER.batchSave(collectionName, items);
-
-//       if (res.success) {
-//         stats.success = res.count;
-//         stats.failed = stats.total - res.count;
-//       } else {
-//         stats.failed = stats.total;
-//       }
-
-//       const resultMsg = `Hoàn thành ${collectionName}: Thành công ${stats.success}/${stats.total}, Thất bại ${stats.failed}`;
-//       if (typeof L !== 'undefined') L._(resultMsg, stats.success === stats.total ? 'success' : 'warning');
-//       else console.log(`[${this.context}] ${resultMsg}`);
-//     } catch (error) {
-//       if (typeof Opps === 'function') Opps(`Lỗi nghiêm trọng khi migrate collection ${collectionName}`, error);
-//       else console.error(`[${this.context}] Lỗi migrate collection ${collectionName}:`, error);
-//     }
-
-//     return stats;
-//   }
-
-//   /**
-//    * Migrate multiple collections
-//    * @param {string[]} collections
-//    */
-//   async migrateAll(collections = []) {
-//     if (!this.db) {
-//       this.db = DBManager.db || getFirestore(getApp());
-//     }
-//     if (!Array.isArray(collections) || collections.length === 0) {
-//       if (typeof L !== 'undefined') L._('Danh sách collection trống', null, 'warning');
-//       return;
-//     }
-
-//     if (typeof L !== 'undefined') L._(`Bắt đầu migrate ${collections.length} collections...`, null, 'info');
-
-//     const overallStats = { success: 0, failed: 0, totalDocs: 0 };
-
-//     for (const colName of collections) {
-//       const res = await this.migrateCollection(colName);
-//       overallStats.totalDocs += res.total;
-//       overallStats.success += res.success;
-//       overallStats.failed += res.failed;
-//     }
-
-//     const finalMsg = `TỔNG KẾT MIGRATION: Đã xử lý ${overallStats.totalDocs} tài liệu. Thành công: ${overallStats.success}, Thất bại: ${overallStats.failed}`;
-//     if (typeof logA === 'function') {
-//       logA(finalMsg, overallStats.failed === 0 ? 'success' : 'warning', 'alert');
-//     } else {
-//       alert(finalMsg);
-//     }
-//   }
-// }
-
-// ─── Singleton Export ─────────────────────────────────────────────────────
-// Tự động khởi chạy khi import — chờ auth ready rồi mới init Firestore.
-// Để override config: thay `new DBManager()` bằng `new DBManager({ persistence: false, ... })`
+// Singleton Export
 const DB_MANAGER = new DBManager();
-// Export instance mặc định
-
-// async function handleMigration() {
-//   const migrator = new DataMigration();
-//   const collections = ['bookings', 'booking_details', 'operator_entries', 'customers', 'users', 'app_config', 'hotels', 'hotel_price_schedules', 'service_price_schedules', 'fund_accounts', 'transactions', 'suppliers', 'notifications', 'tour_prices'];
-//   await migrator.migrateAll(collections);
-// }
-// window.handleMigration = handleMigration;
 
 export default DB_MANAGER;

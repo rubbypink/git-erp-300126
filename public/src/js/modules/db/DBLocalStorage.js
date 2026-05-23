@@ -12,19 +12,17 @@ import Dexie from 'dexie';
  * Helper: Parse DB_SCHEMA thành Dexie Schema Format
  */
 function buildDexieSchema() {
-    // 1. Các table hệ thống và table bổ sung (Fix lỗi InvalidTableError)
     const dexieSchema = {
         _sync_meta: 'id',
         notifications: 'id, created_at, type',
         app_config: 'id',
-        'app_config/general/settings': 'id', // Cache ngôn ngữ/cấu hình
-        notification_dedup: 'id, processed_at', // Cache chống lặp thông báo (Thêm index processed_at)
-        counters_id: 'id', // Cache bộ đếm ID
+        'app_config/general/settings': 'id',
+        notification_dedup: 'id, processed_at',
+        counters_id: 'id',
         ai_prices: 'id',
         selling_prices: 'id',
     };
 
-    // 2. Load các table từ DB_SCHEMA
     for (const [collName, collDef] of Object.entries(DB_SCHEMA)) {
         if (collDef.isSecondaryIndex || typeof collDef === 'function') continue;
 
@@ -71,9 +69,6 @@ class IndexedDBHelper {
         this.defaultTTL = 360;
     }
 
-    // ==========================================
-    // MODULE: INIT & AUTO-RECOVERY
-    // ==========================================
     async initDB() {
         if (this.#initPromise) return this.#initPromise;
         if (this.db.isOpen()) return true;
@@ -93,7 +88,6 @@ class IndexedDBHelper {
             await this._loadSyncMeta();
             return true;
         } catch (error) {
-            // Tự động dọn dẹp & sửa lỗi khi có xung đột Schema từ bản cũ
             const isUpgradeError = error.name === 'UpgradeError' || error.inner?.name === 'UpgradeError' || error.message.includes('primary key');
 
             if (isUpgradeError) {
@@ -130,9 +124,6 @@ class IndexedDBHelper {
         }
     }
 
-    // ==========================================
-    // MODULE: META & TTL TRACKING
-    // ==========================================
     getMeta(key) {
         return this.#syncMeta[key] ?? null;
     }
@@ -156,24 +147,18 @@ class IndexedDBHelper {
         return (collections ?? []).filter((c) => !this.isSynced(c));
     }
 
-    // ==========================================
-    // MODULE: SILENT ERROR HANDLER
-    // ==========================================
     /**
      * Chặn không cho các lỗi Bảng Không Tồn Tại in ra console
      * Giúp console sạch sẽ, trả về fallback an toàn.
      */
     _handleError(error, operation, storeName, fallbackValue) {
         if (error.name === 'InvalidTableError' || error.message?.includes('does not exist')) {
-            return fallbackValue; // Trả về an toàn, không in lỗi
+            return fallbackValue;
         }
         console.error(`[ERP Dexie] ${operation} tại ${storeName}:`, error);
         return fallbackValue;
     }
 
-    // ==========================================
-    // MODULE: BACKGROUND SYNC
-    // ==========================================
     async autoSync(collectionNames, fetcherFn, roleCollections = null) {
         if (!collectionNames?.length || typeof fetcherFn !== 'function') return;
         if (!this.db.isOpen()) await this.initDB();
@@ -192,15 +177,10 @@ class IndexedDBHelper {
                 if (docs?.length > 0) await this.putBatch(collection, docs);
                 this.markSynced(collection);
             } catch (error) {
-                // Bỏ qua lỗi autoSync cho từng bảng
             }
         });
         await Promise.allSettled(syncTasks);
     }
-
-    // ==========================================
-    // MODULE: DEXIE CRUD (SIÊU TỐC ĐỘ & BẢO TOÀN LỖI)
-    // ==========================================
 
     async get(storeName, id) {
         try {
@@ -288,10 +268,6 @@ class IndexedDBHelper {
         }
     }
 
-    // ==========================================
-    // MODULE: ADVANCED QUERY HELPERS
-    // ==========================================
-
     async count(storeName) {
         try {
             if (!this.db.isOpen()) await this.initDB();
@@ -316,7 +292,6 @@ class IndexedDBHelper {
                 const query = table.where(fieldName).equals(value);
                 return isSingle ? await query.first() : await query.toArray();
             } catch (indexError) {
-                // Fallback: Nếu không khai báo Index, âm thầm chuyển sang scan filter
                 const collection = table.filter((doc) => doc[fieldName] === value);
                 return isSingle ? await collection.first() : await collection.toArray();
             }
@@ -375,7 +350,6 @@ class IndexedDBHelper {
                 }
                 return isSingle ? await collection.first() : await collection.toArray();
             } catch (indexError) {
-                // Fallback: Scan filter nếu thiếu Index hoặc lỗi query index
                 const collection = table.filter((doc) => {
                     const val = doc[fieldName];
                     if (startValue != null && endValue != null) return val >= startValue && val <= endValue;
@@ -389,10 +363,6 @@ class IndexedDBHelper {
             return this._handleError(error, `findRange (${fieldName})`, storeName, isSingle ? null : []);
         }
     }
-
-    // ==========================================
-    // NEW MODULE: ENHANCED UTILITIES (9TRIP ERP)
-    // ==========================================
 
     /**
      * Cập nhật một phần dữ liệu (Patch)
@@ -421,21 +391,18 @@ class IndexedDBHelper {
             if (!this.db.isOpen()) await this.initDB();
             let collection = this.db.table(storeName);
 
-            // 1. Xử lý Filter (Ưu tiên Index)
             if (filter && typeof filter === 'object') {
                 const filterKeys = Object.keys(filter);
                 if (filterKeys.length === 1) {
                     const key = filterKeys[0];
                     collection = collection.where(key).equals(filter[key]);
                 } else {
-                    // Đa điều kiện: Dùng filter scan
                     collection = collection.filter((doc) => {
                         return filterKeys.every((k) => doc[k] === filter[k]);
                     });
                 }
             }
 
-            // 2. Xử lý Sắp xếp
             if (orderBy) {
                 if (collection instanceof Dexie.Table) {
                     collection = collection.orderBy(orderBy);
@@ -446,13 +413,10 @@ class IndexedDBHelper {
                 collection = collection.toCollection ? collection.toCollection() : collection;
             }
 
-            // 3. Đảo ngược
             if (reverse) collection = collection.reverse();
 
-            // 4. Phân trang & Limit
             if (offset) collection = collection.offset(offset);
 
-            // Nếu isSingle, ta chỉ cần lấy 1
             if (isSingle) {
                 return await collection.first();
             }
@@ -587,7 +551,6 @@ class IndexedDBHelper {
         try {
             if (!this.db.isOpen()) await this.initDB();
 
-            // 1. Nếu id === null: Lấy toàn bộ data của collection
             if (id === null) {
                 const data = await this.db.table(collection).toArray();
                 return data.map((item) => ({
@@ -596,24 +559,20 @@ class IndexedDBHelper {
                 }));
             }
 
-            // 2. Nếu id !== null: Kiểm tra định dạng id (docId.fieldName)
             if (typeof id === 'string' && id.includes('.')) {
                 const [docId, fieldName] = id.split('.');
                 const doc = await this.db.table(collection).get(docId);
                 if (!doc) return [];
 
                 const fieldValue = doc[fieldName];
-                // Nếu là Array hoặc Object, trả về đúng định dạng array
                 if (Array.isArray(fieldValue)) return fieldValue;
                 if (fieldValue && typeof fieldValue === 'object') return [fieldValue];
                 return [];
             } else if (id) {
-                // Nếu là string, lấy 1 item theo id
                 const doc = await this.db.table(collection).get(id);
                 if (doc) return doc;
             }
 
-            // Nếu id không có dấu chấm, mặc định trả về [] theo logic yêu cầu (hoặc có thể mở rộng lấy 1 doc)
             return [];
         } catch (error) {
             return this._handleError(error, `getList (${id})`, collection, []);

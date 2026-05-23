@@ -1,23 +1,6 @@
-/**
- * =========================================================================
- * DB_SCHEMA_DETAILED.JS - Comprehensive Field Metadata Schema
- *
- * Purpose:
- *   - Provides detailed field metadata for all collections in the system
- *   - Each field includes: index, name, type, tag, attributes, CSS, validation rules
- *   - Enables dynamic form generation, validation, and data transformation
- *
- * Usage:
- *   DB_SCHEMA['bookings'] → Collection with field definitions
- *   DB_SCHEMA['bookings'].fields → Array of field objects
- *   Accessing single field: DB_SCHEMA['bookings'].fields.find(f => f.name === 'customer_full_name')
- * =========================================================================
- */
+/** Comprehensive field metadata schema for all collections */
 
 export const DB_SCHEMA = {
-    // =========================================================================
-    // 1. BOOKINGS COLLECTION
-    // =========================================================================
     bookings: {
         displayNameEng: 'Booking',
         displayName: 'Booking',
@@ -34,7 +17,7 @@ export const DB_SCHEMA = {
                 class: 'fw-bold text-danger',
                 validation: {
                     required: true,
-                    pattern: '^1\\d{4,}$', // e.g., 10001
+                    pattern: '^1\\d{4,}$',
                 },
                 placeholder: 'Auto-generated',
             },
@@ -290,9 +273,6 @@ export const DB_SCHEMA = {
         foreignKeys: ['customer_id', 'staff_id'],
     },
 
-    // =========================================================================
-    // 2. BOOKING_DETAILS COLLECTION
-    // =========================================================================
     booking_details: {
         displayNameEng: 'Booking Detail',
         displayName: 'Chi tiết dịch vụ',
@@ -519,9 +499,6 @@ export const DB_SCHEMA = {
         foreignKeys: ['hotel_name', 'booking_id'],
     },
 
-    // =========================================================================
-    // 3. OPERATOR_ENTRIES COLLECTION
-    // =========================================================================
     operator_entries: {
         displayNameEng: 'Operator Entry',
         displayName: 'Chi phí Giá Vốn',
@@ -784,9 +761,6 @@ export const DB_SCHEMA = {
         foreignKeys: ['hotel_name', 'booking_id', 'supplier'],
     },
 
-    // =========================================================================
-    // 4. CUSTOMERS COLLECTION
-    // =========================================================================
     customers: {
         displayNameEng: 'Customer',
         displayName: 'Khách hàng',
@@ -930,9 +904,6 @@ export const DB_SCHEMA = {
         index: ['phone', 'email', 'source'],
     },
 
-    // =========================================================================
-    // 5. USERS COLLECTION
-    // =========================================================================
     users: {
         displayNameEng: 'User',
         displayName: 'Người dùng',
@@ -1101,9 +1072,6 @@ export const DB_SCHEMA = {
         index: ['uid', 'role', 'group', 'user_name'],
     },
 
-    // =========================================================================
-    // 6. HOTELS COLLECTION
-    // =========================================================================
     hotels: {
         displayNameEng: 'Hotel',
         displayName: 'Khách sạn',
@@ -1210,9 +1178,6 @@ export const DB_SCHEMA = {
         index: ['name', 'rooms', 'star'],
     },
 
-    // =========================================================================
-    // 7. SUPPLIERS COLLECTION
-    // =========================================================================
     suppliers: {
         displayNameEng: 'Supplier',
         displayName: 'Nhà cung cấp',
@@ -1328,9 +1293,6 @@ export const DB_SCHEMA = {
         index: ['phone', 'dept_balance'],
     },
 
-    // =========================================================================
-    // 8. TRANSACTIONS COLLECTION
-    // =========================================================================
     transactions: {
         displayNameEng: 'Transaction',
         displayName: 'Giao dịch (Thu/Chi)',
@@ -1485,7 +1447,7 @@ export const DB_SCHEMA = {
         index: ['booking_id', 'receiver', 'fund_source', 'status', 'transaction_date'],
         foreignKeys: ['booking_id', 'fund_source'],
     },
-    // transactions_thenice: cùng cấu trúc transactions, dùng cho công ty The Nice
+
     transactions_thenice: {
         displayNameEng: 'Transaction (The Nice)',
         displayName: 'Giao dịch (The Nice)',
@@ -1613,9 +1575,6 @@ export const DB_SCHEMA = {
         ],
         foreignKeys: ['booking_id', 'fund_source'],
     },
-    // =========================================================================
-    // 9. FUND_ACCOUNTS COLLECTION
-    // =========================================================================
     fund_accounts: {
         displayNameEng: 'Fund Account',
         displayName: 'Tài khoản quỹ',
@@ -1714,7 +1673,6 @@ export const DB_SCHEMA = {
         index: ['type', 'name', 'balance'],
     },
 
-    // fund_accounts_thenice: cùng cấu trúc fund_accounts, dùng cho công ty The Nice
     fund_accounts_thenice: {
         displayNameEng: 'Fund Account (The Nice)',
         displayName: 'Tài khoản quỹ (The Nice)',
@@ -1960,7 +1918,6 @@ export const DB_SCHEMA = {
         index: ['hotel_id', 'ratePkg', 'year', 'status'],
     },
 
-    // =========================================================================
     service_price_schedules: {
         displayNameEng: 'Service Price Schedule',
         displayName: 'Bảng Giá Dịch Vụ',
@@ -2079,9 +2036,6 @@ export const DB_SCHEMA = {
         foreignKeys: ['supplier_id', 'hotel_id'],
     },
 
-    // =========================================================================
-    // 11. TOUR_PRICES COLLECTION
-    // =========================================================================
     tour_prices: {
         displayNameEng: 'Tour Price',
         displayName: 'Bảng Giá Tour',
@@ -2158,9 +2112,6 @@ export const DB_SCHEMA = {
         index: ['tour_id', 'status'],
     },
 
-    // =========================================================================
-    // 12. SELLING_PRICES (Virtual - IndexedDB Only)
-    // =========================================================================
     selling_prices: {
         displayNameEng: 'Selling Price',
         displayName: 'Bảng Giá Bán',
@@ -2176,9 +2127,6 @@ export const DB_SCHEMA = {
         index: ['id'],
     },
 
-    // =========================================================================
-    // VIRTUAL COLLECTIONS FOR REPORTS
-    // =========================================================================
     report_sales_general: {
         displayName: 'Báo cáo Doanh thu Tổng hợp',
         fields: [
@@ -2290,9 +2238,6 @@ export const DB_SCHEMA = {
         virtualCollection: true,
     },
 
-    // =========================================================================
-    // AI CONTENT QUEUE — Bài viết chờ duyệt từ Multi-Agent Pipeline
-    // =========================================================================
     ai_content_queue: {
         displayName: 'Content Queue AI',
         displayNameEng: 'AI Content Queue',
@@ -2458,14 +2403,9 @@ export const DB_SCHEMA = {
      * Get all field names for a collection
      * Usage: getFieldNames('bookings') → ['id', 'created_at', 'customer_id', ...]
      */
-    // getFieldNames: function (collectionName) {
-    //   const map = A.DB.schema.FIELD_MAP[collectionName];
-    //   if (!map) return [];
-    //   return Object.values(map);
-    // },
     getFieldNames: function (collectionName) {
         const coll = this[collectionName];
-        if (!coll?.fields) return []; // guard: secondary indexes và functions không có fields[]
+        if (!coll?.fields) return [];
         return coll.fields.map((field) => field.name).filter(Boolean);
     },
 
@@ -2499,8 +2439,6 @@ export const DB_SCHEMA = {
         const headerObj = {};
         coll.fields.forEach((field) => {
             if (field?.name) {
-                // Dùng displayName từ schema là nguồn chính thức (tiếng Việt)
-                // Fallback: Lang translation → raw field name
                 headerObj[field.name] = field.displayName || A.Lang?.t(field.name) || field.name;
             }
         });
@@ -2508,41 +2446,19 @@ export const DB_SCHEMA = {
     },
 };
 
-// =========================================================================
-// A.DB.schema.FIELD_MAP — Derived lazily from DB_SCHEMA via Proxy
-// =========================================================================
-// Thay thế static A.DB.schema.FIELD_MAP trong db_schema.js.
-// Backward compatible 100%: mọi code cũ dùng A.DB.schema.FIELD_MAP[coll][idx] vẫn hoạt động.
-//
-// Cơ chế:
-//   - Proxy intercepts `A.DB.schema.FIELD_MAP['bookings']` → gọi DB_SCHEMA.A.DB.schema.FIELD_MAP('bookings')
-//   - Kết quả được cache vào `_cache` object để tránh tính toán lại
-//   - Collection không tồn tại → trả undefined (falsy) — đúng hành vi cũ
-//
-// Pattern cũ vẫn hoạt động:
-//   A.DB.schema.FIELD_MAP['bookings'][2]              → 'customer_full_name'
-//   A.DB.schema.FIELD_MAP.booking_details[0]          → 'id'
-//   if (A.DB.schema.FIELD_MAP[path]) { ... }          → false nếu collection không tồn tại
-//   Object.values(A.DB.schema.FIELD_MAP[collection])  → ['id', 'created_at', ...]
-// =========================================================================
 const _fieldMapCache = {};
 const FIELD_MAP = new Proxy(_fieldMapCache, {
     get(cache, collectionName) {
         if (typeof collectionName !== 'string') return undefined;
         if (collectionName in cache) return cache[collectionName];
         const map = DB_SCHEMA.FIELD_MAP(collectionName);
-        // Trả undefined (falsy) nếu collection không tồn tại — giữ đúng hành vi cũ
         const result = Object.keys(map).length > 0 ? map : undefined;
         cache[collectionName] = result;
         return result;
     },
 });
-// Expose globally để code cũ (non-module scripts) vẫn dùng được
-window.FIELD_MAP = FIELD_MAP;
 
-// =========================================================================
-// HELPER FUNCTIONS FOR SCHEMA OPERATIONS
-// =========================================================================
+window.FIELD_MAP = FIELD_MAP;
 
 /**
  * Get all fields for a collection
@@ -2554,10 +2470,6 @@ function getFieldsSchema(collectionName) {
     const fields = DB_SCHEMA[collectionName]?.fields ?? [];
     return Object.fromEntries(fields.filter((f) => f?.name).map((f) => [f.name, f]));
 }
-
-// =========================================================================
-// FORM BUILDER FUNCTIONS
-// =========================================================================
 
 /**
  * Create a complete, responsive form from schema
@@ -2590,14 +2502,10 @@ function createFormBySchema(collectionName, formId) {
     const fields = Object.values(getFieldsSchema(collectionName));
     if (!fields || fields.length === 0) return '';
 
-    // Separate fields into categories
     const editableFields = fields.filter((f) => !f.attrs?.includes('readonly') && !f.attrs?.includes('hidden'));
     const readonlyFields = fields.filter((f) => f.attrs?.includes('readonly'));
     const hiddenFields = fields.filter((f) => f.attrs?.includes('hidden') || f.class?.includes('d-none'));
 
-    // Start building form HTML
-    // IMPORTANT: data-collection must store the raw collection name (not translated),
-    // because saveRecord / deleteRecord / loadFormDataSchema use it as Firestore collection key.
     const displayCollectionName = A.Lang?.t(collectionName) || collectionName;
     let html = `<form id="${formId}" class="db-schema-form h-100" data-collection="${collectionName}" style="max-width: 85vw; margin: auto; padding-bottom: 1.5rem; min-height: 400px;" gap: 16px; position: relative">`;
 
@@ -2611,12 +2519,10 @@ function createFormBySchema(collectionName, formId) {
 
     html += `</fieldset>`;
 
-    // ===== HIDDEN FIELDS SECTION =====
     hiddenFields.forEach((field) => {
         html += `<input type="hidden" id="${field.name}" name="${field.name}" data-field="${field.name}" data-initial="" />`;
     });
 
-    // ===== READONLY FIELDS COLLAPSIBLE SECTION =====
     if (readonlyFields.length > 0) {
         const collapseId = `${formId}-readonly-collapse`;
         html += `
@@ -2654,7 +2560,6 @@ function createFormBySchema(collectionName, formId) {
     `;
     }
 
-    // ===== FOOTER WITH BUTTONS =====
     html += `
   <div class="form-footer" style="
     position: absolute;
@@ -2681,19 +2586,16 @@ function createFormBySchema(collectionName, formId) {
   `;
 
     html += `</form>`;
-    const frag = document.createDocumentFragment(); // Dummy operation to hint DOM update
+    const frag = document.createDocumentFragment();
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = html;
     frag.appendChild(tempDiv.firstChild);
 
-    // Auto-populate dynamic selects after DOM is updated.
-    // _setupFormActions is no longer needed here — handled by document-level delegation
-    // (see _initDocumentFormActions, called once at module load).
     setTimeout(() => {
-        _setupFormActions(formId); // No-op if already initialized, safe to call multiple times
+        _setupFormActions(formId);
     }, 100);
 
-    return frag.firstChild; // Return the form element
+    return frag.firstChild;
 }
 
 DB_SCHEMA.createFormBySchema = createFormBySchema;
@@ -2727,7 +2629,6 @@ export async function loadFormDataSchema(formId, idorData = null) {
 
     let data = null;
 
-    // ===== CASE 1: idorData is a STRING (ID) =====
     if (typeof idorData === 'string' && idorData.trim() !== '') {
         const collectionName = form.dataset.collection;
         if (!collectionName) {
@@ -2735,7 +2636,6 @@ export async function loadFormDataSchema(formId, idorData = null) {
             return;
         }
 
-        // 1. Try to find in APP_DATA first
         if (window.APP_DATA && window.APP_DATA[collectionName]) {
             const doc = window.APP_DATA[collectionName][idorData];
             if (doc) {
@@ -2743,12 +2643,10 @@ export async function loadFormDataSchema(formId, idorData = null) {
                 data = { ...doc };
             }
         }
-        // 2. If not found in APP_DATA, query Firestore
         if (!data && A.DB.db) {
             try {
                 L._(`📡 Querying Firestore: ${collectionName}/${idorData}`);
 
-                // Firebase query modular style
                 const docRef = doc(A.DB.db, collectionName, idorData);
                 const docSnap = await getDoc(docRef);
 
@@ -2768,18 +2666,15 @@ export async function loadFormDataSchema(formId, idorData = null) {
             return;
         }
     }
-    // ===== CASE 2: idorData is an OBJECT (data) =====
     else if (typeof idorData === 'object' && idorData !== null) {
         data = idorData;
         L._(`📦 Loading from provided data object:`, data);
     }
-    // ===== INVALID PARAMETER =====
     else {
         L._(`❌ Invalid parameter type: ${typeof idorData}`, 'warning');
         return;
     }
 
-    // ===== POPULATE FORM WITH DATA =====
     if (!data) {
         console.warn(`⚠️ No data to load into form`);
         return;
@@ -2796,7 +2691,7 @@ export async function loadFormDataSchema(formId, idorData = null) {
             fieldsPopulated++;
         }
     });
-    form.dataset.item = data.id || ''; // Store loaded ID in form dataset for reference
+    form.dataset.item = data.id || '';
 }
 
 /**
@@ -2819,12 +2714,9 @@ export async function loadFormDataSchema(formId, idorData = null) {
  * @private
  */
 function _setupFormActions(formId) {
-    // Legacy shim kept for any direct callers — now a no-op because
-    // _initDocumentFormActions() handles everything at document level.
     _initDocumentFormActions(formId);
 }
 
-// Flag so we only attach the document listener a single time.
 let _docFormActionsReady = false;
 
 function _initDocumentFormActions(formId) {
@@ -2834,7 +2726,6 @@ function _initDocumentFormActions(formId) {
         getE(formId),
         'click',
         (e) => {
-            // Only handle clicks inside a .db-schema-form
             const form = getE(formId);
             if (!form) return;
 
@@ -2884,8 +2775,7 @@ function _initDocumentFormActions(formId) {
 function _getDataByPath(path) {
     if (!path || !window.APP_DATA) return null;
 
-    // Split path by dots and traverse APP_DATA
-    if (path.startsWith('APP_DATA')) path = path.substring(9); // Remove 'APP_DATA.' prefix
+    if (path.startsWith('APP_DATA')) path = path.substring(9);
     const keys = path.split('.');
     let data = window.APP_DATA;
     for (const key of keys) {
@@ -2908,13 +2798,10 @@ function _getDataByPath(path) {
 function _getHotelLocationOptions() {
     const lists = window.APP_DATA?.lists || {};
 
-    // Get hotel names from matrix (column 0)
     const hotelNames = (lists.hotelMatrix || []).map((row) => (row && row[0] ? row[0] : null)).filter((name) => name !== null && name !== '');
 
-    // Get other locations
     const otherLocs = lists.locOther || [];
 
-    // Combine and remove duplicates
     const allLocations = [...new Set([...hotelNames, ...otherLocs])];
 
     return allLocations;
@@ -2950,14 +2837,11 @@ function _createFieldGroup(field, collectionName) {
     const isHidden = field.attrs?.includes('hidden');
     const isDNone = field.class?.includes('d-none');
 
-    // Calculate initial value (handle 'today' for date fields)
     const initialValue = _getInitialValue(field.initial, field.type);
 
-    // Build style for field group
     const displayStyle = isDNone ? 'display: none;' : 'display: flex;';
     let fieldHtml = `<div class="form-group field-group-${field.name}" style="${displayStyle} flex-direction: column;">`;
 
-    // Label (hidden fields skip label)
     if (!isHidden) {
         fieldHtml += `
     <label for="${field.name}" class="form-label small fw-bold mb-1" style="white-space: normal;">
@@ -2966,9 +2850,7 @@ function _createFieldGroup(field, collectionName) {
     </label>`;
     }
 
-    // Input/Select/Textarea element
     if (field.tag === 'select') {
-        // SELECT field
         const dataSourceAttr = field.dataSource ? `data-source="${field.dataSource}"` : '';
         const dataOnchange = field.onchange ? `data-onchange="${field.onchange}" ` : '';
         fieldHtml += `
@@ -2985,7 +2867,6 @@ function _createFieldGroup(field, collectionName) {
       <option value="">-- Chọn --</option>
     `;
 
-        // Get options from either dataSource or field.options
         const options = field.options || {};
         if (options) {
             let opts = Array.isArray(options) ? options : Object.values(options);
@@ -2994,17 +2875,13 @@ function _createFieldGroup(field, collectionName) {
                 let optValue = '';
                 let optText = '';
 
-                // Handle different data formats
                 if (typeof opt === 'string') {
-                    // String option: value = text = opt
                     optValue = opt;
                     optText = opt;
                 } else if (typeof opt === 'object') {
-                    // Object option: try to get id/uid and display name
                     optValue = opt.id || opt.uid || opt.code || opt.value || '';
                     optText = opt.user_name || opt.full_name || opt.name || opt.displayNameEng || opt.displayName || opt.account || opt.value || optValue || '';
                 } else {
-                    // Fallback
                     optValue = String(opt);
                     optText = String(opt);
                 }
@@ -3017,7 +2894,6 @@ function _createFieldGroup(field, collectionName) {
 
         fieldHtml += `</select>`;
     } else if (field.tag === 'textarea') {
-        // TEXTAREA field
         fieldHtml += `
     <textarea
       id="${field.name}"
@@ -3032,12 +2908,10 @@ function _createFieldGroup(field, collectionName) {
       style="flex: 1; resize: vertical;">
     </textarea>`;
     } else if (field.tag === 'input' && field.type === 'checkbox') {
-        // CHECKBOX field
         try {
-            fieldHtml += `<div class="d-flex flex-wrap gap-3 mt-1">`; // Wrapper Flexbox cho giao diện đẹp
+            fieldHtml += `<div class="d-flex flex-wrap gap-3 mt-1">`;
 
             if (Array.isArray(field.initial) && field.initial.length > 0) {
-                // Trường hợp là một mảng các tuỳ chọn (Multiple Checkboxes)
                 field.initial.forEach((opt, index) => {
                     const optId = opt.id || `${field.name}_opt_${index}`;
                     const optName = opt.name || opt.value || optId;
@@ -3059,7 +2933,6 @@ function _createFieldGroup(field, collectionName) {
           </div>`;
                 });
             } else {
-                // Trường hợp Fallback: Checkbox đơn (Single Checkbox)
                 fieldHtml += `
         <div class="form-check">
           <input
@@ -3085,7 +2958,6 @@ function _createFieldGroup(field, collectionName) {
             fieldHtml += `<div class="text-danger small">Lỗi tải dữ liệu checkbox</div>`;
         }
     } else {
-        // INPUT field (text, date, number, email, phone, etc.)
         fieldHtml += `
     <input
       type="${field.type || 'text'}"
@@ -3121,7 +2993,6 @@ function resetFormSchema(formId) {
 
     L._(`Form '${formId}' has been reset to initial values`);
 }
-// window.resetFormSchema exposed via _setupFormActions event delegation
 /**
  * Save form data and log to console
  * @param {string} formId - ID of the form
@@ -3151,8 +3022,6 @@ async function saveFormDataSchema(formId) {
         showLoading(false);
     }
 }
-// window.saveFormDataSchema exposed via _setupFormActions event delegation
-
 /**
  * Xóa record từ collection theo ID.
  * Nếu form có giá trị id thì dùng làm ID xóa.
@@ -3169,14 +3038,12 @@ async function deleteFormDataSchema(formId) {
         return;
     }
 
-    // Đọc id từ field [data-field="id"] trong form
     const idInput = form.querySelector('[data-field="id"]');
     let id = idInput?.value?.trim();
 
-    // Nếu không có id trong form, mở prompt
     if (!id) {
         id = prompt(`🗑️ Nhập ID cần xóa trong collection [${collectionName}]:`);
-        if (!id?.trim()) return; // hủy nếu trống
+        if (!id?.trim()) return;
         id = id.trim();
     }
 
@@ -3188,7 +3055,6 @@ async function deleteFormDataSchema(formId) {
                 const res = await A.DB.deleteRecord(collectionName, id);
                 if (res?.success) {
                     logA(`✅ Đã xóa thành công: ${collectionName}/${id}`, 'warning', 'alert');
-                    // Reset form sau khi xóa
                     resetFormSchema(formId);
                 } else {
                     Opps(`❌ Xóa thất bại: ${res?.error ?? 'Lỗi không xác định'}`, `❌ Xóa thất bại: ${res?.error ?? 'Lỗi không xác định'}`);
@@ -3203,7 +3069,6 @@ async function deleteFormDataSchema(formId) {
         }
     );
 }
-// window.deleteFormDataSchema exposed via _setupFormActions event delegation
 
 function handleLoadFormDataSchema(formId) {
     const form = document.getElementById(formId);
@@ -3220,11 +3085,8 @@ function handleLoadFormDataSchema(formId) {
         return;
     }
 
-    // Call loadFormDataSchema with the provided ID
     loadFormDataSchema(formId, id.trim());
 }
-
-// window.handleLoadFormDataSchema exposed via _setupFormActions event delegation
 
 /**
  * Toggle collapse section
@@ -3238,7 +3100,6 @@ function toggleCollapse(collapseId, headerEl) {
     const isHidden = collapseEl.classList.contains('d-none');
     collapseEl.classList.toggle('d-none', !isHidden);
 
-    // Rotate chevron icon
     const icon = headerEl.querySelector('.toggle-icon');
     if (icon) {
         icon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
@@ -3246,7 +3107,6 @@ function toggleCollapse(collapseId, headerEl) {
 }
 
 const COL_INDEX = {
-    // BOOKINGS
     M_ID: 0,
     M_CUSTID: 1,
     M_CUST: 2,
@@ -3265,7 +3125,6 @@ const COL_INDEX = {
     M_STATUS: 15,
     M_CREATED: 16,
 
-    // DETAILS
     D_SID: 0,
     D_BKID: 1,
     D_TYPE: 2,
@@ -3284,7 +3143,6 @@ const COL_INDEX = {
     D_CODE: 15,
     D_NOTE: 16,
 
-    // OPERATORS
     OP_SID: 0,
     OP_BKID: 1,
     OP_CUST: 2,
@@ -3308,7 +3166,6 @@ const COL_INDEX = {
     OP_SUPPLIER: 20,
     OP_NOTE: 21,
 
-    // CUSTOMERS
     C_ID: 0,
     C_NAME: 1,
     C_DOB: 2,
@@ -3320,7 +3177,7 @@ const COL_INDEX = {
     C_SOURCE: 8,
     C_TOTALSPEND: 9,
     C_CREATED: 10,
-    // USERS (Mới bổ sung để lấy Header)
+
     U_UID: 0,
     U_ACCOUNT: 1,
     U_NAME: 2,
@@ -3332,10 +3189,9 @@ const COL_INDEX = {
     U_CREATED: 8,
 };
 
-window.COL_INDEX = COL_INDEX; // Expose to global scope for easy access in other scripts
+window.COL_INDEX = COL_INDEX;
 export { createFormBySchema };
 
-// Export for module system (if applicable)
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = DB_SCHEMA;
 }
