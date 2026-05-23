@@ -46,3 +46,35 @@
 - Layout classes were NOT modified.
 - Business logic was NOT touched.
 - VERDICT: APPROVE
+
+## Supplementary Optimization Plan
+- Created .sisyphus/plans/theme-color-refactoring-supplement.md to address remaining visual inconsistencies.
+- Identified 92 usages of .bkg-light across 25 files that need to be renamed to .bg-surface-alt.
+- Proposed new semantic variables --surface-alt, --header-bg, --header-text, --footer-bg to improve visual hierarchy.
+- Proposed adding subtle background color to fieldset elements to distinguish them from the main background.
+
+## Task S2 — Replace bkg-light → bg-surface-alt in HTML templates
+- **Scope**: 9 template files, 37 occurrences (not 11 — `report_dashboard.html` and `tpl_ai_marketing.html` had zero `bkg-light` instances)
+- **Files modified**: tpl_accountant.html (9), tpl_all.html (11), tpl_price_manager.html (6), tpl_accountant_report.html (3), tpl_tour_price.html (3), tpl_booking_overview.html (2), tpl_admin_settings.html (1), tpl_operator.html (1), tpl_sales.html (1)
+- **Method**: Used `replaceAll` to batch-replace every `bkg-light` with `bg-surface-alt` in each file
+- **Verification**: grep for `bkg-light` in components dir returns empty; 37 instances of `bg-surface-alt` confirmed
+
+## Task S1 — CSS Supplementary Theme Optimizations
+- Updated `public/src/css/main.css` with 8 changes:
+  1. **Removed `--main-bg`** from both `:root` and `[data-bs-theme="dark"]` — replaced with `--surface-alt` semantic variable
+  2. **Added `--surface-alt`**: Light `#f3f4f6`, Dark `#27272a` — provides an alternative surface color one step away from the main surface
+  3. **Renamed `.bkg-light` → `.bg-surface-alt`**: Uses `var(--surface-alt)` with `!important` for Bootstrap utility class pattern compatibility
+  4. **Added `--header-text`**: Light `#ffffff`, Dark `#f8f9fa` — ensures header text is always readable against header backgrounds
+  5. **Updated dark `--header-bg`**: Changed from `#27272A` to `#18181b` to match the body background, creating a cleaner full-width header
+  6. **Added `--footer-bg`**: Light `#f8f9fa`, Dark `#18181b` — consistent footer background per theme
+  7. **`.app-header` updated**: Added `border-bottom: 1px solid var(--border-color)` for visual header separation; changed `color: var(--text-color)` to `color: var(--header-text)` to use the dedicated header text variable
+  8. **Added `footer` styling**: `background: var(--footer-bg) !important; border-top: 1px solid var(--border-color) !important;`
+  9. **Updated `fieldset`**: Added `background-color: var(--surface-alt)` to distinguish fieldsets from the main background, preserving all existing grid/layout rules
+- Verified: `--main-bg` references removed, all new variables properly defined in both themes, no layout classes modified
+
+## Task S3 — Replace bkg-light → bg-surface-alt in JS modules
+- **Scope**: 15 JS files, ~53 occurrences of `bkg-light` replaced with `bg-surface-alt`
+- **Files modified**: TourPriceController.js (2), header_menu.js (4), footer_menu.js (2), M_ImportPriceAI.js (3), calculator_widget.js (1), M_HotelPrice.js (5), M_SalesModule.js (2), M_OperatorModule.js (3), M_ShortKey.js (3), ATable.js (11), BookingOverviewController.js (1), AdminDatabaseController.js (1), SettingsController.js (2), logger.js (1), controller_accountant.js (9)
+- **Method**: Used Edit tool with `replaceAll: true` on each file in a single parallel batch
+- **Note**: `AdminDatabaseController.js` and `SettingsController.js` live at `public/admin/js/` not `public/src/admin/js/`
+- **Verification**: Full-project grep for `bkg-light` in `*.js` returns **zero matches**; LSP diagnostics on modified files show zero errors

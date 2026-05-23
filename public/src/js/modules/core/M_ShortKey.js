@@ -475,7 +475,7 @@ class ShortcutManager {
         this.isRecording = true;
         keyInput.value = 'Giữ Phím (Ctrl/Shift/Alt) + Ký tự...';
         keyInput.classList.add('bg-warning', '');
-        keyInput.classList.remove('bkg-light');
+        keyInput.classList.remove('bg-surface-alt');
 
         const tempHandler = (e) => {
             e.preventDefault();
@@ -557,7 +557,7 @@ class ShortcutManager {
 
         inputEl.value = 'Giữ Phím (Ctrl/Shift/Alt) + Ký tự...';
         inputEl.classList.add('bg-warning', '');
-        inputEl.classList.remove('bkg-light');
+        inputEl.classList.remove('bg-surface-alt');
 
         const tempHandler = async (e) => {
             e.preventDefault();
@@ -605,7 +605,7 @@ class ShortcutManager {
     _finishRecording(inputEl, handler, finalValue) {
         inputEl.value = finalValue;
         inputEl.classList.remove('bg-warning', '');
-        inputEl.classList.add('bkg-light');
+        inputEl.classList.add('bg-surface-alt');
         document.removeEventListener('keydown', handler);
         setTimeout(() => {
             this.isRecording = false;

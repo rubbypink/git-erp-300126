@@ -423,7 +423,7 @@ export default class ErpFooterMenu {
         container.className = 'erp-footer-wrapper bg-transparent';
         container.innerHTML = `
               <div class="erp-footer-search d-none d-lg-block me-auto">
-                <div class="input-group input-group-sm flex-center gap-0 bkg-light rounded overflow-hidden shadow-sm border" style="border-color: var(--bs-border-color) !important;">
+                <div class="input-group input-group-sm flex-center gap-0 bg-surface-alt rounded overflow-hidden shadow-sm border" style="border-color: var(--bs-border-color) !important;">
                     <input type="text" id="booking-search" class="form-control border-0" placeholder="Tìm Booking..." style="box-shadow: none; width: 180px;">
                     <button class="btn btn-light text-primary border-0" type="button" onclick="if(typeof handleBookingSearch === 'function') handleBookingSearch()">
                         <i class="fa-solid fa-search"></i>
@@ -506,7 +506,7 @@ export default class ErpFooterMenu {
             const desktopContainer = document.getElementById('erp-f-desktop-container');
             if (type && type === 'btn-group') {
                 const groupDiv = document.createElement('div');
-                groupDiv.className = `btn-group dropup bkg-light shadow-sm`;
+                groupDiv.className = `btn-group dropup bg-surface-alt shadow-sm`;
                 const ulId = `${id}-dropup`;
                 const htmlString = `
             <button type="button" class="btn btn-primary d-flex align-items-center gap-1 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="width: inherity">

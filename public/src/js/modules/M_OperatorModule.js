@@ -165,18 +165,18 @@ class Op {
             <td><select class="form-select form-select-sm" data-field="service_name"><option value="">-</option></select></td>
             <td><input type="date" class="form-control form-control-sm p-1" data-field="check_in" onchange="Op.Logic.autoSetOrCalcDate(this.value, ${idx})"></td>
             <td><input type="date" class="form-control form-control-sm p-1" data-field="check_out" onchange="Op.Logic.calcRow(${idx})"></td>
-            <td><input type="number" class="form-control form-control-sm bkg-light text-center number" data-field="nights" readonly value="1"></td>
+            <td><input type="number" class="form-control form-control-sm bg-surface-alt text-center number" data-field="nights" readonly value="1"></td>
             <td><input type="number" class="form-control form-control-sm text-center fw-bold number" data-field="adults" value="1" onchange="Op.Logic.calcRow(${idx})"></td>
             <td><input type="text" class="form-control form-control-sm fw-bold text-end bg-warning bg-opacity-10 number" data-field="cost_adult" onchange="Op.Logic.calcRow(${idx})" placeholder="0"></td>
             <td><input type="number" class="form-control form-control-sm text-center number" data-field="children" value="0" onchange="Op.Logic.calcRow(${idx})"></td>
             <td><input type="text" class="form-control form-control-sm text-end bg-warning bg-opacity-10 number" data-field="cost_child" onchange="Op.Logic.calcRow(${idx})" placeholder="0"></td>
             <td><input type="text" class="form-control form-control-sm text-end small text-muted number" data-field="surcharge" onchange="Op.Logic.calcRow(${idx})" placeholder="0"></td>
             <td><input type="text" class="form-control form-control-sm text-end small text-muted number" data-field="discount" onchange="Op.Logic.calcRow(${idx})" placeholder="0"></td>
-            <td><input type="text" class="form-control form-control-sm number fw-bold text-end text-primary bkg-light" data-field="total_sale" readonly value="0"></td>
+            <td><input type="text" class="form-control form-control-sm number fw-bold text-end text-primary bg-surface-alt" data-field="total_sale" readonly value="0"></td>
             <td><input type="text" class="form-control form-control-sm text-center text-primary font-monospace" data-field="ref_code"></td>
             <td><input type="text" class="form-control form-control-sm number fw-bold text-end text-danger bg-danger bg-opacity-10" data-field="total_cost" readonly value="0"></td>
             <td><input type="text" class="form-control form-control-sm number text-end text-success fw-bold" data-field="paid_amount" onchange="Op.Logic.calcRow(${idx}); Op.DB.syncTransactionForPaidAmount(${idx})" placeholder="0"></td>
-            <td><input type="text" class="form-control form-control-sm number text-end text-danger small bkg-light" data-field="debt_balance" readonly value="0"></td>
+            <td><input type="text" class="form-control form-control-sm number text-end text-danger small bg-surface-alt" data-field="debt_balance" readonly value="0"></td>
             <td>
               <select class="smart-select form-select form-select-sm" data-source="suppliers" data-searchable="true" data-field="supplier" data-onchange="Op.Logic.onSupplierChange(${idx})" style="width:130px;">
                 <option value="">-Supplier-</option>

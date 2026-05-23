@@ -37,13 +37,15 @@ Cozy Minimalist palette: Light warm off-white, Dark warm zinc
     /* ─── CUSTOM THEME MAPPINGS ─── */
     --app-bg: var(--bs-body-bg);
     --surface-color: var(--bs-tertiary-bg);
+    --surface-alt: #f3f4f6;
     --text-color: var(--bs-body-color);
     --border-color: #E2E8F0;
 
     --primary-color: #2563eb;
     --secondary-color: #64748b;
     --header-bg: #1e3a8a;
-    --main-bg: #efefef;
+    --header-text: #ffffff;
+    --footer-bg: #f8f9fa;
     --text-secondary: #64748b;
     --popup-bg: #fbe9e9f9;
     --popup-text: #0f172a;
@@ -86,13 +88,15 @@ Cozy Minimalist palette: Light warm off-white, Dark warm zinc
     /* ─── CUSTOM THEME MAPPINGS ─── */
     --app-bg: var(--bs-body-bg);
     --surface-color: var(--bs-tertiary-bg);
+    --surface-alt: #27272a;
     --text-color: var(--bs-body-color);
     --border-color: #3F3F46;
 
     --primary-color: #818cf8;
     --secondary-color: #94a3b8;
-    --header-bg: #27272A;
-    --main-bg: #18181B;
+    --header-bg: #18181b;
+    --header-text: #f8f9fa;
+    --footer-bg: #18181b;
     --text-secondary: #A1A1AA;
     --popup-bg: #27272A;
     --popup-text: #FAFAFA;
@@ -131,8 +135,8 @@ Cozy Minimalist palette: Light warm off-white, Dark warm zinc
     color: var(--popup-text);
 }
 
-.bkg-light {
-    background-color: var(--main-bg);
+.bg-surface-alt {
+    background-color: var(--surface-alt) !important;
     color: var(--text-color);
 }
 /* Thiết lập mặc định con trỏ chuột cho tất cả các element bị khóa nhập liệu */
@@ -147,6 +151,7 @@ textarea[readonly],
 
 /* [9TRIP-UPDATE] Fieldset Optimization: 4 cột Desktop */
 fieldset {
+    background-color: var(--surface-alt);
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 0.75rem;
@@ -236,12 +241,19 @@ select.form-select {
     /* Giữ !important để đảm bảo theme được áp dụng chính xác trên nền Bootstrap */
     background: var(--header-bg) !important;
     border-color: var(--border-color) !important;
-    color: var(--text-color) !important;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--header-text) !important;
     transition:
         background-color 0.3s ease,
         color 0.3s ease,
         transform 0.3s ease,
         opacity 0.3s ease; /* Thêm transition cho auto-hide logic sau này */
+}
+
+/* ─── FOOTER: Visual separation from content ─── */
+footer {
+    background: var(--footer-bg) !important;
+    border-top: 1px solid var(--border-color) !important;
 }
 
 /* ─── SCROLLABLE CONTAINERS: Allow scroll gestures ─── */

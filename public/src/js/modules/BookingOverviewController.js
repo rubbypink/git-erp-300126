@@ -478,7 +478,7 @@ const BookingOverviewController = (function () {
         const count = _rootEl.querySelectorAll('#bkov-services-tbody tr').length;
 
         container.innerHTML = `
-      <div class="d-flex justify-content-between align-items-center p-2 bkg-light border rounded shadow-sm">
+      <div class="d-flex justify-content-between align-items-center p-2 bg-surface-alt border rounded shadow-sm">
         <div><i class="fa-solid fa-layer-group me-2 text-secondary"></i><strong>Số lượng:</strong> ${count} dịch vụ</div>
         <div class="text-primary"><strong>Tổng cộng:</strong> <span class="fw-bold fs-5">${formatNumber(total)}</span> <small>VND</small></div>
       </div>

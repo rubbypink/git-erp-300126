@@ -149,8 +149,8 @@
 
                         <div class="col-md-6 col-lg-4">
                             <label class="form-label small fw-bold">Logo & Thương hiệu</label>
-                            <div class="d-flex align-items-center gap-2 border rounded p-1 bkg-light">
-                                <img id="st-logo-preview" src="" class="bkg-light border rounded" style="width: 32px; height: 32px; object-fit: contain" />
+                            <div class="d-flex align-items-center gap-2 border rounded p-1 bg-surface-alt">
+                                <img id="st-logo-preview" src="" class="bg-surface-alt border rounded" style="width: 32px; height: 32px; object-fit: contain" />
                                 <input type="file" class="form-control form-control-sm border-0 bg-transparent" id="st-logo-upload" accept="image/*" onchange="previewLogo()" />
                             </div>
                         </div>
@@ -162,7 +162,7 @@
 
                         <div class="row g-2">
                             <div class="col-6 col-md-4 col-lg-3">
-                                <div class="card p-2 border-0 shadow-sm bkg-light">
+                                <div class="card p-2 border-0 shadow-sm bg-surface-alt">
                                     <label class="x-small fw-bold mb-1">Màu Chủ Đạo</label>
                                     <div class="input-group input-group-sm">
                                         <input type="color" class="form-control form-control-color w-100" id="st-primary-color" title="Primary Color" />
@@ -172,7 +172,7 @@
                             </div>
 
                             <div class="col-6 col-md-4 col-lg-3">
-                                <div class="card p-2 border-0 shadow-sm bkg-light">
+                                <div class="card p-2 border-0 shadow-sm bg-surface-alt">
                                     <label class="x-small fw-bold mb-1">Nền Ứng Dụng</label>
                                     <div class="input-group input-group-sm">
                                         <input type="color" class="form-control form-control-color w-100" id="st-app-bg" title="App Background" />
@@ -182,7 +182,7 @@
                             </div>
 
                             <div class="col-6 col-md-4 col-lg-3">
-                                <div class="card p-2 border-0 shadow-sm bkg-light">
+                                <div class="card p-2 border-0 shadow-sm bg-surface-alt">
                                     <label class="x-small fw-bold mb-1">Header/Footer</label>
                                     <div class="input-group input-group-sm">
                                         <input type="color" class="form-control form-control-color w-100" id="st-header-bg" title="Header Background" />
@@ -192,7 +192,7 @@
                             </div>
 
                             <div class="col-6 col-md-4 col-lg-3">
-                                <div class="card p-2 border-0 shadow-sm bkg-light">
+                                <div class="card p-2 border-0 shadow-sm bg-surface-alt">
                                     <label class="x-small fw-bold mb-1">Màu Chữ Chính</label>
                                     <div class="input-group input-group-sm">
                                         <input type="color" class="form-control form-control-color w-100" id="st-text-color" title="Text Color" />
@@ -202,7 +202,7 @@
                             </div>
 
                             <div class="col-6 col-md-4 col-lg-3">
-                                <div class="card p-2 border-0 shadow-sm bkg-light">
+                                <div class="card p-2 border-0 shadow-sm bg-surface-alt">
                                     <label class="x-small fw-bold mb-1">Nền Card/Modal</label>
                                     <div class="input-group input-group-sm">
                                         <input type="color" class="form-control form-control-color w-100" id="st-surface-color" title="Surface Color" />
@@ -303,7 +303,7 @@
 <template id="tmpl-price-pkg">
     <div class="card h-100 d-flex flex-column border-0 shadow-sm">
         <!-- Header: Mobile First - Stacked by default, Row on SM+ -->
-        <div class="card-header py-1 flex-shrink-0 bkg-light border-bottom"></div>
+        <div class="card-header py-1 flex-shrink-0 bg-surface-alt border-bottom"></div>
         <div class="card-body p-0 flex-grow-1 position-relative mt-2" style="overflow: hidden">
             <div id="tbl-container-tab2" class="flex-grow-1 overflow-hidden d-flex flex-column"></div>
         </div>
@@ -353,11 +353,11 @@
 
         <div class="container mt-5">
             <div class="card shadow-sm border-0">
-                <div class="card-header bkg-light d-flex justify-content-between align-items-center">
+                <div class="card-header bg-surface-alt d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="fas fa-terminal me-2"></i>System Execute Console</h5>
                     <span class="badge bg-success">Async/Await Supported</span>
                 </div>
-                <div class="card-body bkg-light">
+                <div class="card-body bg-surface-alt">
                     <div class="form-group mb-3">
                         <label for="admin-run-input" class="form-label fw-bold">Javascript Code (Thực thi trực tiếp):</label>
                         <textarea id="admin-run-input" class="form-control font-monospace text-primary" rows="6" placeholder="Ví dụ 1 dòng: Object.values(APP_DATA.lists)&#10;Ví dụ nhiều dòng:&#10;let data = await API.get('users');&#10;return data;"></textarea>
@@ -409,7 +409,7 @@
 
                     <div class="form-group w-100">
                         <label class="form-label fw-bold">Kết quả hiển thị (Tree View):</label>
-                        <div id="admin-run-output" class="p-3 bkg-light border rounded font-monospace shadow-inner" style="min-height: 150px; overflow-x: auto">
+                        <div id="admin-run-output" class="p-3 bg-surface-alt border rounded font-monospace shadow-inner" style="min-height: 150px; overflow-x: auto">
                             <span class="text-secondary fst-italic">Waiting for execution...</span>
                         </div>
                     </div>

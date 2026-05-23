@@ -231,7 +231,7 @@ class SalesModule {
                 </td>
                 <td><input type="date" class="form-control form-control-sm" data-field="check_in" onchange="SalesModule.Logic.autoSetOrCalcDate(this.value, ${idx})" style="cursor:pointer"></td>
                 <td><input type="date" class="form-control form-control-sm" data-field="check_out" onchange="SalesModule.Logic.calcRow(${idx})"></td>
-                <td><input type="number" class="form-control form-control-sm number bkg-light text-center" data-field="nights" readonly></td>
+                <td><input type="number" class="form-control form-control-sm number bg-surface-alt text-center" data-field="nights" readonly></td>
                 <td><input type="number" class="form-control form-control-sm number" data-field="quantity" value="1"></td>
                 <td>
                   <div class="input-group input-group-sm">
@@ -630,7 +630,7 @@ class SalesModule {
                             - Đơn giá bình quân: <b class="text-danger">${formatNumber(price)} /đêm</b><br/>
                             - Tổng ${result.nightCount} đêm: <b>${formatNumber(result.totalPrice)}</b><br/><br/>
                             <b>Chi tiết từng đêm:</b><br/>
-                            <div class="small text-muted p-2 bkg-light border rounded" style="max-height: 120px; overflow-y: auto;">
+                            <div class="small text-muted p-2 bg-surface-alt border rounded" style="max-height: 120px; overflow-y: auto;">
                                 ${result.details_price.replace(/\n/g, '<br/>')}
                             </div><br/>
                             <i class="text-secondary">Bạn có muốn áp dụng giá này vào form không?</i>

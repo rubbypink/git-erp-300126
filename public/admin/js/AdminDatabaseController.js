@@ -54,7 +54,7 @@ export class AdminDatabaseController {
             </div>
             <div class="d-flex flex-wrap gap-2">
                 <div class="input-group shadow-sm" style="width: auto;">
-                    <span class="input-group-text bkg-light border-end-0"><i class="fa-solid fa-filter text-muted"></i></span>
+                    <span class="input-group-text bg-surface-alt border-end-0"><i class="fa-solid fa-filter text-muted"></i></span>
                     <select id="admin-collection-selector" class="form-select border-start-0 ps-0" style="min-width: 200px; font-weight: 500;">
                         ${collectionKeys.map((key) => `<option value="${key}">${collectionsMap[key]}</option>`).join('')}
                     </select>

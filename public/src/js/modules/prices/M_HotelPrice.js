@@ -88,7 +88,7 @@ class HotelPriceManager {
         .hp-room-name-input:focus { background-color: var(--app-bg); color: var(--text-color); outline: none; }
       </style>
       <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bkg-light py-3 border-bottom d-flex justify-content-between align-items-center">
+        <div class="card-header bg-surface-alt py-3 border-bottom d-flex justify-content-between align-items-center">
           <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-table me-2"></i>Bảng Giá Khách Sạn</h5>
           <div class="flex-center gap-2">
             <select id="hp-quick-select" data-source="hotel_price_schedules" class="smart-select form-select form-select-sm" style="width: 200px;"><option value="">-- Bảng giá đã lưu --</option></select>
@@ -100,7 +100,7 @@ class HotelPriceManager {
           </div>
         </div>
         <div class="card-body p-0 d-flex flex-column">
-          <div class="bkg-light p-3 border-bottom">
+          <div class="bg-surface-alt p-3 border-bottom">
             <div class="row g-2">
               <div class="col-md-3">
                 <select id="hp-sel-supplier" class="form-select form-select-sm shadow-sm"></select>
@@ -126,7 +126,7 @@ class HotelPriceManager {
             </div>
           </div>
           <div id="hp-matrix-wrapper" class="flex-grow-1 overflow-auto position-relative" style="min-height: 400px;">
-            <div id="hp-loading" class="position-absolute w-100 h-100 d-none justify-content-center align-items-center bkg-light bg-opacity-75" style="z-index: 10;">
+            <div id="hp-loading" class="position-absolute w-100 h-100 d-none justify-content-center align-items-center bg-surface-alt bg-opacity-75" style="z-index: 10;">
               <div class="spinner-border text-primary"></div>
             </div>
             <div id="hp-table-container" class="p-2"></div>
@@ -314,11 +314,11 @@ class HotelPriceManager {
             }
 
             let html = `
-        <table class="table table-sm table-bordered align-middle text-center bkg-light shadow-sm hp-matrix-table" style="font-size: 0.85rem;">
+        <table class="table table-sm table-bordered align-middle text-center bg-surface-alt shadow-sm hp-matrix-table" style="font-size: 0.85rem;">
           <thead class="table-dark sticky-top">
             ${metadataHtml}
             <tr>
-              <th rowspan="2" style="min-width: 200px; z-index: 5;" class="sticky-left bkg-light">Hạng phòng (ID)</th>
+              <th rowspan="2" style="min-width: 200px; z-index: 5;" class="sticky-left bg-surface-alt">Hạng phòng (ID)</th>
               ${activePeriods.map((p) => `<th colspan="${activePackages.length * activeRateTypes.length}">${p.name}</th>`).join('')}
             </tr>
             <tr>
@@ -332,7 +332,7 @@ class HotelPriceManager {
                 const roomDisplayName = roomsMap[roomId] || roomId;
                 html += `
           <tr>
-            <td class="text-start fw-bold sticky-left bkg-light shadow-sm p-0">
+            <td class="text-start fw-bold sticky-left bg-surface-alt shadow-sm p-0">
               <input type="text" class="form-control form-control-sm border-0 fw-bold hp-room-name-input" data-room-id="${roomId}" value="${roomDisplayName}" style="background: transparent;">
             </td>
             ${activePeriods

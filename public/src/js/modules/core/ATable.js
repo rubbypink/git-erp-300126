@@ -486,7 +486,7 @@ export default class ATable {
         <div id="${this.containerId}-content-area" class="table-responsive w-100 at-table-container flex-grow-1" style="overflow: auto; position: relative;">
           <!-- Table will be rendered here -->
         </div>
-        <div id="${this.containerId}-pagination-area" class="flex-shrink-0 bkg-light border-top pb-1">
+        <div id="${this.containerId}-pagination-area" class="flex-shrink-0 bg-surface-alt border-top pb-1">
           <!-- Pagination will be rendered here -->
         </div>
       </div>`;
@@ -596,9 +596,9 @@ export default class ATable {
         ${draggableHtml}
         <div id="hidden-field-select">${hiddenFieldsDropdownHtml}</div>
         <div class="search-box" style="width: 150px;">
-          <div class="input-group input-group-sm p-0 bkg-light rounded overflow-hidden shadow-sm border">
+          <div class="input-group input-group-sm p-0 bg-surface-alt rounded overflow-hidden shadow-sm border">
             <span class="input-group-text border-0"><i class="fas fa-search text-muted small"></i></span>
-            <input type="text" class="form-control form-control-sm bkg-light border-0 ps-0 at-search-input" placeholder="Tìm kiếm nhanh..." style="box-shadow: none;">
+            <input type="text" class="form-control form-control-sm bg-surface-alt border-0 ps-0 at-search-input" placeholder="Tìm kiếm nhanh..." style="box-shadow: none;">
           </div>
         </div>
         <button id="${this.containerId}-btn-settings" class="btn btn-light border-0 shadow-sm p-0 bg-transparent" style="font-size: large;"><icon class="fas fa-cog"></icon></button>
@@ -640,7 +640,7 @@ export default class ATable {
         <button class="btn btn-sm btn-light border shadow-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
           <i class="fas fa-columns"></i>
         </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 bkg-light fs-2" style="overflow: hidden; min-width: 200px; max-height: 400px; overflow-y: auto;">
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 bg-surface-alt fs-2" style="overflow: hidden; min-width: 200px; max-height: 400px; overflow-y: auto;">
           <li class="dropdown-header sticky-top py-1 fw-bold border-bottom mb-1 d-flex justify-content-between align-items-center" style="z-index: 10;">
             <span class="small">Hiển thị cột</span>
             <button class="btn btn-xs btn-primary at-apply-fields" title="Áp dụng thay đổi">
@@ -944,7 +944,7 @@ export default class ATable {
                     const uniqueCount = new Set(items.map((item) => item[h]).filter((v) => v !== undefined && v !== null && v !== '')).size;
                     result = `<div class="small text-muted"></div><div class="text-success">${uniqueCount}</div>`;
                 }
-                return `<td class="bkg-light sticky-bottom" style="bottom: 0; z-index: 4;">${result}</td>`;
+                return `<td class="bg-surface-alt sticky-bottom" style="bottom: 0; z-index: 4;">${result}</td>`;
             })
             .join('')}
       </tr>`;
@@ -1681,7 +1681,7 @@ export default class ATable {
             // Chỉ truyền tên field. Element cha <tr> đã có sẵn data-item (ID).
             return `
         <td data-field="${field}" class="at-object-cell text-center align-middle">
-          <div class="d-inline-flex align-items-center gap-2 border rounded px-2 py-1 bkg-light shadow-sm">
+          <div class="d-inline-flex align-items-center gap-2 border rounded px-2 py-1 bg-surface-alt shadow-sm">
             <span class="small text-muted cursor-help" data-bs-toggle="tooltip" title="${escapeHtml(summary)}">
               <i class="fas ${icon} me-1 text-secondary"></i> ${typeText}
             </span>
@@ -1701,7 +1701,7 @@ export default class ATable {
      */
     _buildNestedObjectHtml(obj, depth = 0) {
         L._(`[ATable] _buildNestedObjectHtml: ${JSON.stringify(obj)}`);
-        if (obj === null || obj === undefined) return '<span class="badge bkg-light text-muted border">null</span>';
+        if (obj === null || obj === undefined) return '<span class="badge bg-surface-alt text-muted border">null</span>';
         if (typeof obj !== 'object') return `<span class="fw-medium">${escapeHtml(String(obj))}</span>`;
 
         // 1. XỬ LÝ MẢNG (ARRAY)
@@ -1715,7 +1715,7 @@ export default class ATable {
 
             // Nếu là mảng Object -> Vẽ bảng
             const keys = Array.from(new Set(obj.flatMap((o) => Object.keys(o || {}))));
-            let html = `<div class="table-responsive bkg-light rounded border mt-1 mb-2 shadow-sm">
+            let html = `<div class="table-responsive bg-surface-alt rounded border mt-1 mb-2 shadow-sm">
                     <table class="table table-sm table-hover table-bordered mb-0" style="font-size: 0.7rem;">`;
             html += `<thead class="table-light text-nowrap"><tr>${keys.map((k) => `<th class="text-secondary fw-bold">${escapeHtml(k)}</th>`).join('')}</tr></thead><tbody>`;
             html += obj.map((row) => `<tr>${keys.map((k) => `<td>${this._buildNestedObjectHtml(row[k], depth + 1)}</td>`).join('')}</tr>`).join('');
@@ -1877,13 +1877,13 @@ export default class ATable {
         const supplierName = APP_DATA.suppliers[globalSupplier]?.name || globalSupplier;
 
         // 3. Render HTML
-        let html = `<div class="table-responsive bkg-light rounded shadow-sm border" style="max-height: 75vh; overflow-y: auto;">
+        let html = `<div class="table-responsive bg-surface-alt rounded shadow-sm border" style="max-height: 75vh; overflow-y: auto;">
                   <table class="table table-bordered table-hover table-sm align-middle mb-0 text-nowrap" style="font-size: 0.75rem;">`;
 
         // HEADER
         html += `<thead class="table-dark sticky-top" style="z-index: 2;">
     <tr>
-      <th class="text-center bkg-light text-warning p-2" style="width: 180px; border-right: 2px solid #444;">
+      <th class="text-center bg-surface-alt text-warning p-2" style="width: 180px; border-right: 2px solid #444;">
          <div class="small opacity-75">NHÀ CUNG CẤP</div>
          <div class="fw-bold"><i class="fas fa-handshake"></i> ${supplierName}</div>
       </th>`;
@@ -1905,7 +1905,7 @@ export default class ATable {
             const displayGroup = window.A?.Lang?.t(groupVal) || groupVal;
             let groupExtraInfo = '';
             if (parentKey === 'periodId' && periodData[groupVal]) {
-                groupExtraInfo = ` <span class="badge bkg-light text-primary ms-2">${periodData[groupVal].sDate} - ${periodData[groupVal].eDate}</span>`;
+                groupExtraInfo = ` <span class="badge bg-surface-alt text-primary ms-2">${periodData[groupVal].sDate} - ${periodData[groupVal].eDate}</span>`;
             }
             // Dòng Cha (Group)
             html += `<tr class="table-active">
@@ -1921,7 +1921,7 @@ export default class ATable {
                 const displayRoom = roomObj?.name || roomVal;
 
                 let rowHtml = `<tr>
-                         <td class="fw-bold text-start ps-3 bkg-light" style="border-right: 2px solid #dee2e6;">
+                         <td class="fw-bold text-start ps-3 bg-surface-alt" style="border-right: 2px solid #dee2e6;">
                            ${displayRoom}
                          </td>`;
 
@@ -1954,7 +1954,7 @@ export default class ATable {
                 </div>
               </td>`;
                     } else {
-                        rowHtml += `<td class="text-center bkg-light opacity-50"><i class="fas fa-minus small"></i></td>`;
+                        rowHtml += `<td class="text-center bg-surface-alt opacity-50"><i class="fas fa-minus small"></i></td>`;
                     }
                 });
                 rowHtml += `</tr>`;
@@ -2038,7 +2038,7 @@ export default class ATable {
                 hiddenField: 'Tính năng Ẩn Cột',
             };
 
-            let html = `<form id="full-settings-form" class="options-form container-fluid p-2 bkg-light rounded border shadow-sm">
+            let html = `<form id="full-settings-form" class="options-form container-fluid p-2 bg-surface-alt rounded border shadow-sm">
                           <div class="row g-3">`;
 
             for (const [key, value] of Object.entries(finalOptions)) {

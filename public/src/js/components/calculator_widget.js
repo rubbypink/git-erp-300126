@@ -40,7 +40,7 @@ const CalculatorWidget = {
                     </button>
                 </div>
 
-                <div class="p-3 bkg-light">
+                <div class="p-3 bg-surface-alt">
                     <input type="text" id="calc-display" class="form-control text-end fs-4 fw-bold mb-2" placeholder="0" readonly style="background: #fff;">
                     <div class="text-end text-muted small" style="height: 20px;" id="calc-history"></div>
                 </div>

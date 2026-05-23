@@ -341,7 +341,7 @@ class AccountantController {
             const name = fund.name || fund.id || 'Quỹ ẩn';
 
             html += `
-            <div class="d-flex justify-content-between align-items-center p-2 mb-2 rounded-3 border border-light bkg-light transition-hover fund-item-row">
+            <div class="d-flex justify-content-between align-items-center p-2 mb-2 rounded-3 border border-light bg-surface-alt transition-hover fund-item-row">
                 <div class="d-flex align-items-center overflow-hidden me-2">
                     <div class="${iconBg} bg-opacity-10 p-2 rounded-circle d-flex me-2">
                         <i class="fas ${iconFa} ${iconText}"></i>
@@ -1212,15 +1212,15 @@ class AccountantController {
                 ${
                     isEdit
                         ? `
-                <div class="mb-3 p-2 bkg-light border-bottom">
+                <div class="mb-3 p-2 bg-surface-alt border-bottom">
                     <div class="mb-2">
                         <label class="form-label fw-bold text-muted small">ID Giao Dịch</label>
-                        <div class="form-control form-control-sm bkg-light small" readonly>${existingData?.id || 'Auto-gen'}</div>
+                        <div class="form-control form-control-sm bg-surface-alt small" readonly>${existingData?.id || 'Auto-gen'}</div>
                         <input type="hidden" data-field="id" value="${existingData?.id || ''}">
                     </div>
                     <div>
                         <label class="form-label fw-bold text-muted small">Loại GD</label>
-                        <div class="form-control form-control-sm bkg-light small" readonly>${mode === 'IN' ? '📥 Phiếu Thu' : '📤 Phiếu Chi'}</div>
+                        <div class="form-control form-control-sm bg-surface-alt small" readonly>${mode === 'IN' ? '📥 Phiếu Thu' : '📤 Phiếu Chi'}</div>
                         <input type="hidden" data-field="type" value="${mode}">
                     </div>
                 </div>
@@ -1268,7 +1268,7 @@ class AccountantController {
                 </div>
 
                 <!-- Section 4: Optional Fields -->
-                <div class="mb-3 p-2 border rounded bkg-light">
+                <div class="mb-3 p-2 border rounded bg-surface-alt">
                     <label class="form-label fw-bold text-primary small">🔗 Booking ID (Liên kết)</label>
                     <input type="text" class="form-control form-control-sm w-100" data-field="booking_id" 
                         value="${existingData?.booking_id || ''}" placeholder="VD: BK-2023-001..." 
@@ -1277,7 +1277,7 @@ class AccountantController {
                 </div>
 
                 <!-- Section 4b: Receiver -->
-                <div class="mb-3 p-2 border rounded bkg-light">
+                <div class="mb-3 p-2 border rounded bg-surface-alt">
                     <label class="form-label fw-bold text-primary small">👤 Người nộp / Người nhận</label>
                     <input type="text" class="form-control form-control-sm w-100" data-field="receiver"
                         value="${existingData?.receiver || ''}" placeholder="Tên người nộp tiền / nhận tiền...">
@@ -1318,15 +1318,15 @@ class AccountantController {
                 ${
                     isEdit
                         ? `
-                <div class="mb-0 p-2 bkg-light border-top">
+                <div class="mb-0 p-2 bg-surface-alt border-top">
                     <div class="mb-2">
                         <label class="form-label fw-bold text-muted small">✏️ Tạo bởi</label>
-                        <div class="form-control form-control-sm bkg-light small" readonly>${existingData?.created_by || 'Hệ thống'}</div>
+                        <div class="form-control form-control-sm bg-surface-alt small" readonly>${existingData?.created_by || 'Hệ thống'}</div>
                         <input type="hidden" data-field="created_by" value="${existingData?.created_by || currentUser}">
                     </div>
                     <div>
                         <label class="form-label fw-bold text-muted small">🕐 Ngày tạo</label>
-                        <div class="form-control form-control-sm bkg-light small" readonly>${existingData?.created_at ? formatDateVN(existingData.created_at) : new Date().toISOString().split('T')[0]}</div>
+                        <div class="form-control form-control-sm bg-surface-alt small" readonly>${existingData?.created_at ? formatDateVN(existingData.created_at) : new Date().toISOString().split('T')[0]}</div>
                         <input type="hidden" data-field="created_at" value="${existingData?.created_at || new Date().toISOString()}">
                     </div>
                 </div>
