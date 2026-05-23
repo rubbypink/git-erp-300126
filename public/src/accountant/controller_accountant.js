@@ -1332,7 +1332,16 @@ class AccountantController {
         const data = Object.values(formDataResult)[0] || {};
 
         const amount = getNum('inp-amount-show');
-        if (!data.fund_source) data.fund_source = document.querySelector('#acc-modal-form [data-field="fund_source"]').value;
+
+        // ====================================================================
+        // FALLBACK: Đọc trực tiếp từ DOM nếu HD.getFormData không capture được
+        // (tương tự pattern của fund_source trong code gốc)
+        // ====================================================================
+        const modalForm = document.querySelector('#acc-modal-form');
+        if (!data.fund_source && modalForm) data.fund_source = modalForm.querySelector('[data-field="fund_source"]')?.value;
+        if (!data.status && modalForm) data.status = modalForm.querySelector('[data-field="status"]')?.value;
+        if (!data.transaction_date && modalForm) data.transaction_date = modalForm.querySelector('[data-field="transaction_date"]')?.value;
+        if (!data.booking_id && modalForm) data.booking_id = modalForm.querySelector('[data-field="booking_id"]')?.value;
 
         // ====================================================================
         // 1. VALIDATE MANDATORY FIELDS
@@ -1362,11 +1371,33 @@ class AccountantController {
         let bookingData;
         let bkId;
         if (data.booking_id) {
+            /**
+             * HELPER: Tìm document trong collection object bằng nhiều chiến lược
+             * - So sánh kiểu string để tránh lỗi number vs string
+             * - Thử key trực tiếp → key có prefix "BK-" → tìm bằng field "id"
+             */
+            const findInCollection = (collection, lookupId) => {
+                if (!collection || !lookupId) return null;
+                const idStr = String(lookupId).trim();
+                // Strategy 1: Key trực tiếp (vd: APP_DATA.bookings['BK-11254'])
+                if (collection[idStr]) return collection[idStr];
+                // Strategy 2: Thêm prefix "BK-" (vd: booking_id = "11254" → key "BK-11254")
+                const withPrefix = idStr.startsWith('BK-') ? idStr.substring(3) : 'BK-' + idStr;
+                if (collection[withPrefix]) return collection[withPrefix];
+                // Strategy 3: Duyệt qua tất cả document, so sánh field "id"
+                const allDocs = Array.isArray(collection) ? collection : Object.values(collection);
+                const found = allDocs.find((doc) => {
+                    const docId = String(doc?.id ?? '');
+                    return docId === idStr || docId === withPrefix || docId.replace(/^BK-/, '') === idStr.replace(/^BK-/, '');
+                });
+                return found || null;
+            };
+
             if (data.type === 'IN') {
-                bookingData = window.APP_DATA?.bookings?.[data.booking_id];
-                bkId = data.booking_id;
+                bookingData = findInCollection(window.APP_DATA?.bookings, data.booking_id);
+                bkId = bookingData?.id || data.booking_id;
             } else if (data.type === 'OUT') {
-                bookingData = window.APP_DATA?.operator_entries?.[data.booking_id];
+                bookingData = findInCollection(window.APP_DATA?.operator_entries, data.booking_id);
                 bkId = bookingData?.booking_id;
             }
             if (!bookingData) {
