@@ -25,44 +25,45 @@
             </div>
             <div id="acc-stats-collapse" class="collapse show">
                 <div class="row g-3">
-                <div class="col-12 col-md-6 col-xl-5">
-                    <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
-                        <div class="card-header bg-primary bg-gradient d-flex justify-content-between align-items-center p-3 border-0">
-                            <span class="text-uppercase small fw-bold tracking-wide"><i class="fas fa-landmark me-2"></i>Tổng Quỹ Thực Tế</span>
-                            <span class="fs-4 fw-bolder" id="d-total-fund">0</span>
-                        </div>
-                        <div class="card-body p-0 bkg-light">
-                            <div id="acc-fund-list-container" class="acc-fund-list p-2 custom-scrollbar" style="max-height: 200px; overflow-y: auto">
-                                <div class="text-center text-muted small fst-italic py-4"><i class="fas fa-spinner fa-spin me-1"></i> Đang tải dữ liệu quỹ...</div>
+                    <div class="col-12 col-md-6 col-xl-5">
+                        <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden d-flex flex-column">
+                            <div class="card-header bg-primary bg-gradient text-white d-flex justify-content-between align-items-center p-3 border-0">
+                                <span class="text-uppercase small fw-bold tracking-wide"><i class="fas fa-landmark me-2"></i>Tổng Quỹ Thực Tế</span>
+                                <span class="fs-4 fw-bolder" id="d-total-fund">0</span>
+                            </div>
+                            <div class="card-body p-0 bkg-light flex-grow-1">
+                                <div id="acc-fund-list-container" class="acc-fund-list p-2 custom-scrollbar" style="max-height: 250px; overflow-y: auto;">
+                                    <div class="text-center text-muted small fst-italic py-4"><i class="fas fa-spinner fa-spin me-1"></i> Đang tải dữ liệu quỹ...</div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="col-12 col-md-6 col-xl-7">
-                    <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden">
-                        <div class="card-header bg-success bg-gradient d-flex justify-content-between align-items-center p-3 border-0">
-                            <span class="text-uppercase small fw-bold tracking-wide"><i class="fas fa-chart-line me-2"></i>Lãi/Lỗ (Net)</span>
-                            <span class="fs-4 fw-bolder" id="d-net-balance">0</span>
-                        </div>
-                        <div class="card-body p-3 bkg-light d-flex flex-column justify-content-center">
-                            <div class="row text-center g-3">
-                                <div class="col-6">
-                                    <div class="p-3 bg-success bg-opacity-10 rounded-4 h-100 border border-success border-opacity-25 transition-hover">
-                                        <div class="small text-muted mb-1 text-uppercase fw-semibold"><i class="fas fa-arrow-down text-success me-1"></i> Tổng Thu (IN)</div>
-                                        <div class="fs-5 fw-bold text-success text-truncate" id="d-total-in">0</div>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="p-3 bg-danger bg-opacity-10 rounded-4 h-100 border border-danger border-opacity-25 transition-hover">
-                                        <div class="small text-muted mb-1 text-uppercase fw-semibold"><i class="fas fa-arrow-up text-danger me-1"></i> Tổng Chi (OUT)</div>
-                                        <div class="fs-5 fw-bold text-danger text-truncate" id="d-total-out">0</div>
-                                    </div>
-                                </div>
+                    <div class="col-12 col-md-6 col-xl-7">
+                        <div class="card border-0 shadow-sm rounded-4 h-100 overflow-hidden d-flex flex-column">
+                            <div class="card-header bg-success bg-gradient text-white d-flex justify-content-between align-items-center p-3 border-0">
+                                <span class="text-uppercase small fw-bold tracking-wide"><i class="fas fa-chart-line me-2"></i>Lãi/Lỗ (Net)</span>
+                                <span class="fs-4 fw-bolder" id="d-net-balance">0</span>
                             </div>
-                            <div id="acc-fund-breakdown" class="mt-3"></div>
-                            <div class="mt-2 text-end">
-                                <small class="text-muted fst-italic" style="font-size: 0.7rem"><i class="fas fa-info-circle me-1"></i>*Chỉ số tính theo bộ lọc bên dưới</small>
+                            <div class="card-body p-3 bkg-light d-flex flex-column flex-grow-1 justify-content-center">
+                                <div class="row text-center g-3">
+                                    <div class="col-6">
+                                        <div class="p-3 bg-success bg-opacity-10 rounded-4 h-100 border border-success border-opacity-25 transition-hover d-flex flex-column justify-content-center">
+                                            <div class="small text-muted mb-1 text-uppercase fw-semibold"><i class="fas fa-arrow-down text-success me-1"></i> Tổng Thu (IN)</div>
+                                            <div class="fs-5 fw-bold text-success text-truncate" id="d-total-in">0</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="p-3 bg-danger bg-opacity-10 rounded-4 h-100 border border-danger border-opacity-25 transition-hover d-flex flex-column justify-content-center">
+                                            <div class="small text-muted mb-1 text-uppercase fw-semibold"><i class="fas fa-arrow-up text-danger me-1"></i> Tổng Chi (OUT)</div>
+                                            <div class="fs-5 fw-bold text-danger text-truncate" id="d-total-out">0</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="acc-fund-breakdown" class="mt-3"></div>
+                                <div class="mt-auto text-end pt-2">
+                                    <small class="text-muted fst-italic" style="font-size: 0.7rem"><i class="fas fa-info-circle me-1"></i>*Chỉ số tính theo bộ lọc bên dưới</small>
+                                </div>
                             </div>
                         </div>
                     </div>
