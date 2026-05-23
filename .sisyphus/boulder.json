@@ -1,0 +1,15 @@
+{
+  "active_plan": "D:\\Software\\9-TRIP-ERP\\9trip-repository\\9trip-erp-front-end\\.sisyphus\\plans\\accountant_refactor.md",
+  "started_at": "2026-05-22T21:45:09.182Z",
+  "session_ids": [
+    "ses_1ae6c1f6dffePI18GPTVCRZg4r",
+    "ses_1ade2b2aeffe4f4BZt3USR354N"
+  ],
+  "session_origins": {
+    "ses_1ae6c1f6dffePI18GPTVCRZg4r": "direct",
+    "ses_1ade2b2aeffe4f4BZt3USR354N": "direct"
+  },
+  "plan_name": "accountant_refactor",
+  "agent": "atlas",
+  "task_sessions": {}
+}

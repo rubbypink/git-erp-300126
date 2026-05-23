@@ -73,8 +73,10 @@ export default class ATable {
             style: 'auto',
             title: '',
             onCellChange: null,
+            onRowClick: null,
             data: null,
             hiddenField: false,
+            columns: null,
             ...options,
         };
     }
@@ -260,6 +262,18 @@ export default class ATable {
                     }
                 }
                 return;
+            }
+
+            // Xử lý click vào hàng (onRowClick)
+            if (this.options.onRowClick && typeof this.options.onRowClick === 'function') {
+                const row = target.closest('tr[data-item]');
+                if (row && !target.closest('.at-view-object') && !target.closest('a') && !target.closest('button')) {
+                    const itemId = row.dataset.item;
+                    const item = this.state.fullData.find((i) => String(i.id || i.uid || i) === String(itemId));
+                    if (item) {
+                        this.options.onRowClick(item);
+                    }
+                }
             }
         });
 
@@ -688,11 +702,12 @@ export default class ATable {
 
         return headers
             .map((h) => {
-                const config = fieldConfigs[h];
+                const config = fieldConfigs[h] || {};
                 const label = config.displayName || window.A?.Lang?.t(h) || h.replace(/_/g, ' ');
                 const isSorted = sort.field === h;
-                const sortIcon = sorter ? ` <i class="fas fa-sort${isSorted ? (sort.dir === 'asc' ? '-up' : '-down') : ''} small ${isSorted ? 'text-primary' : 'text-muted'}" style="font-size:0.7rem"></i>` : '';
-                const sortAttr = sorter ? `style="cursor:pointer" data-sort-field="${h}"` : '';
+                const sortIcon = sorter && config.sortable !== false ? ` <i class="fas fa-sort${isSorted ? (sort.dir === 'asc' ? '-up' : '-down') : ''} small ${isSorted ? 'text-primary' : 'text-muted'}" style="font-size:0.7rem"></i>` : '';
+                const widthStyle = config.width ? `width:${config.width};min-width:${config.width};` : '';
+                const sortAttr = sorter && config.sortable !== false ? `style="cursor:pointer;${widthStyle}" data-sort-field="${h}"` : `style="${widthStyle}"`;
                 return `<th scope="col" class="text-capitalize" ${sortAttr}>${label}${sortIcon}</th>`;
             })
             .join('');
@@ -711,12 +726,20 @@ export default class ATable {
                 const itemId = item.id || item.uid || String(item) || '';
                 const itemAttr = itemId ? `data-item="${itemId}"` : '';
                 return `
-        <tr ${itemAttr}>
+        <tr ${itemAttr} class="at-row-clickable" style="cursor:pointer">
           ${headers
               .map((h) => {
                   let val = item[h] !== undefined && item[h] !== null ? item[h] : '';
                   const config = fieldConfigs[h] || {};
                   val = this._tryParseJSON(val);
+
+                  // Ưu tiên custom renderer từ columns config
+                  if (config._renderer && typeof config._renderer === 'function') {
+                      const rendered = config._renderer(val, item);
+                      const widthStyle = config.width ? `width:${config.width};min-width:${config.width};` : '';
+                      const alignClass = config.align ? `text-${config.align}` : '';
+                      return `<td data-field="${h}" class="${alignClass}" style="${widthStyle}">${rendered}</td>`;
+                  }
 
                   if ((config.type === 'date' || config.name?.split('_').includes('at')) && val) val = formatDateISO(val);
                   if (config.class?.split(' ').includes('number') && val) val = formatNumber(val);
@@ -740,8 +763,10 @@ export default class ATable {
                   const shortVal = isLong ? displayVal.substring(0, 47) + '...' : displayVal;
                   const tooltipAttr = isLong ? `title="${escapeHtml(displayVal)}" data-bs-toggle="tooltip"` : '';
                   const firstCell = h === 'id' || h === 'uid';
+                  const widthStyle = config.width ? `width:${config.width};min-width:${config.width};` : '';
+                  const alignClass = config.align ? `text-${config.align}` : '';
 
-                  return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''} ${firstCell ? 'drag-handle' : ''}" style="${isLong ? 'max-width: 200px;' : ''}">${isHtml ? escapeHtml(shortVal) : displayVal}</td>`;
+                  return `<td data-field="${h}" data-val="${val}" ${tooltipAttr} class="${isLong ? 'text-truncate' : ''} ${firstCell ? 'drag-handle' : ''} ${alignClass}" style="${isLong ? 'max-width: 200px;' : ''} ${widthStyle}">${isHtml ? escapeHtml(shortVal) : displayVal}</td>`;
               })
               .join('')}
         </tr>`;
@@ -1057,6 +1082,31 @@ export default class ATable {
 
     _resolveFieldConfigs() {
         if (Object.keys(this.state.fieldConfigs).length > 0) return;
+
+        // 1. Ưu tiên columns option (mới) — chuyển đổi sang customfieldConfigs
+        if (this.options.columns && Array.isArray(this.options.columns)) {
+            const configs = {};
+            this.options.columns.forEach((col) => {
+                const name = col.field || col.name;
+                if (!name) return;
+                const config = {
+                    name: name,
+                    displayName: col.header || col.displayName || name,
+                    type: col.formatter === 'date' ? 'date' : col.type || 'text',
+                    html: col.html || false,
+                    width: col.width || col.minWidth || '',
+                    align: col.align || '',
+                    sortable: col.sortable !== false,
+                    class: col.align === 'right' ? 'text-end' : col.class || '',
+                    _renderer: col.renderer || null,
+                };
+                configs[name] = config;
+                this.state.allFieldsOrder.push(name);
+            });
+            this.state.fieldConfigs = configs;
+            return;
+        }
+
         if (this.options.customfieldConfigs) {
             this.state.fieldConfigs = this.options.customfieldConfigs;
             if (this.options.customfieldConfigs) {

@@ -4,6 +4,30 @@
  */
 export default class LogicBase {
     // =========================================================================
+    // CONSTRUCTOR (Instance)
+    // =========================================================================
+    constructor() {
+        this.filters = new Map();
+    }
+
+    registerFilter(name, fn) {
+        if (typeof fn !== 'function') {
+            console.warn(`[LogicBase] Filter "${name}" must be a function`);
+            return;
+        }
+        this.filters.set(name, fn);
+    }
+
+    applyFilter(name, data, ...args) {
+        const fn = this.filters.get(name);
+        if (!fn) {
+            console.warn(`[LogicBase] Filter "${name}" not found`);
+            return data;
+        }
+        return fn(data, ...args);
+    }
+
+    // =========================================================================
     // PROPERTIES (STATIC)
     // =========================================================================
     static GRID_COLS = [];
