@@ -230,7 +230,7 @@ export default class ErpHeaderMenu {
                                     <i class="fa-solid fa-chart-line text-warning w-20px"></i> Dashboard
                                 </button>
                             </li>
-                            <li class="sales-only op-only admin-only">
+                            <li>
                                 <button class="dropdown-item py-2" type="button" onclick="A.UI.activateTab('tab-form')">
                                     <i class="fa-solid fa-file-pen text-secondary"></i> Booking
                                 </button>
@@ -286,7 +286,7 @@ export default class ErpHeaderMenu {
                         <i class="fa-solid fa-chart-line text-warning"></i> Dashboard
                     </button>
                 </li>
-                <li class="nav-item sales-only op-only admin-only">
+                <li class="nav-item">
                     <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-toggle="tab" data-bs-target="#tab-form" >Booking</button>
                 </li>
                 <li class="nav-item">
