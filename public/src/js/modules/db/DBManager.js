@@ -2601,6 +2601,9 @@ class DBManager {
             // [OPTIMIZATION] Sử dụng Queue cho các thao tác ghi đơn lẻ để tránh high-frequency triggers
             const writeResult = await this.#firestoreCRUD(collectionName, 'set', docId, dataObj, { useQueue: true });
 
+            // Cập nhật APP_DATA ngay lập tức để các module khác (như Accountant) có thể tìm thấy record vừa tạo
+            this._updateAppDataObj(collectionName, dataObj);
+
             // 5. Hệ thống Notification
             if (collectionName === 'booking_details') {
                 await this._syncOperatorEntry(dataObj);

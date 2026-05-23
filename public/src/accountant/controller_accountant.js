@@ -1342,6 +1342,7 @@ class AccountantController {
         // (tương tự pattern của fund_source trong code gốc)
         // ====================================================================
         const modalForm = document.querySelector('#acc-modal-form');
+        if (!data.type && modalForm) data.type = modalForm.querySelector('[data-field="type"]')?.value;
         if (!data.fund_source && modalForm) data.fund_source = modalForm.querySelector('[data-field="fund_source"]')?.value;
         if (!data.status && modalForm) data.status = modalForm.querySelector('[data-field="status"]')?.value;
         if (!data.transaction_date && modalForm) data.transaction_date = modalForm.querySelector('[data-field="transaction_date"]')?.value;
