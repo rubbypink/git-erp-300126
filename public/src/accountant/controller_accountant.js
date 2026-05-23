@@ -13,6 +13,10 @@ import { SupplierDebtDashboard } from './acc_supplier_debt.js';
 import { PnLReport } from './acc_pnl_report.js';
 import { FinancialCharts } from './acc_charts.js';
 import { AccExport } from './acc_export.js';
+// CRITICAL: Import CSS so Vite bundles it with the module chunk.
+// Without this, CSS fails to load via dynamic <link> tag because
+// '@acc' alias only resolves in JS imports, not in browser-resolved URLs.
+import './accountant.css';
 
 // ===================================================================
 // HELPER FUNCTIONS
@@ -525,7 +529,13 @@ class AccountantController {
             logA('Bạn không có quyền duyệt giao dịch', 'warning', 'toast');
             return;
         }
-        await A.DB.updateSingle(this.currentTransCol, id, { status: 'Completed', approved_by: CURRENT_USER.name, approved_at: new Date().toISOString() });
+        const trans = this.transactions.find((t) => t.id === id);
+        if (!trans || trans.status === 'Completed') return;
+        await A.DB.updateSingle(this.currentTransCol, id, {
+            status: 'Completed',
+            approved_by: CURRENT_USER.name,
+            approved_at: new Date().toISOString(),
+        });
         logA('✅ Đã duyệt giao dịch', 'success', 'toast');
         this.refreshData();
     }
@@ -755,13 +765,6 @@ class AccountantController {
 
     getSelectedIds() {
         return Array.from(this.selectedIds);
-    }
-
-    async approveTransaction(id) {
-        const trans = this.transactions.find((t) => t.id === id);
-        if (!trans) return;
-        if (trans.status === 'Completed') return;
-        await A.DB.updateSingle(this.currentTransCol, id, { status: 'Completed' });
     }
 
     async bulkApprove() {
