@@ -454,8 +454,8 @@ class EventManager {
                 if (module && module.default) {
                     const AccountantCtrl = module.default;
                     await AccountantCtrl.openTransactionModal('IN');
-                    const booking = APP_DATA.bookings_obj?.find(b => b.id === getVal('BK_ID'));
-                    const balance = booking ? (booking.balance_amount || 0) : 0;
+                    const booking = APP_DATA.bookings?.[getVal('BK_ID')];
+                    const balance = booking?.balance_amount || 0;
                     setVal('inp-amount-show', balance * 1000);
                     const inpBkId = $("[data-field='booking_id']", getE('dynamic-modal-body'));
                     if (inpBkId) {
