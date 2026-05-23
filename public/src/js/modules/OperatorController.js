@@ -1,5 +1,3 @@
-import { collection, doc, writeBatch } from 'firebase/firestore';
-
 /**
  * =========================================================================
  * 9TRIP ERP - OPERATOR MODULE (Class-based)
@@ -312,51 +310,58 @@ class OperatorController {
 
             try {
                 if (typeof showLoading === 'function') showLoading(true, 'Đang thanh toán lô...');
-                const db = window.A?.DB?.db;
-                if (!db) throw new Error('Lỗi mất kết nối CSDL (A.DB.db)');
 
-                const batch = writeBatch(db);
-                const txRef = doc(collection(db, 'transactions'));
-                const entryIds = HD.pluck(OperatorController.State.entries, 'id').join(', ');
+                let successCount = 0;
+                let failCount = 0;
 
-                batch.set(txRef, {
-                    id: txRef.id,
-                    transaction_date: new Date().toISOString(),
-                    type: 'OUT',
-                    amount: OperatorController.State.totalDebt * 1000,
-                    receiver: OperatorController.State.supplierId,
-                    category: 'PAY_SUPPLIER_BATCH',
-                    booking_id: 'BATCH_PAYMENT',
-                    description: `Thanh toán lô cho các dịch vụ: ${entryIds}`,
-                    status: 'Completed',
-                    fund_source: fundAccountId,
-                    created_by: window.CURRENT_USER?.name || 'Unknown',
-                    created_at: new Date().toISOString(),
-                });
-
-                OperatorController.State.entries.forEach((entry) => {
+                for (const entry of OperatorController.State.entries) {
                     if (entry.dept_balance > 0) {
-                        const entryRef = doc(db, 'operator_entries', entry.id);
-                        batch.update(entryRef, {
-                            paid_amount: Number(entry.paid_amount || 0) + Number(entry.dept_balance),
-                            dept_balance: 0,
-                            updated_at: new Date().toISOString(),
-                        });
+                        try {
+                            const transId = await HD.generateTransId('OUT');
+                            const txData = {
+                                id: transId,
+                                type: 'OUT',
+                                amount: Number(entry.dept_balance) * 1000,
+                                booking_id: entry.id,
+                                category: 'PAY_SUPPLIER',
+                                status: 'Completed',
+                                fund_source: fundAccountId,
+                                receiver: entry.supplier || OperatorController.State.supplierId,
+                                transaction_date: new Date().toISOString(),
+                                created_by: window.CURRENT_USER?.name || 'Unknown',
+                                created_at: new Date().toISOString(),
+                            };
+                            await window.A.DB.saveRecord('transactions', txData);
+                            await window.A.DB.updateSingle('operator_entries', entry.id, {
+                                paid_amount: Number(entry.paid_amount || 0) + Number(entry.dept_balance),
+                                dept_balance: 0,
+                                updated_at: new Date().toISOString(),
+                            });
+                            successCount++;
+                        } catch (entryError) {
+                            console.error(`[OperatorController.DB.handlePayAll] Error for entry ${entry.id}:`, entryError);
+                            failCount++;
+                        }
                     }
-                });
-
-                await batch.commit();
+                }
 
                 if (typeof showLoading === 'function') showLoading(false);
-                if (typeof logA === 'function') logA('Đã thanh toán công nợ lô thành công!', 'success');
-                else Swal.fire('Thành công', 'Đã thanh toán công nợ lô thành công!', 'success');
+
+                if (failCount > 0) {
+                    const msg = `Đã thanh toán ${successCount}/${successCount + failCount} dịch vụ. ${failCount} thất bại.`;
+                    if (typeof logA === 'function') logA(msg, 'warning');
+                    else Swal.fire('Cảnh báo', msg, 'warning');
+                } else {
+                    if (typeof logA === 'function') logA('Đã thanh toán công nợ lô thành công!', 'success');
+                    else Swal.fire('Thành công', 'Đã thanh toán công nợ lô thành công!', 'success');
+                }
 
                 OperatorController.UI.closeView();
             } catch (error) {
                 if (typeof showLoading === 'function') showLoading(false);
                 console.error('[OperatorController.DB.handlePayAll] Error:', error);
-                if (typeof logA === 'function') logA('Giao dịch thất bại. Hệ thống đã tự động Rollback!', 'error');
-                else Swal.fire('Lỗi', 'Giao dịch thất bại. Hệ thống đã tự động Rollback!', 'error');
+                if (typeof logA === 'function') logA('Giao dịch thất bại.', 'error');
+                else Swal.fire('Lỗi', 'Giao dịch thất bại.', 'error');
             }
         },
 
@@ -373,13 +378,10 @@ class OperatorController {
 
             try {
                 if (typeof showLoading === 'function') showLoading(true, 'Đang đồng bộ...');
-                const db = window.A?.DB?.db;
-                if (!db) throw new Error('Lỗi mất kết nối CSDL (A.DB.db)');
 
-                const batch = writeBatch(db);
                 let totalMissingGenerated = 0;
 
-                OperatorController.State.entries.forEach((entry) => {
+                for (const entry of OperatorController.State.entries) {
                     const txs = HD.filter(window.APP_DATA.transactions, entry.id, '==', 'booking_id');
                     const validTxs = txs.filter((t) => t.type === 'OUT' && t.status === 'Completed');
                     const txSum = HD.agg(validTxs, 'amount');
@@ -387,27 +389,30 @@ class OperatorController {
                     const missingAmount = (entry.paid_amount || 0) * 1000 - txSum;
 
                     if (missingAmount > 0) {
-                        totalMissingGenerated += missingAmount;
-
-                        const txRef = doc(collection(db, 'transactions'));
-                        batch.set(txRef, {
-                            id: txRef.id,
-                            transaction_date: new Date().toISOString(),
-                            type: 'OUT',
-                            amount: missingAmount,
-                            receiver: OperatorController.State.supplierId,
-                            category: 'SYNC_CORRECTION',
-                            booking_id: entry.id,
-                            description: `[Auto-Sync] Bổ sung hạch toán thiếu cho dịch vụ ${entry.id}`,
-                            status: 'Completed',
-                            fund_source: fundAccountId,
-                            created_by: window.CURRENT_USER?.name || 'System Auto',
-                            created_at: new Date().toISOString(),
-                        });
+                        try {
+                            const transId = await HD.generateTransId('OUT');
+                            const txData = {
+                                id: transId,
+                                transaction_date: new Date().toISOString(),
+                                type: 'OUT',
+                                amount: missingAmount,
+                                receiver: entry.supplier || OperatorController.State.supplierId,
+                                category: 'SYNC_CORRECTION',
+                                booking_id: entry.id,
+                                description: `[Auto-Sync] Bổ sung hạch toán thiếu cho dịch vụ ${entry.id}`,
+                                status: 'Completed',
+                                fund_source: fundAccountId,
+                                created_by: window.CURRENT_USER?.name || 'System Auto',
+                                created_at: new Date().toISOString(),
+                            };
+                            await window.A.DB.saveRecord('transactions', txData);
+                            totalMissingGenerated += missingAmount;
+                        } catch (entryError) {
+                            console.error(`[OperatorController.DB.handleUpdateSync] Error for entry ${entry.id}:`, entryError);
+                        }
                     }
-                });
+                }
 
-                await batch.commit();
                 if (typeof showLoading === 'function') showLoading(false);
 
                 const msg = `Đã đồng bộ giao dịch. Phát sinh tự động bù trừ: ${totalMissingGenerated.toLocaleString()} đ`;

@@ -6,7 +6,7 @@
  * =========================================================================
  */
 
-import { getFirestore, collection, doc, getDoc, runTransaction, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { getApp } from 'firebase/app';
 
 import DB_MANAGER from '/src/js/modules/db/DBManager.js';
@@ -716,15 +716,7 @@ class Op {
                 }
 
                 const currentPaidAmount = Number(getVal('[data-field="paid_amount"]', tr) || 0);
-                const currentType = getVal('[data-field="service_type"]', tr);
-                const supplier = getVal('[data-field="supplier"]', tr);
-
-                const allTransactions = HD.filter(window.APP_DATA?.transactions, detailId, '==', 'booking_id');
-                const existingOutTxs = HD.filter(allTransactions, 'OUT', '==', 'type');
-                const totalExistingPaid = HD.agg(existingOutTxs, 'amount');
-                const diffAmount = currentPaidAmount * 1000 - totalExistingPaid;
-
-                if (diffAmount === 0) return;
+                if (currentPaidAmount === 0 || !currentPaidAmount) return;
 
                 const fundAccounts = window.APP_DATA?.fund_accounts || {};
                 const accountOptions = {};
@@ -746,41 +738,35 @@ class Op {
 
                 if (!selectedFundId) return;
 
-                const db = getFirestore(getApp());
-                const newTxRef = doc(collection(db, 'transactions'));
-                const fundRef = doc(db, 'fund_accounts', selectedFundId);
+                const transId = await HD.generateTransId('OUT');
+                const currentType = getVal('[data-field="service_type"]', tr);
+                const supplier = getVal('[data-field="supplier"]', tr);
+                const amount = currentPaidAmount * 1000;
 
-                const result = await runTransaction(db, async (transaction) => {
-                    const fundDoc = await transaction.get(fundRef);
-                    if (!fundDoc.exists()) throw new Error('Tài khoản không tồn tại trên hệ thống!');
+                const txData = {
+                    id: transId,
+                    booking_id: detailId,
+                    transaction_date: new Date().toISOString().split('T')[0],
+                    type: 'OUT',
+                    category: currentType || 'Khác',
+                    receiver: supplier || 'Không xác định',
+                    fund_source: selectedFundId,
+                    amount: amount,
+                    updated_at: new Date().toISOString(),
+                    status: 'Completed',
+                    description: `Tự động Chi: Booking ${getVal('BK_ID')} ${typeof formatNumber === 'function' ? formatNumber(amount) : amount} thanh toán ${getVal('[data-field="service_name"]', tr)} cho NCC: ${supplier}`,
+                    created_by: window.CURRENT_USER?.name || window.CURRENT_USER?.email || 'System',
+                };
 
-                    const newTransaction = {
-                        id: newTxRef.id,
-                        booking_id: detailId,
-                        transaction_date: new Date().toISOString().split('T')[0],
-                        type: 'OUT',
-                        category: currentType || 'Khác',
-                        receiver: supplier || 'Không xác định',
-                        fund_source: selectedFundId,
-                        amount: diffAmount,
-                        updated_at: new Date().toISOString(),
-                        status: 'Completed',
-                        description: diffAmount > 0 ? `Tự động Chi: Booking ${getVal('BK_ID')} ${typeof formatNumber === 'function' ? formatNumber(diffAmount) : diffAmount} thanh toán ${getVal('[data-field="service_name"]', tr)} cho NCC: ${supplier}` : `Điều chỉnh giảm chi: ${typeof formatNumber === 'function' ? formatNumber(Math.abs(diffAmount)) : Math.abs(diffAmount)}`,
-                        created_by: window.CURRENT_USER?.name || window.CURRENT_USER?.email || 'System',
-                    };
+                const saveResult = await A.DB.saveRecord('transactions', txData);
 
-                    transaction.set(newTxRef, newTransaction);
-                    return { newTransaction };
-                });
-
-                if (result) {
-                    const { newTransaction } = result;
-                    if (DB_MANAGER._updateAppDataObj) DB_MANAGER._updateAppDataObj('transactions', newTransaction);
+                if (saveResult && saveResult.success) {
+                    if (DB_MANAGER._updateAppDataObj) DB_MANAGER._updateAppDataObj('transactions', saveResult.data || txData);
 
                     if (typeof logA === 'function') logA(`✅ Đã tạo phiếu chi. Số dư tài khoản sẽ được hệ thống cập nhật tự động.`, 'success');
 
                     if (window.A?.NotificationManager) {
-                        window.NotificationManager.sendToAdmin('Thanh toán tự động', `${newTransaction.description} từ tài khoản ${fundAccounts[selectedFundId].name}`);
+                        window.NotificationManager.sendToAdmin('Thanh toán tự động', `${txData.description} từ tài khoản ${fundAccounts[selectedFundId].name}`);
                     }
                 }
             } catch (error) {
