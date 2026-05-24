@@ -22,10 +22,12 @@ class HumanController {
     async init() {
         if (this._initialized) return;
         this._initialized = true;
+        console.log('[HR-Controller] init()');
         
+        // Sub-module init (some are async — await them)
         this.employee.init();
-        this.attendance.init();
-        this.salary.init();
+        await this.attendance.init();
+        await this.salary.init();
         this.bonus.init();
         this.dashboard.init();
 
@@ -33,17 +35,20 @@ class HumanController {
     }
 
     _waitForDom() {
-        const checkEl = document.getElementById('hr-main-content');
+        const checkEl = document.getElementById('hr-dashboard-content');
         if (checkEl) {
+            console.log('[HR-Controller] _waitForDom() — DOM ready, setting up tabs');
             this._setupTabListeners();
             this.render();
         } else {
+            console.log('[HR-Controller] _waitForDom() — DOM not ready, retrying in 300ms...');
             setTimeout(() => this._waitForDom(), 300);
         }
     }
 
     _setupTabListeners() {
         if (this._tabHandler) return;
+        console.log('[HR-Controller] _setupTabListeners()');
 
         const tabMap = {
             '#hr-dashboard-content': () => this.dashboard.render(),
@@ -66,8 +71,21 @@ class HumanController {
     }
 
     render() {
+        console.log('[HR-Controller] render()');
         this.renderHeaderActions();
-        this.dashboard.render();
+        
+        // Tìm tab đang active
+        const activePane = document.querySelector('#hr-tab-content .tab-pane.active');
+        if (activePane) {
+            const id = activePane.id;
+            if (id === 'hr-dashboard-content') this.dashboard.render();
+            else if (id === 'hr-employee-content') this.employee.render();
+            else if (id === 'hr-attendance-content') this.attendance.render();
+            else if (id === 'hr-salary-content') this.salary.render();
+            else if (id === 'hr-bonus-content') this.bonus.render();
+        } else {
+            this.dashboard.render();
+        }
     }
 
     renderHeaderActions() {
@@ -94,11 +112,11 @@ class HumanController {
             </button>
         `;
 
-        this._bindHeaderAction('hr-btn-dashboard', () => this.dashboard.render());
-        this._bindHeaderAction('hr-btn-employee', () => this.employee.render());
-        this._bindHeaderAction('hr-btn-attendance', () => this.attendance.render());
-        this._bindHeaderAction('hr-btn-salary', () => this.salary.render());
-        this._bindHeaderAction('hr-btn-bonus', () => this.bonus.render());
+        this._bindHeaderAction('hr-btn-dashboard', () => document.getElementById('hr-dashboard-tab')?.click());
+        this._bindHeaderAction('hr-btn-employee', () => document.getElementById('hr-employee-tab')?.click());
+        this._bindHeaderAction('hr-btn-attendance', () => document.getElementById('hr-attendance-tab')?.click());
+        this._bindHeaderAction('hr-btn-salary', () => document.getElementById('hr-salary-tab')?.click());
+        this._bindHeaderAction('hr-btn-bonus', () => document.getElementById('hr-bonus-tab')?.click());
     }
 
     _bindHeaderAction(id, handler) {

@@ -52,6 +52,7 @@ export class HrBonus {
 
     // ─── RENDER ──────────────────────────────────────────────────────
     async render() {
+        console.log('[HR-Bonus] render()');
         await Promise.all([this.loadBonuses(), this.loadEmployees()]);
 
         const filterContainer = getE('hr-bonus-filter-container');

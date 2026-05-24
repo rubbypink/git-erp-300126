@@ -208,6 +208,16 @@ const UI_RENDERER = {
                 container.appendChild(contentFragment);
             }
         }
+        // 4b. Auto-unwrap: nếu file HTML có thẻ <template> wrapper, đánh thức nội dung
+        //     Áp dụng cho template load từ file (vd: tpl_hr.html có <template id="tmpl-human">)
+        if (finalSourcePath.endsWith('.html') && container) {
+            const tmplWrapper = container.querySelector('template[id^="tmpl-"]');
+            if (tmplWrapper && tmplWrapper.parentNode === container) {
+                const targetId = tmplWrapper.id.replace('tmpl-', '');
+                this.toggleTemplate(targetId);
+            }
+        }
+
         // 5. Đánh dấu Flag (Sử dụng KEY ĐÃ CHUẨN HÓA)
         this.renderedTemplates[finalSourcePath] = true;
         return true;
@@ -222,10 +232,33 @@ const UI_RENDERER = {
         if (tabEl.dataset.isLoaded === 'true' && tabEl.innerHTML.trim() !== '') {
             return;
         }
+        // ═══════════════════════════════════════════════════════════════
+        // FILE TEMPLATE MAP — Các tab có template nằm trong file HTML riêng biệt
+        // (Không nằm trong tpl_all.html đã load từ đầu)
+        //
+        // Cách hoạt động:
+        //   • Tab thông thường: tmplId = 'tmpl-' + tabId → tìm trong DOM (tpl_all.html)
+        //   • Tab có file riêng: dùng file path → fetch từ server (/src/components/...)
+        //
+        // Danh sách template file riêng:
+        //   tpl_hr.html           → tab-human          (HR Module)
+        //   tpl_tour_price.html   → tab-tour-price     (Tour Price)
+        //   tpl_ai_marketing.html → M_AiMarketing.js   (self-loaded, không qua lazyLoad)
+        //   tpl_price_manager.html→ M_PriceManager.js  (self-loaded, không qua lazyLoad)
+        //   tpl_booking_overview.html → BookingOverviewController.js (modal, không qua lazyLoad)
+        //   tpl_admin_settings.html → AdminController.js (self-loaded, không qua lazyLoad)
+        //   tpl_accountant_report.html → controller_accountant.js (self-loaded, không qua lazyLoad)
+        // ═══════════════════════════════════════════════════════════════
+        const fileTemplateMap = {
+            'tab-human': 'tpl_hr.html',
+            'tab-tour-price': 'tpl_tour_price.html',
+        };
+
         const tmplId = tabId.replace('tab-', 'tmpl-');
+        const source = fileTemplateMap[tabId] || tmplId;
 
         // 1. Luôn đảm bảo HTML được render trước
-        this.renderTemplate(tabId, tmplId, false);
+        this.renderTemplate(tabId, source, false);
 
         // 2. Logic khởi tạo Component (Chạy ngay cả khi chưa có Data)
         // Ví dụ: Tạo Datepicker, Gán sự kiện click nút update...
@@ -921,12 +954,8 @@ const UI_RENDERER = {
         try {
             const tmplId = 'tmpl-' + targetId;
 
-            // Trường hợp 1: Element đang "Sống" trên DOM -> Cần đưa vào Template
+            // Trường hợp 1: Element đang "Sống" trên DOM (không phải template) -> Cần đưa vào Template
             const activeElement = getE(targetId);
-            if (!activeElement) {
-                L._(`⚠️ Element #${targetId} không tồn tại trên DOM. Kiểm tra lại ID hoặc trạng thái hiện tại.`);
-                return null;
-            }
 
             if (activeElement && activeElement.tagName.toLowerCase() !== 'template') {
                 // 1. Tạo thẻ template
@@ -946,7 +975,10 @@ const UI_RENDERER = {
             }
 
             // Trường hợp 2: Element đang "Ngủ" trong Template -> Cần đánh thức dậy
-            const templateElement = getE(tmplId);
+            // Tìm template: có thể là activeElement (nếu nó là <template> tag),
+            // hoặc #tmpl-{targetId} (file-based template hoặc đã wrap trước đó)
+            const templateElement = (activeElement?.tagName?.toLowerCase() === 'template' ? activeElement : null)
+                || getE(tmplId);
 
             if (templateElement) {
                 // 1. Lấy nội dung từ template (DocumentFragment)
@@ -961,11 +993,14 @@ const UI_RENDERER = {
                 // 3. Xóa thẻ template đi (vì element đã ra ngoài rồi)
                 templateElement.remove();
 
-                L._(`[Utils] Đã khôi phục element #${targetId} từ template`);
+                L._(`[Utils] Đã khôi phục element #${targetId} từ template #${templateElement.id}`);
                 return originalElement;
             }
 
-            console.warn(`[Utils] Không tìm thấy Element #${targetId} hoặc Template #${tmplId}`);
+            // Không tìm thấy element sống cũng không có template để unwrap
+            if (!activeElement) {
+                L._(`⚠️ Element #${targetId} không tồn tại và không tìm thấy Template #${tmplId}`);
+            }
             return null;
         } catch (error) {
             console.error(`[Utils] Lỗi trong toggleTemplate('${targetId}'):`, error);

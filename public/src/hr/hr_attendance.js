@@ -23,14 +23,16 @@ export class HrAttendance {
         this.currentDate = this.#today();
         this.currentMonth = new Date().getMonth(); // 0-based
         this.currentYear = new Date().getFullYear();
+        this._calendarDelegated = false;
     }
 
     // ─── INIT ──────────────────────────────────────────────────
     async init() {
+        console.log('[HR-Attendance] init()');
         try {
             await this.#loadData();
         } catch (e) {
-            console.error('HrAttendance.init error:', e);
+            console.error('[HR-Attendance] init error:', e);
         }
     }
 
@@ -51,17 +53,28 @@ export class HrAttendance {
 
     async #loadCollection(name) {
         try {
+            // 1. Check APP_DATA first (keyed-by-id object)
+            const appData = window.APP_DATA?.[name];
+            if (appData && Object.keys(appData).length > 0) {
+                return Object.values(appData);
+            }
+
+            // 2. Fallback to IndexedDB
             if (window.A && window.A.DB && window.A.DB.local) {
-                return await window.A.DB.local.getCollection(name);
+                const obj = await window.A.DB.local.getAllAsObject(name);
+                if (obj && Object.keys(obj).length > 0) {
+                    return Object.values(obj);
+                }
             }
         } catch (e) {
-            console.warn(`HrAttendance: cannot load ${name}:`, e);
+            console.warn(`[HR-Attendance] cannot load ${name}:`, e);
         }
         return [];
     }
 
     // ─── RENDER (MAIN) ─────────────────────────────────────────
     render() {
+        console.log('[HR-Attendance] render()');
         const container = document.getElementById('hr-attendance-calendar-container');
         if (!container) return;
         this.#renderFilters();
@@ -346,8 +359,8 @@ export class HrAttendance {
                         cells += `<td class="text-center p-0 ${isWeekend ? 'bg-light' : ''}" title="${title}">
                             <span class="badge bg-${status.color} bg-opacity-10 text-${status.color} m-1"
                                 style="font-size:0.65rem;cursor:pointer;"
-                                onclick="document.getElementById('hr-attendance-calendar-container').__attendance
-                                    ?.editStatus('${this.#esc(record.id)}')">
+                                data-attn-action="editStatus"
+                                data-attn-rec-id="${this.#esc(record.id)}">
                                 ${status.label.charAt(0)}
                             </span>
                         </td>`;
@@ -356,8 +369,9 @@ export class HrAttendance {
                             <button class="btn btn-sm btn-outline-secondary border-0 m-0 p-0"
                                 style="font-size:0.6rem;width:22px;height:22px;"
                                 title="Thêm chấm công ${dateStr}"
-                                onclick="document.getElementById('hr-attendance-calendar-container').__attendance
-                                    ?.quickAdd('${this.#esc(emp.id)}', '${dateStr}')">
+                                data-attn-action="quickAdd"
+                                data-attn-emp-id="${this.#esc(emp.id)}"
+                                data-attn-date="${dateStr}">
                                 +
                             </button>
                         </td>`;
@@ -430,6 +444,24 @@ export class HrAttendance {
             }
             this.renderCalendar(container, this.currentMonth, this.currentYear);
         });
+
+        // Event delegation for calendar cell actions (replaces inline onclick)
+        if (!this._calendarDelegated) {
+            container.addEventListener('click', (e) => {
+                const actionEl = e.target.closest('[data-attn-action]');
+                if (!actionEl) return;
+                const action = actionEl.dataset.attnAction;
+                if (action === 'quickAdd') {
+                    const empId = actionEl.dataset.attnEmpId;
+                    const dateStr = actionEl.dataset.attnDate;
+                    if (empId && dateStr) this.quickAdd(empId, dateStr);
+                } else if (action === 'editStatus') {
+                    const recordId = actionEl.dataset.attnRecId;
+                    if (recordId) this.editStatus(recordId);
+                }
+            });
+            this._calendarDelegated = true;
+        }
     }
 
     quickAdd(employeeId, dateStr) {

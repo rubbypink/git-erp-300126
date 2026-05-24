@@ -4,12 +4,16 @@ export class HrDashboard {
     }
 
     init() {
-        console.log('HrDashboard initialized');
+        console.log('[HR-Dashboard] init()');
     }
 
     async render() {
-        const container = document.getElementById('hr-main-content');
-        if (!container) return;
+        console.log('[HR-Dashboard] render()');
+        const container = document.getElementById('hr-dashboard-content');
+        if (!container) {
+            console.warn('[HR-Dashboard] render(): container #hr-dashboard-content not found');
+            return;
+        }
 
         container.innerHTML = `
             <div class="p-3">
@@ -80,16 +84,20 @@ export class HrDashboard {
     }
 
     async getCollection(colName) {
+        // 1. Check APP_DATA first
         if (window.APP_DATA && window.APP_DATA[colName]) {
             const data = window.APP_DATA[colName];
             return Array.isArray(data) ? data : Object.values(data);
         }
+        // 2. Fallback to IndexedDB (use getAllAsObject for consistency with other HR modules)
         if (window.A && window.A.DB && window.A.DB.local) {
             try {
-                const data = await window.A.DB.local.getCollection(colName);
-                return Array.isArray(data) ? data : Object.values(data || {});
+                const obj = await window.A.DB.local.getAllAsObject(colName);
+                if (obj && Object.keys(obj).length > 0) {
+                    return Object.values(obj);
+                }
             } catch (e) {
-                console.error(`Error loading ${colName}:`, e);
+                console.error(`[HR-Dashboard] Error loading ${colName}:`, e);
                 return [];
             }
         }
@@ -97,6 +105,7 @@ export class HrDashboard {
     }
 
     async loadData() {
+        console.log('[HR-Dashboard] loadData()');
         try {
             const [employees, attendance, salary_records, bonuses] = await Promise.all([
                 this.getCollection('employees'),
@@ -205,27 +214,21 @@ export class HrDashboard {
         const btnAddEmployee = document.getElementById('hr-dash-btn-add-employee');
         if (btnAddEmployee) {
             btnAddEmployee.addEventListener('click', () => {
-                if (this.controller && this.controller.employee) {
-                    this.controller.employee.render();
-                }
+                document.getElementById('hr-employee-tab')?.click();
             });
         }
 
         const btnAttendance = document.getElementById('hr-dash-btn-attendance');
         if (btnAttendance) {
             btnAttendance.addEventListener('click', () => {
-                if (this.controller && this.controller.attendance) {
-                    this.controller.attendance.render();
-                }
+                document.getElementById('hr-attendance-tab')?.click();
             });
         }
 
         const btnViewSalary = document.getElementById('hr-dash-btn-view-salary');
         if (btnViewSalary) {
             btnViewSalary.addEventListener('click', () => {
-                if (this.controller && this.controller.salary) {
-                    this.controller.salary.render();
-                }
+                document.getElementById('hr-salary-tab')?.click();
             });
         }
     }

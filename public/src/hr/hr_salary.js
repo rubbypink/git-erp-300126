@@ -58,6 +58,7 @@ export class HrSalary {
 
     // ─── RENDER (MAIN) ───────────────────────────────────────────────
     async render() {
+        console.log('[HR-Salary] render()');
         await this.#loadData();
         this.#renderFilters();
         this.renderSalaryTable(null, this._selectedMonth, this._selectedYear);

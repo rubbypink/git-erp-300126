@@ -50,15 +50,19 @@ export class HrEmployee {
 
     // ─── RENDER ──────────────────────────────────────────────────────
     async render() {
+        console.log('[HR-Employee] render()');
         const content = getE('hr-employee-content');
         if (!content) return;
 
-        // Show loading state
-        content.querySelector('#hr-employee-table-container').innerHTML = `
-            <div class="text-center text-muted py-5 border rounded-4 bg-light">
-                <i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải danh sách nhân viên...
-            </div>
-        `;
+        // Show loading state (null-safe: check querySelector result)
+        const tableContainer = content.querySelector('#hr-employee-table-container');
+        if (tableContainer) {
+            tableContainer.innerHTML = `
+                <div class="text-center text-muted py-5 border rounded-4 bg-light">
+                    <i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải danh sách nhân viên...
+                </div>
+            `;
+        }
 
         await this.loadEmployees();
         this.renderFilterBar();
@@ -130,8 +134,6 @@ export class HrEmployee {
         if (!container) return;
 
         const C = HrEmployee.Config;
-        const deptOpts = C.departmentOptions.map((d) => `<option value="">Tất Cả Phòng Ban</option>` +
-            C.departmentOptions.map((d) => `<option value="${d}">${d}</option>`).join('')).filter((v, i, a) => i === 0 || !v.startsWith('<option value="">'));
 
         // Deduplicated department options render
         const deptHTML = ['<option value="">Tất Cả Phòng Ban</option>']
