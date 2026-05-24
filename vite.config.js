@@ -45,6 +45,7 @@ export default defineConfig({
                 // Đảm bảo sao chép tĩnh các template HTML hoặc các file không được import trực tiếp qua JS
                 { src: 'src/components/*.html', dest: 'src/components' },
                 { src: 'src/accountant/*.*', dest: 'src/accountant' },
+                { src: 'src/hr/*.*', dest: 'src/hr' },
                 { src: 'admin/css/*.css', dest: 'src/css' },
                 { src: 'src/images/*.*', dest: 'src/images' },
                 // Lưu ý: Không cần copy js/css nếu bạn đã import nó trong các file JS chính, Vite sẽ tự bundle.
@@ -63,6 +64,7 @@ export default defineConfig({
             '@core': resolve(__dirname, 'public/src/js/modules/core'),
             '@acc': resolve(__dirname, 'public/src/accountant'),
             '@cpt': resolve(__dirname, 'public/src/js/components'),
+            '@hr': resolve(__dirname, 'public/src/hr'),
         },
     },
 

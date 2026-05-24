@@ -66,6 +66,7 @@
                     <div class="tab-pane m-1" id="tab-data-tbl"></div>
                     <div class="tab-pane m-1" id="tab-tour-price"></div>
                     <div class="tab-pane admin-only" id="tab-admin-dashboard"></div>
+                    <div class="tab-pane m-1 acc-only" id="tab-human"></div>
                 </div>
             </div>
         </div>
@@ -82,15 +83,16 @@
             var JS_MANIFEST = {
                 sale: [],
                 op: [],
-                acc: ['@acc/controller_accountant.js'],
+                acc: ['@acc/controller_accountant.js', '@hr/controller_hr.js'],
                 acc_thenice: ['@acc/controller_accountant.js'],
             };
             var TEMPLATE_MANIFEST = {
                 base: ['tmpl-dashboard', 'tmpl-form'],
                 sale: ['tmpl-confirmation-modal'],
                 op: ['tmpl-partner-mail'],
-                acc: ['tmpl-report', 'tmpl-acc-footer-bar'],
+                acc: ['tmpl-report', 'tmpl-acc-footer-bar', 'tmpl-human'],
                 acc_thenice: ['tmpl-report', 'tmpl-acc-footer-bar'],
+                admin: ['tmpl-human'],
             };
             // =========================================================================
             // 1. GLOBAL UI VARIABLES (CHỈ KHAI BÁO BIẾN UI TẠI ĐÂY)
@@ -147,6 +149,7 @@
                 'tab-data-tbl': 4,
                 'tab-tour-price': 5,
                 'tab-admin-dashboard': 6,
+                'tab-human': 7,
             };
 
             /**

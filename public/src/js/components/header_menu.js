@@ -250,6 +250,11 @@ export default class ErpHeaderMenu {
                                     <i class="fa-solid fa-list text-secondary w-20px"></i> Bảng Giá
                                 </button>
                             </li>                                
+                            <li class="acc-only">
+                                <button class="dropdown-item py-2" type="button" onclick="A.UI.activateTab('tab-human')">
+                                    <i class="fa-solid fa-users text-secondary w-20px"></i> Nhân Sự
+                                </button>
+                            </li>
                             <li class="admin-only">
                                 <button class="dropdown-item py-2 text-danger fw-bold" type="button" onclick="A.UI.activateTab('tab-admin-dashboard')">
                                     <i class="fa-solid fa-user-shield w-20px"></i> Quản Lý Dashboard
@@ -297,6 +302,9 @@ export default class ErpHeaderMenu {
                 </li>                
                 <li class="nav-item op-only">
                     <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-toggle="tab" data-bs-target="#tab-price-pkg" >Quản Lý Giá</button>
+                </li>
+                <li class="nav-item acc-only">
+                    <button class="nav-link border-0 bg-transparent main-tabs-btn" data-bs-toggle="tab" data-bs-target="#tab-human" >Nhân Sự</button>
                 </li>
                 <li class="nav-item admin-only">
                     <button class="nav-link text-warning border-0 bg-transparent main-tabs-btn" data-bs-toggle="tab" data-bs-target="#tab-admin-dashboard" >

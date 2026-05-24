@@ -1,0 +1,134 @@
+<template id="tmpl-human">
+    <div class="container-fluid p-2 p-md-3">
+        <!-- HR Module Header -->
+        <div class="p-3 mb-3 rounded d-flex flex-column flex-md-row align-items-center justify-content-between gap-2 bg-primary bg-gradient text-white shadow-sm">
+            <h5 class="m-0 fw-bold">
+                <i class="fa-solid fa-users me-2"></i>NHÂN SỰ - QUẢN LÝ NHÂN VIÊN
+            </h5>
+            <div class="d-flex align-items-center gap-2 flex-wrap justify-content-center" id="hr-header-actions">
+                <!-- Role-filtered buttons will be rendered here by JS -->
+            </div>
+        </div>
+
+        <!-- HR Sub-navigation Tabs -->
+        <div class="card border-0 shadow-sm rounded-4 mb-3 overflow-hidden">
+            <div class="card-header bg-white border-bottom-0 pt-3 pb-0 px-3">
+                <ul class="nav nav-tabs" id="hr-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-bold" id="hr-dashboard-tab" data-bs-toggle="tab" data-bs-target="#hr-dashboard-content" type="button" role="tab" aria-controls="hr-dashboard-content" aria-selected="true">
+                            <i class="fa-solid fa-chart-pie me-1"></i>Tổng Quan
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold" id="hr-employee-tab" data-bs-toggle="tab" data-bs-target="#hr-employee-content" type="button" role="tab" aria-controls="hr-employee-content" aria-selected="false">
+                            <i class="fa-solid fa-id-card me-1"></i>Nhân Viên
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold" id="hr-attendance-tab" data-bs-toggle="tab" data-bs-target="#hr-attendance-content" type="button" role="tab" aria-controls="hr-attendance-content" aria-selected="false">
+                            <i class="fa-solid fa-calendar-check me-1"></i>Chấm Công
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold" id="hr-salary-tab" data-bs-toggle="tab" data-bs-target="#hr-salary-content" type="button" role="tab" aria-controls="hr-salary-content" aria-selected="false">
+                            <i class="fa-solid fa-money-bill-wave me-1"></i>Lương
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold" id="hr-bonus-tab" data-bs-toggle="tab" data-bs-target="#hr-bonus-content" type="button" role="tab" aria-controls="hr-bonus-content" aria-selected="false">
+                            <i class="fa-solid fa-gift me-1"></i>Thưởng
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="card-body p-3 p-md-4">
+                <div class="tab-content" id="hr-tab-content">
+                    
+                    <!-- Dashboard Tab -->
+                    <div class="tab-pane fade show active" id="hr-dashboard-content" role="tabpanel" aria-labelledby="hr-dashboard-tab">
+                        <div class="row g-3 mb-3" id="hr-dashboard-summary-container">
+                            <!-- JS will render summary cards (col-12 col-md-6 col-lg-4) here -->
+                            <div class="col-12 text-center text-muted py-5">
+                                <i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải tổng quan...
+                            </div>
+                        </div>
+                        <div class="row g-3" id="hr-dashboard-charts-container">
+                            <!-- JS will render charts here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Employees Tab -->
+                    <div class="tab-pane fade" id="hr-employee-content" role="tabpanel" aria-labelledby="hr-employee-tab">
+                        <div class="row g-3 mb-3" id="hr-employee-filter-container">
+                            <!-- JS will render search/filter bar here -->
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12 col-lg-8" id="hr-employee-table-container">
+                                <!-- JS will render employee table here -->
+                                <div class="text-center text-muted py-5 border rounded-4 bg-light">
+                                    <i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải danh sách nhân viên...
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-4" id="hr-employee-form-container">
+                                <!-- JS will render employee form here (mobile: stack, desktop: side-by-side) -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Attendance Tab -->
+                    <div class="tab-pane fade" id="hr-attendance-content" role="tabpanel" aria-labelledby="hr-attendance-tab">
+                        <div class="row g-3 mb-3" id="hr-attendance-filter-container">
+                            <!-- JS will render attendance filters here -->
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12" id="hr-attendance-calendar-container">
+                                <!-- JS will render attendance calendar/table here -->
+                                <div class="text-center text-muted py-5 border rounded-4 bg-light">
+                                    <i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải dữ liệu chấm công...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Salary Tab -->
+                    <div class="tab-pane fade" id="hr-salary-content" role="tabpanel" aria-labelledby="hr-salary-tab">
+                        <div class="row g-3 mb-3" id="hr-salary-filter-container">
+                            <!-- JS will render salary filters here -->
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12 col-lg-8" id="hr-salary-table-container">
+                                <!-- JS will render salary table here -->
+                                <div class="text-center text-muted py-5 border rounded-4 bg-light">
+                                    <i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải bảng lương...
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-4" id="hr-salary-form-container">
+                                <!-- JS will render salary edit form here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Bonuses Tab -->
+                    <div class="tab-pane fade" id="hr-bonus-content" role="tabpanel" aria-labelledby="hr-bonus-tab">
+                        <div class="row g-3 mb-3" id="hr-bonus-filter-container">
+                            <!-- JS will render bonus filters here -->
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12 col-lg-8" id="hr-bonus-table-container">
+                                <!-- JS will render bonus table here -->
+                                <div class="text-center text-muted py-5 border rounded-4 bg-light">
+                                    <i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải danh sách thưởng/phạt...
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-4" id="hr-bonus-form-container">
+                                <!-- JS will render bonus form here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</template>

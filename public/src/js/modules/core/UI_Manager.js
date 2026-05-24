@@ -533,6 +533,15 @@ const UI_RENDERER = {
                 if (window.A?.TourPrice) A.TourPrice.init();
                 break;
 
+            case 'tab-human':
+                if (window.A?.HumanModule) {
+                    if (!window.A.HumanModule._initialized) {
+                        window.A.HumanModule.init();
+                    }
+                    window.A.HumanModule.render();
+                }
+                break;
+
             case 'tab-adm-app-config':
                 if (window.A?.AdminConsole?.modal) A.AdminConsole.modal.setFooter(false);
                 break;

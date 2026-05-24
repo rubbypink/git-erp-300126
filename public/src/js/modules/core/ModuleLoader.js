@@ -60,12 +60,13 @@ export default class MODULELOADER {
             Op: () => import('/src/js/modules/M_OperatorModule.js').then((m) => m.default),
             AccountantCtrl: () => import('@acc/controller_accountant.js').then((m) => m.default),
             AiMarketing: () => import('/src/js/modules/ai/M_AiMarketing.js').then((m) => m.default),
+            HumanModule: () => import('/src/hr/controller_hr.js').then((m) => m.default),
         };
         this.coreModules = ['Database', 'Event', 'MobileEvent'];
         this.roleMap = {
-            admin: ['ServicePriceController', 'SalesModule', 'PriceManager', 'AiMarketing'],
+            admin: ['ServicePriceController', 'SalesModule', 'PriceManager', 'AiMarketing', 'HumanModule'],
             op: ['Op', 'ServicePriceController', 'PriceManager'],
-            acc: ['AccountantCtrl'],
+            acc: ['AccountantCtrl', 'HumanModule'],
             sale: ['SalesModule'],
             acc_thenice: [],
         };
