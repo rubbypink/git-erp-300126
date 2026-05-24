@@ -1,1 +1,1 @@
-VERDICT: APPROVE
+Must Have [6/6] | Must NOT Have [7/7] | Tasks [9/9] | VERDICT: APPROVE
