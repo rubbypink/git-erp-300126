@@ -697,7 +697,9 @@ class Application {
                 CURRENT_USER = this.#state.user;
                 CR_COLLECTION = (typeof ROLE_DATA !== 'undefined' ? ROLE_DATA[CURRENT_USER.role] : '') || '';
 
-                await Promise.all([this._call('UI', 'init', this.#moduleManager), SECURITY_MANAGER.applySecurity(CURRENT_USER), this.#moduleManager.loadForRole(CURRENT_USER.role)]);
+                // UI.init phải chạy trước để DOM ổn định, sau đó mới applySecurity
+                await this._call('UI', 'init', this.#moduleManager);
+                await Promise.all([SECURITY_MANAGER.applySecurity(CURRENT_USER), this.#moduleManager.loadForRole(CURRENT_USER.role)]);
                 this.#moduleManager.loadModule('Router', false);
 
                 this.#config.saveLoad = false;

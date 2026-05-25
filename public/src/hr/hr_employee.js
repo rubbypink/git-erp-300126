@@ -5,8 +5,6 @@
  * @deps DBSchema.js (employees collection), DBManager (A.DB), HD (form helpers)
  */
 
-import { DB_SCHEMA } from '../js/modules/db/DBSchema.js';
-
 export class HrEmployee {
     // ─── CONFIG ──────────────────────────────────────────────────────
     static Config = {
@@ -67,7 +65,6 @@ export class HrEmployee {
         await this.loadEmployees();
         this.renderFilterBar();
         this.renderTable();
-        this.renderForm(null);
     }
 
     // ─── DATA ────────────────────────────────────────────────────────
@@ -373,290 +370,195 @@ export class HrEmployee {
         if (card) card.classList.add('border-primary');
     }
 
-    // ─── FORM ────────────────────────────────────────────────────────
-    renderForm(employeeData = null) {
-        const container = getE('hr-employee-form-container');
-        if (!container) return;
-
+    // ─── FORM (Swal2 Modal) ──────────────────────────────────────────
+    async renderForm(employeeData = null) {
         const C = HrEmployee.Config;
         const isEdit = !!employeeData;
         const title = isEdit ? 'Chỉnh Sửa Nhân Viên' : 'Thêm Nhân Viên Mới';
-        const btnLabel = isEdit ? 'Cập Nhật' : 'Lưu Nhân Viên';
-        const btnIcon = isEdit ? 'fa-floppy-disk' : 'fa-plus';
+        const pfx = 'swal-hr-emp-';
 
-        const deptHTML = C.departmentOptions.map((d) => `<option value="${d}">${d}</option>`).join('');
-        const posHTML = C.positionOptions.map((p) => `<option value="${p}">${p}</option>`).join('');
-        const statusHTML = C.statusOptions.map((s) => `<option value="${s.id}">${s.name}</option>`).join('');
+        // Pre-compute options with selected values
+        const deptOpts = C.departmentOptions.map((d) =>
+            `<option value="${d}" ${isEdit && employeeData.department === d ? 'selected' : ''}>${d}</option>`
+        ).join('');
+        const posOpts = C.positionOptions.map((p) =>
+            `<option value="${p}" ${isEdit && employeeData.position === p ? 'selected' : ''}>${p}</option>`
+        ).join('');
+        const statusOpts = C.statusOptions.map((s) =>
+            `<option value="${s.id}" ${isEdit && employeeData.status === s.id ? 'selected' : ''}>${s.name}</option>`
+        ).join('');
 
-        const formHTML = `
-            <form id="${C.formId}" class="card border-0 shadow-sm" novalidate>
-                <div class="card-header bg-primary bg-gradient text-white">
-                    <h6 class="mb-0 fw-bold"><i class="fa-solid fa-id-card me-2"></i>${title}</h6>
-                </div>
-                <div class="card-body p-3">
-                    <input type="hidden" name="id" value="${isEdit ? this._escapeHtml(employeeData.id || '') : ''}">
-
+        const result = await Swal.fire({
+            title: title,
+            html: `
+                <div class="text-start">
                     <div class="mb-2">
                         <label class="form-label small fw-bold mb-1">Mã NV <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control form-control-sm" name="employee_code"
-                            placeholder="NV001" required
-                            value="${isEdit ? this._escapeHtml(employeeData.employee_code || '') : ''}">
-                        <div class="invalid-feedback small">Vui lòng nhập mã nhân viên (2-20 ký tự)</div>
+                        <input type="text" id="${pfx}code" class="swal2-input form-control form-control-sm"
+                            placeholder="NV001" value="${isEdit ? this._escapeHtml(employeeData.employee_code || '') : ''}">
                     </div>
-
                     <div class="mb-2">
                         <label class="form-label small fw-bold mb-1">Họ Tên <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control form-control-sm" name="full_name"
-                            placeholder="Họ và tên" required
-                            value="${isEdit ? this._escapeHtml(employeeData.full_name || '') : ''}">
-                        <div class="invalid-feedback small">Vui lòng nhập họ tên (2-100 ký tự)</div>
+                        <input type="text" id="${pfx}name" class="swal2-input form-control form-control-sm"
+                            placeholder="Họ và tên" value="${isEdit ? this._escapeHtml(employeeData.full_name || '') : ''}">
                     </div>
-
                     <div class="mb-2">
                         <label class="form-label small fw-bold mb-1">Số Điện Thoại <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control form-control-sm phone" name="phone"
-                            placeholder="0xxxxxxxxx" required
-                            value="${isEdit ? this._escapeHtml(employeeData.phone || '') : ''}">
-                        <div class="invalid-feedback small">SĐT không hợp lệ (bắt đầu bằng 0, 9-15 chữ số)</div>
+                        <input type="text" id="${pfx}phone" class="swal2-input form-control form-control-sm"
+                            placeholder="0xxxxxxxxx" value="${isEdit ? this._escapeHtml(employeeData.phone || '') : ''}">
                     </div>
-
                     <div class="mb-2">
                         <label class="form-label small fw-bold mb-1">Email</label>
-                        <input type="email" class="form-control form-control-sm" name="email"
-                            placeholder="email@company.com"
-                            value="${isEdit ? this._escapeHtml(employeeData.email || '') : ''}">
-                        <div class="invalid-feedback small">Email không hợp lệ</div>
+                        <input type="email" id="${pfx}email" class="swal2-input form-control form-control-sm"
+                            placeholder="email@company.com" value="${isEdit ? this._escapeHtml(employeeData.email || '') : ''}">
                     </div>
-
                     <div class="row g-2 mb-2">
                         <div class="col-6">
                             <label class="form-label small fw-bold mb-1">Chức Vụ <span class="text-danger">*</span></label>
-                            <select class="form-select form-select-sm" name="position" required>
+                            <select id="${pfx}position" class="swal2-select form-select form-select-sm">
                                 <option value="">— Chọn —</option>
-                                ${posHTML}
+                                ${posOpts}
                             </select>
-                            <div class="invalid-feedback small">Vui lòng chọn chức vụ</div>
                         </div>
                         <div class="col-6">
                             <label class="form-label small fw-bold mb-1">Phòng Ban <span class="text-danger">*</span></label>
-                            <select class="form-select form-select-sm" name="department" required>
+                            <select id="${pfx}department" class="swal2-select form-select form-select-sm">
                                 <option value="">— Chọn —</option>
-                                ${deptHTML}
+                                ${deptOpts}
                             </select>
-                            <div class="invalid-feedback small">Vui lòng chọn phòng ban</div>
                         </div>
                     </div>
-
                     <div class="row g-2 mb-2">
                         <div class="col-6">
                             <label class="form-label small fw-bold mb-1">Ngày Vào Làm <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control form-control-sm" name="hire_date" required
+                            <input type="date" id="${pfx}hire_date" class="swal2-input form-control form-control-sm"
                                 value="${isEdit ? (employeeData.hire_date || '') : ''}">
-                            <div class="invalid-feedback small">Vui lòng chọn ngày vào làm</div>
                         </div>
                         <div class="col-6">
                             <label class="form-label small fw-bold mb-1">Lương Cơ Bản <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control form-control-sm number" name="base_salary"
-                                placeholder="0" min="0" required
-                                value="${isEdit ? (employeeData.base_salary ?? '') : ''}">
-                            <div class="invalid-feedback small">Vui lòng nhập lương cơ bản</div>
+                            <input type="number" id="${pfx}base_salary" class="swal2-input form-control form-control-sm"
+                                placeholder="0" min="0" value="${isEdit ? (employeeData.base_salary ?? '') : ''}">
                         </div>
                     </div>
-
                     <div class="mb-2">
                         <label class="form-label small fw-bold mb-1">Trạng Thái</label>
-                        <select class="form-select form-select-sm" name="status">
-                            ${statusHTML}
+                        <select id="${pfx}status" class="swal2-select form-select form-select-sm">
+                            ${statusOpts}
                         </select>
                     </div>
-
                     <div class="mb-2">
                         <label class="form-label small fw-bold mb-1">Tài Khoản Ngân Hàng</label>
-                        <input type="text" class="form-control form-control-sm" name="bank_account"
-                            placeholder="STK - Tên Ngân Hàng"
-                            value="${isEdit ? this._escapeHtml(employeeData.bank_account || '') : ''}">
+                        <input type="text" id="${pfx}bank_account" class="swal2-input form-control form-control-sm"
+                            placeholder="STK - Tên Ngân Hàng" value="${isEdit ? this._escapeHtml(employeeData.bank_account || '') : ''}">
                     </div>
-
                     <div class="mb-2">
                         <label class="form-label small fw-bold mb-1">Liên Hệ Khẩn Cấp</label>
-                        <input type="text" class="form-control form-control-sm" name="emergency_contact"
-                            placeholder="Tên - SĐT"
-                            value="${isEdit ? this._escapeHtml(employeeData.emergency_contact || '') : ''}">
+                        <input type="text" id="${pfx}emergency_contact" class="swal2-input form-control form-control-sm"
+                            placeholder="Tên - SĐT" value="${isEdit ? this._escapeHtml(employeeData.emergency_contact || '') : ''}">
                     </div>
-
                     <div class="mb-2">
                         <label class="form-label small fw-bold mb-1">Ghi Chú</label>
-                        <textarea class="form-control form-control-sm" name="notes" rows="2"
+                        <textarea id="${pfx}notes" class="swal2-textarea form-control form-control-sm" rows="2"
                             placeholder="Ghi chú">${isEdit ? this._escapeHtml(employeeData.notes || '') : ''}</textarea>
                     </div>
                 </div>
-                <div class="card-footer bg-white d-flex gap-2 justify-content-end">
-                    ${isEdit ? `<button type="button" class="btn btn-sm btn-outline-secondary" id="${C.prefix}btn-cancel">
-                        <i class="fa-solid fa-xmark me-1"></i>Hủy
-                    </button>` : ''}
-                    <button type="submit" class="btn btn-sm btn-primary">
-                        <i class="fa-solid ${btnIcon} me-1"></i>${btnLabel}
-                    </button>
-                </div>
-            </form>
-        `;
+            `,
+            showCancelButton: true,
+            confirmButtonText: isEdit ? 'Cập Nhật' : 'Lưu',
+            cancelButtonText: 'Hủy',
+            width: 600,
+            preConfirm: () => {
+                const g = (id) => document.getElementById(pfx + id);
+                const v = (id) => g(id)?.value || '';
+                const t = (id) => v(id).trim();
 
-        container.innerHTML = formHTML;
+                const code = t('code');
+                const name = t('name');
+                const phoneRaw = t('phone');
+                const phone = phoneRaw.replace(/[^0-9]/g, '');
+                const position = v('position');
+                const department = v('department');
+                const hireDate = v('hire_date');
+                const baseSalary = Number(v('base_salary'));
 
-        // Pre-fill selects for edit mode
-        if (isEdit) {
-            const form = getE(C.formId);
-            if (!form) return;
-            const sel = (name, val) => {
-                const el = form.querySelector(`[name="${name}"]`);
-                if (el && val) el.value = val;
-            };
-            sel('position', employeeData.position);
-            sel('department', employeeData.department);
-            sel('status', employeeData.status || 'active');
-        }
-
-        // Cancel button
-        const cancelBtn = getE(`${C.prefix}btn-cancel`);
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', () => {
-                this._selectedId = null;
-                this.renderForm(null);
-            });
-        }
-
-        // Submit handler
-        const form = getE(C.formId);
-        if (form) {
-            form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this._handleSave(isEdit);
-            });
-        }
-    }
-
-    // ─── VALIDATION ──────────────────────────────────────────────────
-    _validateForm(form) {
-        const fields = DB_SCHEMA.employees.fields;
-        let isValid = true;
-
-        fields.forEach((field) => {
-            const el = form.querySelector(`[name="${field.name}"]`);
-            if (!el || !field.validation) return;
-
-            const val = el.value?.trim() || '';
-            const rules = field.validation;
-
-            // Required check
-            if (rules.required && !val) {
-                el.classList.add('is-invalid');
-                isValid = false;
-                return;
-            }
-
-            // Min/max length
-            if (rules.minLength && val && val.length < rules.minLength) {
-                el.classList.add('is-invalid');
-                isValid = false;
-                return;
-            }
-            if (rules.maxLength && val.length > rules.maxLength) {
-                el.classList.add('is-invalid');
-                isValid = false;
-                return;
-            }
-
-            // Min value (number)
-            if (rules.min !== undefined && el.type === 'number') {
-                const num = Number(val);
-                if (val !== '' && num < rules.min) {
-                    el.classList.add('is-invalid');
-                    isValid = false;
-                    return;
+                if (!code || code.length < 2) {
+                    Swal.showValidationMessage('Vui lòng nhập mã nhân viên (2-20 ký tự)');
+                    return false;
                 }
-            }
-
-            // Pattern
-            if (rules.pattern && val) {
-                const re = new RegExp(rules.pattern);
-                if (!re.test(val)) {
-                    el.classList.add('is-invalid');
-                    isValid = false;
-                    return;
+                if (!name || name.length < 2) {
+                    Swal.showValidationMessage('Vui lòng nhập họ tên (2-100 ký tự)');
+                    return false;
                 }
-            }
+                if (!phone || !/^0\d{8,14}$/.test(phone)) {
+                    Swal.showValidationMessage('SĐT không hợp lệ (bắt đầu bằng 0, 9-15 chữ số)');
+                    return false;
+                }
+                if (!position) {
+                    Swal.showValidationMessage('Vui lòng chọn chức vụ');
+                    return false;
+                }
+                if (!department) {
+                    Swal.showValidationMessage('Vui lòng chọn phòng ban');
+                    return false;
+                }
+                if (!hireDate) {
+                    Swal.showValidationMessage('Vui lòng chọn ngày vào làm');
+                    return false;
+                }
+                if (isNaN(baseSalary) || baseSalary < 0) {
+                    Swal.showValidationMessage('Vui lòng nhập lương cơ bản hợp lệ');
+                    return false;
+                }
 
-            el.classList.remove('is-invalid');
+                const data = {
+                    employee_code: code,
+                    full_name: name,
+                    phone: phone,
+                    email: t('email'),
+                    position: position,
+                    department: department,
+                    hire_date: hireDate,
+                    base_salary: baseSalary,
+                    status: v('status') || 'active',
+                    bank_account: t('bank_account'),
+                    emergency_contact: t('emergency_contact'),
+                    notes: t('notes'),
+                };
+
+                if (isEdit) {
+                    data.id = this._selectedId;
+                }
+
+                return data;
+            },
         });
 
-        return isValid;
-    }
+        if (result.isConfirmed) {
+            const data = result.value;
 
-    // ─── SAVE ────────────────────────────────────────────────────────
-    async _handleSave(isEdit) {
-        const C = HrEmployee.Config;
-        const form = getE(C.formId);
-        if (!form) return;
+            Swal.fire({
+                title: 'Đang lưu...',
+                text: 'Vui lòng chờ trong giây lát',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); },
+            });
 
-        // Clear previous validation
-        form.querySelectorAll('.is-invalid').forEach((el) => el.classList.remove('is-invalid'));
+            try {
+                const saveResult = await A.DB.saveRecord(C.collection, data);
+                Swal.close();
 
-        // Validate
-        if (!this._validateForm(form)) {
-            logA('Vui lòng kiểm tra lại các trường bắt buộc.', 'warning', 'toast');
-            return;
-        }
-
-        // Collect data
-        const data = {
-            employee_code: form.querySelector('[name="employee_code"]')?.value?.trim() || '',
-            full_name: form.querySelector('[name="full_name"]')?.value?.trim() || '',
-            phone: form.querySelector('[name="phone"]')?.value?.trim() || '',
-            email: form.querySelector('[name="email"]')?.value?.trim() || '',
-            position: form.querySelector('[name="position"]')?.value || '',
-            department: form.querySelector('[name="department"]')?.value || '',
-            hire_date: form.querySelector('[name="hire_date"]')?.value || '',
-            base_salary: Number(form.querySelector('[name="base_salary"]')?.value) || 0,
-            status: form.querySelector('[name="status"]')?.value || 'active',
-            bank_account: form.querySelector('[name="bank_account"]')?.value?.trim() || '',
-            emergency_contact: form.querySelector('[name="emergency_contact"]')?.value?.trim() || '',
-            notes: form.querySelector('[name="notes"]')?.value?.trim() || '',
-        };
-
-        if (isEdit) {
-            data.id = this._selectedId;
-        }
-
-        // Show loading state on submit button
-        const submitBtn = form.querySelector('button[type="submit"]');
-        const originalHTML = submitBtn?.innerHTML || '';
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Đang lưu...';
-        }
-
-        try {
-            const result = await A.DB.saveRecord(C.collection, data);
-            if (result.success) {
-                logA(isEdit ? 'Cập nhật nhân viên thành công!' : 'Thêm nhân viên thành công!', 'success', 'toast');
-
-                // Refresh local cache
-                await this.loadEmployees();
-
-                // Re-render
-                this.renderTable();
-                this.renderForm(null);
-                this._selectedId = null;
-            } else {
-                logA(result.message || 'Lỗi khi lưu nhân viên', 'error', 'toast');
-            }
-        } catch (e) {
-            L._('HrEmployee: Save error:', e);
-            logA('Có lỗi xảy ra khi lưu nhân viên. Vui lòng thử lại.', 'error', 'toast');
-        } finally {
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalHTML;
+                if (saveResult.success) {
+                    logA(isEdit ? 'Cập nhật nhân viên thành công!' : 'Thêm nhân viên thành công!', 'success', 'toast');
+                    await this.loadEmployees();
+                    this.renderTable();
+                    this._selectedId = null;
+                } else {
+                    logA(saveResult.message || 'Lỗi khi lưu nhân viên', 'error', 'toast');
+                }
+            } catch (e) {
+                Swal.close();
+                L._('HrEmployee: Save error:', e);
+                logA('Có lỗi xảy ra khi lưu nhân viên. Vui lòng thử lại.', 'error', 'toast');
             }
         }
     }
@@ -687,7 +589,6 @@ export class HrEmployee {
 
                 if (this._selectedId === empId) {
                     this._selectedId = null;
-                    this.renderForm(null);
                 }
             } else {
                 logA(result.message || 'Lỗi khi xóa nhân viên', 'error', 'toast');

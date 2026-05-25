@@ -13,6 +13,7 @@ export class HrBonus {
         formId: 'hr-bonus-form',
         collection: 'bonuses',
         typeOptions: [
+            { id: 'revenue_bonus', name: 'Thưởng Doanh Số' },
             { id: 'commission', name: 'Hoa Hồng' },
             { id: 'bonus', name: 'Thưởng' },
             { id: 'overtime', name: 'Tăng Ca' },
@@ -64,12 +65,8 @@ export class HrBonus {
         if (tableContainer) {
             this.renderBonusTable(tableContainer);
         }
-
-        const formContainer = getE('hr-bonus-form-container');
-        if (formContainer) {
-            this.renderBonusForm(formContainer, null);
-        }
     }
+
 
     // ─── DATA ────────────────────────────────────────────────────────
     async loadBonuses() {
@@ -281,7 +278,7 @@ export class HrBonus {
 
         getE(`${C.prefix}btn-add`)?.addEventListener('click', () => {
             this._selectedId = null;
-            this.renderBonusForm(getE('hr-bonus-form-container'), null);
+            this.renderBonusForm(null);
         });
     }
 
@@ -409,6 +406,7 @@ export class HrBonus {
 
     _renderTypeBadge(type) {
         const map = {
+            revenue_bonus: { cls: 'badge-gold', label: 'Thưởng Doanh Số' },
             commission: { cls: 'bg-info text-dark', label: 'Hoa Hồng' },
             bonus: { cls: 'bg-success', label: 'Thưởng' },
             overtime: { cls: 'bg-warning text-dark', label: 'Tăng Ca' },
@@ -497,7 +495,7 @@ export class HrBonus {
     _selectBonus(bonusId) {
         this._selectedId = bonusId;
         const bonus = (this._bonuses || []).find((b) => b.id === bonusId);
-        this.renderBonusForm(getE('hr-bonus-form-container'), bonus || null);
+        this.renderBonusForm(bonus || null);
 
         // Highlight selected row
         document.querySelectorAll('.hr-bonus-row, .hr-bonus-card')
@@ -509,14 +507,10 @@ export class HrBonus {
     }
 
     // ─── FORM ────────────────────────────────────────────────────────
-    renderBonusForm(container, bonusData = null) {
-        if (!container) return;
-
+    async renderBonusForm(bonusData = null) {
         const C = HrBonus.Config;
         const isEdit = !!bonusData;
         const title = isEdit ? 'Chỉnh Sửa Thưởng' : 'Thêm Thưởng Mới';
-        const btnLabel = isEdit ? 'Cập Nhật' : 'Lưu Thưởng';
-        const btnIcon = isEdit ? 'fa-floppy-disk' : 'fa-plus';
 
         const typeHTML = C.typeOptions.map((t) => `<option value="${t.id}">${t.name}</option>`).join('');
         const statusHTML = C.statusOptions.map((s) => `<option value="${s.id}">${s.name}</option>`).join('');
@@ -529,111 +523,138 @@ export class HrBonus {
 
         const empId = isEdit ? this._getEmployeeId(bonusData) : '';
 
-        const formHTML = `
-            <form id="${C.formId}" class="card border-0 shadow-sm" novalidate>
-                <div class="card-header bg-primary bg-gradient text-white">
-                    <h6 class="mb-0 fw-bold"><i class="fa-solid fa-gift me-2"></i>${title}</h6>
+        const result = await Swal.fire({
+            title: title,
+            html: `
+                <div class="mb-2 text-start">
+                    <label class="form-label small fw-bold mb-1">Nhân Viên <span class="text-danger">*</span></label>
+                    <select id="swal-bonus-employee" class="swal2-select form-select form-select-sm" required>
+                        <option value="">Chọn nhân viên...</option>
+                        ${empHTML}
+                    </select>
                 </div>
-                <div class="card-body p-3">
-                    <input type="hidden" name="id" value="${isEdit ? this._escapeHtml(bonusData.id || '') : ''}">
-
-                    <div class="mb-2">
-                        <label class="form-label small fw-bold mb-1">Nhân Viên <span class="text-danger">*</span></label>
-                        <select class="form-select form-select-sm" name="employee_id" required>
-                            <option value="">Chọn nhân viên...</option>
-                            ${empHTML}
-                        </select>
-                        <div class="invalid-feedback small">Vui lòng chọn nhân viên</div>
-                    </div>
-
-                    <div class="mb-2">
-                        <label class="form-label small fw-bold mb-1">Loại <span class="text-danger">*</span></label>
-                        <select class="form-select form-select-sm" name="type" required>
-                            <option value="">Chọn loại...</option>
-                            ${typeHTML}
-                        </select>
-                        <div class="invalid-feedback small">Vui lòng chọn loại thưởng</div>
-                    </div>
-
-                    <div class="mb-2">
-                        <label class="form-label small fw-bold mb-1">Số Tiền <span class="text-danger">*</span></label>
-                        <input type="number" class="form-control form-control-sm" name="amount"
-                            placeholder="0" min="0" required
-                            value="${isEdit ? (bonusData.amount || 0) : ''}">
-                        <div class="invalid-feedback small">Vui lòng nhập số tiền (>= 0)</div>
-                    </div>
-
-                    <div class="mb-2">
-                        <label class="form-label small fw-bold mb-1">Lý Do</label>
-                        <input type="text" class="form-control form-control-sm" name="reason"
-                            placeholder="Lý do thưởng"
-                            value="${isEdit ? this._escapeHtml(bonusData.reason || '') : ''}">
-                    </div>
-
-                    <div class="mb-2">
-                        <label class="form-label small fw-bold mb-1">Mã Tham Chiếu</label>
-                        <input type="text" class="form-control form-control-sm" name="reference_id"
-                            placeholder="Mã booking/hóa đơn"
-                            value="${isEdit ? this._escapeHtml(bonusData.reference_id || '') : ''}">
-                    </div>
-
-                    <div class="mb-2">
-                        <label class="form-label small fw-bold mb-1">Ngày <span class="text-danger">*</span></label>
-                        <input type="date" class="form-control form-control-sm" name="date" required
-                            value="${isEdit ? (bonusData.date || '') : ''}">
-                        <div class="invalid-feedback small">Vui lòng chọn ngày</div>
-                    </div>
-
-                    <div class="mb-2">
-                        <label class="form-label small fw-bold mb-1">Trạng Thái</label>
-                        <select class="form-select form-select-sm" name="status">
-                            ${statusHTML}
-                        </select>
-                    </div>
-
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary btn-sm flex-grow-1" id="${C.prefix}btn-submit">
-                            <i class="fa-solid ${btnIcon} me-1"></i>${btnLabel}
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="${C.prefix}btn-cancel">
-                            <i class="fa-solid fa-xmark me-1"></i>Hủy
-                        </button>
-                    </div>
+                <div class="mb-2 text-start">
+                    <label class="form-label small fw-bold mb-1">Loại <span class="text-danger">*</span></label>
+                    <select id="swal-bonus-type" class="swal2-select form-select form-select-sm" required>
+                        <option value="">Chọn loại...</option>
+                        ${typeHTML}
+                    </select>
                 </div>
-            </form>
-        `;
+                <div class="mb-2 text-start">
+                    <label class="form-label small fw-bold mb-1">Số Tiền <span class="text-danger">*</span></label>
+                    <input type="number" id="swal-bonus-amount" class="swal2-input form-control form-control-sm"
+                        placeholder="0" min="0" required value="${isEdit ? (bonusData.amount || 0) : ''}">
+                </div>
+                <div class="mb-2 text-start">
+                    <label class="form-label small fw-bold mb-1">Lý Do</label>
+                    <input type="text" id="swal-bonus-reason" class="swal2-input form-control form-control-sm"
+                        placeholder="Lý do thưởng" value="${isEdit ? this._escapeHtml(bonusData.reason || '') : ''}">
+                </div>
+                <div class="mb-2 text-start">
+                    <label class="form-label small fw-bold mb-1">Mã Tham Chiếu</label>
+                    <input type="text" id="swal-bonus-reference" class="swal2-input form-control form-control-sm"
+                        placeholder="Mã booking/hóa đơn" value="${isEdit ? this._escapeHtml(bonusData.reference_id || '') : ''}">
+                </div>
+                <div class="mb-2 text-start">
+                    <label class="form-label small fw-bold mb-1">Ngày <span class="text-danger">*</span></label>
+                    <input type="date" id="swal-bonus-date" class="swal2-input form-control form-control-sm"
+                        required value="${isEdit ? (bonusData.date || '') : ''}">
+                </div>
+                <div class="mb-2 text-start">
+                    <label class="form-label small fw-bold mb-1">Trạng Thái</label>
+                    <select id="swal-bonus-status" class="swal2-select form-select form-select-sm">
+                        ${statusHTML}
+                    </select>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: isEdit ? '<i class="fa-solid fa-floppy-disk me-1"></i>Cập Nhật' : '<i class="fa-solid fa-plus me-1"></i>Lưu Thưởng',
+            cancelButtonText: 'Hủy',
+            width: 600,
+            didOpen: () => {
+                if (isEdit) {
+                    const sel = (id, val) => {
+                        const el = document.getElementById(id);
+                        if (el && val) el.value = val;
+                    };
+                    sel('swal-bonus-employee', empId);
+                    sel('swal-bonus-type', bonusData.type);
+                    sel('swal-bonus-status', bonusData.status || 'pending');
+                }
+            },
+            preConfirm: () => {
+                const data = {
+                    employee_id: document.getElementById('swal-bonus-employee')?.value || '',
+                    type: document.getElementById('swal-bonus-type')?.value || '',
+                    amount: Number(document.getElementById('swal-bonus-amount')?.value) || 0,
+                    reason: document.getElementById('swal-bonus-reason')?.value?.trim() || '',
+                    reference_id: document.getElementById('swal-bonus-reference')?.value?.trim() || '',
+                    date: document.getElementById('swal-bonus-date')?.value || '',
+                    status: document.getElementById('swal-bonus-status')?.value || 'pending',
+                };
 
-        container.innerHTML = formHTML;
+                if (!data.employee_id) {
+                    Swal.showValidationMessage('Vui lòng chọn nhân viên');
+                    return false;
+                }
+                if (!data.type) {
+                    Swal.showValidationMessage('Vui lòng chọn loại thưởng');
+                    return false;
+                }
+                if (!data.amount || isNaN(data.amount) || data.amount < 0) {
+                    Swal.showValidationMessage('Vui lòng nhập số tiền hợp lệ (>= 0)');
+                    return false;
+                }
+                if (!data.date) {
+                    Swal.showValidationMessage('Vui lòng chọn ngày');
+                    return false;
+                }
 
-        // Pre-fill selects for edit mode
+                return data;
+            },
+        });
+
+        if (result.isConfirmed) {
+            await this._handleSaveSwal(result.value, isEdit);
+        }
+    }
+
+    async _handleSaveSwal(data, isEdit) {
+        const C = HrBonus.Config;
+
         if (isEdit) {
-            const form = getE(C.formId);
-            if (!form) return;
-            const sel = (name, val) => {
-                const el = form.querySelector(`[name="${name}"]`);
-                if (el && val) el.value = val;
-            };
-            sel('employee_id', empId);
-            sel('type', bonusData.type);
-            sel('status', bonusData.status || 'pending');
+            data.id = this._selectedId;
+            const existing = (this._bonuses || []).find((b) => b.id === this._selectedId);
+            if (existing) {
+                if (existing.approved_by) data.approved_by = existing.approved_by;
+                if (existing.created_at) data.created_at = existing.created_at;
+            }
+        } else {
+            data.created_at = new Date().toISOString().split('T')[0];
         }
 
-        // Cancel button
-        const cancelBtn = getE(`${C.prefix}btn-cancel`);
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', () => {
+        Swal.showLoading();
+
+        try {
+            const result = await A.DB.saveRecord(C.collection, data);
+            if (result.success) {
+                Swal.close();
+                logA(isEdit ? 'Cập nhật thưởng thành công!' : 'Thêm thưởng thành công!', 'success', 'toast');
+
+                await this.loadBonuses();
+
+                const tableContainer = getE('hr-bonus-table-container');
+                if (tableContainer) this.renderBonusTable(tableContainer);
+
                 this._selectedId = null;
-                this.renderBonusForm(container, null);
-            });
-        }
-
-        // Submit handler
-        const form = getE(C.formId);
-        if (form) {
-            form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this._handleSave(isEdit);
-            });
+            } else {
+                Swal.showValidationMessage(result.message || 'Lỗi khi lưu thưởng');
+                return false;
+            }
+        } catch (e) {
+            L._('HrBonus: Save error:', e);
+            Swal.showValidationMessage('Có lỗi xảy ra khi lưu thưởng. Vui lòng thử lại.');
+            return false;
         }
     }
 
@@ -735,7 +756,6 @@ export class HrBonus {
                 const tableContainer = getE('hr-bonus-table-container');
                 if (tableContainer) this.renderBonusTable(tableContainer);
 
-                this.renderBonusForm(getE('hr-bonus-form-container'), null);
                 this._selectedId = null;
             } else {
                 logA(result.message || 'Lỗi khi lưu thưởng', 'error', 'toast');
@@ -794,7 +814,6 @@ export class HrBonus {
 
                 if (this._selectedId === id) {
                     this._selectedId = null;
-                    this.renderBonusForm(getE('hr-bonus-form-container'), null);
                 }
             } else {
                 logA(result.message || 'Lỗi khi xóa thưởng', 'error', 'toast');

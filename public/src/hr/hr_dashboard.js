@@ -114,6 +114,10 @@ export class HrDashboard {
                 this.getCollection('bonuses')
             ]);
 
+            // Store for quick-action helpers
+            this._employees = employees || [];
+            this._attendanceRecords = attendance || [];
+
             const activeEmployees = employees.filter(e => e.status === 'active' || e.status === 'probation');
             const totalEmployees = activeEmployees.length;
 
@@ -214,22 +218,107 @@ export class HrDashboard {
         const btnAddEmployee = document.getElementById('hr-dash-btn-add-employee');
         if (btnAddEmployee) {
             btnAddEmployee.addEventListener('click', () => {
-                document.getElementById('hr-employee-tab')?.click();
+                if (this.controller.employee && typeof this.controller.employee.renderForm === 'function') {
+                    this.controller.employee.renderForm(null);
+                }
             });
         }
 
         const btnAttendance = document.getElementById('hr-dash-btn-attendance');
         if (btnAttendance) {
-            btnAttendance.addEventListener('click', () => {
-                document.getElementById('hr-attendance-tab')?.click();
+            btnAttendance.addEventListener('click', async () => {
+                const available = this.#getAvailableEmployees();
+                if (available.length === 0) {
+                    Swal.fire({ icon: 'info', title: 'Thông báo', text: 'Tất cả nhân viên đã chấm công hôm nay.' });
+                    return;
+                }
+                const inputOptions = {};
+                available.forEach(emp => { inputOptions[emp.id] = emp.full_name; });
+                const { value: employeeId } = await Swal.fire({
+                    title: 'Chấm Công',
+                    input: 'select',
+                    inputOptions,
+                    inputPlaceholder: '--- Chọn nhân viên ---',
+                    showCancelButton: true,
+                    confirmButtonText: 'Check-in',
+                    inputValidator: (value) => !value && 'Bạn cần chọn một nhân viên!',
+                });
+                if (employeeId) {
+                    await this.controller.attendance.checkIn(employeeId);
+                }
             });
         }
 
         const btnViewSalary = document.getElementById('hr-dash-btn-view-salary');
         if (btnViewSalary) {
-            btnViewSalary.addEventListener('click', () => {
-                document.getElementById('hr-salary-tab')?.click();
+            btnViewSalary.addEventListener('click', async () => {
+                const employees = (this.controller.employee?._employees || []).filter(
+                    emp => !emp.status || emp.status === 'active' || emp.status === 'probation'
+                );
+                if (employees.length === 0) {
+                    Swal.fire({ icon: 'info', title: 'Thông báo', text: 'Chưa có nhân viên nào.' });
+                    return;
+                }
+                const inputOptions = {};
+                employees.forEach(emp => { inputOptions[emp.id] = emp.full_name; });
+                const { value: employeeId } = await Swal.fire({
+                    title: 'Xem Bảng Lương',
+                    input: 'select',
+                    inputOptions,
+                    inputPlaceholder: '--- Chọn nhân viên ---',
+                    showCancelButton: true,
+                    confirmButtonText: 'Xem',
+                    inputValidator: (value) => !value && 'Bạn cần chọn một nhân viên!',
+                });
+                if (employeeId) {
+                    const html = this.#renderSalaryDetail(employeeId);
+                    Swal.fire({ html, width: 700, showCloseButton: true, showConfirmButton: false });
+                }
             });
         }
+    }
+
+    #getAvailableEmployees() {
+        const employees = (this.controller.employee?._employees || []).filter(
+            emp => !emp.status || emp.status === 'active' || emp.status === 'probation'
+        );
+        const attendance = this.controller.attendance?.records || [];
+        const today = new Date().toLocaleDateString('en-CA');
+        const checkedInIds = new Set(
+            attendance.filter(a => a.date === today && a.check_in).map(a => a.employee_id)
+        );
+        return employees.filter(emp => !checkedInIds.has(emp.id));
+    }
+
+    #renderSalaryDetail(employeeId) {
+        const now = new Date();
+        const month = now.getMonth() + 1;
+        const year = now.getFullYear();
+        const result = this.controller.salary.calculateSalary(employeeId, month, year);
+        if (!result) {
+            return '<div class="text-danger text-center p-3">Không thể tính lương cho nhân viên này.</div>';
+        }
+        const employee = (this.controller.employee?._employees || []).find(e => e.id === employeeId);
+        const empName = employee ? employee.full_name : employeeId;
+        const attendance = this.controller.attendance?.records || [];
+        const workDays = attendance.filter(a => {
+            if (a.employee_id !== employeeId) return false;
+            if (!a.date) return false;
+            const d = new Date(a.date);
+            return d.getMonth() + 1 === month && d.getFullYear() === year;
+        }).length;
+        const formatVND = (val) => new Intl.NumberFormat('vi-VN').format(val);
+        return `
+            <h5 class="mb-3">Bảng Lương - ${empName}</h5>
+            <p class="text-muted mb-3">Tháng ${month}/${year}</p>
+            <table class="table table-bordered">
+                <tr><td class="fw-bold">Lương CB</td><td class="text-end">${formatVND(result.base_salary)} VNĐ</td></tr>
+                <tr><td class="fw-bold">Ngày công</td><td class="text-end">${workDays} ngày</td></tr>
+                <tr><td class="fw-bold">Giờ công</td><td class="text-end">${result.ot_hours} giờ</td></tr>
+                <tr><td class="fw-bold">Thưởng</td><td class="text-end text-success">${formatVND(result.bonus_total)} VNĐ</td></tr>
+                <tr><td class="fw-bold">Phạt/Khấu trừ</td><td class="text-end text-danger">${formatVND(result.deduction_total)} VNĐ</td></tr>
+                <tr class="table-primary"><td class="fw-bold">Thực nhận</td><td class="text-end fw-bold">${formatVND(result.net_salary)} VNĐ</td></tr>
+            </table>
+        `;
     }
 }

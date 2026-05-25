@@ -234,14 +234,12 @@ select > option {
     #acc-modal-form .col-6 {
         padding: 3px !important;
     }
-    @media (max-width: 500px) {
-        #acc-modal-form [class*='col-'] {
-            flex: 0 0 100% !important;
-            max-width: 100% !important;
-        }
-        #acc-modal-form .row.g-2 {
-            margin-right: -0.5rem !important;
-            margin-left: -0.5rem !important;
-        }
+    #acc-modal-form [class*='col-'] {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+    }
+    #acc-modal-form .row.g-2 {
+        margin-right: -0.5rem !important;
+        margin-left: -0.5rem !important;
     }
 }

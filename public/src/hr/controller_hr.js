@@ -24,6 +24,13 @@ class HumanController {
         this._initialized = true;
         console.log('[HR-Controller] init()');
         
+        // Load template file to register templates in UI_Manager
+        if (window.A && window.A.UI) {
+            if (!document.getElementById('tmpl-human')) {
+                await window.A.UI.renderTemplate('body', 'tpl_hr.html', true);
+            }
+        }
+
         // Sub-module init (some are async — await them)
         this.employee.init();
         await this.attendance.init();

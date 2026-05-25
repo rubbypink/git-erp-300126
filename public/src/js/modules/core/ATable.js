@@ -601,7 +601,7 @@ export default class ATable {
             <input type="text" class="form-control form-control-sm bg-surface-alt border-0 ps-0 at-search-input" placeholder="Tìm kiếm nhanh..." style="box-shadow: none;">
           </div>
         </div>
-        <button id="${this.containerId}-btn-settings" class="btn btn-light border-0 shadow-sm p-0 bg-transparent" style="font-size: large;"><icon class="fas fa-cog"></icon></button>
+        <button id="${this.containerId}-btn-settings" class="btn btn-light border-0 shadow-sm p-0 bg-transparent" style="font-size: large;"><i class="fas fa-cog"></i></button>
       </div>`;
     }
 

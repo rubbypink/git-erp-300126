@@ -3185,7 +3185,7 @@ function createFormBySchema(collectionName, formId) {
     const hiddenFields = fields.filter((f) => f.attrs?.includes('hidden') || f.class?.includes('d-none'));
 
     const displayCollectionName = A.Lang?.t(collectionName) || collectionName;
-    let html = `<form id="${formId}" class="db-schema-form h-100" data-collection="${collectionName}" style="max-width: 85vw; margin: auto; padding-bottom: 1.5rem; min-height: 400px;" gap: 16px; position: relative">`;
+    let html = `<form id="${formId}" class="db-schema-form h-100" data-collection="${collectionName}" style="max-width: 85vw; margin: auto; padding-bottom: 1.5rem; min-height: 400px; gap: 16px; position: relative;">`;
 
     html += `<fieldset class="border p-3 mb-3" data-collection="${collectionName}" style="border-radius: 4px; border-color: #ced4da; flex: 1 1 auto;">`;
     html += `<legend class="w-auto px-2" style="font-size: 1.1em;">${displayCollectionName}</legend>

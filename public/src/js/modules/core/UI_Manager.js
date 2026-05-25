@@ -17,13 +17,18 @@ const UI_RENDERER = {
         const user = A.getState('user');
         const role = user ? user.role : CURRENT_USER.role;
         L._('UI: User Role:', role);
+        
+        // Đảm bảo tpl_all.html được load xong trước khi load các module khác
+        // để tránh race condition khi các module gọi lazyLoad template
+        await this.renderTemplate('body', 'tpl_all.html', true, '.app-container');
+        
         if (!['acc', 'acc_thenice', 'ketoan'].includes(role)) {
-            const [headerModule, footerModule] = await Promise.all([A.load('ErpHeaderMenu'), A.load('ErpFooterMenu'), this.renderTemplate('body', 'tpl_all.html', true, '.app-container')]);
+            const [headerModule, footerModule] = await Promise.all([A.load('ErpHeaderMenu'), A.load('ErpFooterMenu')]);
             // if (headerModule && !headerModule.initialized) new headerModule();
             // const mainErpFooter = new footerModule('erp-main-footer');
             // mainErpFooter.init();
         } else {
-            const [headerModule, chromeMenu] = await Promise.all([A.load('ErpHeaderMenu'), this.renderTemplate('body', 'tpl_all.html', true, '.app-container')]);
+            const [headerModule, chromeMenu] = await Promise.all([A.load('ErpHeaderMenu')]);
             // if (headerModule && !headerModule.initialized) new headerModule();
         }
 
@@ -84,73 +89,42 @@ const UI_RENDERER = {
      * @param {string} mode - 'replace' (ghi đè), 'append' (nối đuôi), 'prepend' (lên đầu)
      */
     renderTemplate: async function (targetId, source, force = false, positionRef = null, mode = 'replace') {
-        // 1. CHUẨN HÓA SOURCE KEY (QUAN TRỌNG NHẤT)
-        // Phải xác định unique key ngay từ đầu để check và save thống nhất
+        // 1. CHUẨN HÓA SOURCE KEY
         let finalSourcePath = source;
-
-        // Nếu là file HTML ngắn gọn (vd: 'tpl_all.html'), tự động thêm path
         if (source?.endsWith('.html') && !source.includes('/')) {
             finalSourcePath = this.COMPONENT_PATH + source;
         }
 
-        // 2. Guard Clause: Kiểm tra dựa trên FINAL PATH
-        if (this.renderedTemplates[finalSourcePath] && !force && mode === 'replace') {
-            return true; // Trả về true giả lập là đã xong
+        // 2. Guard Clause
+        if (this.renderedTemplates[finalSourcePath] === true && !force && mode === 'replace') {
+            return true;
         }
 
-        // 3. Xác định nội dung (Content)
         let contentFragment = null;
 
         // CASE A: Source là File Path (.html)
         if (finalSourcePath.endsWith('.html')) {
             try {
-                let htmlString = '';
-
-                // Kiểm tra Cache RAM (Nội dung file)
-                if (this.htmlCache[finalSourcePath]) {
-                    htmlString = this.htmlCache[finalSourcePath];
-                } else {
-                    // 1. Fetch Network với validations
+                let htmlString = this.htmlCache[finalSourcePath];
+                if (!htmlString) {
                     const response = await fetch(finalSourcePath);
-
-                    // 1a. Kiểm tra HTTP Status
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status} - Không tìm thấy file: ${finalSourcePath}`);
-                    }
-
-                    // 1b. Kiểm tra Content-Type (phải là HTML)
-                    const contentType = response.headers.get('content-type') || '';
-                    if (!contentType.includes('text/html') && !contentType.includes('text/plain')) {
-                        console.warn(`⚠️ Content-Type không phải HTML: ${contentType} cho file ${finalSourcePath}`);
-                    }
-
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     htmlString = await response.text();
-
-                    // 1c. Xác nhận không phải fallback index.html
-                    // Note: SPA thường return index.html với status 200 để xử lý routing
-                    const isIndexFallback = htmlString.includes('id="app-launcher"') || htmlString.includes('id="main-app"') || (htmlString.includes('<!DOCTYPE html>') && !htmlString.includes('<template') && !htmlString.includes('tpl-'));
-
-                    if (isIndexFallback) {
-                        throw new Error(`Fallback index.html (SPA) thay vì template component: ${finalSourcePath}`);
-                    }
-
-                    // 1d. Xác nhận nội dung không rỗng
-                    if (!htmlString.trim()) {
-                        throw new Error(`File trống: ${finalSourcePath}`);
-                    }
-
-                    this.htmlCache[finalSourcePath] = htmlString; // Lưu cache nội dung
+                    this.htmlCache[finalSourcePath] = htmlString;
                 }
 
-                // 2. Tạo div ảo để chứa HTML
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = htmlString;
 
-                // 3. Tạo Fragment để chứa kết quả
-                contentFragment = document.createDocumentFragment();
+                // Lưu cache state các template và tên file (template giữ nguyên trong DOM vì vô hình)
+                const templates = tempDiv.querySelectorAll('template[id^="tmpl-"]');
+                templates.forEach(tmpl => {
+                    if (typeof this.renderedTemplates[tmpl.id] !== 'boolean') {
+                        this.renderedTemplates[tmpl.id] = { file: finalSourcePath };
+                    }
+                });
 
-                // 4. Chuyển TOÀN BỘ nội dung từ tempDiv sang Fragment
-                // Cách này sẽ giữ nguyên mọi thứ: div, span, và cả thẻ <template>
+                contentFragment = document.createDocumentFragment();
                 while (tempDiv.firstChild) {
                     contentFragment.appendChild(tempDiv.firstChild);
                 }
@@ -161,12 +135,35 @@ const UI_RENDERER = {
         }
         // CASE B: Source là DOM ID (<template id="...">)
         else {
-            const templateEl = document.getElementById(source); // ID thì dùng source gốc
+            let templateEl = document.getElementById(source);
+            
+            // Bước xử lý fallback khi tìm template trong dom không thấy -> load lại file từ server
             if (!templateEl) {
-                return false;
+                const state = this.renderedTemplates[source];
+                if (state && state.file) {
+                    let htmlString = this.htmlCache[state.file];
+                    if (!htmlString) {
+                        const response = await fetch(state.file);
+                        if (response.ok) {
+                            htmlString = await response.text();
+                            this.htmlCache[state.file] = htmlString;
+                        }
+                    }
+                    if (htmlString) {
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = htmlString;
+                        templateEl = tempDiv.querySelector(`#${source}`);
+                    }
+                }
+                
+                // Nếu vẫn không thấy thì mới báo lỗi
+                if (!templateEl) {
+                    console.error(`❌ Template ${source} không tìm thấy trong DOM và không có fallback file.`);
+                    return false;
+                }
             }
+            
             contentFragment = templateEl.content.cloneNode(true);
-            // Với ID, ta dùng ID làm key lưu trữ
             finalSourcePath = source;
         }
 
@@ -179,15 +176,21 @@ const UI_RENDERER = {
 
             if (positionRef) {
                 const refElement = container.querySelector(positionRef);
-                if (refElement) {
+                if (refElement && refElement.parentNode && refElement.parentNode.contains(refElement.nextSibling)) {
                     refElement.parentNode.insertBefore(contentFragment, refElement.nextSibling);
+                } else if (refElement && refElement.parentNode) {
+                    refElement.parentNode.appendChild(contentFragment);
                 } else {
                     container.appendChild(contentFragment);
                 }
             } else {
                 // Chèn trước script đầu tiên để tránh lỗi JS loading
                 const firstScript = container.querySelector('script');
-                container.insertBefore(contentFragment, firstScript || container.lastChild);
+                if (firstScript && firstScript.parentNode === container) {
+                    container.insertBefore(contentFragment, firstScript);
+                } else {
+                    container.appendChild(contentFragment);
+                }
             }
         }
         // --- SCENARIO 2: Render vào Container ID ---
@@ -208,17 +211,8 @@ const UI_RENDERER = {
                 container.appendChild(contentFragment);
             }
         }
-        // 4b. Auto-unwrap: nếu file HTML có thẻ <template> wrapper, đánh thức nội dung
-        //     Áp dụng cho template load từ file (vd: tpl_hr.html có <template id="tmpl-human">)
-        if (finalSourcePath.endsWith('.html') && container) {
-            const tmplWrapper = container.querySelector('template[id^="tmpl-"]');
-            if (tmplWrapper && tmplWrapper.parentNode === container) {
-                const targetId = tmplWrapper.id.replace('tmpl-', '');
-                this.toggleTemplate(targetId);
-            }
-        }
 
-        // 5. Đánh dấu Flag (Sử dụng KEY ĐÃ CHUẨN HÓA)
+        // 5. Đánh dấu Flag
         this.renderedTemplates[finalSourcePath] = true;
         return true;
     },
@@ -232,33 +226,17 @@ const UI_RENDERER = {
         if (tabEl.dataset.isLoaded === 'true' && tabEl.innerHTML.trim() !== '') {
             return;
         }
-        // ═══════════════════════════════════════════════════════════════
-        // FILE TEMPLATE MAP — Các tab có template nằm trong file HTML riêng biệt
-        // (Không nằm trong tpl_all.html đã load từ đầu)
-        //
-        // Cách hoạt động:
-        //   • Tab thông thường: tmplId = 'tmpl-' + tabId → tìm trong DOM (tpl_all.html)
-        //   • Tab có file riêng: dùng file path → fetch từ server (/src/components/...)
-        //
-        // Danh sách template file riêng:
-        //   tpl_hr.html           → tab-human          (HR Module)
-        //   tpl_tour_price.html   → tab-tour-price     (Tour Price)
-        //   tpl_ai_marketing.html → M_AiMarketing.js   (self-loaded, không qua lazyLoad)
-        //   tpl_price_manager.html→ M_PriceManager.js  (self-loaded, không qua lazyLoad)
-        //   tpl_booking_overview.html → BookingOverviewController.js (modal, không qua lazyLoad)
-        //   tpl_admin_settings.html → AdminController.js (self-loaded, không qua lazyLoad)
-        //   tpl_accountant_report.html → controller_accountant.js (self-loaded, không qua lazyLoad)
-        // ═══════════════════════════════════════════════════════════════
-        const fileTemplateMap = {
-            'tab-human': 'tpl_hr.html',
-            'tab-tour-price': 'tpl_tour_price.html',
-        };
-
         const tmplId = tabId.replace('tab-', 'tmpl-');
-        const source = fileTemplateMap[tabId] || tmplId;
 
         // 1. Luôn đảm bảo HTML được render trước
-        this.renderTemplate(tabId, source, false);
+        // Không dùng await ở đây để đảm bảo DOM được update synchronous nếu template đã có trong cache
+        this.renderTemplate(tabId, tmplId, false).then(success => {
+            if (!success) {
+                L._(`⚠️ Tab ${tabId} không tìm thấy template: ${tmplId}`, 'warning');
+                // Reset flag để có thể thử lại
+                tabEl.dataset.isLoaded = 'false';
+            }
+        });
 
         // 2. Logic khởi tạo Component (Chạy ngay cả khi chưa có Data)
         // Ví dụ: Tạo Datepicker, Gán sự kiện click nút update...
@@ -572,6 +550,13 @@ const UI_RENDERER = {
                         window.A.HumanModule.init();
                     }
                     window.A.HumanModule.render();
+                }
+                break;
+
+            case 'tab-admin-dashboard':
+                // Admin Dashboard — render console & role selector cards
+                if (window.A?.AdminConsole && !window.A.AdminConsole._initialized) {
+                    A.AdminConsole.init();
                 }
                 break;
 
@@ -917,7 +902,7 @@ const UI_RENDERER = {
             if (!show) return;
             el = document.createElement('div');
             el.id = 'loading-overlay';
-            el.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.8);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;';
+            el.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.8);z-index:9990;display:flex;flex-direction:column;align-items:center;justify-content:center;';
             el.innerHTML = `<div class="spinner-border text-warning" role="status" style="width: 2.5rem; height: 2.5rem;"></div><div id="loading-text" class="mt-3 fw-bold text-primary small">${text}</div>`;
             document.body.appendChild(el);
         }
@@ -964,7 +949,12 @@ const UI_RENDERER = {
                 const htmlString = activeElement.outerHTML; // Lấy HTML của element (bao gồm chính nó)
 
                 // 2. Chèn template vào ngay trước element để giữ vị trí
-                activeElement.parentNode.insertBefore(template, activeElement);
+                if (activeElement.parentNode) {
+                    activeElement.parentNode.insertBefore(template, activeElement);
+                } else {
+                    console.warn(`[toggleTemplate] activeElement #${targetId} không còn trong DOM, bỏ qua wrap.`);
+                    return null;
+                }
 
                 // 3. Chuyển element vào trong template content
                 // Lưu ý: appendChild sẽ di chuyển node từ DOM vào Fragment
@@ -988,7 +978,12 @@ const UI_RENDERER = {
                 const originalElement = content.querySelector('#' + targetId) || content.firstElementChild;
 
                 // 2. Đưa nội dung ra ngoài (chèn vào chỗ của thẻ template)
-                templateElement.parentNode.insertBefore(content, templateElement);
+                if (templateElement.parentNode) {
+                    templateElement.parentNode.insertBefore(content, templateElement);
+                } else {
+                    console.warn(`[toggleTemplate] templateElement #${tmplId} không còn trong DOM, bỏ qua unwrap.`);
+                    return null;
+                }
 
                 // 3. Xóa thẻ template đi (vì element đã ra ngoài rồi)
                 templateElement.remove();

@@ -31,7 +31,7 @@ const CalculatorWidget = {
     // 3. UI: Render HTML (Bootstrap + Vanilla JS)
     renderUI: function () {
         const html = `
-            <div id="${this.config.containerId}" class="shadow-lg" style="position: fixed; bottom: 4vh; right: 50px; width: 300px; z-index: 9999; background: #fff; border-radius: 12px; display: none; border: 1px solid #e0e0e0; opacity: 0; transition: opacity ${this.config.animationDuration}ms ease;">
+            <div id="${this.config.containerId}" class="shadow-lg" style="position: fixed; bottom: 4vh; right: 50px; width: 300px; z-index: 9980; background: #fff; border-radius: 12px; display: none; border: 1px solid #e0e0e0; opacity: 0; transition: opacity ${this.config.animationDuration}ms ease;">
                 
                 <div class="d-flex justify-content-between align-items-center p-2 bg-primary " style="border-radius: 12px 12px 0 0;">
                     <small><i class="fa-solid fa-calculator me-1"></i> Quick Calc (Ctrl + Enter để dán nhanh!)</small>
@@ -75,7 +75,7 @@ const CalculatorWidget = {
             </div>
             
             <button id="btn-toggle-calc" class="btn btn-primary rounded-circle shadow" title="Ctrl + Shift + I để mở nhanh" 
-                style="position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; z-index: 9998; opacity: 1; transition: opacity ${this.config.animationDuration}ms ease;">
+                style="position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; z-index: 9979; opacity: 1; transition: opacity ${this.config.animationDuration}ms ease;">
                 <i class="fa-solid fa-calculator"></i>
             </button>
         `;

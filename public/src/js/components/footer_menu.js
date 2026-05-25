@@ -322,7 +322,7 @@ export default class ErpFooterMenu {
                 left: auto !important;
                 width: 200px !important;
                 min-width: unset !important;
-                z-index: 10000 !important;
+                z-index: 9970 !important;
             }
             .erp-footer-widget-mode .erp-footer-wrapper {
                 height: auto; padding: 0; background: transparent; box-shadow: none;
@@ -347,7 +347,7 @@ export default class ErpFooterMenu {
             #erp-f-mobile-widget-icon {
                 position: fixed; bottom: 20px; left: 20px; width: 50px; height: 50px;
                 border-radius: 50%; background: #0d6efd; color: white; border: none;
-                cursor: grab; z-index: 9999; opacity: 1; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+                cursor: grab; z-index: 9969; opacity: 1; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
                 transition: opacity 0.3s ease, box-shadow 0.3s ease;
                 display: none; align-items: center; justify-content: center; font-size: 24px;
                 user-select: none; -webkit-user-select: none;

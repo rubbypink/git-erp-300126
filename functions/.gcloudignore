@@ -15,7 +15,8 @@ __tests__/
 
 # ✅ QUAN TRỌNG: KHÔNG ignore .env — file này chứa API keys cần deploy lên Cloud Functions
 # (Firebase Functions sẽ tự động load .env khi deploy)
-
+**/node_modules/
 # Ignore editor config
 .vscode/
 .idea/
+**.node

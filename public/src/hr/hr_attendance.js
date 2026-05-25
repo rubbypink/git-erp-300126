@@ -7,6 +7,8 @@ export class HrAttendance {
         leave: { id: 'leave', label: 'Nghỉ Phép', icon: 'fa-circle-minus', color: 'info' },
     };
 
+    static STANDARD_HOURS_PER_DAY = 8;
+
     static MONTHS = [
         'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
         'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12',
@@ -169,7 +171,7 @@ export class HrAttendance {
         const records = this.#getRecordsForDate(date);
         const rows = records.length > 0
             ? records.map(r => this.#buildTableRow(r)).join('')
-            : `<tr><td colspan="6" class="text-center text-muted py-4">Chưa có dữ liệu chấm công cho ngày này</td></tr>`;
+            : `<tr><td colspan="7" class="text-center text-muted py-4">Chưa có dữ liệu chấm công cho ngày này</td></tr>`;
 
         container.innerHTML = `
             <div class="card border-0 shadow-sm">
@@ -186,7 +188,8 @@ export class HrAttendance {
                                 <th class="ps-3">Nhân Viên</th>
                                 <th>Giờ Vào</th>
                                 <th>Giờ Ra</th>
-                                <th>Giờ Làm</th>
+                                <th>Giờ Công</th>
+                                <th>Công</th>
                                 <th>Trạng Thái</th>
                                 <th class="text-end pe-3">Thao Tác</th>
                             </tr>
@@ -203,14 +206,27 @@ export class HrAttendance {
     #buildTableRow(r) {
         const emp = this.#getEmployeeName(r.employee_id);
         const status = HrAttendance.STATUS[r.status] || HrAttendance.STATUS.present;
-        const hours = r.hours_worked != null ? Number(r.hours_worked).toFixed(1) : '—';
+        // Auto-calculate hours from check_in/check_out when both present but hours_worked is missing
+        let hours = r.hours_worked;
+        if ((hours == null || hours === 0) && r.check_in && r.check_out) {
+            hours = this.#calculateHours(r.check_in, r.check_out);
+        }
+        const hoursDisplay = hours != null ? Number(hours).toFixed(1) : '';
+        const cong = hours != null ? (Number(hours) / HrAttendance.STANDARD_HOURS_PER_DAY).toFixed(2) : '—';
 
         return `
             <tr data-id="${this.#esc(r.id)}">
                 <td class="ps-3 fw-bold">${this.#esc(emp)}</td>
                 <td><span class="badge bg-light text-dark">${r.check_in || '—'}</span></td>
                 <td><span class="badge bg-light text-dark">${r.check_out || '—'}</span></td>
-                <td><strong>${hours}h</strong></td>
+                <td>
+                    <input type="number" class="form-control form-control-sm hr-hours-input"
+                        value="${hoursDisplay}"
+                        data-rec-id="${this.#esc(r.id)}"
+                        min="0" max="24" step="0.5"
+                        style="width:80px;" placeholder="0.0">
+                </td>
+                <td><strong>${cong}</strong></td>
                 <td>
                     <span class="badge bg-${status.color} bg-opacity-10 text-${status.color} border border-${status.color}">
                         <i class="fa-solid ${status.icon} me-1"></i>${status.label}
@@ -319,6 +335,16 @@ export class HrAttendance {
                 }
             });
         });
+
+        document.querySelectorAll('.hr-hours-input').forEach(input => {
+            input.addEventListener('change', async () => {
+                const recordId = input.dataset.recId;
+                const value = parseFloat(input.value);
+                if (recordId && !isNaN(value) && value >= 0) {
+                    await this.#updateHoursWorked(recordId, value);
+                }
+            });
+        });
     }
 
     // ─── MONTHLY CALENDAR VIEW ─────────────────────────────────
@@ -338,7 +364,10 @@ export class HrAttendance {
             </th>`;
         }
 
-        // Build employee rows with status cells
+        // Build employee rows with status cells + compute monthly summary
+        let totalPresentDays = 0;
+        let totalHours = 0;
+
         let empRows = '';
         if (activeEmps.length === 0) {
             empRows = `<tr><td colspan="${daysInMonth + 1}" class="text-center text-muted py-4">Chưa có nhân viên nào</td></tr>`;
@@ -351,21 +380,32 @@ export class HrAttendance {
                     const status = record ? (HrAttendance.STATUS[record.status] || HrAttendance.STATUS.present) : null;
                     const dow = new Date(year, month, d).getDay();
                     const isWeekend = dow === 0 || dow === 6;
-                    const title = status
-                        ? `${status.label}${record.hours_worked ? ` (${Number(record.hours_worked).toFixed(1)}h)` : ''}`
-                        : 'Chưa chấm công';
 
                     if (status) {
+                        let hoursVal = record.hours_worked;
+                        if ((hoursVal == null || hoursVal === 0) && record.check_in && record.check_out) {
+                            hoursVal = this.#calculateHours(record.check_in, record.check_out);
+                        }
+                        const displayText = hoursVal != null ? `${Number(hoursVal).toFixed(1)}h` : status.label.charAt(0);
+                        const title = `${status.label}${hoursVal != null ? ` (${Number(hoursVal).toFixed(1)}h)` : ''}`;
+
                         cells += `<td class="text-center p-0 ${isWeekend ? 'bg-light' : ''}" title="${title}">
                             <span class="badge bg-${status.color} bg-opacity-10 text-${status.color} m-1"
                                 style="font-size:0.65rem;cursor:pointer;"
                                 data-attn-action="editStatus"
                                 data-attn-rec-id="${this.#esc(record.id)}">
-                                ${status.label.charAt(0)}
+                                ${displayText}
                             </span>
                         </td>`;
+
+                        if (record.status === 'present' || record.status === 'late') {
+                            totalPresentDays++;
+                        }
+                        if (hoursVal != null) {
+                            totalHours += Number(hoursVal);
+                        }
                     } else {
-                        cells += `<td class="text-center p-0 ${isWeekend ? 'bg-light' : ''}" title="${title}">
+                        cells += `<td class="text-center p-0 ${isWeekend ? 'bg-light' : ''}" title="Chưa chấm công">
                             <button class="btn btn-sm btn-outline-secondary border-0 m-0 p-0"
                                 style="font-size:0.6rem;width:22px;height:22px;"
                                 title="Thêm chấm công ${dateStr}"
@@ -384,6 +424,18 @@ export class HrAttendance {
                 </tr>`;
             }).join('');
         }
+
+        const totalCong = totalHours / HrAttendance.STANDARD_HOURS_PER_DAY;
+        const summaryRow = `<tfoot class="table-secondary">
+            <tr>
+                <td class="fw-bold ps-2" style="font-size:0.8rem;">Tổng Cộng</td>
+                <td class="text-center small fw-bold" colspan="${daysInMonth}">
+                    📅 Ngày có mặt: <strong>${totalPresentDays}</strong> &nbsp;|&nbsp;
+                    ⏱️ Tổng giờ: <strong>${totalHours.toFixed(1)}h</strong> &nbsp;|&nbsp;
+                    📊 Tổng công: <strong>${totalCong.toFixed(2)}</strong>
+                </td>
+            </tr>
+        </tfoot>`;
 
         container.__attendance = this;
 
@@ -407,6 +459,7 @@ export class HrAttendance {
                             </tr>
                         </thead>
                         <tbody>${empRows}</tbody>
+                        ${summaryRow}
                     </table>
                 </div>
                 <div class="card-footer bg-white border-top">
@@ -641,6 +694,19 @@ export class HrAttendance {
             }
         } catch (e) {
             console.error('deleteAttendance error:', e);
+            alert('Lỗi: ' + e.message);
+        }
+    }
+
+    async #updateHoursWorked(recordId, hours) {
+        try {
+            if (window.A && window.A.DB) {
+                await window.A.DB.updateSingle('attendance', recordId, { hours_worked: hours });
+                await this.#loadData();
+                this.render();
+            }
+        } catch (e) {
+            console.error('updateHoursWorked error:', e);
             alert('Lỗi: ' + e.message);
         }
     }

@@ -1,5 +1,6 @@
 /* hr.css - Styles for Human Resources Module */
 
+/* ─── Dashboard Cards ─── */
 .hr-dashboard-card {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -9,12 +10,275 @@
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
+/* ─── Table Containers ─── */
 .hr-table-container {
     overflow-x: auto;
 }
 
+.hr-table-container table {
+    margin-bottom: 0;
+}
+
+/* ─── Status Badges ─── */
 .hr-status-badge {
     font-size: 0.8rem;
     padding: 0.25em 0.6em;
     border-radius: 50rem;
+    white-space: nowrap;
+}
+
+/* ─── Employee Row / Card ─── */
+.hr-employee-row {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.hr-employee-row:hover {
+    background-color: var(--hover-bg, rgba(0, 0, 0, 0.03));
+}
+
+.hr-employee-row.selected {
+    background-color: var(--primary-color-subtle, #cfe2ff) !important;
+    border-left: 3px solid var(--primary-color, #0d6efd);
+}
+
+.hr-employee-card {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid var(--border-color, #dee2e6);
+}
+
+.hr-employee-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.hr-employee-card.selected {
+    border-color: var(--primary-color, #0d6efd);
+    background-color: var(--primary-color-subtle, #cfe2ff);
+}
+
+/* ─── Bonus Row / Card ─── */
+.hr-bonus-row {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.hr-bonus-row:hover {
+    background-color: var(--hover-bg, rgba(0, 0, 0, 0.03));
+}
+
+.hr-bonus-row.selected {
+    background-color: var(--success-color-subtle, #d1e7dd) !important;
+    border-left: 3px solid var(--success-color, #198754);
+}
+
+.hr-bonus-card {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid var(--border-color, #dee2e6);
+}
+
+.hr-bonus-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.hr-bonus-card.selected {
+    border-color: var(--success-color, #198754);
+    background-color: var(--success-color-subtle, #d1e7dd);
+}
+
+/* ─── Salary Row ─── */
+.hr-salary-row {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.hr-salary-row:hover {
+    background-color: var(--hover-bg, rgba(0, 0, 0, 0.03));
+}
+
+.hr-salary-row.selected {
+    background-color: var(--info-color-subtle, #cff4fc) !important;
+    border-left: 3px solid var(--info-color, #0dcaf0);
+}
+
+/* ─── Attendance Calendar ─── */
+.hr-attendance-calendar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.hr-attendance-calendar table {
+    table-layout: fixed;
+    min-width: 800px;
+}
+
+.hr-attendance-calendar th,
+.hr-attendance-calendar td {
+    text-align: center;
+    vertical-align: middle;
+    padding: 0.5rem 0.25rem;
+    min-width: 36px;
+    font-size: 0.85rem;
+}
+
+.hr-attendance-calendar .day-header {
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: var(--text-muted, #6c757d);
+}
+
+.hr-attendance-calendar .weekend {
+    background-color: var(--surface-alt, #f8f9fa);
+}
+
+.hr-attendance-calendar .today {
+    background-color: var(--primary-color-subtle, #cfe2ff);
+    font-weight: bold;
+}
+
+.hr-attendance-status {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.hr-attendance-status.present {
+    background-color: #198754;
+}
+
+.hr-attendance-status.late {
+    background-color: #ffc107;
+}
+
+.hr-attendance-status.absent {
+    background-color: #dc3545;
+}
+
+.hr-attendance-status.leave {
+    background-color: #6c757d;
+}
+
+/* ─── Form Layouts ─── */
+.hr-form-section {
+    margin-bottom: 1.5rem;
+}
+
+.hr-form-section legend {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--text-color, #212529);
+}
+
+.hr-form-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color, #dee2e6);
+}
+
+/* ─── Filter Bar ─── */
+.hr-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.hr-filter-bar .form-select,
+.hr-filter-bar .form-control {
+    min-width: 140px;
+}
+
+/* ─── Tab Content Scroll ─── */
+#hr-tab-content {
+    overflow-y: auto;
+    max-height: calc(100vh - 220px);
+}
+
+/* ─── Mobile Optimizations ─── */
+@media (max-width: 767px) {
+    .hr-dashboard-card {
+        margin-bottom: 0.75rem;
+    }
+
+    .hr-table-container {
+        font-size: 0.85rem;
+    }
+
+    .hr-attendance-calendar th,
+    .hr-attendance-calendar td {
+        padding: 0.35rem 0.15rem;
+        min-width: 32px;
+        font-size: 0.75rem;
+    }
+
+    .hr-form-actions {
+        justify-content: stretch;
+    }
+
+    .hr-form-actions .btn {
+        flex: 1 1 auto;
+        min-width: unset;
+    }
+
+    .hr-filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .hr-filter-bar .form-select,
+    .hr-filter-bar .form-control,
+    .hr-filter-bar .btn {
+        width: 100%;
+    }
+}
+
+/* ─── Dark Mode Support ─── */
+[data-theme='dark'] .hr-dashboard-card:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='dark'] .hr-employee-card,
+[data-theme='dark'] .hr-bonus-card {
+    border-color: var(--border-color, #495057);
+    background-color: var(--card-bg, #2b3035);
+}
+
+[data-theme='dark'] .hr-employee-card.selected,
+[data-theme='dark'] .hr-bonus-card.selected {
+    background-color: rgba(13, 110, 253, 0.15);
+    border-color: var(--primary-color, #0d6efd);
+}
+
+[data-theme='dark'] .hr-attendance-calendar .weekend {
+    background-color: var(--surface-alt, #343a40);
+}
+
+[data-theme='dark'] .hr-attendance-calendar .today {
+    background-color: rgba(13, 110, 253, 0.2);
+}
+
+/* ─── Bonus Badges ─── */
+.badge-gold {
+    background-color: #D4A017;
+    color: #fff;
+}
+
+/* ─── Print Styles ─── */
+@media print {
+    .hr-filter-bar,
+    .hr-form-actions,
+    .btn {
+        display: none !important;
+    }
+
+    .hr-table-container {
+        overflow-x: visible;
+    }
 }

@@ -25,7 +25,10 @@ export default class TourPrice {
         try {
             if (this.initialized || !A.isReady()) return;
             L._('🔍 TourPrice: init');
-            if (typeof window.loadHtmlFile === 'function') window.loadHtmlFile('tpl_tour_price.html', { containerId: document.body });
+            
+            if (window.A && window.A.UI) {
+                await window.A.UI.renderTemplate('body', 'tpl_tour_price.html', false);
+            }
 
             // 1. Render UI từ template
             await A.UI.renderTemplate(this.containerId, this.templateId, false);

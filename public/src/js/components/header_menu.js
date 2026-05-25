@@ -37,7 +37,11 @@ export default class ErpHeaderMenu {
         } catch (error) {
             console.error('[9 Trip ERP] Lỗi khởi tạo Header Menu:', error);
         }
-        // $('[data-bs-toggle="tab" data-bs-target="#tab-admin-dashboard"]')?.click();
+        // Auto-activate admin dashboard for admin users without masked role
+        if (this.currentRole === 'admin' && !CURRENT_USER?.realrole) {
+            const adminTabBtn = document.querySelector('[data-bs-toggle="tab"][data-bs-target="#tab-admin-dashboard"]');
+            if (adminTabBtn) adminTabBtn.click();
+        }
     }
 
     /**
