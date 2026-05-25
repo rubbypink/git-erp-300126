@@ -18,8 +18,8 @@ export class HrEmployee {
             { id: 'suspended', name: 'Tạm Ngừng' },
             { id: 'probation', name: 'Thử Việc' },
         ],
-        departmentOptions: ['Sales', 'Operations', 'Accounting', 'HR', 'Marketing', 'IT'],
-        positionOptions: ['Quản Lý', 'Trưởng Phòng', 'Nhân Viên', 'Thực Tập', 'Cộng Tác Viên'],
+        departmentOptions: ['sales', 'operator', 'accountant', 'HEAD', 'manager', 'HR', 'Marketing', 'IT'],
+        positionOptions: ['Chủ Tịch', 'Giám Đốc', 'Quản Lý', 'Trưởng Phòng', 'Nhân Viên', 'Thực Tập', 'Cộng Tác Viên'],
         tableColumns: [
             { key: 'employee_code', label: 'Mã NV' },
             { key: 'full_name', label: 'Họ Tên' },
@@ -376,6 +376,7 @@ export class HrEmployee {
         const isEdit = !!employeeData;
         const title = isEdit ? 'Chỉnh Sửa Nhân Viên' : 'Thêm Nhân Viên Mới';
         const pfx = 'swal-hr-emp-';
+        const todayStr = new Date().toISOString().slice(0, 10);
 
         // Pre-compute options with selected values
         const deptOpts = C.departmentOptions.map((d) =>
@@ -432,7 +433,7 @@ export class HrEmployee {
                         <div class="col-6">
                             <label class="form-label small fw-bold mb-1">Ngày Vào Làm <span class="text-danger">*</span></label>
                             <input type="date" id="${pfx}hire_date" class="swal2-input form-control form-control-sm"
-                                value="${isEdit ? (employeeData.hire_date || '') : ''}">
+                                value="${isEdit ? (employeeData.hire_date || '') : todayStr}">
                         </div>
                         <div class="col-6">
                             <label class="form-label small fw-bold mb-1">Lương Cơ Bản <span class="text-danger">*</span></label>

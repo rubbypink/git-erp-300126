@@ -101,29 +101,8 @@ class HumanController {
 
         this._cleanupHeaderListeners();
 
-        headerActions.innerHTML = `
-            <button class="btn btn-light btn-sm fw-bold" id="hr-btn-dashboard">
-                <i class="fa-solid fa-chart-pie me-1"></i>Tổng Quan
-            </button>
-            <button class="btn btn-light btn-sm fw-bold" id="hr-btn-employee">
-                <i class="fa-solid fa-user-group me-1"></i>Nhân Viên
-            </button>
-            <button class="btn btn-light btn-sm fw-bold" id="hr-btn-attendance">
-                <i class="fa-solid fa-calendar-check me-1"></i>Chấm Công
-            </button>
-            <button class="btn btn-light btn-sm fw-bold" id="hr-btn-salary">
-                <i class="fa-solid fa-money-bill-wave me-1"></i>Bảng Lương
-            </button>
-            <button class="btn btn-light btn-sm fw-bold" id="hr-btn-bonus">
-                <i class="fa-solid fa-gift me-1"></i>Thưởng/Phạt
-            </button>
-        `;
-
-        this._bindHeaderAction('hr-btn-dashboard', () => document.getElementById('hr-dashboard-tab')?.click());
-        this._bindHeaderAction('hr-btn-employee', () => document.getElementById('hr-employee-tab')?.click());
-        this._bindHeaderAction('hr-btn-attendance', () => document.getElementById('hr-attendance-tab')?.click());
-        this._bindHeaderAction('hr-btn-salary', () => document.getElementById('hr-salary-tab')?.click());
-        this._bindHeaderAction('hr-btn-bonus', () => document.getElementById('hr-bonus-tab')?.click());
+        // Xóa nội dung menu dư thừa
+        headerActions.innerHTML = ``;
     }
 
     _bindHeaderAction(id, handler) {

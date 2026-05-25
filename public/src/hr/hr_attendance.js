@@ -185,10 +185,11 @@ export class HrAttendance {
                     <table class="table table-hover align-middle mb-0" id="hr-attendance-daily-table">
                         <thead class="table-light">
                             <tr>
-                                <th class="ps-3">Nhân Viên</th>
+                                <th class="ps-3">Ngày Làm</th>
+                                <th>Nhân Viên</th>
                                 <th>Giờ Vào</th>
                                 <th>Giờ Ra</th>
-                                <th>Giờ Công</th>
+                                <th>Giờ Làm</th>
                                 <th>Công</th>
                                 <th>Trạng Thái</th>
                                 <th class="text-end pe-3">Thao Tác</th>
@@ -206,26 +207,29 @@ export class HrAttendance {
     #buildTableRow(r) {
         const emp = this.#getEmployeeName(r.employee_id);
         const status = HrAttendance.STATUS[r.status] || HrAttendance.STATUS.present;
-        // Auto-calculate hours from check_in/check_out when both present but hours_worked is missing
+        
         let hours = r.hours_worked;
         if ((hours == null || hours === 0) && r.check_in && r.check_out) {
             hours = this.#calculateHours(r.check_in, r.check_out);
         }
-        const hoursDisplay = hours != null ? Number(hours).toFixed(1) : '';
+        const hoursDisplay = hours != null ? Number(hours).toFixed(1) : '—';
         const cong = hours != null ? (Number(hours) / HrAttendance.STANDARD_HOURS_PER_DAY).toFixed(2) : '—';
+
+        // Chỉ được sửa giờ ra khi đã có giờ vào
+        const checkOutInput = r.check_in 
+            ? `<input type="time" class="form-control form-control-sm hr-checkout-input" 
+                    value="${r.check_out || ''}" 
+                    data-rec-id="${this.#esc(r.id)}"
+                    style="width: 100px;">`
+            : `<span class="badge bg-light text-dark">Chưa vào</span>`;
 
         return `
             <tr data-id="${this.#esc(r.id)}">
-                <td class="ps-3 fw-bold">${this.#esc(emp)}</td>
+                <td class="ps-3">${this.#formatDateDisplay(r.date)}</td>
+                <td class="fw-bold">${this.#esc(emp)}</td>
                 <td><span class="badge bg-light text-dark">${r.check_in || '—'}</span></td>
-                <td><span class="badge bg-light text-dark">${r.check_out || '—'}</span></td>
-                <td>
-                    <input type="number" class="form-control form-control-sm hr-hours-input"
-                        value="${hoursDisplay}"
-                        data-rec-id="${this.#esc(r.id)}"
-                        min="0" max="24" step="0.5"
-                        style="width:80px;" placeholder="0.0">
-                </td>
+                <td>${checkOutInput}</td>
+                <td><strong>${hoursDisplay}</strong></td>
                 <td><strong>${cong}</strong></td>
                 <td>
                     <span class="badge bg-${status.color} bg-opacity-10 text-${status.color} border border-${status.color}">
@@ -236,12 +240,14 @@ export class HrAttendance {
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-outline-primary hr-attn-checkin-btn"
                             data-employee="${this.#esc(r.employee_id)}"
+                            data-date="${this.#esc(r.date)}"
                             ${r.check_in ? 'disabled' : ''}>
                             <i class="fa-solid fa-right-to-bracket"></i>
                         </button>
                         <button class="btn btn-outline-success hr-attn-checkout-btn"
                             data-employee="${this.#esc(r.employee_id)}"
                             data-record="${this.#esc(r.id)}"
+                            data-date="${this.#esc(r.date)}"
                             ${!r.check_in || r.check_out ? 'disabled' : ''}>
                             <i class="fa-solid fa-right-from-bracket"></i>
                         </button>
@@ -259,7 +265,8 @@ export class HrAttendance {
         const qa = document.getElementById('hr-attendance-quick-actions');
         if (!qa) return;
 
-        const activeEmps = this.employees.filter(e => e.status !== 'inactive');
+        // Chỉ lấy những nhân viên chưa có record trong ngày để tránh trùng lặp
+        const activeEmps = this.employees.filter(e => e.status !== 'inactive' && !this.#getRecordForEmployeeDate(e.id, date));
         const empOptions = activeEmps.map(e =>
             `<option value="${this.#esc(e.id)}">${this.#esc(e.full_name || e.name || e.id)}</option>`
         ).join('');
@@ -293,22 +300,22 @@ export class HrAttendance {
 
         document.getElementById('hr-attn-quick-checkin')?.addEventListener('click', () => {
             const id = empId();
-            if (!id) return alert('Vui lòng chọn nhân viên');
+            if (!id) return Swal.fire('Cảnh báo', 'Vui lòng chọn nhân viên', 'warning');
             this.checkIn(id, date);
         });
         document.getElementById('hr-attn-quick-checkout')?.addEventListener('click', () => {
             const id = empId();
-            if (!id) return alert('Vui lòng chọn nhân viên');
+            if (!id) return Swal.fire('Cảnh báo', 'Vui lòng chọn nhân viên', 'warning');
             this.checkOut(id, date);
         });
         document.getElementById('hr-attn-quick-absent')?.addEventListener('click', async () => {
             const id = empId();
-            if (!id) return alert('Vui lòng chọn nhân viên');
+            if (!id) return Swal.fire('Cảnh báo', 'Vui lòng chọn nhân viên', 'warning');
             await this.#markStatus(id, date, 'absent');
         });
         document.getElementById('hr-attn-quick-leave')?.addEventListener('click', async () => {
             const id = empId();
-            if (!id) return alert('Vui lòng chọn nhân viên');
+            if (!id) return Swal.fire('Cảnh báo', 'Vui lòng chọn nhân viên', 'warning');
             await this.#markStatus(id, date, 'leave');
         });
     }
@@ -317,31 +324,60 @@ export class HrAttendance {
         document.querySelectorAll('.hr-attn-checkin-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const empId = btn.dataset.employee;
-                if (empId) this.checkIn(empId, date);
+                const recDate = btn.dataset.date || date;
+                if (empId) this.checkIn(empId, recDate);
             });
         });
         document.querySelectorAll('.hr-attn-checkout-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const empId = btn.dataset.employee;
                 const recordId = btn.dataset.record;
-                if (empId) this.checkOut(empId, date, recordId);
+                const recDate = btn.dataset.date || date;
+                if (empId) this.checkOut(empId, recDate, recordId);
             });
         });
         document.querySelectorAll('.hr-attn-delete-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const recordId = btn.dataset.record;
-                if (recordId && confirm('Xóa bản ghi chấm công này?')) {
-                    await this.#deleteAttendance(recordId);
+                if (recordId) {
+                    const confirmRes = await Swal.fire({
+                        title: 'Xóa bản ghi?',
+                        text: 'Bạn có chắc chắn muốn xóa bản ghi chấm công này?',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Xóa',
+                        cancelButtonText: 'Hủy'
+                    });
+                    if (confirmRes.isConfirmed) {
+                        await this.#deleteAttendance(recordId);
+                    }
                 }
             });
         });
 
-        document.querySelectorAll('.hr-hours-input').forEach(input => {
+        // Event for changing check-out time manually
+        document.querySelectorAll('.hr-checkout-input').forEach(input => {
             input.addEventListener('change', async () => {
                 const recordId = input.dataset.recId;
-                const value = parseFloat(input.value);
-                if (recordId && !isNaN(value) && value >= 0) {
-                    await this.#updateHoursWorked(recordId, value);
+                const value = input.value;
+                if (recordId && value) {
+                    const record = this.records.find(r => r.id === recordId);
+                    if (record && record.check_in) {
+                        const hours = this.#calculateHours(record.check_in, value);
+                        try {
+                            if (window.A && window.A.DB) {
+                                await window.A.DB.updateSingle('attendance', recordId, { 
+                                    check_out: value,
+                                    hours_worked: hours 
+                                });
+                                await this.#loadData();
+                                this.render();
+                            }
+                        } catch (e) {
+                            console.error('update check-out error:', e);
+                            Swal.fire('Lỗi', 'Lỗi: ' + e.message, 'error');
+                        }
+                    }
                 }
             });
         });
@@ -353,7 +389,7 @@ export class HrAttendance {
         const firstDayOfWeek = new Date(year, month, 1).getDay(); // 0=Sun
         const activeEmps = this.employees.filter(e => e.status !== 'inactive');
 
-        // Build header row: day numbers
+        // Build header row: day numbers + summary columns
         let headerCells = '';
         for (let d = 1; d <= daysInMonth; d++) {
             const dow = new Date(year, month, d).getDay();
@@ -363,17 +399,25 @@ export class HrAttendance {
                 <div class="fw-bold">${d}</div>
             </th>`;
         }
+        headerCells += `<th class="text-center p-1" style="min-width:50px;font-size:0.75rem;">Tổng Công</th>`;
+        headerCells += `<th class="text-center p-1" style="min-width:50px;font-size:0.75rem;">Vắng</th>`;
+        headerCells += `<th class="text-center p-1" style="min-width:50px;font-size:0.75rem;">Phép</th>`;
 
         // Build employee rows with status cells + compute monthly summary
-        let totalPresentDays = 0;
-        let totalHours = 0;
+        let totalPresentDaysAll = 0;
+        let totalHoursAll = 0;
 
         let empRows = '';
         if (activeEmps.length === 0) {
-            empRows = `<tr><td colspan="${daysInMonth + 1}" class="text-center text-muted py-4">Chưa có nhân viên nào</td></tr>`;
+            empRows = `<tr><td colspan="${daysInMonth + 4}" class="text-center text-muted py-4">Chưa có nhân viên nào</td></tr>`;
         } else {
             empRows = activeEmps.map(emp => {
                 let cells = '';
+                let empPresentDays = 0;
+                let empHours = 0;
+                let empAbsent = 0;
+                let empLeave = 0;
+
                 for (let d = 1; d <= daysInMonth; d++) {
                     const dateStr = this.#formatDate(year, month, d);
                     const record = this.#getRecordForEmployeeDate(emp.id, dateStr);
@@ -399,10 +443,17 @@ export class HrAttendance {
                         </td>`;
 
                         if (record.status === 'present' || record.status === 'late') {
-                            totalPresentDays++;
+                            empPresentDays++;
+                            totalPresentDaysAll++;
+                        } else if (record.status === 'absent') {
+                            empAbsent++;
+                        } else if (record.status === 'leave') {
+                            empLeave++;
                         }
+                        
                         if (hoursVal != null) {
-                            totalHours += Number(hoursVal);
+                            empHours += Number(hoursVal);
+                            totalHoursAll += Number(hoursVal);
                         }
                     } else {
                         cells += `<td class="text-center p-0 ${isWeekend ? 'bg-light' : ''}" title="Chưa chấm công">
@@ -418,6 +469,13 @@ export class HrAttendance {
                     }
                 }
                 const empName = emp.full_name || emp.name || emp.id;
+                const empCong = (empHours / HrAttendance.STANDARD_HOURS_PER_DAY).toFixed(2);
+                
+                // Add summary columns for this employee
+                cells += `<td class="text-center fw-bold bg-light" style="font-size:0.8rem;">${empCong}</td>`;
+                cells += `<td class="text-center fw-bold bg-light text-danger" style="font-size:0.8rem;">${empAbsent}</td>`;
+                cells += `<td class="text-center fw-bold bg-light text-info" style="font-size:0.8rem;">${empLeave}</td>`;
+
                 return `<tr>
                     <td class="fw-bold text-nowrap ps-2" style="font-size:0.8rem;" title="${this.#esc(empName)}">${this.#esc(this.#truncate(empName, 16))}</td>
                     ${cells}
@@ -425,14 +483,14 @@ export class HrAttendance {
             }).join('');
         }
 
-        const totalCong = totalHours / HrAttendance.STANDARD_HOURS_PER_DAY;
+        const totalCongAll = totalHoursAll / HrAttendance.STANDARD_HOURS_PER_DAY;
         const summaryRow = `<tfoot class="table-secondary">
             <tr>
                 <td class="fw-bold ps-2" style="font-size:0.8rem;">Tổng Cộng</td>
-                <td class="text-center small fw-bold" colspan="${daysInMonth}">
-                    📅 Ngày có mặt: <strong>${totalPresentDays}</strong> &nbsp;|&nbsp;
-                    ⏱️ Tổng giờ: <strong>${totalHours.toFixed(1)}h</strong> &nbsp;|&nbsp;
-                    📊 Tổng công: <strong>${totalCong.toFixed(2)}</strong>
+                <td class="text-center small fw-bold" colspan="${daysInMonth + 3}">
+                    📅 Ngày có mặt: <strong>${totalPresentDaysAll}</strong> &nbsp;|&nbsp;
+                    ⏱️ Tổng giờ: <strong>${totalHoursAll.toFixed(1)}h</strong> &nbsp;|&nbsp;
+                    📊 Tổng công: <strong>${totalCongAll.toFixed(2)}</strong>
                 </td>
             </tr>
         </tfoot>`;
@@ -517,28 +575,51 @@ export class HrAttendance {
         }
     }
 
-    quickAdd(employeeId, dateStr) {
+    async quickAdd(employeeId, dateStr) {
         const emp = this.#getEmployeeName(employeeId);
-        const note = prompt(`Thêm chấm công cho ${emp} ngày ${dateStr}\n\nTrạng thái: present/late/absent/leave`, 'present');
-        if (!note) return;
-        const validStatuses = ['present', 'late', 'absent', 'leave'];
-        const status = validStatuses.includes(note.toLowerCase()) ? note.toLowerCase() : 'present';
-        this.#markStatus(employeeId, dateStr, status);
+        
+        const { value: status } = await Swal.fire({
+            title: `Chấm công ngày ${dateStr}`,
+            text: `Nhân viên: ${emp}`,
+            input: 'select',
+            inputOptions: {
+                present: 'Có Mặt',
+                late: 'Đi Trễ',
+                absent: 'Vắng',
+                leave: 'Nghỉ Phép'
+            },
+            inputPlaceholder: 'Chọn trạng thái',
+            showCancelButton: true,
+            inputValue: 'present'
+        });
+
+        if (status) {
+            await this.#markStatus(employeeId, dateStr, status);
+        }
     }
 
-    editStatus(recordId) {
+    async editStatus(recordId) {
         const record = this.records.find(r => r.id === recordId);
         if (!record) return;
-        const statuses = Object.keys(HrAttendance.STATUS).join('/');
+        
         const emp = this.#getEmployeeName(record.employee_id);
-        const newStatus = prompt(
-            `Sửa trạng thái cho ${emp} ngày ${record.date}\n\nChọn: ${statuses}`,
-            record.status
-        );
-        if (!newStatus) return;
-        const validStatuses = ['present', 'late', 'absent', 'leave'];
-        if (validStatuses.includes(newStatus.toLowerCase())) {
-            this.#updateStatus(recordId, newStatus.toLowerCase());
+        const { value: newStatus } = await Swal.fire({
+            title: `Sửa trạng thái chấm công`,
+            text: `Nhân viên ${emp} ngày ${record.date}`,
+            input: 'select',
+            inputOptions: {
+                present: 'Có Mặt',
+                late: 'Đi Trễ',
+                absent: 'Vắng',
+                leave: 'Nghỉ Phép'
+            },
+            inputPlaceholder: 'Chọn trạng thái',
+            showCancelButton: true,
+            inputValue: record.status || 'present'
+        });
+
+        if (newStatus) {
+            await this.#updateStatus(recordId, newStatus);
         }
     }
 
@@ -550,11 +631,12 @@ export class HrAttendance {
         // Check if already checked in today
         const existing = this.#getRecordForEmployeeDate(employeeId, date);
         if (existing?.check_in) {
-            alert('Nhân viên này đã check-in hôm nay rồi.');
+            Swal.fire('Cảnh báo', 'Nhân viên này đã check-in trong ngày rồi.', 'warning');
             return;
         }
 
         const record = {
+            id: `ATT_${employeeId}_${date}`,
             employee_id: employeeId,
             date: date,
             check_in: time,
@@ -565,19 +647,20 @@ export class HrAttendance {
         };
 
         try {
-            if (window.A && window.A.DB) {
-                const result = await window.A.DB.saveRecord('attendance', record);
-                if (result && result.success !== false) {
-                    await this.#loadData();
-                    this.render();
-                } else {
-                    alert('Lỗi khi lưu check-in: ' + (result?.message || 'Không xác định'));
+                if (window.A && window.A.DB) {
+                    const result = await window.A.DB.saveRecord('attendance', record);
+                    if (result && result.success !== false) {
+                        await this.#loadData();
+                        this.render();
+                        Swal.fire('Thành công', 'Check-in thành công!', 'success');
+                    } else {
+                        Swal.fire('Lỗi', 'Lỗi khi lưu check-in: ' + (result?.message || 'Không xác định'), 'error');
+                    }
                 }
+            } catch (e) {
+                console.error('checkIn error:', e);
+                Swal.fire('Lỗi', 'Lỗi khi check-in: ' + e.message, 'error');
             }
-        } catch (e) {
-            console.error('checkIn error:', e);
-            alert('Lỗi khi check-in: ' + e.message);
-        }
     }
 
     async checkOut(employeeId, dateOverride, recordId) {
@@ -592,9 +675,16 @@ export class HrAttendance {
         if (!record) {
             // No check-in yet - create record with both
             const emp = this.#getEmployeeName(employeeId);
-            if (!confirm(`Nhân viên ${emp} chưa check-in hôm nay. Tạo bản ghi với giờ ra hiện tại?`)) return;
+            const confirmRes = await Swal.fire({
+                title: 'Check-out',
+                text: `Nhân viên ${emp} chưa check-in hôm nay. Tạo bản ghi với giờ ra hiện tại?`,
+                icon: 'question',
+                showCancelButton: true
+            });
+            if (!confirmRes.isConfirmed) return;
 
             record = {
+                id: `ATT_${employeeId}_${date}`,
                 employee_id: employeeId,
                 date: date,
                 check_in: null,
@@ -610,19 +700,20 @@ export class HrAttendance {
                     if (result && result.success !== false) {
                         await this.#loadData();
                         this.render();
+                        Swal.fire('Thành công', 'Tạo bản ghi check-out thành công!', 'success');
                     } else {
-                        alert('Lỗi khi lưu check-out: ' + (result?.message || 'Không xác định'));
+                        Swal.fire('Lỗi', 'Lỗi khi lưu check-out: ' + (result?.message || 'Không xác định'), 'error');
                     }
                 }
             } catch (e) {
                 console.error('checkOut error:', e);
-                alert('Lỗi khi check-out: ' + e.message);
+                Swal.fire('Lỗi', 'Lỗi khi check-out: ' + e.message, 'error');
             }
             return;
         }
 
         if (record.check_out) {
-            alert('Nhân viên này đã check-out hôm nay rồi.');
+            Swal.fire('Cảnh báo', 'Nhân viên này đã check-out trong ngày rồi.', 'warning');
             return;
         }
 
@@ -637,10 +728,11 @@ export class HrAttendance {
                 });
                 await this.#loadData();
                 this.render();
+                Swal.fire('Thành công', 'Check-out thành công!', 'success');
             }
         } catch (e) {
             console.error('checkOut error:', e);
-            alert('Lỗi khi check-out: ' + e.message);
+            Swal.fire('Lỗi', 'Lỗi khi check-out: ' + e.message, 'error');
         }
     }
 
@@ -651,6 +743,7 @@ export class HrAttendance {
             await this.#updateStatus(existing.id, status);
         } else {
             const record = {
+                id: `ATT_${employeeId}_${date}`,
                 employee_id: employeeId,
                 date: date,
                 check_in: null,
@@ -667,7 +760,7 @@ export class HrAttendance {
                 }
             } catch (e) {
                 console.error('markStatus error:', e);
-                alert('Lỗi: ' + e.message);
+                Swal.fire('Lỗi', 'Lỗi: ' + e.message, 'error');
             }
         }
     }
@@ -681,7 +774,7 @@ export class HrAttendance {
             }
         } catch (e) {
             console.error('updateStatus error:', e);
-            alert('Lỗi: ' + e.message);
+            Swal.fire('Lỗi', 'Lỗi: ' + e.message, 'error');
         }
     }
 
@@ -691,10 +784,11 @@ export class HrAttendance {
                 await window.A.DB.deleteRecord('attendance', recordId);
                 await this.#loadData();
                 this.render();
+                Swal.fire('Thành công', 'Đã xóa bản ghi chấm công', 'success');
             }
         } catch (e) {
             console.error('deleteAttendance error:', e);
-            alert('Lỗi: ' + e.message);
+            Swal.fire('Lỗi', 'Lỗi: ' + e.message, 'error');
         }
     }
 
@@ -707,7 +801,7 @@ export class HrAttendance {
             }
         } catch (e) {
             console.error('updateHoursWorked error:', e);
-            alert('Lỗi: ' + e.message);
+            Swal.fire('Lỗi', 'Lỗi: ' + e.message, 'error');
         }
     }
 

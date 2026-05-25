@@ -30,13 +30,13 @@
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link fw-bold" id="hr-salary-tab" data-bs-toggle="tab" data-bs-target="#hr-salary-content" type="button" role="tab" aria-controls="hr-salary-content" aria-selected="false">
-                            <i class="fa-solid fa-money-bill-wave me-1"></i>Lương
+                        <button class="nav-link fw-bold" id="hr-bonus-tab" data-bs-toggle="tab" data-bs-target="#hr-bonus-content" type="button" role="tab" aria-controls="hr-bonus-content" aria-selected="false">
+                            <i class="fa-solid fa-gift me-1"></i>Thưởng
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link fw-bold" id="hr-bonus-tab" data-bs-toggle="tab" data-bs-target="#hr-bonus-content" type="button" role="tab" aria-controls="hr-bonus-content" aria-selected="false">
-                            <i class="fa-solid fa-gift me-1"></i>Thưởng
+                        <button class="nav-link fw-bold" id="hr-salary-tab" data-bs-toggle="tab" data-bs-target="#hr-salary-content" type="button" role="tab" aria-controls="hr-salary-content" aria-selected="false">
+                            <i class="fa-solid fa-money-bill-wave me-1"></i>Lương
                         </button>
                     </li>
                 </ul>
@@ -88,21 +88,6 @@
                         </div>
                     </div>
                     
-                    <!-- Salary Tab -->
-                    <div class="tab-pane fade" id="hr-salary-content" role="tabpanel" aria-labelledby="hr-salary-tab">
-                        <div class="row g-3 mb-3" id="hr-salary-filter-container">
-                            <!-- JS will render salary filters here -->
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-12" id="hr-salary-table-container">
-                                <!-- JS will render salary table here -->
-                                <div class="text-center text-muted py-5 border rounded-4 bg-light">
-                                    <i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải bảng lương...
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
                     <!-- Bonuses Tab -->
                     <div class="tab-pane fade" id="hr-bonus-content" role="tabpanel" aria-labelledby="hr-bonus-tab">
                         <div class="row g-3 mb-3" id="hr-bonus-filter-container">
@@ -113,6 +98,21 @@
                                 <!-- JS will render bonus table here -->
                                 <div class="text-center text-muted py-5 border rounded-4 bg-light">
                                     <i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải danh sách thưởng/phạt...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Salary Tab -->
+                    <div class="tab-pane fade" id="hr-salary-content" role="tabpanel" aria-labelledby="hr-salary-tab">
+                        <div class="row g-3 mb-3" id="hr-salary-filter-container">
+                            <!-- JS will render salary filters here -->
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12" id="hr-salary-table-container">
+                                <!-- JS will render salary table here -->
+                                <div class="text-center text-muted py-5 border rounded-4 bg-light">
+                                    <i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải bảng lương...
                                 </div>
                             </div>
                         </div>

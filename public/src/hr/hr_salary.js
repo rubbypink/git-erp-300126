@@ -65,13 +65,13 @@ export class HrSalary {
     }
 
     // ─── DATA LOADING ────────────────────────────────────────────────
-    async #loadData() {
+    async #loadData(force = false) {
         try {
             const [emps, salaries, bonuses, attendance] = await Promise.all([
-                this.#loadCollection('employees'),
-                this.#loadCollection('salary_records'),
-                this.#loadCollection('bonuses'),
-                this.#loadCollection('attendance'),
+                this.#loadCollection('employees', force),
+                this.#loadCollection('salary_records', force),
+                this.#loadCollection('bonuses', force),
+                this.#loadCollection('attendance', force),
             ]);
             this._employees = emps || [];
             this._salaryRecords = salaries || [];
@@ -82,23 +82,30 @@ export class HrSalary {
         }
     }
 
-    async #loadCollection(name) {
+    async #loadCollection(name, force = false) {
         try {
-            const appData = window.APP_DATA?.[name];
-            if (appData && Object.keys(appData).length > 0) {
-                return Object.values(appData);
-            }
+            if (!force) {
+                const appData = window.APP_DATA?.[name];
+                if (appData && Object.keys(appData).length > 0) {
+                    return Object.values(appData);
+                }
 
-            if (window.A?.DB?.local) {
-                const obj = await A.DB.local.getAllAsObject(name);
-                if (obj && Object.keys(obj).length > 0) {
-                    return Object.values(obj);
+                if (window.A?.DB?.local) {
+                    const obj = await A.DB.local.getAllAsObject(name);
+                    if (obj && Object.keys(obj).length > 0) {
+                        return Object.values(obj);
+                    }
                 }
             }
 
             if (window.A?.DB?.getCollection) {
                 const docs = await A.DB.getCollection(name);
                 if (Array.isArray(docs) && docs.length > 0) {
+                    // Update cache
+                    if (window.APP_DATA) {
+                        window.APP_DATA[name] = window.APP_DATA[name] || {};
+                        docs.forEach(d => window.APP_DATA[name][d.id] = d);
+                    }
                     return docs;
                 }
             }
@@ -170,7 +177,7 @@ export class HrSalary {
         refreshBtn?.addEventListener('click', async () => {
             refreshBtn.disabled = true;
             refreshBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i>Đang tải...';
-            await this.#loadData();
+            await this.#loadData(true);
             this.renderSalaryTable(null, this._selectedMonth, this._selectedYear);
             refreshBtn.disabled = false;
             refreshBtn.innerHTML = '<i class="fa-solid fa-rotate me-1"></i>Làm Mới';
@@ -248,21 +255,21 @@ export class HrSalary {
         }
 
         const baseSalary = emp.base_salary || 0;
-        const workDays = this.#calcWorkDaysFromAttendance(emp.id, month, year);
+        const calcResult = this.calculateSalary(emp.id, month, year);
 
         return {
             id: null,
             employee_id: emp.id,
             employee_code: emp.employee_code || '—',
             full_name: emp.full_name || '—',
-            base_salary,
-            work_day_count: workDays,
-            work_day_pay: Math.round(workDays * (baseSalary / C.standardDays)),
-            bonus_total: null,
-            ot_hours: null,
-            ot_pay: null,
-            deduction_total: null,
-            net_salary: null,
+            base_salary: baseSalary,
+            work_day_count: calcResult ? calcResult.actual_work_days : 0,
+            work_day_pay: calcResult ? calcResult.work_day_pay : 0,
+            bonus_total: calcResult ? calcResult.bonus_total : 0,
+            ot_hours: calcResult ? calcResult.ot_hours : 0,
+            ot_pay: calcResult ? calcResult.ot_pay : 0,
+            deduction_total: calcResult ? calcResult.deduction_total : 0,
+            net_salary: calcResult ? calcResult.net_salary : 0,
             paid: false,
             hasRecord: false,
         };
